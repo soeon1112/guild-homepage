@@ -1,0 +1,14 @@
+투력 및 지옥 현황 페이지 수정해줘.
+
+1) 정렬 수정: 전투력 기준 내림차순 정렬 제거해. 구글시트에 있는 원래 순서 그대로 표시해야 해. 데이터를 fetch한 후 정렬하지 말고 그대로 보여줘.
+
+2) 모바일 로딩 문제 수정: 모바일에서 "로딩 중..."만 뜨고 데이터가 안 나와. fetch할 때 CORS 문제일 수 있어. 해결 방법: Next.js API route를 만들어서 서버사이드에서 구글시트 CSV를 가져오게 해. src/app/api/sheets/route.ts 파일을 만들고, 거기서 구글시트 CSV를 fetch해서 JSON으로 변환 후 반환. 클라이언트에서는 /api/sheets를 호출하도록 수정.
+
+API route 코드:
+- GET 요청 시 https://docs.google.com/spreadsheets/d/1Sp6Zjr5KGvrlnyHBdp2Oq-heV4Z3rT0D_Wn0bNpaUi8/gviz/tq?tqx=out:csv 에서 CSV를 가져옴
+- CSV를 파싱해서 JSON 배열로 변환
+- NextResponse.json()으로 반환
+- 캐시: revalidate 60초 정도로 설정
+
+클라이언트 코드:
+- fetch URL을 구글시트 직접 URL에서 /api/sheets로 변경

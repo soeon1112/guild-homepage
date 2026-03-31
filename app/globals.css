@@ -256,3 +256,85 @@ body {
   font-size: 0.875rem;
   color: rgba(255, 255, 255, 0.3);
 }
+
+/* ── Stats page ── */
+.stats-content {
+  position: relative;
+  z-index: 10;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.stats-title {
+  font-size: 1.25rem;
+  font-weight: 400;
+  color: #b388ff;
+  text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;
+  font-family: 'Noto Serif KR', serif;
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.stats-loading {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.5);
+  padding: 3rem 0;
+}
+
+.stats-table-wrap {
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  table-layout: auto;
+}
+
+.stats-table th,
+.stats-table td {
+  padding: 6px 6px;
+  color: #ffffff;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.stats-table th {
+  background: rgba(255, 255, 255, 0.1);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.stats-table tbody tr {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stats-table .col-nickname {
+  text-align: left;
+  min-width: 70px;
+  white-space: normal;
+}
+
+.stats-table .col-job,
+.stats-table .col-combat,
+.stats-table .col-hell,
+.stats-table .col-challenge {
+  width: 1%;
+}
+
+@media (min-width: 640px) {
+  .stats-content {
+    max-width: 720px;
+    padding: 2rem 2rem;
+  }
+  .stats-table {
+    font-size: 13px;
+  }
+  .stats-table th {
+    font-size: 13px;
+  }
+}
