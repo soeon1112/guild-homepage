@@ -9,10 +9,14 @@ export default async function MemberDetailPage({
 
   return (
     <div className="member-detail">
-      <p className="member-detail-text">준비 중입니다</p>
       <Link href="/members" className="back-link">
         ← 돌아가기
       </Link>
+      <img
+        src={`/images/members/detail/${id}.png`}
+        alt={`멤버 ${id}`}
+        className="member-detail-img"
+      />
     </div>
   );
 }
