@@ -38,7 +38,7 @@ function parseCSV(text: string) {
 }
 
 export async function GET() {
-  const res = await fetch(SHEET_URL, { next: { revalidate: 60 } });
+  const res = await fetch(SHEET_URL, { next: { revalidate: 0 } });
   const text = await res.text();
   const data = parseCSV(text);
 
