@@ -12,9 +12,9 @@ export const metadata: Metadata = {
   title: "새벽빛 - 마비노기 모바일 길드",
   description: "마비노기 모바일 길드 새벽빛 홈페이지",
   openGraph: {
-    title: "새벽빛 - 마비노기 모바일 길드",
+    title: "새벽빛",
     description: "마비노기 모바일 길드 새벽빛 홈페이지",
-    images: [{ url: "/images/logo.png" }],
+    images: [{ url: "https://dawnlight-guild.vercel.app/images/logo.png" }],
   },
 };
 
