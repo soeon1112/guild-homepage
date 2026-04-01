@@ -493,3 +493,347 @@ body {
     font-size: 13px;
   }
 }
+
+/* ── Board (정보 게시판) ── */
+.board-content {
+  position: relative;
+  z-index: 10;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .board-content {
+    max-width: 720px;
+    padding: 2rem 2rem;
+  }
+}
+
+.board-title {
+  font-size: 1.25rem;
+  font-weight: 400;
+  color: #4a90d9;
+  text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;
+  font-family: 'Noto Serif KR', serif;
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.board-write-btn-wrap {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.75rem;
+}
+
+.board-write-btn-wrap .board-btn {
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid #d4af37;
+  color: #d4af37;
+}
+
+.board-write-btn-wrap .board-btn:hover {
+  background: rgba(212, 175, 55, 0.15);
+}
+
+.board-btn {
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid #daa520;
+  border-radius: 8px;
+  color: #daa520;
+  padding: 0.4rem 1rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.2s, color 0.2s;
+  display: inline-block;
+  text-align: center;
+}
+
+.board-btn:hover {
+  background: rgba(218, 165, 32, 0.15);
+}
+
+.board-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.board-btn-cancel {
+  background: rgba(0, 0, 0, 0.5);
+  color: #4a90d9;
+  border-color: #4a90d9;
+}
+
+.board-btn-cancel:hover {
+  background: rgba(74, 144, 217, 0.15);
+}
+
+/* Board table */
+.board-table-wrap {
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.board-loading {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.5);
+  padding: 3rem 0;
+}
+
+.board-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.board-table th,
+.board-table td {
+  padding: 0.6rem 0.5rem;
+  color: #ffffff;
+  text-align: center;
+}
+
+.board-table th {
+  background: rgba(255, 255, 255, 0.1);
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.board-table tbody tr {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.board-table .col-no {
+  width: 40px;
+}
+
+.board-table .col-title {
+  text-align: left;
+}
+
+.board-table .col-author {
+  width: 70px;
+  white-space: nowrap;
+}
+
+.board-table .col-date {
+  width: 80px;
+  white-space: nowrap;
+  font-size: 0.75rem;
+}
+
+.board-post-link {
+  color: #ffffff;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.board-post-link:hover {
+  color: #4a90d9;
+}
+
+/* Board pagination */
+.board-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.board-page-btn {
+  background: rgba(74, 144, 217, 0.15);
+  border: 1px solid rgba(74, 144, 217, 0.4);
+  border-radius: 8px;
+  color: #4a90d9;
+  padding: 0.35rem 1rem;
+  font-size: 0.825rem;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.board-page-btn:hover:not(:disabled) {
+  background: rgba(74, 144, 217, 0.3);
+  border-color: #4a90d9;
+}
+
+.board-page-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.board-page-info {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.8rem;
+}
+
+/* Board form (write / edit) */
+.board-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.board-input {
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  color: #ffffff;
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.board-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.board-input:focus {
+  border-color: rgba(218, 165, 32, 0.5);
+}
+
+.board-textarea {
+  resize: vertical;
+  min-height: 200px;
+  line-height: 1.6;
+}
+
+.board-form-buttons {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+/* Board detail */
+.board-detail {
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.board-detail-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0 0 0.75rem 0;
+}
+
+.board-detail-meta {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.board-detail-body {
+  color: #ffffff;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+  min-height: 100px;
+}
+
+.board-link {
+  color: #4a90d9;
+  text-decoration: underline;
+  word-break: break-all;
+}
+
+.board-link:hover {
+  color: #6ab0ff;
+}
+
+.board-detail-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  justify-content: flex-end;
+}
+
+/* Board comments */
+.board-comments {
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+.board-comments-title {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #4a90d9;
+  margin: 0 0 1rem 0;
+}
+
+.board-comment-list {
+  margin-bottom: 1rem;
+}
+
+.board-comment-item {
+  padding: 0.6rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.board-comment-item:last-child {
+  border-bottom: none;
+}
+
+.board-comment-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.board-comment-nick {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #4a90d9;
+}
+
+.board-comment-date {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.board-comment-body {
+  font-size: 0.85rem;
+  color: #ffffff;
+  margin: 0;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.board-comment-form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.board-comment-nick-input {
+  flex: 0 0 auto;
+  width: 80px;
+}
+
+.board-comment-content-input {
+  flex: 1;
+  min-width: 120px;
+}
+
+@media (max-width: 480px) {
+  .board-comment-form {
+    flex-direction: column;
+  }
+  .board-comment-nick-input,
+  .board-comment-content-input {
+    width: 100%;
+  }
+}

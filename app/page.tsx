@@ -8,7 +8,7 @@ const menuItems = [
   { href: "/members", icon: "/images/members.png", label: "길드원 소개" },
   { href: "/stats", icon: "/images/combat-status.png", label: "투력 및 지옥 현황" },
   { href: "https://www.notion.so/2d2b27f7dd7380858345e27689964564", icon: "/images/album.png", label: "앨범", external: true },
-  { href: "/album", icon: "/images/guild-memories.png", label: "길드 추억" },
+  { href: "/board", icon: "/images/guild-memories.png", label: "길드 추억" },
 ];
 
 
