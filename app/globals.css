@@ -168,7 +168,7 @@ body {
   justify-content: center;
   min-height: 100vh;
   padding: 1rem;
-  background: url('/background.png') center center / cover no-repeat fixed;
+  background: url('/images/background.png') center center / cover no-repeat fixed;
 }
 
 .member-detail-img {
