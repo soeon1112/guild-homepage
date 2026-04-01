@@ -127,14 +127,13 @@ body {
   width: 85%;
   text-decoration: none;
   border-radius: 12px;
-  transition: transform 0.3s ease, box-shadow 0.3s ease, filter 0.3s ease;
+  transition: transform 0.3s ease, filter 0.3s ease;
 }
 
 .members-grid .member-btn:hover,
 .members-grid .member-btn:active {
-  transform: scale(1.05);
-  box-shadow: 0 0 20px rgba(200, 180, 255, 0.6), 0 0 40px rgba(200, 180, 255, 0.3);
-  filter: brightness(1.15);
+  transform: scale(1.08);
+  filter: drop-shadow(0 0 15px rgba(218, 165, 32, 0.5)) brightness(1.1);
 }
 
 .members-grid .member-img {
