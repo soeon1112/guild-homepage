@@ -11,6 +11,11 @@ const geistSans = Geist({
 export const metadata: Metadata = {
   title: "새벽빛 - 마비노기 모바일 길드",
   description: "마비노기 모바일 길드 새벽빛 홈페이지",
+  openGraph: {
+    title: "새벽빛 - 마비노기 모바일 길드",
+    description: "마비노기 모바일 길드 새벽빛 홈페이지",
+    images: [{ url: "/images/logo.png" }],
+  },
 };
 
 function Header() {
