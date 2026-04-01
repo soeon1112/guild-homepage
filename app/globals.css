@@ -166,8 +166,9 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 80vh;
+  min-height: 100vh;
   padding: 1rem;
+  background: url('/background.png') center center / cover no-repeat fixed;
 }
 
 .member-detail-img {
