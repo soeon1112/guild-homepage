@@ -634,6 +634,12 @@ body {
   color: #4a90d9;
 }
 
+.comment-count {
+  color: #4a90d9;
+  font-size: 0.85em;
+  font-weight: bold;
+}
+
 /* Board pagination */
 .board-pagination {
   display: flex;

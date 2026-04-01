@@ -20,6 +20,7 @@ interface Post {
   title: string;
   nickname: string;
   createdAt: Date;
+  commentCount: number;
 }
 
 const PAGE_SIZE = 10;
@@ -57,15 +58,20 @@ export default function BoardPage() {
       }
 
       const snap = await getDocs(q);
-      const items: Post[] = snap.docs.map((doc) => {
-        const d = doc.data();
-        return {
-          id: doc.id,
-          title: d.title,
-          nickname: d.nickname,
-          createdAt: d.createdAt?.toDate?.() ?? new Date(),
-        };
-      });
+      const items: Post[] = await Promise.all(
+        snap.docs.map(async (doc) => {
+          const d = doc.data();
+          const commentsCol = collection(db, "board", doc.id, "comments");
+          const countSnap = await getCountFromServer(commentsCol);
+          return {
+            id: doc.id,
+            title: d.title,
+            nickname: d.nickname,
+            createdAt: d.createdAt?.toDate?.() ?? new Date(),
+            commentCount: countSnap.data().count,
+          };
+        })
+      );
       setPosts(items);
 
       if (snap.docs.length > 0) {
@@ -127,6 +133,9 @@ export default function BoardPage() {
                   <td className="col-title">
                     <Link href={`/board/${post.id}`} className="board-post-link">
                       {post.title}
+                      {post.commentCount > 0 && (
+                        <span className="comment-count"> [{post.commentCount}]</span>
+                      )}
                     </Link>
                   </td>
                   <td className="col-author">{post.nickname}</td>
