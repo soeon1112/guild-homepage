@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import Guestbook from "./components/Guestbook";
 
 const menuItems = [
   { href: "/rules", icon: "/images/guild-rules.png", label: "길드 규칙" },
@@ -26,6 +27,9 @@ export default function Home() {
           />
         </section>
 
+        {/* Guestbook */}
+        <Guestbook />
+
         {/* Menu grid */}
         <div className="menu-grid">
           {menuItems.map((item) =>
@@ -38,7 +42,6 @@ export default function Home() {
                   height={140}
                   className="menu-icon"
                 />
-                <span className="menu-label">{item.label}</span>
               </a>
             ) : (
               <Link key={item.href} href={item.href} className="menu-item">
@@ -49,7 +52,6 @@ export default function Home() {
                   height={140}
                   className="menu-icon"
                 />
-                <span className="menu-label">{item.label}</span>
               </Link>
             )
           )}
