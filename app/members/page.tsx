@@ -1,7 +1,10 @@
 import Link from "next/link";
 import Image from "next/image";
 
-const memberIds = Array.from({ length: 22 }, (_, i) => i + 1);
+const memberIds: (number | string)[] = [
+  1, "1-2",
+  ...Array.from({ length: 21 }, (_, i) => i + 2),
+];
 
 export default function MembersPage() {
   return (
