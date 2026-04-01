@@ -1,0 +1,4 @@
+길드원 소개에서 3번 클릭 시 나오는 상세 페이지 수정. 배경 background.png 깔고, 중앙에 /images/members/detail/3.png 이미지를 원본 그대로 보여줘. 모바일에서 화면 가로폭에 맞게. 이미지에 filter 적용하지 마. 뒤로가기 버튼 포함.
+길드원 소개에서 7번 클릭 시 나오는 상세 페이지 수정. 배경 background.png 깔고, 중앙에 /images/members/detail/7.png 이미지를 원본 그대로 보여줘. 모바일에서 화면 가로폭에 맞게. 이미지에 filter 적용하지 마. 뒤로가기 버튼 포함.
+길드원 소개에서 10번 클릭 시 나오는 상세 페이지 수정. 배경 background.png 깔고, 중앙에 /images/members/detail/10.png 이미지를 원본 그대로 보여줘. 모바일에서 화면 가로폭에 맞게. 이미지에 filter 적용하지 마. 뒤로가기 버튼 포함.
+길드원 소개에서 21번 클릭 시 나오는 상세 페이지 수정. 배경 background.png 깔고, 중앙에 /images/members/detail/21.png 이미지를 원본 그대로 보여줘. 모바일에서 화면 가로폭에 맞게. 이미지에 filter 적용하지 마. 뒤로가기 버튼 포함.
