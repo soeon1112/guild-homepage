@@ -30,17 +30,15 @@ export default async function MemberDetailPage({
   }
 
   return (
-    <div
-      className="flex min-h-screen flex-col items-center justify-center px-4 py-8"
-      style={{ background: "url('/images/background.png') center center / cover no-repeat fixed" }}
-    >
-      <p className="mb-8 text-lg text-white">준비 중입니다</p>
-      <Link
-        href="/members"
-        className="inline-flex items-center gap-1 text-sm text-white/50 hover:text-white/80"
-      >
-        ← 돌아가기
-      </Link>
+    <div className="flex min-h-screen flex-col items-center px-4 py-8">
+      <div className="w-full max-w-4xl">
+        <Link href="/members" className="mb-6 inline-flex items-center gap-1 text-sm text-foreground/50 hover:text-foreground/80">
+          ← 돌아가기
+        </Link>
+      </div>
+      <div className="flex w-full flex-1 items-center justify-center">
+        <p className="text-lg text-white">준비 중입니다</p>
+      </div>
     </div>
   );
 }
