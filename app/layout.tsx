@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "새벽빛",
     description: "마비노기 모바일 길드 새벽빛 홈페이지",
-    images: [{ url: "https://dawnlight-guild.vercel.app/images/logo.png" }],
+    images: [{ url: "https://dawnlight-guild.vercel.app/images/guild-logo.png" }],
   },
 };
 

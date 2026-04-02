@@ -19,7 +19,7 @@ export default function Home() {
         {/* Hero: logo + subtitle */}
         <section className="hero">
           <img
-            src="/images/logo.png"
+            src="/images/guild-logo.png"
             alt="새벽빛"
             width={280}
             height={280}
