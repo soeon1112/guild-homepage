@@ -3,7 +3,7 @@ import Image from "next/image";
 
 const memberIds: (number | string)[] = [
   1, "1-2",
-  ...Array.from({ length: 21 }, (_, i) => i + 2),
+  ...Array.from({ length: 21 }, (_, i) => i + 2).filter((id) => id !== 5),
 ];
 
 export default function MembersPage() {
