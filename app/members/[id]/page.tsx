@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-const detailIds = new Set(["1", "1-2", "3", "4", "7", "8", "10", "12", "13", "15", "17", "21"]);
+const detailIds = new Set(["1", "1-2", "3", "4", "6", "7", "8", "9", "10", "12", "13", "15", "17", "18", "20", "21"]);
 
 export default async function MemberDetailPage({
   params,
