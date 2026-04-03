@@ -30,6 +30,18 @@ export default function Home() {
         {/* Guestbook */}
         <Guestbook />
 
+        {/* YouTube */}
+        <section className="youtube-section">
+          <div className="youtube-wrapper">
+            <iframe
+              src="https://www.youtube.com/embed/_SN4VAf6kdg"
+              title="YouTube video"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+        </section>
+
         {/* Menu grid */}
         <div className="menu-grid">
           {menuItems.map((item) =>
