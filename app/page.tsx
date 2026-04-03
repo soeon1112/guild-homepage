@@ -27,9 +27,6 @@ export default function Home() {
           />
         </section>
 
-        {/* Guestbook */}
-        <Guestbook />
-
         {/* YouTube */}
         <section className="youtube-section">
           <div className="youtube-wrapper">
@@ -41,6 +38,9 @@ export default function Home() {
             />
           </div>
         </section>
+
+        {/* Guestbook */}
+        <Guestbook />
 
         {/* Menu grid */}
         <div className="menu-grid">
