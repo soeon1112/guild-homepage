@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import BackLink from "@/app/components/BackLink";
 import { useEffect, useState } from "react";
 
 interface MemberRow {
@@ -28,9 +29,9 @@ export default function StatsPage() {
 
   return (
     <div className="stats-content">
-      <Link href="/" className="back-link">
+      <BackLink href="/" className="back-link">
         ← 홈으로
-      </Link>
+      </BackLink>
 
       <h1 className="stats-title">투력 및 지옥 현황</h1>
 

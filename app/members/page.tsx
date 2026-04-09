@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import BackLink from "@/app/components/BackLink";
 
 const memberIds: (number | string)[] = [
   0, 1, "1-2",
@@ -9,9 +10,9 @@ const memberIds: (number | string)[] = [
 export default function MembersPage() {
   return (
     <div className="members-content">
-      <Link href="/" className="back-link">
+      <BackLink href="/" className="back-link">
         ← 홈으로
-      </Link>
+      </BackLink>
       <div className="members-grid">
         {memberIds.map((id) => (
           <Link key={id} href={`/members/${id}`} className="member-btn">

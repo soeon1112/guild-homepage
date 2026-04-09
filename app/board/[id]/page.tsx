@@ -3,6 +3,7 @@
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import BackLink from "@/app/components/BackLink";
 import {
   doc,
   getDoc,
@@ -145,18 +146,18 @@ export default function BoardDetailPage({
     return (
       <div className="board-content">
         <p className="board-loading">존재하지 않는 게시글입니다.</p>
-        <Link href="/board" className="board-btn" style={{ display: "inline-block", marginTop: "1rem" }}>
+        <BackLink href="/board" className="board-btn" style={{ display: "inline-block", marginTop: "1rem" }}>
           목록으로
-        </Link>
+        </BackLink>
       </div>
     );
   }
 
   return (
     <div className="board-content">
-      <Link href="/board" className="back-link">
+      <BackLink href="/board" className="back-link">
         ← 목록으로
-      </Link>
+      </BackLink>
 
       <div className="board-detail">
         <h1 className="board-detail-title">{post.title}</h1>
@@ -183,9 +184,9 @@ export default function BoardDetailPage({
           <button className="board-btn board-btn-cancel" onClick={handleDelete}>
             삭제
           </button>
-          <Link href="/board" className="board-btn">
+          <BackLink href="/board" className="board-btn">
             목록으로
-          </Link>
+          </BackLink>
         </div>
       </div>
 

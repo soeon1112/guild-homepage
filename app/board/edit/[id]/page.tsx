@@ -3,6 +3,7 @@
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import BackLink from "@/app/components/BackLink";
 import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
 
@@ -66,9 +67,9 @@ export default function BoardEditPage({
 
   return (
     <div className="board-content">
-      <Link href={`/board/${id}`} className="back-link">
+      <BackLink href={`/board/${id}`} className="back-link">
         ← 돌아가기
-      </Link>
+      </BackLink>
 
       <h1 className="board-title">글 수정</h1>
 

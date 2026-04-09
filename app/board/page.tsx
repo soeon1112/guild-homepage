@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import BackLink from "@/app/components/BackLink";
 import { useEffect, useState } from "react";
 import {
   collection,
@@ -99,9 +100,9 @@ export default function BoardPage() {
 
   return (
     <div className="board-content">
-      <Link href="/" className="back-link">
+      <BackLink href="/" className="back-link">
         ← 홈으로
-      </Link>
+      </BackLink>
 
       <h1 className="board-title">정보 게시판</h1>
 

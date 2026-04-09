@@ -1,4 +1,4 @@
-import Link from "next/link";
+import BackLink from "@/app/components/BackLink";
 
 const detailIds = new Set(["0", "1", "1-2", "2", "3", "4", "5", "6", "7", "8", "9", "10", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21"]);
 
@@ -14,9 +14,9 @@ export default async function MemberDetailPage({
     return (
       <div className="flex min-h-screen flex-col items-center px-4 py-8">
         <div className="w-full max-w-4xl">
-          <Link href="/members" className="mb-6 inline-flex items-center gap-1 text-sm text-foreground/50 hover:text-foreground/80">
+          <BackLink href="/members" className="mb-6 inline-flex items-center gap-1 text-sm text-foreground/50 hover:text-foreground/80">
             ← 돌아가기
-          </Link>
+          </BackLink>
         </div>
         <div className="flex w-full flex-1 items-center justify-center">
           <img
@@ -32,9 +32,9 @@ export default async function MemberDetailPage({
   return (
     <div className="flex min-h-screen flex-col items-center px-4 py-8">
       <div className="w-full max-w-4xl">
-        <Link href="/members" className="mb-6 inline-flex items-center gap-1 text-sm text-foreground/50 hover:text-foreground/80">
+        <BackLink href="/members" className="mb-6 inline-flex items-center gap-1 text-sm text-foreground/50 hover:text-foreground/80">
           ← 돌아가기
-        </Link>
+        </BackLink>
       </div>
       <div className="flex w-full flex-1 items-center justify-center">
         <p className="text-lg text-white">준비 중입니다</p>

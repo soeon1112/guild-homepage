@@ -8,7 +8,6 @@ export default function ScrollRestorer() {
   const isPopState = useRef(false);
 
   useEffect(() => {
-    // Track back/forward navigation via popstate
     const handlePopState = () => {
       isPopState.current = true;
     };
@@ -29,18 +28,23 @@ export default function ScrollRestorer() {
   }, [pathname]);
 
   useEffect(() => {
-    // Restore scroll position on back/forward navigation
-    if (isPopState.current) {
+    // Check if this is a back navigation (browser back/forward or BackLink)
+    const restoreTarget = sessionStorage.getItem("scroll:restore");
+    const shouldRestore = isPopState.current || restoreTarget === pathname;
+
+    if (shouldRestore) {
       const saved = sessionStorage.getItem(`scroll:${pathname}`);
       if (saved) {
         const y = parseInt(saved, 10);
-        // Use requestAnimationFrame to wait for DOM render
-        requestAnimationFrame(() => {
+        setTimeout(() => {
           window.scrollTo(0, y);
-        });
+        }, 300);
       }
-      isPopState.current = false;
     }
+
+    // Clean up flags
+    isPopState.current = false;
+    sessionStorage.removeItem("scroll:restore");
   }, [pathname]);
 
   return null;
