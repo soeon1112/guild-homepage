@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import Link from "next/link";
+import ScrollRestorer from "./components/ScrollRestorer";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -51,6 +52,7 @@ export default function RootLayout({
       <body className="relative min-h-full flex flex-col">
         {/* Full-screen background — no overlay, no filter */}
         <div className="bg-scene" aria-hidden="true" />
+        <ScrollRestorer />
         <Header />
         <main className="relative z-10 flex-1">{children}</main>
         <Footer />
