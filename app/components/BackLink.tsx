@@ -20,6 +20,7 @@ export default function BackLink({
     e.preventDefault();
     sessionStorage.setItem(`scroll:${pathname}`, String(window.scrollY));
     sessionStorage.setItem("scroll:restore", href);
+    document.body.style.opacity = "0";
     router.push(href);
   };
 

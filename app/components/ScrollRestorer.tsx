@@ -28,7 +28,6 @@ export default function ScrollRestorer() {
   }, [pathname]);
 
   useEffect(() => {
-    // Check if this is a back navigation (browser back/forward or BackLink)
     const restoreTarget = sessionStorage.getItem("scroll:restore");
     const shouldRestore = isPopState.current || restoreTarget === pathname;
 
@@ -36,13 +35,17 @@ export default function ScrollRestorer() {
       const saved = sessionStorage.getItem(`scroll:${pathname}`);
       if (saved) {
         const y = parseInt(saved, 10);
-        setTimeout(() => {
+        // Hide page, restore scroll, then show
+        document.body.style.opacity = "0";
+        requestAnimationFrame(() => {
           window.scrollTo(0, y);
-        }, 300);
+          requestAnimationFrame(() => {
+            document.body.style.opacity = "1";
+          });
+        });
       }
     }
 
-    // Clean up flags
     isPopState.current = false;
     sessionStorage.removeItem("scroll:restore");
   }, [pathname]);
