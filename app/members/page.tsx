@@ -3,7 +3,7 @@ import Image from "next/image";
 import BackLink from "@/app/components/BackLink";
 
 const memberIds: (number | string)[] = [
-  0, 1, "1-2",
+  "a", 0, 1, "1-2",
   ...Array.from({ length: 20 }, (_, i) => i + 2).filter((id) => id !== 10 && id !== 11),
 ];
 
