@@ -465,17 +465,20 @@ select {
 }
 
 .guestbook-entry {
-  padding: 0.6rem 0;
+  display: block;
+  padding: 0.6rem 0 0.6rem 16px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   font-size: 0.875rem;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.25rem;
+  line-height: 1.5;
+  word-break: break-word;
 }
 
 .guestbook-entry:last-child {
   border-bottom: none;
+}
+
+.guestbook-entry > .nickname-link-wrap {
+  margin-left: -16px;
 }
 
 .guestbook-nick {
@@ -487,15 +490,12 @@ select {
 .guestbook-msg {
   color: #ffffff;
   text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
-  flex: 1;
-  min-width: 0;
-  word-break: break-word;
 }
 
 .guestbook-time {
   color: rgba(255, 255, 255, 0.35);
   font-size: 0.75rem;
-  margin-left: auto;
+  margin-left: 0.5rem;
   white-space: nowrap;
 }
 
@@ -1370,10 +1370,14 @@ select {
 }
 
 .minihome-gb-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.25rem;
+  display: block;
+  padding-left: 16px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.minihome-gb-row > .nickname-link-wrap {
+  margin-left: -16px;
 }
 
 .minihome-gb-nick {
@@ -1385,15 +1389,12 @@ select {
 .minihome-gb-msg {
   color: #ffffff;
   text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
-  flex: 1;
-  min-width: 0;
-  word-break: break-word;
 }
 
 .minihome-gb-time {
   color: rgba(255, 255, 255, 0.35);
   font-size: 0.75rem;
-  margin-left: auto;
+  margin-left: 0.5rem;
   white-space: nowrap;
 }
 
@@ -1414,10 +1415,14 @@ select {
 
 .minihome-gb-reply > div:first-child {
   flex: 1 1 100%;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.25rem;
+  display: block;
+  padding-left: 16px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.minihome-gb-reply > div:first-child > .nickname-link-wrap {
+  margin-left: -16px;
 }
 
 .minihome-reply-btn {
@@ -1605,13 +1610,16 @@ select {
 }
 
 .minihome-photo-comment {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.25rem;
+  display: block;
+  padding: 0.3rem 0 0.3rem 16px;
   font-size: 0.82rem;
-  padding: 0.3rem 0;
+  line-height: 1.5;
+  word-break: break-word;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.minihome-photo-comment > .nickname-link-wrap {
+  margin-left: -16px;
 }
 
 .minihome-photo-comment:last-child {
