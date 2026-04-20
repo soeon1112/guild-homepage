@@ -29,7 +29,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const stored = sessionStorage.getItem(STORAGE_KEY);
+    const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) setNickname(stored);
     setReady(true);
   }, []);
@@ -45,7 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (snap.data().password !== p) {
           return { ok: false, error: "비밀번호가 일치하지 않습니다." };
         }
-        sessionStorage.setItem(STORAGE_KEY, n);
+        localStorage.setItem(STORAGE_KEY, n);
         setNickname(n);
         return { ok: true };
       } catch (e) {
@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           password: p,
           createdAt: serverTimestamp(),
         });
-        sessionStorage.setItem(STORAGE_KEY, n);
+        localStorage.setItem(STORAGE_KEY, n);
         setNickname(n);
         return { ok: true };
       } catch (e) {
@@ -81,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(() => {
-    sessionStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(STORAGE_KEY);
     setNickname(null);
   }, []);
 
