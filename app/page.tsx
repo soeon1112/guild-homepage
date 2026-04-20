@@ -5,7 +5,7 @@ import LoginBar from "./components/LoginBar";
 import ActivityFeed from "./components/ActivityFeed";
 
 const menuItems: { href: string; icon: string; label: string }[] = [
-  { href: "/rules", icon: "/images/guild-rules.png", label: "길드 규칙" },
+  { href: "/notice", icon: "/images/guild-rules.png", label: "공지 게시판" },
   { href: "/schedule", icon: "/images/schedule.png", label: "일정" },
   { href: "/members", icon: "/images/members.png", label: "길드원" },
   { href: "/stats", icon: "/images/combat-status.png", label: "투력 및 지옥 현황" },

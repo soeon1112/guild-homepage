@@ -1,0 +1,33 @@
+길드 규칙 메뉴를 공지 게시판으로 변경해줘.
+
+1) 메인 페이지에서 길드 규칙 버튼 클릭 시 /notice로 이동하게 변경. 기존 /rules 페이지는 삭제.
+
+2) 공지 게시판 (/notice):
+- 기존 게시판(/board)과 동일한 구조와 기능으로 만들어줘.
+- 글쓰기/수정/삭제는 관리자 비밀번호 "dawnlight2024" 입력 후 가능. 일반 길드원은 글 작성 불가.
+- 이미지/gif/mp4 첨부 가능. 여러 개 첨부 가능.
+- Firebase Storage 경로: notice/{postId}/{filename}
+- Firestore 컬렉션: "notice"
+- 필드: title(string), content(string), attachments(array), createdAt(timestamp), updatedAt(timestamp)
+- 글 목록: 번호, 제목, 날짜 표시. 페이지네이션 10개씩.
+- 글 상세: 제목, 날짜, 본문, 첨부파일 표시. 유튜브 링크 자동 임베드.
+
+3) 댓글 기능:
+- 로그인된 사용자 댓글 가능. 닉네임 자동.
+- 대댓글 기능. 답글 버튼 누르면 입력칸 나타나게.
+- 댓글 이미지 첨부 가능 (카메라 아이콘).
+- 댓글 삭제: 본인만 삭제 가능.
+- Firestore 서브컬렉션: notice/{postId}/comments
+- 대댓글: notice/{postId}/comments/{commentId}/replies
+
+4) 댓글/대댓글 작성 시 포인트 1점 적립.
+
+5) 최신 현황 activity:
+- 공지 등록 시: "새로운 공지가 등록되었습니다: {제목}" link는 /notice/{postId}
+- 댓글/대댓글 달릴 때: "공지에 새 댓글이 달렸습니다" link는 /notice/{postId}
+
+6) 디자인: 기존 게시판과 동일. 배경 background.png. 모바일 퍼스트.
+
+7) 댓글 수 목록에 표시. 대댓글 포함.
+
+이미지에 filter 적용하지 마.
