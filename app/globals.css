@@ -1794,3 +1794,277 @@ body {
     width: 100%;
   }
 }
+
+/* ── My page ── */
+.mypage-content {
+  position: relative;
+  z-index: 10;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .mypage-content {
+    max-width: 720px;
+    padding: 2rem;
+  }
+}
+
+.mypage-card {
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 12px;
+  padding: 1.5rem 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.mypage-nick {
+  color: #4a90d9;
+  font-size: 2rem;
+  font-weight: 700;
+  text-align: center;
+  margin: 0 0 1.25rem;
+  text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;
+}
+
+.mypage-points-wrap {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.mypage-points-label {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+}
+
+.mypage-points {
+  color: #daa520;
+  font-size: 2.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-shadow: 0 0 10px rgba(218, 165, 32, 0.4);
+}
+
+.mypage-points-unit {
+  color: #daa520;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.mypage-exchange {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mypage-exchange-btn {
+  min-width: 180px;
+}
+
+.mypage-exchange-hint {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.mypage-exchange-msg {
+  color: #daa520;
+  font-size: 0.85rem;
+  text-align: center;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.mypage-section-title {
+  color: #ffffff;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 0.75rem;
+}
+
+.mypage-hint {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.mypage-history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.mypage-history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  flex-wrap: wrap;
+}
+
+.mypage-history-item:first-child {
+  border-top: none;
+}
+
+.mypage-history-main {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.mypage-history-type {
+  color: #4a90d9;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: rgba(74, 144, 217, 0.15);
+  border-radius: 6px;
+  padding: 0.1rem 0.5rem;
+  white-space: nowrap;
+}
+
+.mypage-history-desc {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.88rem;
+  overflow-wrap: anywhere;
+}
+
+.mypage-history-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  flex: 0 0 auto;
+}
+
+.mypage-history-date {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.mypage-history-points {
+  font-size: 0.95rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.mypage-history-points-plus {
+  color: #daa520;
+}
+
+.mypage-history-points-minus {
+  color: #ff8c8c;
+}
+
+.mypage-footer-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 0.5rem;
+}
+
+.loginbar-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.loginbar-link-btn {
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid #daa520;
+  border-radius: 8px;
+  color: #daa520;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+  display: inline-block;
+  transition: background 0.2s, color 0.2s;
+}
+
+.loginbar-link-btn:hover {
+  background: rgba(218, 165, 32, 0.15);
+}
+
+/* ── Admin Exchange ── */
+.admin-exchange {
+  position: relative;
+  z-index: 10;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem;
+}
+
+.admin-exchange-title {
+  color: #daa520;
+  font-size: 1.4rem;
+  font-weight: 700;
+  text-align: center;
+  margin: 0 0 1.5rem;
+}
+
+.admin-exchange-gate {
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 12px;
+  padding: 1.5rem 1.25rem;
+  max-width: 360px;
+  margin: 2rem auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.admin-exchange-table-wrap {
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 12px;
+  overflow-x: auto;
+}
+
+.admin-exchange-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  min-width: 560px;
+}
+
+.admin-exchange-table th,
+.admin-exchange-table td {
+  padding: 0.6rem 0.5rem;
+  color: #ffffff;
+  text-align: center;
+}
+
+.admin-exchange-table th {
+  background: rgba(255, 255, 255, 0.1);
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.admin-exchange-table tbody tr {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.admin-exchange-status-pending {
+  color: #daa520;
+  font-weight: 600;
+}
+
+.admin-exchange-status-done {
+  color: #4a90d9;
+  font-weight: 600;
+}
+
+.admin-exchange-empty {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.5);
+  padding: 2rem 0;
+}

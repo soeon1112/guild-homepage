@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useAuth } from "./AuthProvider";
 
 export default function LoginBar() {
@@ -58,9 +59,14 @@ export default function LoginBar() {
         <span className="loginbar-welcome">
           <strong>{nickname}</strong>님 환영합니다
         </span>
-        <button className="loginbar-btn" onClick={logout}>
-          로그아웃
-        </button>
+        <div className="loginbar-actions">
+          <Link href="/mypage" className="loginbar-link-btn">
+            마이 정보
+          </Link>
+          <button className="loginbar-btn" onClick={logout}>
+            로그아웃
+          </button>
+        </div>
       </section>
     );
   }

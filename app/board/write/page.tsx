@@ -8,6 +8,7 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
 import { useAuth } from "@/app/components/AuthProvider";
 import { logActivity } from "@/src/lib/activity";
+import { addPoints } from "@/src/lib/points";
 
 export default function BoardWritePage() {
   const router = useRouter();
@@ -39,6 +40,7 @@ export default function BoardWritePage() {
         `정보 게시판에 새 글이 등록되었습니다: ${cleanTitle}`,
         `/board/${newRef.id}`,
       );
+      await addPoints(nickname, "게시글", 2, `정보 게시판 글 작성: ${cleanTitle}`);
       router.push("/board");
     } catch {
       alert("등록에 실패했습니다.");

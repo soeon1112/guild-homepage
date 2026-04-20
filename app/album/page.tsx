@@ -18,6 +18,7 @@ import {
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { deleteActivitiesByLink, logActivity } from "@/src/lib/activity";
+import { addPoints } from "@/src/lib/points";
 
 const ADMIN_PASSWORD = "dawnlight2024";
 
@@ -827,6 +828,7 @@ function AlbumCommentsSection({
         "앨범에 새 댓글이 달렸습니다",
         `/album?photo=${photoId}`,
       );
+      await addPoints(loginNick, "댓글", 1, "앨범에 댓글 작성");
     } catch (e) {
       console.error(e);
     }
@@ -938,6 +940,7 @@ function AlbumCommentItem({
         "앨범에 새 댓글이 달렸습니다",
         `/album?photo=${photoId}`,
       );
+      await addPoints(loginNick, "대댓글", 1, "앨범 댓글에 대댓글 작성");
     } catch (e) {
       console.error(e);
     }

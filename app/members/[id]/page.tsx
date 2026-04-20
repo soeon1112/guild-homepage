@@ -21,6 +21,7 @@ import {
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { deleteActivitiesByLink, logActivity } from "@/src/lib/activity";
+import { addPoints } from "@/src/lib/points";
 
 const detailIds = new Set([
   "a", "1", "1-2", "2", "3", "4", "5", "6", "7", "8", "9",
@@ -413,6 +414,12 @@ function GuestbookSection({
           `/members/${id}`,
         );
       }
+      await addPoints(
+        loginNick,
+        "방명록",
+        2,
+        `${memberNickname ?? "미니홈피"}님의 방명록에 글 남김`,
+      );
     } catch (e) {
       console.error(e);
     }
@@ -551,6 +558,12 @@ function GuestbookItem({
           `/members/${memberId}`,
         );
       }
+      await addPoints(
+        loginNick,
+        "대댓글",
+        1,
+        `${memberNickname ?? "미니홈피"}님 방명록에 대댓글 작성`,
+      );
     } catch (e) {
       console.error(e);
     }
@@ -776,6 +789,7 @@ function PhotoSection({
           `/members/${id}?photo=${newRef.id}`,
         );
       }
+      await addPoints(loginNick, "사진", 2, "미니홈피 사진첩에 사진 업로드");
     } catch (e) {
       console.error(e);
       alert("업로드 실패");
@@ -1101,6 +1115,12 @@ function PhotoCommentsSection({
           `/members/${memberId}?photo=${photoId}`,
         );
       }
+      await addPoints(
+        loginNick,
+        "댓글",
+        1,
+        `${memberNickname ?? "미니홈피"}님 사진에 댓글 작성`,
+      );
     } catch (e) {
       console.error(e);
     }
@@ -1238,6 +1258,12 @@ function PhotoCommentItem({
           `/members/${memberId}?photo=${photoId}`,
         );
       }
+      await addPoints(
+        loginNick,
+        "대댓글",
+        1,
+        `${memberNickname ?? "미니홈피"}님 사진에 대댓글 작성`,
+      );
     } catch (e) {
       console.error(e);
     }

@@ -11,6 +11,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
+import { addPoints } from "@/src/lib/points";
 import { useAuth } from "./AuthProvider";
 
 interface GuestbookEntry {
@@ -77,6 +78,7 @@ export default function Guestbook() {
         createdAt: serverTimestamp(),
       });
       setMessage("");
+      await addPoints(nickname, "방명록", 2, "홈 방명록에 글 작성");
     } catch (e) {
       console.error("Failed to add guestbook entry:", e);
     }
