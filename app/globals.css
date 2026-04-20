@@ -1995,6 +1995,19 @@ body {
   background: rgba(218, 165, 32, 0.15);
 }
 
+.attendance-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.attendance-msg {
+  color: #daa520;
+  font-size: 0.8rem;
+  text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+}
+
 /* ── Admin Exchange ── */
 .admin-exchange {
   position: relative;
