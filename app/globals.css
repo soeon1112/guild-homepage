@@ -2198,6 +2198,26 @@ select {
   flex-wrap: wrap;
 }
 
+@media (max-width: 639px) {
+  .loginbar-actions {
+    gap: 0.3rem;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    width: 100%;
+  }
+  .loginbar-actions .loginbar-btn,
+  .loginbar-actions .loginbar-link-btn {
+    padding: 0.35rem 0.55rem;
+    font-size: 0.78rem;
+  }
+  .attendance-wrap {
+    gap: 0.25rem;
+  }
+  .attendance-msg {
+    display: none;
+  }
+}
+
 .loginbar-link-btn {
   background: rgba(0, 0, 0, 0.5);
   border: 1px solid #daa520;

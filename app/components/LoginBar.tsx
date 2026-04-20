@@ -65,7 +65,7 @@ export default function LoginBar() {
           <AttendanceButton />
           <MySpaceLink />
           <Link href="/mypage" className="loginbar-link-btn">
-            마이 정보
+            MY
           </Link>
           <button className="loginbar-btn" onClick={logout}>
             로그아웃

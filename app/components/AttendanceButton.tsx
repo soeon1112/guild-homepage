@@ -98,7 +98,7 @@ export default function AttendanceButton() {
         onClick={handleAttend}
         disabled={!loaded || busy || alreadyToday}
       >
-        {busy ? "처리 중..." : alreadyToday ? "출석 완료" : "출석"}
+        {busy ? "..." : "출석"}
       </button>
       {message && <span className="attendance-msg">{message}</span>}
     </div>
