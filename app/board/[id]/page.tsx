@@ -25,6 +25,18 @@ import {
   CommentImageView,
 } from "@/app/components/CommentImage";
 
+function extractYouTubeId(url: string): string | null {
+  let m = url.match(/youtu\.be\/([A-Za-z0-9_-]{11})/);
+  if (m) return m[1];
+  if (/youtube\.com/.test(url)) {
+    m = url.match(/[?&]v=([A-Za-z0-9_-]{11})/);
+    if (m) return m[1];
+    m = url.match(/youtube\.com\/(?:embed|shorts|v|live)\/([A-Za-z0-9_-]{11})/);
+    if (m) return m[1];
+  }
+  return null;
+}
+
 type AttachmentType = "image" | "video" | "gif";
 
 type Attachment = {
@@ -215,15 +227,27 @@ export default function BoardDetailPage({
           <span>{formatDate(post.createdAt)}</span>
         </div>
         <div className="board-detail-body">
-          {post.content.split(/(https?:\/\/[^\s]+)/g).map((part, i) =>
-            /^https?:\/\//.test(part) ? (
+          {post.content.split(/(https?:\/\/[^\s]+)/g).map((part, i) => {
+            if (!/^https?:\/\//.test(part)) return part;
+            const ytId = extractYouTubeId(part);
+            if (ytId) {
+              return (
+                <div key={i} className="board-youtube-embed">
+                  <iframe
+                    src={`https://www.youtube.com/embed/${ytId}`}
+                    title="YouTube video"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                  />
+                </div>
+              );
+            }
+            return (
               <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="board-link">
                 {part}
               </a>
-            ) : (
-              part
-            )
-          )}
+            );
+          })}
         </div>
 
         {post.attachments.length > 0 && (
