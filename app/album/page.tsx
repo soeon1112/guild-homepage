@@ -21,14 +21,62 @@ import { logActivity } from "@/src/lib/activity";
 
 const ADMIN_PASSWORD = "dawnlight2024";
 
+type MediaKind = "image" | "video" | "gif";
+
 type AlbumPhoto = {
   id: string;
   imageUrl: string;
   caption: string;
   photographer: string;
   people: string[];
+  photoDate: string;
+  fileType?: MediaKind;
   createdAt: Timestamp | null;
 };
+
+function detectFileType(file: File): MediaKind {
+  const name = file.name.toLowerCase();
+  if (file.type.startsWith("video/") || name.endsWith(".mp4")) return "video";
+  if (file.type === "image/gif" || name.endsWith(".gif")) return "gif";
+  return "image";
+}
+
+function resolveFileType(p: { fileType?: MediaKind; imageUrl?: string }): MediaKind {
+  if (p.fileType === "video" || p.fileType === "gif" || p.fileType === "image") {
+    return p.fileType;
+  }
+  const url = (p.imageUrl || "").toLowerCase();
+  if (url.includes(".mp4")) return "video";
+  if (url.includes(".gif")) return "gif";
+  return "image";
+}
+
+function todayISO(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function formatPhotoDate(iso: string): string {
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-");
+  if (!y || !m || !d) return iso;
+  return `${y}.${m}.${d}`;
+}
+
+function photoSortKey(p: AlbumPhoto): string {
+  if (p.photoDate) return p.photoDate;
+  if (p.createdAt) {
+    const d = p.createdAt.toDate();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
+  return "";
+}
 
 type AlbumComment = {
   id: string;
@@ -67,6 +115,7 @@ export default function AlbumPage() {
   const [photographer, setPhotographer] = useState("");
   const [people, setPeople] = useState<string[]>([]);
   const [peopleInput, setPeopleInput] = useState("");
+  const [photoDate, setPhotoDate] = useState<string>(todayISO());
   const [uploading, setUploading] = useState(false);
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
   const photoIdsKey = photos.map((p) => p.id).sort().join(",");
@@ -106,9 +155,18 @@ export default function AlbumPage() {
   useEffect(() => {
     const q = query(collection(db, "album"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(q, (snap) => {
-      setPhotos(
-        snap.docs.map((d) => ({ id: d.id, ...d.data() })) as AlbumPhoto[],
+      const list = snap.docs.map(
+        (d) => ({ id: d.id, ...d.data() }) as AlbumPhoto,
       );
+      list.sort((a, b) => {
+        const ak = photoSortKey(a);
+        const bk = photoSortKey(b);
+        if (ak !== bk) return ak < bk ? 1 : -1;
+        const at = a.createdAt?.toMillis() ?? 0;
+        const bt = b.createdAt?.toMillis() ?? 0;
+        return bt - at;
+      });
+      setPhotos(list);
     });
     return () => unsub();
   }, []);
@@ -122,6 +180,7 @@ export default function AlbumPage() {
     setPhotographer("");
     setPeople([]);
     setPeopleInput("");
+    setPhotoDate(todayISO());
   };
 
   const addPerson = () => {
@@ -163,6 +222,8 @@ export default function AlbumPage() {
         caption: caption.trim(),
         photographer: photographer.trim(),
         people,
+        photoDate: photoDate || todayISO(),
+        fileType: detectFileType(file),
         createdAt: serverTimestamp(),
       });
       setUploadOpen(false);
@@ -198,9 +259,23 @@ export default function AlbumPage() {
                   className="minihome-photo-item"
                   onClick={() => setViewer(p)}
                 >
-                  <img src={p.imageUrl} alt={p.caption || "photo"} />
+                  {resolveFileType(p) === "video" ? (
+                    <video
+                      src={p.imageUrl}
+                      muted
+                      autoPlay
+                      loop
+                      playsInline
+                      preload="metadata"
+                    />
+                  ) : (
+                    <img src={p.imageUrl} alt={p.caption || "photo"} />
+                  )}
                 </button>
                 <div className="album-photo-info">
+                  {p.photoDate && (
+                    <div className="album-photo-date">{formatPhotoDate(p.photoDate)}</div>
+                  )}
                   {p.photographer && (
                     <div className="album-photo-by">photo by {p.photographer}</div>
                   )}
@@ -260,10 +335,20 @@ export default function AlbumPage() {
               <>
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/*,video/mp4,.gif"
                   className="minihome-file"
                   onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                 />
+                <label className="album-date-label">
+                  <span className="album-date-label-text">촬영 날짜</span>
+                  <input
+                    type="date"
+                    className="minihome-input"
+                    value={photoDate}
+                    onChange={(e) => setPhotoDate(e.target.value)}
+                    max={todayISO()}
+                  />
+                </label>
                 <input
                   className="minihome-input"
                   placeholder="설명 (선택)"
@@ -360,6 +445,9 @@ function AlbumPhotoViewer({
   const [editPhotographer, setEditPhotographer] = useState(photo.photographer);
   const [editPeople, setEditPeople] = useState<string[]>(photo.people ?? []);
   const [editPeopleInput, setEditPeopleInput] = useState("");
+  const [editPhotoDate, setEditPhotoDate] = useState<string>(
+    photo.photoDate || todayISO(),
+  );
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -382,6 +470,7 @@ function AlbumPhotoViewer({
     setEditPhotographer(photo.photographer);
     setEditPeople(photo.people ?? []);
     setEditPeopleInput("");
+    setEditPhotoDate(photo.photoDate || todayISO());
     setEditMode(true);
   };
 
@@ -412,6 +501,7 @@ function AlbumPhotoViewer({
         caption: editCaption.trim(),
         photographer: editPhotographer.trim(),
         people: editPeople,
+        photoDate: editPhotoDate || todayISO(),
       });
       setEditMode(false);
     } catch (e) {
@@ -458,9 +548,28 @@ function AlbumPhotoViewer({
         className="minihome-photo-viewer"
         onClick={(e) => e.stopPropagation()}
       >
-        <img src={photo.imageUrl} alt={photo.caption || "photo"} />
+        {resolveFileType(photo) === "video" ? (
+          <video
+            src={photo.imageUrl}
+            controls
+            autoPlay
+            playsInline
+          />
+        ) : (
+          <img src={photo.imageUrl} alt={photo.caption || "photo"} />
+        )}
         {editMode ? (
           <>
+            <label className="album-date-label">
+              <span className="album-date-label-text">촬영 날짜</span>
+              <input
+                type="date"
+                className="minihome-input"
+                value={editPhotoDate}
+                onChange={(e) => setEditPhotoDate(e.target.value)}
+                max={todayISO()}
+              />
+            </label>
             <input
               className="minihome-input"
               placeholder="설명"
@@ -526,6 +635,9 @@ function AlbumPhotoViewer({
           </>
         ) : (
           <>
+            {photo.photoDate && (
+              <p className="album-viewer-date">{formatPhotoDate(photo.photoDate)}</p>
+            )}
             {photo.caption && (
               <p className="minihome-photo-caption">{photo.caption}</p>
             )}

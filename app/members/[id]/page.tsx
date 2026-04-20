@@ -47,12 +47,32 @@ type ReplyEntry = {
   createdAt: Timestamp | null;
 };
 
+type MediaKind = "image" | "video" | "gif";
+
 type PhotoEntry = {
   id: string;
   imageUrl: string;
   caption: string;
+  fileType?: MediaKind;
   createdAt: Timestamp | null;
 };
+
+function detectFileType(file: File): MediaKind {
+  const name = file.name.toLowerCase();
+  if (file.type.startsWith("video/") || name.endsWith(".mp4")) return "video";
+  if (file.type === "image/gif" || name.endsWith(".gif")) return "gif";
+  return "image";
+}
+
+function resolveFileType(p: { fileType?: MediaKind; imageUrl?: string }): MediaKind {
+  if (p.fileType === "video" || p.fileType === "gif" || p.fileType === "image") {
+    return p.fileType;
+  }
+  const url = (p.imageUrl || "").toLowerCase();
+  if (url.includes(".mp4")) return "video";
+  if (url.includes(".gif")) return "gif";
+  return "image";
+}
 
 type PhotoComment = {
   id: string;
@@ -644,6 +664,7 @@ function PhotoSection({
       await addDoc(collection(db, "members", id, "photos"), {
         imageUrl: url,
         caption: caption.trim(),
+        fileType: detectFileType(file),
         createdAt: serverTimestamp(),
       });
       setUploadOpen(false);
@@ -691,7 +712,18 @@ function PhotoSection({
                   className="minihome-photo-item"
                   onClick={() => setViewer(p)}
                 >
-                  <img src={p.imageUrl} alt={p.caption || "photo"} />
+                  {resolveFileType(p) === "video" ? (
+                    <video
+                      src={p.imageUrl}
+                      muted
+                      autoPlay
+                      loop
+                      playsInline
+                      preload="metadata"
+                    />
+                  ) : (
+                    <img src={p.imageUrl} alt={p.caption || "photo"} />
+                  )}
                 </button>
                 <div className="minihome-photo-info">
                   {p.caption && (
@@ -718,7 +750,7 @@ function PhotoSection({
             <h3 className="minihome-modal-title">사진 업로드</h3>
             <input
               type="file"
-              accept="image/*"
+              accept="image/*,video/mp4,.gif"
               className="minihome-file"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             />
@@ -832,7 +864,16 @@ function MemberPhotoViewer({
         className="minihome-photo-viewer"
         onClick={(e) => e.stopPropagation()}
       >
-        <img src={photo.imageUrl} alt={photo.caption || "photo"} />
+        {resolveFileType(photo) === "video" ? (
+          <video
+            src={photo.imageUrl}
+            controls
+            autoPlay
+            playsInline
+          />
+        ) : (
+          <img src={photo.imageUrl} alt={photo.caption || "photo"} />
+        )}
         {editMode ? (
           <>
             <input
