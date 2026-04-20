@@ -593,6 +593,15 @@ function PhotoSection({
     if (!match) setViewer(null);
   }, [photos, viewer]);
 
+  useEffect(() => {
+    if (!viewer) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [viewer]);
+
   const openUpload = () => {
     setUploadOpen(true);
     setFile(null);

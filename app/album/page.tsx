@@ -77,6 +77,15 @@ export default function AlbumPage() {
   }, [photos, viewer]);
 
   useEffect(() => {
+    if (!viewer) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [viewer]);
+
+  useEffect(() => {
     const q = query(collection(db, "album"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(q, (snap) => {
       setPhotos(
