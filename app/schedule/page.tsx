@@ -15,6 +15,7 @@ import {
   Timestamp,
   updateDoc,
 } from "firebase/firestore";
+import { deleteActivitiesByTargetPath, logActivity } from "@/src/lib/activity";
 
 const ADMIN_PASSWORD = "dawnlight2024";
 
@@ -141,6 +142,7 @@ export default function SchedulePage() {
       if (!confirm(`"${item.title}" 일정을 삭제할까요?`)) return;
       try {
         await deleteDoc(doc(db, "schedule", item.id));
+        await deleteActivitiesByTargetPath(`schedule/${item.id}`);
       } catch (e) {
         console.error(e);
         alert("삭제에 실패했습니다.");
@@ -398,12 +400,20 @@ function ScheduleEditor({
     setSaving(true);
     try {
       if (mode.kind === "add") {
-        await addDoc(collection(db, "schedule"), {
-          title: title.trim(),
+        const cleanTitle = title.trim();
+        const newRef = await addDoc(collection(db, "schedule"), {
+          title: cleanTitle,
           date,
           description: description.trim(),
           createdAt: serverTimestamp(),
         });
+        await logActivity(
+          "schedule",
+          "관리자",
+          `새로운 일정이 등록되었습니다: ${cleanTitle}`,
+          "/schedule",
+          `schedule/${newRef.id}`,
+        );
       } else {
         await updateDoc(doc(db, "schedule", mode.item.id), {
           title: title.trim(),
