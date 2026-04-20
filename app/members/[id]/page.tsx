@@ -27,6 +27,7 @@ import {
   CommentImageAttach,
   CommentImageView,
 } from "@/app/components/CommentImage";
+import NicknameLink from "@/app/components/NicknameLink";
 
 const detailIds = new Set([
   "a", "1", "1-2", "2", "3", "4", "5", "6", "7", "8", "9",
@@ -912,7 +913,7 @@ function GuestbookItem({
   return (
     <li className="minihome-gb-entry">
       <div className="minihome-gb-row">
-        <span className="minihome-gb-nick">{entry.nickname}</span>
+        <NicknameLink nickname={entry.nickname} className="minihome-gb-nick" />
         <span className="minihome-gb-msg">: {entry.message}</span>
         <span className="minihome-gb-time">{formatTime(entry.createdAt)}</span>
         {loginNick && (
@@ -939,7 +940,7 @@ function GuestbookItem({
         {replies.map((r) => (
           <div key={r.id} className="minihome-gb-reply">
             <div>
-              <span className="minihome-gb-nick">↳ {r.nickname}</span>
+              <NicknameLink nickname={r.nickname} className="minihome-gb-nick" prefix="↳ " />
               <span className="minihome-gb-msg">: {r.message}</span>
               <span className="minihome-gb-time">{formatTime(r.createdAt)}</span>
               {loginNick === r.nickname && (
@@ -1868,7 +1869,7 @@ function PhotoCommentItem({
   return (
     <div className="minihome-photo-comment-block">
       <div className="minihome-photo-comment">
-        <span className="minihome-gb-nick">{comment.nickname}</span>
+        <NicknameLink nickname={comment.nickname} className="minihome-gb-nick" />
         <span className="minihome-gb-msg">: {comment.content}</span>
         <span className="minihome-gb-time">{formatTime(comment.createdAt)}</span>
         {loginNick && (
@@ -1896,7 +1897,7 @@ function PhotoCommentItem({
           {replies.map((r) => (
             <div key={r.id} className="minihome-gb-reply">
               <div>
-                <span className="minihome-gb-nick">↳ {r.nickname}</span>
+                <NicknameLink nickname={r.nickname} className="minihome-gb-nick" prefix="↳ " />
                 <span className="minihome-gb-msg">: {r.content}</span>
                 <span className="minihome-gb-time">{formatTime(r.createdAt)}</span>
                 {loginNick === r.nickname && (

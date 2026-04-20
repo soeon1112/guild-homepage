@@ -3,6 +3,7 @@
 import Link from "next/link";
 import BackLink from "@/app/components/BackLink";
 import { useEffect, useState } from "react";
+import NicknameLink from "@/app/components/NicknameLink";
 
 interface MemberRow {
   representative: string;
@@ -54,7 +55,9 @@ export default function StatsPage() {
               {data.map((row, i) => (
                 <tr key={i}>
                   <td className="col-representative">{row.representative}</td>
-                  <td className="col-nickname">{row.nickname}</td>
+                  <td className="col-nickname">
+                    <NicknameLink nickname={row.nickname} />
+                  </td>
                   <td className="col-job">{row.job}</td>
                   <td className="col-combat">{row.combat}</td>
                   <td className="col-hell">{row.hell}</td>

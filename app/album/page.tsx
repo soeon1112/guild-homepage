@@ -24,6 +24,7 @@ import {
   CommentImageAttach,
   CommentImageView,
 } from "@/app/components/CommentImage";
+import NicknameLink from "@/app/components/NicknameLink";
 
 const ADMIN_PASSWORD = "dawnlight2024";
 
@@ -1008,7 +1009,7 @@ function AlbumCommentItem({
   return (
     <div className="minihome-photo-comment-block">
       <div className="minihome-photo-comment">
-        <span className="minihome-gb-nick">{comment.nickname}</span>
+        <NicknameLink nickname={comment.nickname} className="minihome-gb-nick" />
         <span className="minihome-gb-msg">: {comment.content}</span>
         <span className="minihome-gb-time">{formatTime(comment.createdAt)}</span>
         {loginNick && (
@@ -1036,7 +1037,7 @@ function AlbumCommentItem({
           {replies.map((r) => (
             <div key={r.id} className="minihome-gb-reply">
               <div>
-                <span className="minihome-gb-nick">↳ {r.nickname}</span>
+                <NicknameLink nickname={r.nickname} className="minihome-gb-nick" prefix="↳ " />
                 <span className="minihome-gb-msg">: {r.content}</span>
                 <span className="minihome-gb-time">{formatTime(r.createdAt)}</span>
                 {loginNick === r.nickname && (

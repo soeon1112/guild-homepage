@@ -15,6 +15,7 @@ import {
   DocumentData,
 } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
+import NicknameLink from "@/app/components/NicknameLink";
 
 interface Post {
   id: string;
@@ -149,7 +150,9 @@ export default function BoardPage() {
                       )}
                     </Link>
                   </td>
-                  <td className="col-author">{post.nickname}</td>
+                  <td className="col-author">
+                    <NicknameLink nickname={post.nickname} />
+                  </td>
                   <td className="col-date">{formatDate(post.createdAt)}</td>
                 </tr>
               ))}

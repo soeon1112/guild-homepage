@@ -13,6 +13,7 @@ import {
 import { db } from "@/src/lib/firebase";
 import { addPoints } from "@/src/lib/points";
 import { useAuth } from "./AuthProvider";
+import NicknameLink from "./NicknameLink";
 
 interface GuestbookEntry {
   id: string;
@@ -115,7 +116,7 @@ export default function Guestbook() {
       <ul className="guestbook-list">
         {pagedEntries.map((entry) => (
           <li key={entry.id} className="guestbook-entry">
-            <span className="guestbook-nick">{entry.nickname}</span>
+            <NicknameLink nickname={entry.nickname} className="guestbook-nick" />
             <span className="guestbook-msg">: {entry.message}</span>
             <span className="guestbook-time">
               {formatTime(entry.createdAt)}

@@ -2489,6 +2489,61 @@ body {
   justify-content: center;
 }
 
+/* ── Nickname link popup ── */
+.nickname-link-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.nickname-link {
+  cursor: pointer;
+  display: inline;
+}
+
+.nickname-link:hover,
+.nickname-link:focus-visible {
+  text-decoration: underline;
+  outline: none;
+}
+
+.nickname-link-popup {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 60;
+  background: rgba(10, 10, 26, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 0.35rem 0.45rem;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+}
+
+.nickname-link-btn {
+  background: transparent;
+  border: 1px solid #daa520;
+  color: #daa520;
+  border-radius: 6px;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.nickname-link-btn:hover {
+  background: rgba(218, 165, 32, 0.15);
+}
+
+.nickname-link-msg {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.8rem;
+  padding: 0.25rem 0.4rem;
+  white-space: nowrap;
+}
+
 /* ── Notice admin gate ── */
 .notice-gate {
   max-width: 320px;

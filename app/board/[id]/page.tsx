@@ -24,6 +24,7 @@ import {
   CommentImageAttach,
   CommentImageView,
 } from "@/app/components/CommentImage";
+import NicknameLink from "@/app/components/NicknameLink";
 
 function extractYouTubeId(url: string): string | null {
   let m = url.match(/youtu\.be\/([A-Za-z0-9_-]{11})/);
@@ -224,7 +225,7 @@ export default function BoardDetailPage({
       <div className="board-detail">
         <h1 className="board-detail-title">{post.title}</h1>
         <div className="board-detail-meta">
-          <span>{post.nickname}</span>
+          <NicknameLink nickname={post.nickname} />
           <span>{formatDate(post.createdAt)}</span>
         </div>
         <div className="board-detail-body">
@@ -451,7 +452,7 @@ function BoardCommentItem({
   return (
     <div className="board-comment-item">
       <div className="board-comment-header">
-        <span className="board-comment-nick">{comment.nickname}</span>
+        <NicknameLink nickname={comment.nickname} className="board-comment-nick" />
         <span className="board-comment-date">{formatDate(comment.createdAt)}</span>
         {loginNick && (
           <button
@@ -479,7 +480,7 @@ function BoardCommentItem({
           {replies.map((r) => (
             <div key={r.id} className="board-reply-item">
               <div className="board-comment-header">
-                <span className="board-comment-nick">↳ {r.nickname}</span>
+                <NicknameLink nickname={r.nickname} className="board-comment-nick" prefix="↳ " />
                 <span className="board-comment-date">{formatDate(r.createdAt)}</span>
                 {loginNick === r.nickname && (
                   <button
