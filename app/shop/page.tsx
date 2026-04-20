@@ -17,6 +17,7 @@ import {
   formatTitlePrefix,
   getWordByText,
   purchaseTitle,
+  seedTitleWords,
 } from "@/src/lib/titles";
 
 type WordStatus = {
@@ -37,6 +38,7 @@ export default function ShopPage() {
 
   useEffect(() => {
     void ensureMonthlyReset();
+    void seedTitleWords();
   }, []);
 
   useEffect(() => {

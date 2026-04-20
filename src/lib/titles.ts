@@ -149,6 +149,12 @@ export const BACK_WORDS: TitleWord[] = [
   { id: "back_boss", word: "사장님", type: "back", price: 35 },
   { id: "back_tycoon", word: "건물주", type: "back", price: 35 },
   { id: "back_chaebol", word: "재벌2세", type: "back", price: 35 },
+
+  { id: "back_owner", word: "주인", type: "back", price: 50 },
+  { id: "back_teto_m", word: "테토남", type: "back", price: 50 },
+  { id: "back_egen_m", word: "에겐남", type: "back", price: 50 },
+  { id: "back_teto_f", word: "테토녀", type: "back", price: 50 },
+  { id: "back_egen_f", word: "에겐녀", type: "back", price: 50 },
 ];
 
 export const ALL_WORDS: TitleWord[] = [...FRONT_WORDS, ...BACK_WORDS];
@@ -176,6 +182,28 @@ export function formatTitlePrefix(front?: string, back?: string): string {
   if (!f && !b) return "";
   if (f && b) return `「${f} ${b}」`;
   return `「${f || b}」`;
+}
+
+export async function seedTitleWords(): Promise<void> {
+  try {
+    const snap = await getDocs(collection(db, "titleWords"));
+    const existing = new Set(snap.docs.map((d) => d.id));
+    const missing = ALL_WORDS.filter((w) => !existing.has(w.id));
+    if (missing.length === 0) return;
+    const batch = writeBatch(db);
+    for (const w of missing) {
+      batch.set(doc(db, "titleWords", w.id), {
+        word: w.word,
+        type: w.type,
+        price: w.price,
+        owner: "",
+        purchasedMonth: "",
+      });
+    }
+    await batch.commit();
+  } catch (e) {
+    console.error("seedTitleWords failed", e);
+  }
 }
 
 export async function ensureMonthlyReset(): Promise<void> {
