@@ -145,8 +145,8 @@ export const BACK_WORDS: TitleWord[] = [
   { id: "back_fire_mage", word: "화염술사", type: "back", price: 35 },
   { id: "back_lightning", word: "전격술사", type: "back", price: 35 },
   { id: "back_dual_blade", word: "듀얼블레이더", type: "back", price: 35 },
-  { id: "back_ceo", word: "대표님", type: "back", price: 35 },
-  { id: "back_boss", word: "사장님", type: "back", price: 35 },
+  { id: "back_ceo", word: "대표", type: "back", price: 35 },
+  { id: "back_boss", word: "사장", type: "back", price: 35 },
   { id: "back_tycoon", word: "건물주", type: "back", price: 35 },
   { id: "back_chaebol", word: "재벌2세", type: "back", price: 35 },
 
@@ -186,22 +186,63 @@ export function formatTitlePrefix(front?: string, back?: string): string {
 export async function seedTitleWords(): Promise<void> {
   try {
     const snap = await getDocs(collection(db, "titleWords"));
-    const existing = new Set(snap.docs.map((d) => d.id));
-    const missing = ALL_WORDS.filter((w) => !existing.has(w.id));
-    if (missing.length === 0) return;
+    const existing = new Map(snap.docs.map((d) => [d.id, d.data() as Partial<TitleWordDoc>]));
     const batch = writeBatch(db);
-    for (const w of missing) {
-      batch.set(doc(db, "titleWords", w.id), {
-        word: w.word,
-        type: w.type,
-        price: w.price,
-        owner: "",
-        purchasedMonth: "",
-      });
+    let changes = 0;
+    for (const w of ALL_WORDS) {
+      const cur = existing.get(w.id);
+      if (!cur) {
+        batch.set(doc(db, "titleWords", w.id), {
+          word: w.word,
+          type: w.type,
+          price: w.price,
+          owner: "",
+          purchasedMonth: "",
+        });
+        changes++;
+      } else if (cur.word !== w.word || cur.price !== w.price || cur.type !== w.type) {
+        batch.set(
+          doc(db, "titleWords", w.id),
+          { word: w.word, type: w.type, price: w.price },
+          { merge: true },
+        );
+        changes++;
+      }
     }
+    if (changes === 0) return;
     await batch.commit();
   } catch (e) {
     console.error("seedTitleWords failed", e);
+  }
+}
+
+const TITLE_RENAMES: Record<string, string> = {
+  대표님: "대표",
+  사장님: "사장",
+};
+
+export async function migrateRenamedTitles(): Promise<void> {
+  try {
+    const metaRef = doc(db, "titleMeta", "rename-ceo-boss-v1");
+    const meta = await getDoc(metaRef);
+    if (meta.exists()) return;
+    const usersSnap = await getDocs(collection(db, "users"));
+    const batch = writeBatch(db);
+    usersSnap.forEach((u) => {
+      const data = u.data() as { frontTitle?: string; backTitle?: string };
+      const nextFront = data.frontTitle && TITLE_RENAMES[data.frontTitle] ? TITLE_RENAMES[data.frontTitle] : data.frontTitle;
+      const nextBack = data.backTitle && TITLE_RENAMES[data.backTitle] ? TITLE_RENAMES[data.backTitle] : data.backTitle;
+      const updates: Record<string, string> = {};
+      if (nextFront !== data.frontTitle) updates.frontTitle = nextFront ?? "";
+      if (nextBack !== data.backTitle) updates.backTitle = nextBack ?? "";
+      if (Object.keys(updates).length > 0) {
+        batch.set(u.ref, updates, { merge: true });
+      }
+    });
+    batch.set(metaRef, { migratedAt: serverTimestamp() });
+    await batch.commit();
+  } catch (e) {
+    console.error("migrateRenamedTitles failed", e);
   }
 }
 

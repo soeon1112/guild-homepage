@@ -16,6 +16,7 @@ import {
   ensureMonthlyReset,
   formatTitlePrefix,
   getWordByText,
+  migrateRenamedTitles,
   purchaseTitle,
   seedTitleWords,
 } from "@/src/lib/titles";
@@ -39,6 +40,7 @@ export default function ShopPage() {
   useEffect(() => {
     void ensureMonthlyReset();
     void seedTitleWords();
+    void migrateRenamedTitles();
   }, []);
 
   useEffect(() => {
