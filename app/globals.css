@@ -1183,19 +1183,6 @@ body {
   white-space: nowrap;
 }
 
-.minihome-gb-toggle {
-  background: transparent;
-  border: none;
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 0.75rem;
-  cursor: pointer;
-  padding: 0 0.35rem;
-}
-
-.minihome-gb-toggle:hover {
-  color: #4a90d9;
-}
-
 .minihome-gb-replies {
   margin-top: 0.5rem;
   padding-left: 1rem;

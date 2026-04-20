@@ -472,13 +472,11 @@ function GuestbookItem({
   entry: GuestbookEntry;
   loginNick: string | null;
 }) {
-  const [open, setOpen] = useState(false);
   const [replies, setReplies] = useState<ReplyEntry[]>([]);
   const [msg, setMsg] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!open) return;
     const q = query(
       collection(
         db,
@@ -496,7 +494,7 @@ function GuestbookItem({
       );
     });
     return () => unsub();
-  }, [memberId, entry.id, open]);
+  }, [memberId, entry.id]);
 
   const handleReply = async () => {
     if (!loginNick || !msg.trim()) return;
@@ -530,47 +528,39 @@ function GuestbookItem({
         <span className="minihome-gb-nick">{entry.nickname}</span>
         <span className="minihome-gb-msg">: {entry.message}</span>
         <span className="minihome-gb-time">{formatTime(entry.createdAt)}</span>
-        <button
-          className="minihome-gb-toggle"
-          onClick={() => setOpen((o) => !o)}
-        >
-          {open ? "접기" : "답글"}
-        </button>
       </div>
-      {open && (
-        <div className="minihome-gb-replies">
-          {replies.map((r) => (
-            <div key={r.id} className="minihome-gb-reply">
-              <span className="minihome-gb-nick">↳ {r.nickname}</span>
-              <span className="minihome-gb-msg">: {r.message}</span>
-              <span className="minihome-gb-time">{formatTime(r.createdAt)}</span>
-            </div>
-          ))}
-          {loginNick ? (
-            <div className="minihome-form minihome-form-inline">
-              <input
-                className="minihome-input"
-                placeholder="대댓글"
-                value={msg}
-                onChange={(e) => setMsg(e.target.value)}
-                maxLength={200}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleReply();
-                }}
-              />
-              <button
-                className="minihome-btn minihome-btn-small"
-                onClick={handleReply}
-                disabled={submitting}
-              >
-                등록
-              </button>
-            </div>
-          ) : (
-            <p className="login-required login-required-sm">로그인이 필요합니다.</p>
-          )}
-        </div>
-      )}
+      <div className="minihome-gb-replies">
+        {replies.map((r) => (
+          <div key={r.id} className="minihome-gb-reply">
+            <span className="minihome-gb-nick">↳ {r.nickname}</span>
+            <span className="minihome-gb-msg">: {r.message}</span>
+            <span className="minihome-gb-time">{formatTime(r.createdAt)}</span>
+          </div>
+        ))}
+        {loginNick ? (
+          <div className="minihome-form minihome-form-inline">
+            <input
+              className="minihome-input"
+              placeholder="대댓글"
+              value={msg}
+              onChange={(e) => setMsg(e.target.value)}
+              maxLength={200}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleReply();
+              }}
+            />
+            <button
+              className="minihome-btn minihome-btn-small"
+              onClick={handleReply}
+              disabled={submitting}
+            >
+              등록
+            </button>
+          </div>
+        ) : (
+          <p className="login-required login-required-sm">로그인이 필요합니다.</p>
+        )}
+      </div>
     </li>
   );
 }
