@@ -444,7 +444,7 @@ function AlbumPhotoViewer({
   };
 
   return (
-    <div className="minihome-modal minihome-photo-modal" onClick={onClose}>
+    <div className="minihome-modal" onClick={onClose}>
       <button
         type="button"
         className="minihome-photo-close"
