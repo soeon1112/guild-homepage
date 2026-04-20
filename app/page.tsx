@@ -3,6 +3,7 @@ import Image from "next/image";
 import Guestbook from "./components/Guestbook";
 import LoginBar from "./components/LoginBar";
 import ActivityFeed from "./components/ActivityFeed";
+import Mailbox from "./components/Mailbox";
 
 const menuItems: { href: string; icon: string; label: string }[] = [
   { href: "/notice", icon: "/images/guild-rules.png", label: "공지 게시판" },
@@ -31,6 +32,9 @@ export default function Home() {
 
         {/* Login */}
         <LoginBar />
+
+        {/* Mailbox */}
+        <Mailbox />
 
         {/* Activity Feed */}
         <ActivityFeed />
