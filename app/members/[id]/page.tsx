@@ -10,6 +10,7 @@ import {
   getDoc,
   setDoc,
   updateDoc,
+  deleteDoc,
   collection,
   addDoc,
   query,
@@ -18,7 +19,7 @@ import {
   serverTimestamp,
   Timestamp,
 } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { logActivity } from "@/src/lib/activity";
 
 const detailIds = new Set([
@@ -585,6 +586,13 @@ function PhotoSection({
     return () => unsub();
   }, [id]);
 
+  useEffect(() => {
+    if (!viewer) return;
+    const match = photos.find((p) => p.id === viewer.id);
+    if (match && match !== viewer) setViewer(match);
+    if (!match) setViewer(null);
+  }, [photos, viewer]);
+
   const openUpload = () => {
     setUploadOpen(true);
     setFile(null);
@@ -697,30 +705,145 @@ function PhotoSection({
       )}
 
       {viewer && (
-        <div className="minihome-modal" onClick={() => setViewer(null)}>
-          <div
-            className="minihome-photo-viewer"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <img src={viewer.imageUrl} alt={viewer.caption || "photo"} />
-            {viewer.caption && (
-              <p className="minihome-photo-caption">{viewer.caption}</p>
-            )}
-            <PhotoCommentsSection
-              memberId={id}
-              photoId={viewer.id}
-              loginNick={loginNick}
-            />
-            <button
-              className="minihome-btn minihome-btn-small"
-              onClick={() => setViewer(null)}
-            >
-              닫기
-            </button>
-          </div>
-        </div>
+        <MemberPhotoViewer
+          memberId={id}
+          photo={viewer}
+          loginNick={loginNick}
+          isOwner={isOwner}
+          onClose={() => setViewer(null)}
+        />
       )}
     </section>
+  );
+}
+
+function MemberPhotoViewer({
+  memberId,
+  photo,
+  loginNick,
+  isOwner,
+  onClose,
+}: {
+  memberId: string;
+  photo: PhotoEntry;
+  loginNick: string | null;
+  isOwner: boolean;
+  onClose: () => void;
+}) {
+  const [editMode, setEditMode] = useState(false);
+  const [editCaption, setEditCaption] = useState(photo.caption);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const startEdit = () => {
+    setEditCaption(photo.caption);
+    setEditMode(true);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await updateDoc(doc(db, "members", memberId, "photos", photo.id), {
+        caption: editCaption.trim(),
+      });
+      setEditMode(false);
+    } catch (e) {
+      console.error(e);
+      alert("저장 실패");
+    }
+    setSaving(false);
+  };
+
+  const handleDelete = async () => {
+    if (!confirm("이 사진을 삭제하시겠습니까?")) return;
+    setDeleting(true);
+    try {
+      try {
+        await deleteObject(ref(storage, photo.imageUrl));
+      } catch (e) {
+        console.warn("storage delete failed", e);
+      }
+      await deleteDoc(doc(db, "members", memberId, "photos", photo.id));
+      onClose();
+    } catch (e) {
+      console.error(e);
+      alert("삭제 실패");
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <div className="minihome-modal" onClick={onClose}>
+      <div
+        className="minihome-photo-viewer"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <img src={photo.imageUrl} alt={photo.caption || "photo"} />
+        {editMode ? (
+          <>
+            <input
+              className="minihome-input"
+              placeholder="설명"
+              value={editCaption}
+              onChange={(e) => setEditCaption(e.target.value)}
+              maxLength={120}
+            />
+            <div className="minihome-modal-actions">
+              <button
+                className="minihome-btn minihome-btn-small"
+                onClick={handleSave}
+                disabled={saving}
+              >
+                {saving ? "저장 중..." : "저장"}
+              </button>
+              <button
+                className="minihome-btn minihome-btn-small minihome-btn-cancel"
+                onClick={() => setEditMode(false)}
+                disabled={saving}
+              >
+                취소
+              </button>
+            </div>
+          </>
+        ) : (
+          photo.caption && (
+            <p className="minihome-photo-caption">{photo.caption}</p>
+          )
+        )}
+
+        {isOwner && !editMode && (
+          <div className="minihome-modal-actions">
+            <button
+              className="minihome-btn minihome-btn-small"
+              onClick={startEdit}
+              disabled={deleting}
+            >
+              수정
+            </button>
+            <button
+              className="minihome-btn minihome-btn-small minihome-btn-cancel"
+              onClick={handleDelete}
+              disabled={deleting}
+            >
+              {deleting ? "삭제 중..." : "삭제"}
+            </button>
+          </div>
+        )}
+
+        <PhotoCommentsSection
+          memberId={memberId}
+          photoId={photo.id}
+          loginNick={loginNick}
+        />
+        <button
+          className="minihome-btn minihome-btn-small"
+          onClick={onClose}
+          disabled={saving || deleting}
+        >
+          닫기
+        </button>
+      </div>
+    </div>
   );
 }
 

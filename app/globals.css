@@ -1156,7 +1156,7 @@ body {
   padding: 0;
   cursor: pointer;
   overflow: hidden;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 16 / 9;
 }
 
 .minihome-photo-item img {
