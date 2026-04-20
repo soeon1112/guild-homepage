@@ -31,7 +31,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) setNickname(stored);
+    if (stored) {
+      setNickname(stored);
+      runRetroactiveScan(stored).catch(() => {});
+      handleEvent({ type: "login", nickname: stored });
+    }
     setReady(true);
   }, []);
 
