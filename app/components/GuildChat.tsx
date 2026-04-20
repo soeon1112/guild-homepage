@@ -130,6 +130,15 @@ export default function GuildChat() {
     return () => URL.revokeObjectURL(filePreview);
   }, [filePreview]);
 
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
   const pickFile = () => {
     if (sending) return;
     if (file) {
