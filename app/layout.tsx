@@ -4,6 +4,7 @@ import Link from "next/link";
 import ScrollRestorer from "./components/ScrollRestorer";
 import { AuthProvider } from "./components/AuthProvider";
 import GuildChat from "./components/GuildChat";
+import BadgeToast from "./components/BadgeToast";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -67,6 +68,7 @@ export default function RootLayout({
           <main className="relative z-10 flex-1">{children}</main>
           <Footer />
           <GuildChat />
+          <BadgeToast />
         </AuthProvider>
       </body>
     </html>

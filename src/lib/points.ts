@@ -2,11 +2,13 @@ import {
   addDoc,
   collection,
   doc,
+  getDoc,
   increment,
   serverTimestamp,
   setDoc,
 } from "firebase/firestore";
 import { db } from "./firebase";
+import { handleEvent } from "./badgeCheck";
 
 export type PointType = "댓글" | "대댓글" | "방명록" | "사진" | "게시글";
 
@@ -29,6 +31,11 @@ export async function addPoints(
       description,
       createdAt: serverTimestamp(),
     });
+    try {
+      const snap = await getDoc(doc(db, "users", nickname));
+      const newPoints = (snap.data()?.points as number | undefined) ?? 0;
+      handleEvent({ type: "pointsChanged", nickname, newPoints });
+    } catch {}
   } catch (e) {
     console.error("Failed to add points:", e);
   }

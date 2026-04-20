@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import BackLink from "@/app/components/BackLink";
 import { db } from "@/src/lib/firebase";
+import { useAuth } from "@/app/components/AuthProvider";
+import { handleEvent } from "@/src/lib/badgeCheck";
 import {
   collection,
   doc,
@@ -37,11 +39,17 @@ function formatDate(ts: Timestamp | null | undefined): string {
 }
 
 export default function AdminExchangePage() {
+  const { nickname } = useAuth();
   const [pw, setPw] = useState("");
   const [verified, setVerified] = useState(false);
   const [err, setErr] = useState("");
   const [requests, setRequests] = useState<ExchangeRequest[]>([]);
   const [processingId, setProcessingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!nickname) return;
+    handleEvent({ type: "adminVisit", nickname });
+  }, [nickname]);
 
   useEffect(() => {
     if (!verified) return;

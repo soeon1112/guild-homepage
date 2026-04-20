@@ -13,6 +13,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
 import { useAuth } from "./AuthProvider";
+import { handleEvent } from "@/src/lib/badgeCheck";
 
 function isSameLocalDay(a: Date, b: Date): boolean {
   return (
@@ -79,6 +80,7 @@ export default function AttendanceButton() {
       });
       setAlreadyToday(true);
       setMessage("출석 완료! 1점 적립되었습니다");
+      handleEvent({ type: "attend", nickname, when: new Date() });
     } catch (e) {
       console.error(e);
       setMessage("출석 처리 중 오류가 발생했습니다");

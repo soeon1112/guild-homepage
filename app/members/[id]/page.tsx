@@ -29,6 +29,8 @@ import {
 } from "@/app/components/CommentImage";
 import NicknameLink from "@/app/components/NicknameLink";
 import { formatSmart } from "@/src/lib/formatSmart";
+import BadgeCollection from "@/app/components/BadgeCollection";
+import { handleEvent } from "@/src/lib/badgeCheck";
 
 const detailIds = new Set([
   "a", "1", "1-2", "2", "3", "4", "5", "6", "7", "8", "9",
@@ -281,6 +283,16 @@ export default function MemberMiniHomePage({
 
   const isOwner = !!loginNick && !!member && member.nickname === loginNick;
 
+  useEffect(() => {
+    if (!loginNick || !member?.nickname) return;
+    if (loginNick === member.nickname) return;
+    handleEvent({
+      type: "minihomeVisit",
+      nickname: loginNick,
+      targetNickname: member.nickname,
+    });
+  }, [loginNick, member?.nickname]);
+
   return (
     <div className="minihome">
       <button type="button" className="back-link" onClick={handleBack}>
@@ -298,6 +310,7 @@ export default function MemberMiniHomePage({
           onChange={setMember}
         />
       )}
+      {member?.nickname && <BadgeCollection nickname={member.nickname} />}
       <GuestbookSection
         id={id}
         loginNick={loginNick}
@@ -363,6 +376,11 @@ function ProfileSection({
         createdAt: serverTimestamp(),
       });
       onChange(created);
+      handleEvent({
+        type: "profileCreate",
+        nickname: loginNick,
+        when: new Date(),
+      });
     } catch (e) {
       console.error(e);
       alert("프로필 등록 실패");
@@ -415,6 +433,24 @@ function ProfileSection({
           `/members/${id}`,
         );
       }
+      if (statusChanged) {
+        handleEvent({ type: "statusChange", nickname: member.nickname });
+      }
+      if (bgmChanged && newBgmUrl) {
+        handleEvent({
+          type: "bgmChange",
+          nickname: member.nickname,
+          first: !prevBgmUrl,
+        });
+      }
+      if (moodChanged && newMood) {
+        handleEvent({
+          type: "moodChange",
+          nickname: member.nickname,
+          mood: newMood,
+          when: new Date(),
+        });
+      }
       setEditMode(false);
     } catch (e) {
       console.error(e);
@@ -452,6 +488,7 @@ function ProfileSection({
         `${member.nickname}님이 프로필 사진을 수정했습니다`,
         `/members/${id}`,
       );
+      handleEvent({ type: "profileImageChange", nickname: member.nickname });
     } catch (e) {
       console.error(e);
       alert("이미지 업로드 실패");
@@ -688,6 +725,21 @@ function GuestbookSection({
         2,
         `${memberNickname ?? "미니홈피"}님의 방명록에 글 남김`,
       );
+      const todayKey = new Date().toISOString().slice(0, 10);
+      const todaySameTarget = entries.filter((e) => {
+        if (e.nickname !== loginNick) return false;
+        const c = e.createdAt?.toDate?.();
+        if (!c) return false;
+        return c.toISOString().slice(0, 10) === todayKey;
+      }).length;
+      handleEvent({
+        type: "minihomeGuestbook",
+        nickname: loginNick,
+        target: memberNickname ?? "",
+        existingCountOnTargetToday: todaySameTarget,
+        existingCountOnTargetTotal: entries.length,
+        when: new Date(),
+      });
     } catch (e) {
       console.error(e);
     }
@@ -864,6 +916,12 @@ function GuestbookItem({
         1,
         `${memberNickname ?? "미니홈피"}님 방명록에 대댓글 작성`,
       );
+      handleEvent({
+        type: "comment",
+        nickname: loginNick,
+        content: msg,
+        when: new Date(),
+      });
     } catch (e) {
       console.error(e);
     }
@@ -1037,6 +1095,12 @@ function AdventureSection({
           `/members/${id}`,
           `members/${id}/adventures/${advRef.id}`,
         );
+        handleEvent({
+          type: "adventure",
+          nickname: memberNickname,
+          entryDate: date,
+          when: new Date(),
+        });
       }
     } catch (e) {
       console.error(e);
@@ -1311,6 +1375,14 @@ function PhotoSection({
         );
       }
       await addPoints(loginNick, "사진", 2, "미니홈피 사진첩에 사진 업로드");
+      if (loginNick) {
+        handleEvent({
+          type: "photo",
+          nickname: loginNick,
+          when: new Date(),
+          source: "minihome",
+        });
+      }
     } catch (e) {
       console.error(e);
       alert("업로드 실패");
@@ -1651,6 +1723,12 @@ function PhotoCommentsSection({
         1,
         `${memberNickname ?? "미니홈피"}님 사진에 댓글 작성`,
       );
+      handleEvent({
+        type: "comment",
+        nickname: loginNick,
+        content,
+        when: new Date(),
+      });
     } catch (e) {
       console.error(e);
     }
@@ -1808,6 +1886,12 @@ function PhotoCommentItem({
         1,
         `${memberNickname ?? "미니홈피"}님 사진에 대댓글 작성`,
       );
+      handleEvent({
+        type: "comment",
+        nickname: loginNick,
+        content: msg,
+        when: new Date(),
+      });
     } catch (e) {
       console.error(e);
     }

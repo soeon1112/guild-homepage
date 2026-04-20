@@ -2487,6 +2487,230 @@ select {
   justify-content: center;
 }
 
+/* ── Badge collection ── */
+.badge-collection {
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 12px;
+  padding: 0.5rem 0.75rem;
+  margin: 0.75rem 0;
+  color: #ffffff;
+}
+
+.badge-collection-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  padding: 0.4rem 0.2rem;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+
+.badge-collection-header:hover {
+  color: #daa520;
+}
+
+.badge-collection-title {
+  font-family: 'Noto Serif KR', serif;
+  color: #4a90d9;
+  text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;
+}
+
+.badge-collection-chevron {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+}
+
+.badge-collection-body {
+  padding: 0.5rem 0.2rem 0.3rem;
+}
+
+.badge-collection-loading {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.85rem;
+  margin: 0.5rem 0;
+}
+
+.badge-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.5rem;
+}
+
+@media (min-width: 640px) {
+  .badge-grid {
+    grid-template-columns: repeat(8, 1fr);
+  }
+}
+
+.badge-cell {
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 0;
+  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+.badge-cell:hover {
+  transform: scale(1.06);
+  border-color: rgba(218, 165, 32, 0.6);
+}
+
+.badge-cell-earned {
+  background: rgba(218, 165, 32, 0.22);
+  border-color: #daa520;
+  box-shadow: 0 0 6px rgba(218, 165, 32, 0.35);
+}
+
+.badge-cell-locked {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.badge-cell-emoji {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.badge-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.badge-modal {
+  background: rgba(10, 10, 26, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 0.8rem 1rem 1rem;
+  color: #ffffff;
+  width: 100%;
+  max-width: 320px;
+}
+
+.badge-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.badge-modal-emoji {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.badge-modal-title {
+  flex: 1;
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #4a90d9;
+  text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;
+  font-family: 'Noto Serif KR', serif;
+}
+
+.badge-modal-close {
+  background: transparent;
+  border: 0;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 1.3rem;
+  line-height: 1;
+  padding: 0 0.2rem;
+  cursor: pointer;
+}
+
+.badge-modal-close:hover {
+  color: #ffffff;
+}
+
+.badge-modal-body {
+  padding-top: 0.6rem;
+}
+
+.badge-modal-desc {
+  margin: 0 0 0.4rem;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.4;
+}
+
+.badge-modal-earned {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #daa520;
+}
+
+.badge-modal-locked {
+  margin: 0;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* ── Badge toast ── */
+.badge-toast-stack {
+  position: fixed;
+  left: 50%;
+  top: 5.5rem;
+  transform: translateX(-50%);
+  z-index: 180;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.badge-toast {
+  background: rgba(10, 10, 26, 0.95);
+  border: 1px solid #daa520;
+  border-radius: 10px;
+  padding: 0.55rem 0.9rem;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.9rem;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5), 0 0 12px rgba(218, 165, 32, 0.35);
+  animation: badge-toast-in 0.25s ease-out;
+  max-width: min(90vw, 420px);
+}
+
+@keyframes badge-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.badge-toast-emoji {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.badge-toast-text {
+  word-break: keep-all;
+}
+
 /* ── Guild chat ── */
 .guild-chat-toggle {
   position: fixed;

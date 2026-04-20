@@ -26,6 +26,7 @@ import {
 } from "@/app/components/CommentImage";
 import NicknameLink from "@/app/components/NicknameLink";
 import { formatSmart } from "@/src/lib/formatSmart";
+import { handleEvent } from "@/src/lib/badgeCheck";
 
 const ADMIN_PASSWORD = "dawnlight2024";
 
@@ -287,6 +288,17 @@ export default function AlbumPage() {
         `/album?photo=${newRef.id}`,
         `album/${newRef.id}`,
       );
+      const photographerNick = photographer.trim();
+      if (photographerNick) {
+        handleEvent({
+          type: "photo",
+          nickname: photographerNick,
+          people,
+          photographer: photographerNick,
+          when: new Date(),
+          source: "album",
+        });
+      }
     } catch (e) {
       console.error(e);
       alert("업로드 실패");
@@ -834,6 +846,12 @@ function AlbumCommentsSection({
         `album/${photoId}/comments/${commentRef.id}`,
       );
       await addPoints(loginNick, "댓글", 1, "앨범에 댓글 작성");
+      handleEvent({
+        type: "comment",
+        nickname: loginNick,
+        content,
+        when: new Date(),
+      });
     } catch (e) {
       console.error(e);
     }
@@ -960,6 +978,12 @@ function AlbumCommentItem({
         `album/${photoId}/comments/${comment.id}/replies/${replyRef.id}`,
       );
       await addPoints(loginNick, "대댓글", 1, "앨범 댓글에 대댓글 작성");
+      handleEvent({
+        type: "comment",
+        nickname: loginNick,
+        content: msg,
+        when: new Date(),
+      });
     } catch (e) {
       console.error(e);
     }

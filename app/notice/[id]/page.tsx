@@ -7,6 +7,8 @@ import { doc, getDoc, deleteDoc } from "firebase/firestore";
 import { ref, deleteObject } from "firebase/storage";
 import { db, storage } from "@/src/lib/firebase";
 import { deleteActivitiesByLink } from "@/src/lib/activity";
+import { useAuth } from "@/app/components/AuthProvider";
+import { handleEvent } from "@/src/lib/badgeCheck";
 
 const ADMIN_PASSWORD = "dawnlight2024";
 
@@ -42,6 +44,7 @@ export default function NoticeDetailPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
+  const { nickname: loginNick } = useAuth();
   const [post, setPost] = useState<NoticeData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -55,10 +58,18 @@ export default function NoticeDetailPage({
           content: d.content,
           attachments: Array.isArray(d.attachments) ? (d.attachments as Attachment[]) : [],
         });
+        if (loginNick) {
+          const noticeCreated = d.createdAt?.toDate?.() ?? null;
+          handleEvent({
+            type: "noticeRead",
+            nickname: loginNick,
+            noticeCreatedAt: noticeCreated,
+          });
+        }
       }
       setLoading(false);
     })();
-  }, [id]);
+  }, [id, loginNick]);
 
   const handleEdit = () => {
     router.push(`/notice/edit/${id}`);

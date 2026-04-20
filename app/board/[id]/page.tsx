@@ -26,6 +26,7 @@ import {
 } from "@/app/components/CommentImage";
 import NicknameLink from "@/app/components/NicknameLink";
 import { formatSmart } from "@/src/lib/formatSmart";
+import { handleEvent } from "@/src/lib/badgeCheck";
 
 function extractYouTubeId(url: string): string | null {
   let m = url.match(/youtu\.be\/([A-Za-z0-9_-]{11})/);
@@ -109,6 +110,11 @@ export default function BoardDetailPage({
   }, [id]);
 
   useEffect(() => {
+    if (!loginNick) return;
+    handleEvent({ type: "read", nickname: loginNick });
+  }, [id, loginNick]);
+
+  useEffect(() => {
     const q = query(
       collection(db, "board", id, "comments"),
       orderBy("createdAt", "asc")
@@ -185,6 +191,12 @@ export default function BoardDetailPage({
         `board/${id}/comments/${commentRef.id}`,
       );
       await addPoints(loginNick, "댓글", 1, "게시판에 댓글 작성");
+      handleEvent({
+        type: "comment",
+        nickname: loginNick,
+        content: commentContent,
+        when: new Date(),
+      });
     } catch {
       alert("댓글 등록에 실패했습니다.");
     }
@@ -411,6 +423,12 @@ function BoardCommentItem({
         `board/${boardId}/comments/${comment.id}/replies/${replyRef.id}`,
       );
       await addPoints(loginNick, "대댓글", 1, "게시판에 대댓글 작성");
+      handleEvent({
+        type: "comment",
+        nickname: loginNick,
+        content: msg,
+        when: new Date(),
+      });
     } catch {
       alert("대댓글 등록에 실패했습니다.");
     }

@@ -1,0 +1,92 @@
+미니홈피에 배지 컬렉션 시스템을 추가해줘.
+
+1) 배지 컬렉션 위치: 미니홈피 프로필 영역 아래. 기본 접혀있고 "배지 컬렉션 (획득수/전체수)" 표시. 펼치기 누르면 전체 배지 보이게.
+
+2) 배지 표시: 동그란 원 그리드 (모바일 5열, 데스크탑 8열). 미획득: 회색 원에 ❓. 획득: 유채색 배경에 이모지. 배지 터치 시 팝업: 배지 이름, 조건 설명, 획득 날짜(획득한 경우). 히든 배지는 미획득 시 조건도 "???"로 표시.
+
+3) Firestore: users/{nickname}/badges 서브컬렉션. 각 문서: badgeId(string), earnedAt(timestamp).
+
+4) 배지 체크: 활동할 때마다 조건 확인. 달성 시 배지 부여 + 화면에 "새로운 배지를 획득했습니다: {배지이름}" 토스트 알림 3초 표시.
+
+5) 중요 - 기존 활동 소급 적용: 배지 시스템 적용 시 기존 데이터를 기반으로 이미 조건을 달성한 사용자에게 자동으로 배지를 부여해줘. 구체적으로:
+- 로그인 시 해당 유저의 기존 활동 데이터를 Firestore에서 확인해서 아직 안 받은 배지 중 조건 달성한 것 자동 부여.
+- 예: 이미 댓글 15개 쓴 사람이 로그인하면 first_login, comment_10 배지 자동 획득.
+- 예: 이미 프로필 등록한 사람은 first_profile 배지 자동 획득.
+- 예: 이미 방명록 12개 남긴 사람은 guestbook_10 배지 자동 획득.
+- Firestore의 기존 컬렉션들(guestbook, board, album, chat, members 등)을 조회해서 각 유저의 활동 수를 카운트하고 조건 충족 시 배지 부여.
+- 이 소급 체크는 로그인 시 한 번만 실행하고, 이후에는 실시간 활동 기반으로 체크.
+
+6) 배지 목록 (전부 구현):
+
+기본 활동:
+- first_login: 🐣 첫 발자국 / 첫 로그인 / 로그인 시 체크
+- first_message: ✏️ 한마디 시작 / 첫 흔적 남기기 / 흔적 남길 때 체크
+- first_post: 📝 글쓴이 / 게시판 첫 글 작성 / 글 작성 시 체크
+- comment_10: 💬 수다쟁이 / 댓글 10개 달성 / 댓글 작성 시 users/{nickname}의 총 댓글수 체크
+- comment_50: 💬💬 말많은 모험가 / 댓글 50개 / 동일
+- comment_100: 💬💬💬 전설의 수다꾼 / 댓글 100개 / 동일
+- first_photo: 📸 사진작가 / 사진 첫 업로드 / 사진 올릴 때 체크
+- photo_10: 📸📸 추억 수집가 / 사진 10개 업로드 / 동일
+- first_profile: 🏠 집들이 / 미니홈피 프로필 첫 등록 / 프로필 등록 시 체크
+- first_bgm: 🎵 DJ / 배경음악 첫 설정 / BGM 설정 시 체크
+- guestbook_10: ✍️ 방명록 여행자 / 방명록 10개 남기기 / 방명록 작성 시 체크
+- guestbook_30: ✍️✍️ 방명록 순례자 / 방명록 30개 / 동일
+- first_adventure: ⚔️ 모험 기록가 / 모험 기록 첫 작성 / 모험 기록 시 체크
+- adventure_10: ⚔️⚔️ 역사의 증인 / 모험 기록 10개 / 동일
+- attend_7: 📅 출석왕 / 7일 연속 출석 / 출석 시 연속일수 체크
+- attend_30: 📅📅 개근상 / 30일 연속 출석 / 동일
+- attend_100: 📅📅📅 전설의 개근 / 100일 연속 출석 / 동일
+
+엉뚱한/재미:
+- night_owl: 🦉 올빼미 / 새벽 3시~5시에 활동 / 활동 시 시간 체크
+- early_bird: 🌅 얼리버드 / 오전 6시~7시에 활동 / 동일
+- halloween: 🎃 할로윈 유령 / 10월 31일에 활동 / 활동 시 날짜 체크
+- christmas: 🎄 산타 / 12월 25일에 활동 / 동일
+- lol_master: 🗣️ ㅋㅋ장인 / ㅋ를 100개 이상 쓴 댓글 작성 / 댓글 내용 체크
+- lol_500: 😂 폭소 / ㅋ를 총 500개 사용 / 누적 ㅋ 카운트
+- novelist: 📖 소설가 / 댓글 한 개에 200자 이상 / 댓글 길이 체크
+- one_char: 🔤 한글자 / 댓글 딱 1글자 / 댓글 길이 체크
+- repeat_visit: 🔁 도돌이표 / 같은 날 같은 사람 방명록 3번 / 방명록 시 체크
+- guild_name: 🌙 새벽빛의 아이 / "새벽빛" 포함 댓글 작성 / 댓글 내용 체크
+- point_100: 💯 포인트 부자 / 포인트 100점 달성 / 포인트 변경 시 체크
+- point_500: 👑 포인트 왕 / 포인트 500점 달성 / 동일
+- profile_change_5: 🎭 변신술사 / 프로필 사진 5번 변경 / 프로필 변경 시 카운트 체크
+- profile_change_20: 🎭🎭 만능 변장 / 프로필 사진 20번 변경 / 동일
+- status_10: 🎤 한마디 장인 / 한마디 10번 변경 / 한마디 변경 시 카운트
+- all_moods: 🌈 무드메이커 / 감정 상태 모든 종류 한 번씩 설정 / 감정 변경 시 체크
+- bgm_change_5: 🎵🎵 음악 감독 / 배경음악 5번 변경 / BGM 변경 시 카운트
+- speed_run: 🏃 스피드런 / 가입 후 1시간 내 댓글+방명록+사진 모두 / 활동 시 가입시간 비교
+- all_guestbook: 🌍 세계여행자 / 모든 길드원 미니홈피에 방명록 / 방명록 시 방문한 미니홈피 목록 체크
+- read_20: 📚 다독왕 / 게시판 글 20개 읽기 / 상세 방문 시 카운트
+- all_in_one: 🎯 올인원 / 하루에 출석+댓글+방명록+사진+게시글 모두 / 각 활동 시 당일 활동 체크
+- night_guard: 🌙🌙 새벽빛 수호자 / 새벽 3~5시에 10일 이상 활동 / 새벽 활동 일수 카운트
+- point_1000: 💎 다이아 / 포인트 1000점 / 포인트 체크
+- streak_3: 🔥 연속 활동 / 3일 연속 댓글 / 댓글 시 연속일수 체크
+- streak_7: 🔥🔥 불꽃 / 7일 연속 댓글 / 동일
+- streak_14: 🔥🔥🔥 대화재 / 14일 연속 댓글 / 동일
+- social_10: 🤝 친목왕 / 10명 이상 다른 길드원에게 방명록 / 방명록 시 체크
+- tagged_5: 📷 포토제닉 / 앨범에 출연자로 5번 태그 / 앨범 업로드 시 태그된 사람 체크
+- photographer_5: 🎬 감독님 / 앨범 촬영자로 5번 등록 / 동일
+- cool_mood: 😎 쿨가이 / 감정을 😎로 설정 / 감정 변경 시 체크
+- love_mood: 🥰 사랑꾼 / 감정을 🥰로 설정 / 동일
+- sleepy_3days: 💤 잠꾸러기 / 😴를 3일 연속 설정 / 감정 변경 시 연속일수 체크
+- day_100: 🗓️ 기념일 / 가입 후 정확히 100일째 활동 / 활동 시 가입일 비교
+
+히든 (조건 비공개):
+- hidden_explorer: ❓→🗺️ 탐험가 / 모든 길드원 미니홈피 방문 / 방문 시 목록 체크
+- hidden_first_guest: ❓→🥇 첫 손님 / 누군가의 미니홈피에 첫 번째 방명록 / 방명록 시 기존 방명록 수 체크
+- hidden_allnight: ❓→🌃 밤샘 / 자정~새벽 5시 채팅 10개 / 채팅 시 시간+카운트
+- hidden_spam: ❓→⚡ 도배왕 / 채팅 1분 내 5개 / 채팅 시 시간 간격 체크
+- hidden_admin: ❓→🔑 비밀의 방 / /admin/exchange 접속 시도 / 페이지 방문 시 체크
+- hidden_30days: ❓→🏛️ 고인물 / 가입 후 30일 경과 / 활동 시 가입일 비교
+- hidden_100days: ❓→🦴 화석 / 가입 후 100일 경과 / 동일
+- hidden_quick_read: ❓→👀 길드 마스터의 눈 / 공지 올라온 지 1분 내 읽기 / 공지 상세 방문 시 시간 비교
+- hidden_first_chat: ❓→🎙️ 떡밥 수거반 / 채팅에서 첫 메시지 / 채팅 시 기존 메시지 수 체크
+- hidden_time_travel: ❓→⏰ 시간여행자 / 모험 기록에 1년 전 날짜 입력 / 모험 기록 시 날짜 체크
+
+7) 카운트 추적: users/{nickname} 문서에 추적용 필드 추가:
+totalComments(number), totalPhotos(number), totalGuestbooks(number), totalAdventures(number), totalPostsRead(number), profileChangeCount(number), statusChangeCount(number), bgmChangeCount(number), totalLols(number), consecutiveAttendDays(number), consecutiveCommentDays(number), lastCommentDate(string), nightActivityDays(number), visitedMinihomepages(array), guestbookTargets(array), dailyActivities(map), usedMoods(array)
+
+8) 배지 획득 시 최신 현황에도 기록: "{nickname}님이 배지를 획득했습니다: {배지이름}" link는 /members/{id}
+
+이미지에 filter 적용하지 마.
