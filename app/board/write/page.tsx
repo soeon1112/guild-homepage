@@ -4,18 +4,60 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import BackLink from "@/app/components/BackLink";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "@/src/lib/firebase";
+import {
+  collection,
+  doc,
+  serverTimestamp,
+  setDoc,
+} from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { db, storage } from "@/src/lib/firebase";
 import { useAuth } from "@/app/components/AuthProvider";
 import { logActivity } from "@/src/lib/activity";
 import { addPoints } from "@/src/lib/points";
+
+type AttachmentType = "image" | "video" | "gif";
+
+type PendingFile = {
+  key: string;
+  file: File;
+  fileType: AttachmentType;
+  previewUrl: string;
+};
+
+function detectFileType(file: File): AttachmentType {
+  const name = file.name.toLowerCase();
+  if (file.type.startsWith("video/") || name.endsWith(".mp4")) return "video";
+  if (file.type === "image/gif" || name.endsWith(".gif")) return "gif";
+  return "image";
+}
 
 export default function BoardWritePage() {
   const router = useRouter();
   const { nickname, ready } = useAuth();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [pending, setPending] = useState<PendingFile[]>([]);
   const [submitting, setSubmitting] = useState(false);
+
+  const handleFilesSelected = (list: FileList | null) => {
+    if (!list || list.length === 0) return;
+    const added: PendingFile[] = Array.from(list).map((file) => ({
+      key: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      file,
+      fileType: detectFileType(file),
+      previewUrl: URL.createObjectURL(file),
+    }));
+    setPending((prev) => [...prev, ...added]);
+  };
+
+  const removePending = (key: string) => {
+    setPending((prev) => {
+      const target = prev.find((p) => p.key === key);
+      if (target) URL.revokeObjectURL(target.previewUrl);
+      return prev.filter((p) => p.key !== key);
+    });
+  };
 
   const handleSubmit = async () => {
     if (!nickname) return;
@@ -27,10 +69,27 @@ export default function BoardWritePage() {
     setSubmitting(true);
     try {
       const cleanTitle = title.trim();
-      const newRef = await addDoc(collection(db, "board"), {
+      const newRef = doc(collection(db, "board"));
+
+      const attachments: { fileUrl: string; fileType: AttachmentType }[] = [];
+      for (const p of pending) {
+        const ext = p.file.name.includes(".")
+          ? p.file.name.substring(p.file.name.lastIndexOf("."))
+          : "";
+        const filename = `${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2)}${ext}`;
+        const storageRef = ref(storage, `board/${newRef.id}/${filename}`);
+        await uploadBytes(storageRef, p.file);
+        const url = await getDownloadURL(storageRef);
+        attachments.push({ fileUrl: url, fileType: p.fileType });
+      }
+
+      await setDoc(newRef, {
         title: cleanTitle,
         content: content.trim(),
         nickname,
+        attachments,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -41,8 +100,10 @@ export default function BoardWritePage() {
         `/board/${newRef.id}`,
       );
       await addPoints(nickname, "게시글", 2, `정보 게시판 글 작성: ${cleanTitle}`);
+      pending.forEach((p) => URL.revokeObjectURL(p.previewUrl));
       router.push("/board");
-    } catch {
+    } catch (e) {
+      console.error(e);
       alert("등록에 실패했습니다.");
       setSubmitting(false);
     }
@@ -90,6 +151,55 @@ export default function BoardWritePage() {
           onChange={(e) => setContent(e.target.value)}
           rows={10}
         />
+
+        <div className="board-attach">
+          <label className="board-attach-label">
+            <span className="board-attach-label-text">첨부파일 (이미지/GIF/MP4, 여러 개 가능)</span>
+            <input
+              type="file"
+              className="board-attach-input"
+              accept="image/*,video/mp4,.gif"
+              multiple
+              onChange={(e) => {
+                handleFilesSelected(e.target.files);
+                e.target.value = "";
+              }}
+            />
+          </label>
+          {pending.length > 0 && (
+            <ul className="board-attach-list">
+              {pending.map((p) => (
+                <li key={p.key} className="board-attach-item">
+                  {p.fileType === "video" ? (
+                    <video
+                      src={p.previewUrl}
+                      className="board-attach-preview"
+                      muted
+                      playsInline
+                      preload="metadata"
+                    />
+                  ) : (
+                    <img
+                      src={p.previewUrl}
+                      alt={p.file.name}
+                      className="board-attach-preview"
+                    />
+                  )}
+                  <span className="board-attach-name">{p.file.name}</span>
+                  <button
+                    type="button"
+                    className="board-attach-remove"
+                    onClick={() => removePending(p.key)}
+                    aria-label="첨부 제거"
+                  >
+                    ×
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
         <div className="board-form-buttons">
           <button className="board-btn" onClick={handleSubmit} disabled={submitting}>
             {submitting ? "등록 중..." : "등록"}

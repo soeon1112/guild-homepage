@@ -2068,3 +2068,187 @@ body {
   color: rgba(255, 255, 255, 0.5);
   padding: 2rem 0;
 }
+
+/* ── Board attachments ── */
+.board-attach {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+}
+
+.board-attach-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.board-attach-label-text {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.82rem;
+}
+
+.board-attach-input {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.85rem;
+}
+
+.board-attach-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.board-attach-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.6rem;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 8px;
+}
+
+.board-attach-preview {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  flex: 0 0 auto;
+}
+
+.board-attach-name {
+  flex: 1;
+  min-width: 0;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.82rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.board-attach-remove {
+  background: transparent;
+  border: none;
+  color: #ff8c8c;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0 0.3rem;
+  line-height: 1;
+}
+
+.board-attach-remove:hover {
+  color: #ffb3b3;
+}
+
+.board-detail-attachments {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.board-detail-attachment {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+/* ── Comment image attach / view ── */
+.comment-attach-btn {
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  color: #fff;
+  padding: 0.4rem 0.55rem;
+  font-size: 0.95rem;
+  cursor: pointer;
+  line-height: 1;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+  flex: 0 0 auto;
+}
+
+.comment-attach-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.comment-attach-btn.has-file {
+  background: #daa520;
+  border-color: #daa520;
+  box-shadow: 0 0 10px rgba(218, 165, 32, 0.55);
+}
+
+.comment-attach-btn.has-file:hover {
+  background: #e6b82e;
+}
+
+.comment-attach-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.comment-image-btn {
+  display: inline-block;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-top: 0.35rem;
+}
+
+.comment-image {
+  max-width: 240px;
+  max-height: 240px;
+  border-radius: 8px;
+  display: block;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.comment-image-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.comment-image-lightbox-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 8px;
+  display: block;
+}
+
+.comment-image-lightbox-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #fff;
+  font-size: 1.2rem;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}

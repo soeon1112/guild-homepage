@@ -14,15 +14,29 @@ import {
   onSnapshot,
   serverTimestamp,
 } from "firebase/firestore";
-import { db } from "@/src/lib/firebase";
+import { ref, deleteObject } from "firebase/storage";
+import { db, storage } from "@/src/lib/firebase";
 import { useAuth } from "@/app/components/AuthProvider";
 import { deleteActivitiesByLink, logActivity } from "@/src/lib/activity";
 import { addPoints } from "@/src/lib/points";
+import { uploadCommentImage } from "@/src/lib/commentImage";
+import {
+  CommentImageAttach,
+  CommentImageView,
+} from "@/app/components/CommentImage";
+
+type AttachmentType = "image" | "video" | "gif";
+
+type Attachment = {
+  fileUrl: string;
+  fileType: AttachmentType;
+};
 
 interface PostData {
   title: string;
   content: string;
   nickname: string;
+  attachments: Attachment[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -31,6 +45,7 @@ interface Comment {
   id: string;
   nickname: string;
   content: string;
+  imageUrl?: string;
   createdAt: Date;
 }
 
@@ -46,6 +61,7 @@ export default function BoardDetailPage({
   const [loading, setLoading] = useState(true);
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentContent, setCommentContent] = useState("");
+  const [commentImage, setCommentImage] = useState<File | null>(null);
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [openReplyId, setOpenReplyId] = useState<string | null>(null);
   const [replyCounts, setReplyCounts] = useState<Record<string, number>>({});
@@ -69,6 +85,7 @@ export default function BoardDetailPage({
           title: d.title,
           content: d.content,
           nickname: d.nickname,
+          attachments: Array.isArray(d.attachments) ? (d.attachments as Attachment[]) : [],
           createdAt: d.createdAt?.toDate?.() ?? new Date(),
           updatedAt: d.updatedAt?.toDate?.() ?? new Date(),
         });
@@ -88,6 +105,7 @@ export default function BoardDetailPage({
           id: d.id,
           nickname: d.data().nickname,
           content: d.data().content,
+          imageUrl: d.data().imageUrl || "",
           createdAt: d.data().createdAt?.toDate?.() ?? new Date(),
         }))
       );
@@ -115,6 +133,17 @@ export default function BoardDetailPage({
     if (pw === null) return;
     if (pw === "dawnlight2024") {
       if (confirm("정말 삭제하시겠습니까?")) {
+        if (post?.attachments?.length) {
+          await Promise.all(
+            post.attachments.map(async (a) => {
+              try {
+                await deleteObject(ref(storage, a.fileUrl));
+              } catch (e) {
+                console.warn("attachment storage delete failed", e);
+              }
+            }),
+          );
+        }
         await deleteDoc(doc(db, "board", id));
         await deleteActivitiesByLink(`/board/${id}`);
         router.push("/board");
@@ -125,15 +154,22 @@ export default function BoardDetailPage({
   };
 
   const handleAddComment = async () => {
-    if (!loginNick || !commentContent.trim()) return;
+    if (!loginNick) return;
+    if (!commentContent.trim() && !commentImage) return;
     setCommentSubmitting(true);
     try {
+      let imageUrl = "";
+      if (commentImage) {
+        imageUrl = await uploadCommentImage(commentImage);
+      }
       await addDoc(collection(db, "board", id, "comments"), {
         nickname: loginNick,
         content: commentContent.trim(),
+        imageUrl,
         createdAt: serverTimestamp(),
       });
       setCommentContent("");
+      setCommentImage(null);
       await logActivity(
         "board_comment",
         loginNick,
@@ -190,6 +226,29 @@ export default function BoardDetailPage({
           )}
         </div>
 
+        {post.attachments.length > 0 && (
+          <div className="board-detail-attachments">
+            {post.attachments.map((a, i) =>
+              a.fileType === "video" ? (
+                <video
+                  key={i}
+                  src={a.fileUrl}
+                  controls
+                  playsInline
+                  className="board-detail-attachment"
+                />
+              ) : (
+                <img
+                  key={i}
+                  src={a.fileUrl}
+                  alt=""
+                  className="board-detail-attachment"
+                />
+              ),
+            )}
+          </div>
+        )}
+
         <div className="board-detail-actions">
           {isAuthor && (
             <button className="board-btn" onClick={handleEdit}>
@@ -238,6 +297,11 @@ export default function BoardDetailPage({
                 if (e.key === "Enter" && !e.nativeEvent.isComposing) handleAddComment();
               }}
             />
+            <CommentImageAttach
+              file={commentImage}
+              setFile={setCommentImage}
+              disabled={commentSubmitting}
+            />
             <button
               className="board-btn"
               onClick={handleAddComment}
@@ -275,6 +339,7 @@ function BoardCommentItem({
 }) {
   const [replies, setReplies] = useState<Comment[]>([]);
   const [msg, setMsg] = useState("");
+  const [replyImage, setReplyImage] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -288,6 +353,7 @@ function BoardCommentItem({
           id: d.id,
           nickname: d.data().nickname,
           content: d.data().content,
+          imageUrl: d.data().imageUrl || "",
           createdAt: d.data().createdAt?.toDate?.() ?? new Date(),
         })),
       );
@@ -297,18 +363,25 @@ function BoardCommentItem({
   }, [boardId, comment.id, onReplyCountChange]);
 
   const handleReply = async () => {
-    if (!loginNick || !msg.trim()) return;
+    if (!loginNick) return;
+    if (!msg.trim() && !replyImage) return;
     setSubmitting(true);
     try {
+      let imageUrl = "";
+      if (replyImage) {
+        imageUrl = await uploadCommentImage(replyImage);
+      }
       await addDoc(
         collection(db, "board", boardId, "comments", comment.id, "replies"),
         {
           nickname: loginNick,
           content: msg.trim(),
+          imageUrl,
           createdAt: serverTimestamp(),
         },
       );
       setMsg("");
+      setReplyImage(null);
       onCloseReply();
       await logActivity(
         "board_comment",
@@ -339,6 +412,7 @@ function BoardCommentItem({
         )}
       </div>
       <p className="board-comment-body">{comment.content}</p>
+      {comment.imageUrl && <CommentImageView url={comment.imageUrl} />}
       {(replies.length > 0 || replyOpen) && (
         <div className="board-reply-list">
           {replies.map((r) => (
@@ -348,6 +422,7 @@ function BoardCommentItem({
                 <span className="board-comment-date">{formatDate(r.createdAt)}</span>
               </div>
               <p className="board-comment-body">{r.content}</p>
+              {r.imageUrl && <CommentImageView url={r.imageUrl} />}
             </div>
           ))}
           {replyOpen && loginNick && (
@@ -361,6 +436,11 @@ function BoardCommentItem({
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.nativeEvent.isComposing) handleReply();
                 }}
+              />
+              <CommentImageAttach
+                file={replyImage}
+                setFile={setReplyImage}
+                disabled={submitting}
               />
               <button
                 className="board-btn"

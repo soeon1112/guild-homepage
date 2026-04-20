@@ -22,6 +22,11 @@ import {
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { deleteActivitiesByLink, logActivity } from "@/src/lib/activity";
 import { addPoints } from "@/src/lib/points";
+import { uploadCommentImage } from "@/src/lib/commentImage";
+import {
+  CommentImageAttach,
+  CommentImageView,
+} from "@/app/components/CommentImage";
 
 const detailIds = new Set([
   "a", "1", "1-2", "2", "3", "4", "5", "6", "7", "8", "9",
@@ -38,6 +43,7 @@ type GuestbookEntry = {
   id: string;
   nickname: string;
   message: string;
+  imageUrl?: string;
   createdAt: Timestamp | null;
 };
 
@@ -45,6 +51,7 @@ type ReplyEntry = {
   id: string;
   nickname: string;
   message: string;
+  imageUrl?: string;
   createdAt: Timestamp | null;
 };
 
@@ -79,6 +86,7 @@ type PhotoComment = {
   id: string;
   nickname: string;
   content: string;
+  imageUrl?: string;
   createdAt: Timestamp | null;
 };
 
@@ -379,6 +387,7 @@ function GuestbookSection({
 }) {
   const [entries, setEntries] = useState<GuestbookEntry[]>([]);
   const [msg, setMsg] = useState("");
+  const [image, setImage] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showCount, setShowCount] = useState(10);
   const [openReplyId, setOpenReplyId] = useState<string | null>(null);
@@ -397,15 +406,22 @@ function GuestbookSection({
   }, [id]);
 
   const handleSubmit = async () => {
-    if (!loginNick || !msg.trim()) return;
+    if (!loginNick) return;
+    if (!msg.trim() && !image) return;
     setSubmitting(true);
     try {
+      let imageUrl = "";
+      if (image) {
+        imageUrl = await uploadCommentImage(image);
+      }
       await addDoc(collection(db, "members", id, "guestbook"), {
         nickname: loginNick,
         message: msg.trim(),
+        imageUrl,
         createdAt: serverTimestamp(),
       });
       setMsg("");
+      setImage(null);
       if (memberNickname) {
         await logActivity(
           "guestbook",
@@ -442,6 +458,11 @@ function GuestbookSection({
             onKeyDown={(e) => {
               if (e.key === "Enter") handleSubmit();
             }}
+          />
+          <CommentImageAttach
+            file={image}
+            setFile={setImage}
+            disabled={submitting}
           />
           <button
             className="minihome-btn"
@@ -507,6 +528,7 @@ function GuestbookItem({
 }) {
   const [replies, setReplies] = useState<ReplyEntry[]>([]);
   const [msg, setMsg] = useState("");
+  const [replyImage, setReplyImage] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -530,9 +552,14 @@ function GuestbookItem({
   }, [memberId, entry.id]);
 
   const handleReply = async () => {
-    if (!loginNick || !msg.trim()) return;
+    if (!loginNick) return;
+    if (!msg.trim() && !replyImage) return;
     setSubmitting(true);
     try {
+      let imageUrl = "";
+      if (replyImage) {
+        imageUrl = await uploadCommentImage(replyImage);
+      }
       await addDoc(
         collection(
           db,
@@ -545,10 +572,12 @@ function GuestbookItem({
         {
           nickname: loginNick,
           message: msg.trim(),
+          imageUrl,
           createdAt: serverTimestamp(),
         },
       );
       setMsg("");
+      setReplyImage(null);
       onCloseReply();
       if (memberNickname) {
         await logActivity(
@@ -586,12 +615,16 @@ function GuestbookItem({
           </button>
         )}
       </div>
+      {entry.imageUrl && <CommentImageView url={entry.imageUrl} />}
       <div className="minihome-gb-replies">
         {replies.map((r) => (
           <div key={r.id} className="minihome-gb-reply">
-            <span className="minihome-gb-nick">↳ {r.nickname}</span>
-            <span className="minihome-gb-msg">: {r.message}</span>
-            <span className="minihome-gb-time">{formatTime(r.createdAt)}</span>
+            <div>
+              <span className="minihome-gb-nick">↳ {r.nickname}</span>
+              <span className="minihome-gb-msg">: {r.message}</span>
+              <span className="minihome-gb-time">{formatTime(r.createdAt)}</span>
+            </div>
+            {r.imageUrl && <CommentImageView url={r.imageUrl} />}
           </div>
         ))}
         {replyOpen && loginNick && (
@@ -606,6 +639,11 @@ function GuestbookItem({
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.nativeEvent.isComposing) handleReply();
               }}
+            />
+            <CommentImageAttach
+              file={replyImage}
+              setFile={setReplyImage}
+              disabled={submitting}
             />
             <button
               className="minihome-btn minihome-btn-small"
@@ -1067,6 +1105,7 @@ function PhotoCommentsSection({
 }) {
   const [comments, setComments] = useState<PhotoComment[]>([]);
   const [content, setContent] = useState("");
+  const [image, setImage] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [openReplyId, setOpenReplyId] = useState<string | null>(null);
   const [replyCounts, setReplyCounts] = useState<Record<string, number>>({});
@@ -1095,18 +1134,25 @@ function PhotoCommentsSection({
     comments.reduce((n, c) => n + (replyCounts[c.id] ?? 0), 0);
 
   const handleSubmit = async () => {
-    if (!loginNick || !content.trim()) return;
+    if (!loginNick) return;
+    if (!content.trim() && !image) return;
     setSubmitting(true);
     try {
+      let imageUrl = "";
+      if (image) {
+        imageUrl = await uploadCommentImage(image);
+      }
       await addDoc(
         collection(db, "members", memberId, "photos", photoId, "comments"),
         {
           nickname: loginNick,
           content: content.trim(),
+          imageUrl,
           createdAt: serverTimestamp(),
         },
       );
       setContent("");
+      setImage(null);
       if (memberNickname) {
         await logActivity(
           "minihome_photo_comment",
@@ -1164,6 +1210,11 @@ function PhotoCommentsSection({
               if (e.key === "Enter" && !e.nativeEvent.isComposing) handleSubmit();
             }}
           />
+          <CommentImageAttach
+            file={image}
+            setFile={setImage}
+            disabled={submitting}
+          />
           <button
             className="minihome-btn minihome-btn-small"
             onClick={handleSubmit}
@@ -1202,6 +1253,7 @@ function PhotoCommentItem({
 }) {
   const [replies, setReplies] = useState<PhotoComment[]>([]);
   const [msg, setMsg] = useState("");
+  const [replyImage, setReplyImage] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -1228,9 +1280,14 @@ function PhotoCommentItem({
   }, [memberId, photoId, comment.id, onReplyCountChange]);
 
   const handleReply = async () => {
-    if (!loginNick || !msg.trim()) return;
+    if (!loginNick) return;
+    if (!msg.trim() && !replyImage) return;
     setSubmitting(true);
     try {
+      let imageUrl = "";
+      if (replyImage) {
+        imageUrl = await uploadCommentImage(replyImage);
+      }
       await addDoc(
         collection(
           db,
@@ -1245,10 +1302,12 @@ function PhotoCommentItem({
         {
           nickname: loginNick,
           content: msg.trim(),
+          imageUrl,
           createdAt: serverTimestamp(),
         },
       );
       setMsg("");
+      setReplyImage(null);
       onCloseReply();
       if (memberNickname) {
         await logActivity(
@@ -1286,13 +1345,17 @@ function PhotoCommentItem({
           </button>
         )}
       </div>
+      {comment.imageUrl && <CommentImageView url={comment.imageUrl} />}
       {(replies.length > 0 || replyOpen) && (
         <div className="minihome-gb-replies">
           {replies.map((r) => (
             <div key={r.id} className="minihome-gb-reply">
-              <span className="minihome-gb-nick">↳ {r.nickname}</span>
-              <span className="minihome-gb-msg">: {r.content}</span>
-              <span className="minihome-gb-time">{formatTime(r.createdAt)}</span>
+              <div>
+                <span className="minihome-gb-nick">↳ {r.nickname}</span>
+                <span className="minihome-gb-msg">: {r.content}</span>
+                <span className="minihome-gb-time">{formatTime(r.createdAt)}</span>
+              </div>
+              {r.imageUrl && <CommentImageView url={r.imageUrl} />}
             </div>
           ))}
           {replyOpen && loginNick && (
@@ -1307,6 +1370,11 @@ function PhotoCommentItem({
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.nativeEvent.isComposing) handleReply();
                 }}
+              />
+              <CommentImageAttach
+                file={replyImage}
+                setFile={setReplyImage}
+                disabled={submitting}
               />
               <button
                 className="minihome-btn minihome-btn-small"
