@@ -16,6 +16,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
 import NicknameLink from "@/app/components/NicknameLink";
+import { formatSmart } from "@/src/lib/formatSmart";
 
 interface Post {
   id: string;
@@ -98,12 +99,7 @@ export default function BoardPage() {
     })();
   }, [currentPage]);
 
-  const formatDate = (d: Date) => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}.${m}.${day}`;
-  };
+  const formatDate = (d: Date) => formatSmart(d);
 
   const getRowNumber = (index: number) => {
     return totalCount - (currentPage - 1) * PAGE_SIZE - index;

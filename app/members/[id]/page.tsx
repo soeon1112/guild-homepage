@@ -28,6 +28,7 @@ import {
   CommentImageView,
 } from "@/app/components/CommentImage";
 import NicknameLink from "@/app/components/NicknameLink";
+import { formatSmart } from "@/src/lib/formatSmart";
 
 const detailIds = new Set([
   "a", "1", "1-2", "2", "3", "4", "5", "6", "7", "8", "9",
@@ -118,20 +119,7 @@ type PhotoComment = {
 
 function formatTime(ts: Timestamp | null): string {
   if (!ts) return "";
-  const d = ts.toDate();
-  const now = new Date();
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  if (
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate()
-  ) {
-    return `${hh}:${mm}`;
-  }
-  const M = String(d.getMonth() + 1).padStart(2, "0");
-  const D = String(d.getDate()).padStart(2, "0");
-  return `${M}/${D} ${hh}:${mm}`;
+  return formatSmart(ts.toDate());
 }
 
 function extractYouTubeId(url: string): string | null {

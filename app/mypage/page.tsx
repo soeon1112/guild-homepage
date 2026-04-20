@@ -5,6 +5,7 @@ import Link from "next/link";
 import BackLink from "@/app/components/BackLink";
 import { useAuth } from "@/app/components/AuthProvider";
 import { db } from "@/src/lib/firebase";
+import { formatSmart } from "@/src/lib/formatSmart";
 import {
   addDoc,
   collection,
@@ -29,13 +30,7 @@ type HistoryEntry = {
 
 function formatDate(ts: Timestamp | null): string {
   if (!ts) return "";
-  const d = ts.toDate();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  const h = String(d.getHours()).padStart(2, "0");
-  const min = String(d.getMinutes()).padStart(2, "0");
-  return `${y}.${m}.${day} ${h}:${min}`;
+  return formatSmart(ts.toDate());
 }
 
 const EXCHANGE_COST = 150;

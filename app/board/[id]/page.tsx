@@ -25,6 +25,7 @@ import {
   CommentImageView,
 } from "@/app/components/CommentImage";
 import NicknameLink from "@/app/components/NicknameLink";
+import { formatSmart } from "@/src/lib/formatSmart";
 
 function extractYouTubeId(url: string): string | null {
   let m = url.match(/youtu\.be\/([A-Za-z0-9_-]{11})/);
@@ -126,14 +127,7 @@ export default function BoardDetailPage({
     return unsub;
   }, [id]);
 
-  const formatDate = (d: Date) => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    const h = String(d.getHours()).padStart(2, "0");
-    const min = String(d.getMinutes()).padStart(2, "0");
-    return `${y}.${m}.${day} ${h}:${min}`;
-  };
+  const formatDate = (d: Date) => formatSmart(d);
 
   const isAuthor = !!loginNick && !!post && post.nickname === loginNick;
 

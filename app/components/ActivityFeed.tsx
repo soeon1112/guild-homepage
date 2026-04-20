@@ -11,6 +11,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
+import { formatSmart } from "@/src/lib/formatSmart";
 
 type ActivityItem = {
   id: string;
@@ -23,20 +24,7 @@ type ActivityItem = {
 
 function formatTime(ts: Timestamp | null): string {
   if (!ts) return "";
-  const d = ts.toDate();
-  const now = new Date();
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  if (
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate()
-  ) {
-    return `${hh}:${mm}`;
-  }
-  const M = String(d.getMonth() + 1).padStart(2, "0");
-  const D = String(d.getDate()).padStart(2, "0");
-  return `${M}/${D} ${hh}:${mm}`;
+  return formatSmart(ts.toDate());
 }
 
 function renderMessage(it: ActivityItem) {

@@ -14,6 +14,7 @@ import { db } from "@/src/lib/firebase";
 import { addPoints } from "@/src/lib/points";
 import { useAuth } from "./AuthProvider";
 import NicknameLink from "./NicknameLink";
+import { formatSmart } from "@/src/lib/formatSmart";
 
 interface GuestbookEntry {
   id: string;
@@ -24,22 +25,7 @@ interface GuestbookEntry {
 
 function formatTime(timestamp: Timestamp | null): string {
   if (!timestamp) return "";
-  const date = timestamp.toDate();
-  const now = new Date();
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-
-  if (
-    date.getFullYear() === now.getFullYear() &&
-    date.getMonth() === now.getMonth() &&
-    date.getDate() === now.getDate()
-  ) {
-    return `${hours}:${minutes}`;
-  }
-
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${month}/${day} ${hours}:${minutes}`;
+  return formatSmart(timestamp.toDate());
 }
 
 const PAGE_SIZE = 5;
