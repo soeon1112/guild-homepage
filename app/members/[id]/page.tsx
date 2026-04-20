@@ -818,7 +818,16 @@ function MemberPhotoViewer({
   };
 
   return (
-    <div className="minihome-modal" onClick={onClose}>
+    <div className="minihome-modal minihome-photo-modal" onClick={onClose}>
+      <button
+        type="button"
+        className="minihome-photo-close"
+        onClick={onClose}
+        aria-label="닫기"
+        disabled={saving || deleting}
+      >
+        ×
+      </button>
       <div
         className="minihome-photo-viewer"
         onClick={(e) => e.stopPropagation()}
@@ -880,13 +889,6 @@ function MemberPhotoViewer({
           photoId={photo.id}
           loginNick={loginNick}
         />
-        <button
-          className="minihome-btn minihome-btn-small"
-          onClick={onClose}
-          disabled={saving || deleting}
-        >
-          닫기
-        </button>
       </div>
     </div>
   );
