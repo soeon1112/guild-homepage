@@ -119,12 +119,17 @@ export default function ShopPage() {
         const newFront = w.type === "front" ? w.word : frontTitle;
         const newBack = w.type === "back" ? w.word : backTitle;
         const combined = formatTitlePrefix(newFront, newBack);
-        await logActivity(
-          "title",
-          nickname,
-          `${nickname}님이 새 칭호를 장착했습니다: ${combined}`,
-        );
-        setMessage(`「${w.word}」 구매 완료!`);
+        if (combined) {
+          await logActivity(
+            "title",
+            nickname,
+            `${nickname}님이 새 칭호를 장착했습니다: ${combined}`,
+          );
+          setMessage(`「${w.word}」 구매 완료! 칭호 조합이 완성되었습니다.`);
+        } else {
+          const remaining = w.type === "front" ? "뒤 단어" : "앞 단어";
+          setMessage(`「${w.word}」 구매 완료! ${remaining}도 구매하면 칭호가 장착됩니다.`);
+        }
       } else if (result.reason === "taken") {
         setMessage("방금 다른 사람이 선점했습니다.");
       } else if (result.reason === "no_points") {
@@ -166,7 +171,9 @@ export default function ShopPage() {
       <div className="shop-container">
         <header className="shop-header">
           <h1 className="shop-title">칭호 상점</h1>
-          <p className="shop-subtitle">앞 단어와 뒤 단어를 조합하여 나만의 칭호를 만드세요</p>
+          <p className="shop-subtitle">
+            앞 단어와 뒤 단어를 <strong>둘 다</strong> 구매해야 칭호가 완성되어 닉네임에 표시됩니다
+          </p>
         </header>
 
         <section className="shop-status">
@@ -184,8 +191,17 @@ export default function ShopPage() {
                   <span className="title-prefix shop-preview-title">{previewText}</span>
                   <span className="shop-preview-nick">{nickname}</span>
                 </>
+              ) : frontTitle || backTitle ? (
+                <span className="shop-status-partial">
+                  {frontTitle && `앞: ${frontTitle}`}
+                  {frontTitle && backTitle && " / "}
+                  {backTitle && `뒤: ${backTitle}`}
+                  <span className="shop-status-partial-note">
+                    · {frontTitle ? "뒤" : "앞"} 단어를 구매하면 칭호가 완성됩니다
+                  </span>
+                </span>
               ) : (
-                <span className="shop-status-empty">아직 장착한 칭호가 없습니다</span>
+                <span className="shop-status-empty">아직 구매한 단어가 없습니다</span>
               )}
             </span>
           </div>

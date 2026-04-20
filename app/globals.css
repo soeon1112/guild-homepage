@@ -4018,6 +4018,17 @@ select {
   font-size: 0.85rem;
 }
 
+.shop-status-partial {
+  color: #fff;
+  font-size: 0.9rem;
+}
+
+.shop-status-partial-note {
+  color: #d4af37;
+  margin-left: 0.35rem;
+  font-size: 0.8rem;
+}
+
 .shop-status-reset {
   margin: 0.15rem 0 0;
   color: rgba(255, 255, 255, 0.5);

@@ -179,9 +179,8 @@ export function currentMonthKey(now: Date = new Date()): string {
 export function formatTitlePrefix(front?: string, back?: string): string {
   const f = (front ?? "").trim();
   const b = (back ?? "").trim();
-  if (!f && !b) return "";
-  if (f && b) return `「${f} ${b}」`;
-  return `「${f || b}」`;
+  if (!f || !b) return "";
+  return `「${f} ${b}」`;
 }
 
 export async function seedTitleWords(): Promise<void> {
