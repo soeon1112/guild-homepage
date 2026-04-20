@@ -4,7 +4,8 @@ import BackLink from "@/app/components/BackLink";
 
 const memberIds: (number | string)[] = [
   "a", 1, "1-2",
-  ...Array.from({ length: 20 }, (_, i) => i + 2).filter((id) => id !== 10 && id !== 11),
+  2, 3, 4, 5, 6, 7, 8, 9,
+  12, 13, 14, "14-1", 15, 16, 17, "17-1", 18, 19, 20, 21,
 ];
 
 export default function MembersPage() {
