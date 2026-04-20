@@ -683,6 +683,53 @@ body {
   cursor: default;
 }
 
+.album-photo-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.album-photo-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0 0.15rem;
+}
+
+.album-photo-by {
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.7rem;
+  font-style: italic;
+}
+
+.album-photo-people {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.album-photo-person {
+  background: rgba(74, 144, 217, 0.2);
+  border: 1px solid rgba(74, 144, 217, 0.45);
+  border-radius: 999px;
+  color: #4a90d9;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.68rem;
+  line-height: 1.2;
+}
+
+.album-photo-caption-text {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.75rem;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.album-photo-comment-count {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.7rem;
+}
+
 /* ── Login bar ── */
 .loginbar {
   background: rgba(0, 0, 0, 0.4);
@@ -1141,6 +1188,31 @@ body {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 0.5rem;
+}
+
+.minihome-photo-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.minihome-photo-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0 0.15rem;
+}
+
+.minihome-photo-caption-text {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.75rem;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.minihome-photo-comment-count {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.7rem;
 }
 
 @media (min-width: 640px) {

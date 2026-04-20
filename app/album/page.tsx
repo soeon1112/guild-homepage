@@ -68,6 +68,24 @@ export default function AlbumPage() {
   const [people, setPeople] = useState<string[]>([]);
   const [peopleInput, setPeopleInput] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
+  const photoIdsKey = photos.map((p) => p.id).sort().join(",");
+
+  useEffect(() => {
+    const ids = photoIdsKey ? photoIdsKey.split(",") : [];
+    if (ids.length === 0) {
+      setCommentCounts({});
+      return;
+    }
+    const unsubs = ids.map((id) =>
+      onSnapshot(collection(db, "album", id, "comments"), (snap) => {
+        setCommentCounts((prev) => ({ ...prev, [id]: snap.size }));
+      }),
+    );
+    return () => {
+      unsubs.forEach((u) => u());
+    };
+  }, [photoIdsKey]);
 
   useEffect(() => {
     if (!viewer) return;
@@ -171,16 +189,40 @@ export default function AlbumPage() {
         <p className="minihome-hint">아직 사진이 없습니다.</p>
       ) : (
         <div className="album-grid">
-          {photos.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              className="minihome-photo-item"
-              onClick={() => setViewer(p)}
-            >
-              <img src={p.imageUrl} alt={p.caption || "photo"} />
-            </button>
-          ))}
+          {photos.map((p) => {
+            const count = commentCounts[p.id] ?? 0;
+            return (
+              <div key={p.id} className="album-photo-card">
+                <button
+                  type="button"
+                  className="minihome-photo-item"
+                  onClick={() => setViewer(p)}
+                >
+                  <img src={p.imageUrl} alt={p.caption || "photo"} />
+                </button>
+                <div className="album-photo-info">
+                  {p.photographer && (
+                    <div className="album-photo-by">photo by {p.photographer}</div>
+                  )}
+                  {p.people && p.people.length > 0 && (
+                    <div className="album-photo-people">
+                      {p.people.map((person) => (
+                        <span key={person} className="album-photo-person">
+                          {person}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {p.caption && (
+                    <div className="album-photo-caption-text">{p.caption}</div>
+                  )}
+                  {count > 0 && (
+                    <div className="album-photo-comment-count">댓글 {count}개</div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 

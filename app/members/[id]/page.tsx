@@ -602,6 +602,28 @@ function PhotoSection({
     };
   }, [viewer]);
 
+  const photoIdsKey = photos.map((p) => p.id).sort().join(",");
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const ids = photoIdsKey ? photoIdsKey.split(",") : [];
+    if (ids.length === 0) {
+      setCommentCounts({});
+      return;
+    }
+    const unsubs = ids.map((pid) =>
+      onSnapshot(
+        collection(db, "members", id, "photos", pid, "comments"),
+        (snap) => {
+          setCommentCounts((prev) => ({ ...prev, [pid]: snap.size }));
+        },
+      ),
+    );
+    return () => {
+      unsubs.forEach((u) => u());
+    };
+  }, [photoIdsKey, id]);
+
   const openUpload = () => {
     setUploadOpen(true);
     setFile(null);
@@ -660,16 +682,30 @@ function PhotoSection({
         <p className="minihome-hint">아직 사진이 없습니다.</p>
       ) : (
         <div className="minihome-photo-grid">
-          {photos.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              className="minihome-photo-item"
-              onClick={() => setViewer(p)}
-            >
-              <img src={p.imageUrl} alt={p.caption || "photo"} />
-            </button>
-          ))}
+          {photos.map((p) => {
+            const count = commentCounts[p.id] ?? 0;
+            return (
+              <div key={p.id} className="minihome-photo-card">
+                <button
+                  type="button"
+                  className="minihome-photo-item"
+                  onClick={() => setViewer(p)}
+                >
+                  <img src={p.imageUrl} alt={p.caption || "photo"} />
+                </button>
+                <div className="minihome-photo-info">
+                  {p.caption && (
+                    <div className="minihome-photo-caption-text">{p.caption}</div>
+                  )}
+                  {count > 0 && (
+                    <div className="minihome-photo-comment-count">
+                      댓글 {count}개
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
