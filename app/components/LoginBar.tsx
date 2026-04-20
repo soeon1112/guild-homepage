@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "./AuthProvider";
 import AttendanceButton from "./AttendanceButton";
+import MySpaceLink from "./MySpaceLink";
 
 export default function LoginBar() {
   const { nickname, ready, login, signup, logout } = useAuth();
@@ -62,6 +63,7 @@ export default function LoginBar() {
         </span>
         <div className="loginbar-actions">
           <AttendanceButton />
+          <MySpaceLink />
           <Link href="/mypage" className="loginbar-link-btn">
             마이 정보
           </Link>
