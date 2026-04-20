@@ -148,14 +148,14 @@ select {
 
 .members-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, 1fr);
   gap: 1rem;
   justify-items: center;
 }
 
 .members-grid .member-btn {
   display: block;
-  width: 85%;
+  width: 100%;
   text-decoration: none;
   border-radius: 12px;
   transition: transform 0.3s ease, filter 0.3s ease;
@@ -178,14 +178,6 @@ select {
   .members-content {
     max-width: 720px;
     padding: 2rem 2rem;
-  }
-
-  .members-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .members-grid .member-btn {
-    width: 100%;
   }
 }
 
