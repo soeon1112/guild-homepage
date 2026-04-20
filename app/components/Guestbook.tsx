@@ -74,31 +74,33 @@ export default function Guestbook() {
 
   return (
     <section className="guestbook">
-      <h2 className="guestbook-title">흔적 남기기</h2>
-      {nickname ? (
-        <div className="guestbook-form cbar">
-          <input
-            className="guestbook-input guestbook-message"
-            type="text"
-            placeholder="한마디를 남겨주세요"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            maxLength={100}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSubmit();
-            }}
-          />
-          <button
-            className="guestbook-btn cbar-submit"
-            onClick={handleSubmit}
-            disabled={submitting}
-          >
-            등록
-          </button>
-        </div>
-      ) : (
-        <p className="login-required">로그인이 필요합니다.</p>
-      )}
+      <div className="guestbook-box">
+        <h2 className="guestbook-title">흔적 남기기</h2>
+        {nickname ? (
+          <div className="guestbook-form cbar">
+            <input
+              className="guestbook-input guestbook-message"
+              type="text"
+              placeholder="한마디를 남겨주세요"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              maxLength={100}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSubmit();
+              }}
+            />
+            <button
+              className="guestbook-btn cbar-submit"
+              onClick={handleSubmit}
+              disabled={submitting}
+            >
+              등록
+            </button>
+          </div>
+        ) : (
+          <p className="login-required">로그인이 필요합니다.</p>
+        )}
+      </div>
       <ul className="guestbook-list">
         {pagedEntries.map((entry) => (
           <li key={entry.id} className="guestbook-entry">
