@@ -1189,6 +1189,129 @@ body {
   margin-top: 1rem;
 }
 
+.profile-mood {
+  margin-left: 0.4rem;
+  font-size: 1.1rem;
+  vertical-align: middle;
+  text-shadow: none;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.5));
+}
+
+.minihome-mood-edit {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+
+.minihome-mood-edit-label {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.8rem;
+}
+
+.minihome-mood-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.minihome-mood-option {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  padding: 0.15rem 0.35rem;
+  font-size: 1rem;
+  line-height: 1.2;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.minihome-mood-option:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.minihome-mood-option-active {
+  background: rgba(74, 144, 217, 0.3);
+  border-color: #4a90d9;
+}
+
+/* ── Adventure Log ── */
+.adventure-section {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.adventure-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.adventure-date-input {
+  max-width: 180px;
+}
+
+.adventure-content-input {
+  resize: vertical;
+  font-family: inherit;
+}
+
+.adventure-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.adventure-entry {
+  padding: 0.55rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.adventure-entry:last-child {
+  border-bottom: none;
+}
+
+.adventure-entry-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.adventure-date {
+  color: #daa520;
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+}
+
+.adventure-content {
+  color: #ffffff;
+  font-size: 0.9rem;
+  margin: 0.25rem 0 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+}
+
+.adventure-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.adventure-page-indicator {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.85rem;
+  min-width: 3rem;
+  text-align: center;
+}
+
 /* ── Modal ── */
 .minihome-modal {
   position: fixed;

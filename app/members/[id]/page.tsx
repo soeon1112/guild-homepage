@@ -38,6 +38,30 @@ type MemberDoc = {
   statusMessage: string;
   profileImage: string;
   bgmUrl?: string;
+  mood?: string;
+};
+
+const MOOD_OPTIONS: { value: string; emoji: string; label: string }[] = [
+  { value: "happy", emoji: "😊", label: "좋음" },
+  { value: "excited", emoji: "😆", label: "신남" },
+  { value: "sad", emoji: "😢", label: "슬픔" },
+  { value: "angry", emoji: "😡", label: "화남" },
+  { value: "tired", emoji: "😴", label: "피곤" },
+  { value: "thinking", emoji: "🤔", label: "고민중" },
+  { value: "love", emoji: "🥰", label: "행복" },
+  { value: "cool", emoji: "😎", label: "쿨" },
+];
+
+function getMoodEmoji(mood?: string): string {
+  if (!mood) return "";
+  return MOOD_OPTIONS.find((m) => m.value === mood)?.emoji ?? "";
+}
+
+type AdventureEntry = {
+  id: string;
+  date: string;
+  content: string;
+  createdAt: Timestamp | null;
 };
 
 type GuestbookEntry = {
@@ -290,6 +314,11 @@ export default function MemberMiniHomePage({
         loginNick={loginNick}
         memberNickname={member?.nickname ?? null}
       />
+      <AdventureSection
+        id={id}
+        isOwner={isOwner}
+        memberNickname={member?.nickname ?? null}
+      />
       <PhotoSection
         id={id}
         isOwner={isOwner}
@@ -318,6 +347,7 @@ function ProfileSection({
   const [editNick, setEditNick] = useState(member?.nickname ?? "");
   const [editStatus, setEditStatus] = useState(member?.statusMessage ?? "");
   const [editBgmUrl, setEditBgmUrl] = useState(member?.bgmUrl ?? "");
+  const [editMood, setEditMood] = useState(member?.mood ?? "");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [claiming, setClaiming] = useState(false);
@@ -326,6 +356,7 @@ function ProfileSection({
     setEditNick(member?.nickname ?? loginNick ?? "");
     setEditStatus(member?.statusMessage ?? "");
     setEditBgmUrl(member?.bgmUrl ?? "");
+    setEditMood(member?.mood ?? "");
     setEditMode(true);
   };
 
@@ -356,10 +387,17 @@ function ProfileSection({
     try {
       const newStatus = editStatus.trim();
       const newBgmUrl = editBgmUrl.trim();
+      const newMood = editMood;
       const prevBgmUrl = member.bgmUrl ?? "";
+      const prevMood = member.mood ?? "";
       const statusChanged = newStatus !== member.statusMessage;
       const bgmChanged = newBgmUrl !== prevBgmUrl;
-      const updates = { statusMessage: newStatus, bgmUrl: newBgmUrl };
+      const moodChanged = newMood !== prevMood;
+      const updates = {
+        statusMessage: newStatus,
+        bgmUrl: newBgmUrl,
+        mood: newMood,
+      };
       await updateDoc(doc(db, "members", id), updates);
       onChange({ ...member, ...updates });
       if (statusChanged) {
@@ -367,6 +405,14 @@ function ProfileSection({
           "status",
           member.nickname,
           `${member.nickname}님이 한마디를 수정했습니다`,
+          `/members/${id}`,
+        );
+      }
+      if (moodChanged && newMood) {
+        await logActivity(
+          "mood",
+          member.nickname,
+          `${member.nickname}님이 오늘 기분을 ${getMoodEmoji(newMood)}으로 설정했습니다`,
           `/members/${id}`,
         );
       }
@@ -511,10 +557,41 @@ function ProfileSection({
                   삭제
                 </button>
               </div>
+              <div className="minihome-mood-edit">
+                <span className="minihome-mood-edit-label">기분</span>
+                <div className="minihome-mood-options">
+                  <button
+                    type="button"
+                    className={`minihome-mood-option${editMood === "" ? " minihome-mood-option-active" : ""}`}
+                    onClick={() => setEditMood("")}
+                    title="선택 안 함"
+                  >
+                    –
+                  </button>
+                  {MOOD_OPTIONS.map((m) => (
+                    <button
+                      key={m.value}
+                      type="button"
+                      className={`minihome-mood-option${editMood === m.value ? " minihome-mood-option-active" : ""}`}
+                      onClick={() => setEditMood(m.value)}
+                      title={m.label}
+                    >
+                      {m.emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </>
           ) : (
             <>
-              <h2 className="profile-nick">{member.nickname}</h2>
+              <h2 className="profile-nick">
+                {member.nickname}
+                {getMoodEmoji(member.mood) && (
+                  <span className="profile-mood" title="기분">
+                    {getMoodEmoji(member.mood)}
+                  </span>
+                )}
+              </h2>
               {member.statusMessage && (
                 <p className="profile-status">{member.statusMessage}</p>
               )}
@@ -880,6 +957,167 @@ function GuestbookItem({
         )}
       </div>
     </li>
+  );
+}
+
+function AdventureSection({
+  id,
+  isOwner,
+  memberNickname,
+}: {
+  id: string;
+  isOwner: boolean;
+  memberNickname: string | null;
+}) {
+  const [entries, setEntries] = useState<AdventureEntry[]>([]);
+  const [date, setDate] = useState(() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  });
+  const [content, setContent] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 5;
+
+  useEffect(() => {
+    const q = query(
+      collection(db, "members", id, "adventures"),
+      orderBy("createdAt", "desc"),
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      setEntries(
+        snap.docs.map((d) => ({ id: d.id, ...d.data() })) as AdventureEntry[],
+      );
+    });
+    return () => unsub();
+  }, [id]);
+
+  const totalPages = Math.max(1, Math.ceil(entries.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages - 1);
+  const visibleEntries = entries.slice(
+    currentPage * PAGE_SIZE,
+    currentPage * PAGE_SIZE + PAGE_SIZE,
+  );
+
+  const handleSubmit = async () => {
+    if (!isOwner) return;
+    if (!date || !content.trim()) return;
+    setSubmitting(true);
+    try {
+      await addDoc(collection(db, "members", id, "adventures"), {
+        date,
+        content: content.trim(),
+        createdAt: serverTimestamp(),
+      });
+      setContent("");
+      if (memberNickname) {
+        await logActivity(
+          "adventure",
+          memberNickname,
+          `${memberNickname}님이 새로운 모험 기록을 남겼습니다`,
+          `/members/${id}`,
+        );
+      }
+    } catch (e) {
+      console.error(e);
+      alert("기록 등록에 실패했습니다.");
+    }
+    setSubmitting(false);
+  };
+
+  const handleDelete = async (entryId: string) => {
+    if (!isOwner) return;
+    if (!confirm("정말 삭제하시겠습니까?")) return;
+    try {
+      await deleteDoc(doc(db, "members", id, "adventures", entryId));
+    } catch (e) {
+      console.error(e);
+      alert("삭제에 실패했습니다.");
+    }
+  };
+
+  return (
+    <section className="minihome-section adventure-section">
+      <h2 className="minihome-section-title">모험 기록</h2>
+      {isOwner && (
+        <div className="adventure-form">
+          <input
+            type="date"
+            className="minihome-input adventure-date-input"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+          />
+          <textarea
+            className="minihome-input adventure-content-input"
+            placeholder="오늘의 모험을 기록하세요"
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            maxLength={500}
+            rows={3}
+          />
+          <button
+            className="minihome-btn"
+            onClick={handleSubmit}
+            disabled={submitting || !content.trim()}
+          >
+            등록
+          </button>
+        </div>
+      )}
+      {entries.length === 0 ? (
+        <p className="minihome-hint">아직 기록이 없습니다.</p>
+      ) : (
+        <>
+          <ul className="adventure-list">
+            {visibleEntries.map((e) => (
+              <li key={e.id} className="adventure-entry">
+                <div className="adventure-entry-header">
+                  <span className="adventure-date">{e.date}</span>
+                  {isOwner && (
+                    <button
+                      type="button"
+                      className="minihome-reply-btn"
+                      onClick={() => handleDelete(e.id)}
+                    >
+                      삭제
+                    </button>
+                  )}
+                </div>
+                <p className="adventure-content">{e.content}</p>
+              </li>
+            ))}
+          </ul>
+          {totalPages > 1 && (
+            <div className="adventure-pagination">
+              <button
+                type="button"
+                className="minihome-btn minihome-btn-small"
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                disabled={currentPage === 0}
+              >
+                이전
+              </button>
+              <span className="adventure-page-indicator">
+                {currentPage + 1} / {totalPages}
+              </span>
+              <button
+                type="button"
+                className="minihome-btn minihome-btn-small"
+                onClick={() =>
+                  setPage((p) => Math.min(totalPages - 1, p + 1))
+                }
+                disabled={currentPage >= totalPages - 1}
+              >
+                다음
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </section>
   );
 }
 
