@@ -76,7 +76,7 @@ export default function Guestbook() {
     <section className="guestbook">
       <h2 className="guestbook-title">흔적 남기기</h2>
       {nickname ? (
-        <div className="guestbook-form">
+        <div className="guestbook-form cbar">
           <input
             className="guestbook-input guestbook-message"
             type="text"
@@ -89,7 +89,7 @@ export default function Guestbook() {
             }}
           />
           <button
-            className="guestbook-btn"
+            className="guestbook-btn cbar-submit"
             onClick={handleSubmit}
             disabled={submitting}
           >
