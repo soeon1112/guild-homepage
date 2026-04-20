@@ -650,8 +650,9 @@ function GuestbookSection({
   const [msg, setMsg] = useState("");
   const [image, setImage] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [showCount, setShowCount] = useState(10);
+  const [page, setPage] = useState(0);
   const [openReplyId, setOpenReplyId] = useState<string | null>(null);
+  const GUESTBOOK_PAGE_SIZE = 10;
 
   useEffect(() => {
     const q = query(
@@ -703,7 +704,12 @@ function GuestbookSection({
     setSubmitting(false);
   };
 
-  const visible = entries.slice(0, showCount);
+  const totalPages = Math.max(1, Math.ceil(entries.length / GUESTBOOK_PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages - 1);
+  const visible = entries.slice(
+    currentPage * GUESTBOOK_PAGE_SIZE,
+    currentPage * GUESTBOOK_PAGE_SIZE + GUESTBOOK_PAGE_SIZE,
+  );
 
   return (
     <section className="minihome-section">
@@ -756,13 +762,26 @@ function GuestbookSection({
           ))}
         </ul>
       )}
-      {entries.length > showCount && (
-        <div className="minihome-more">
+      {totalPages > 1 && (
+        <div className="adventure-pagination">
           <button
+            type="button"
             className="minihome-btn minihome-btn-small"
-            onClick={() => setShowCount((c) => c + 10)}
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            disabled={currentPage === 0}
           >
-            더보기
+            이전
+          </button>
+          <span className="adventure-page-indicator">
+            {currentPage + 1} / {totalPages}
+          </span>
+          <button
+            type="button"
+            className="minihome-btn minihome-btn-small"
+            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+            disabled={currentPage >= totalPages - 1}
+          >
+            다음
           </button>
         </div>
       )}
