@@ -1293,10 +1293,7 @@ body {
 }
 
 .minihome-photo-close {
-  position: fixed;
-  top: 1rem;
-  right: 1rem;
-  z-index: 110;
+  align-self: flex-end;
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 50%;
@@ -1310,6 +1307,7 @@ body {
   align-items: center;
   justify-content: center;
   padding: 0;
+  flex-shrink: 0;
 }
 
 .minihome-photo-close:hover {
@@ -1324,11 +1322,8 @@ body {
 
 @media (max-width: 768px) {
   .minihome-photo-close {
-    top: 60px;
-    right: 16px;
     width: 44px;
     height: 44px;
-    z-index: 1000;
     font-size: 1.75rem;
     touch-action: manipulation;
   }

@@ -851,19 +851,19 @@ function MemberPhotoViewer({
 
   return (
     <div className="minihome-modal" onClick={onClose}>
-      <button
-        type="button"
-        className="minihome-photo-close"
-        onClick={onClose}
-        aria-label="닫기"
-        disabled={saving || deleting}
-      >
-        ×
-      </button>
       <div
         className="minihome-photo-viewer"
         onClick={(e) => e.stopPropagation()}
       >
+        <button
+          type="button"
+          className="minihome-photo-close"
+          onClick={onClose}
+          aria-label="닫기"
+          disabled={saving || deleting}
+        >
+          ×
+        </button>
         {resolveFileType(photo) === "video" ? (
           <video
             src={photo.imageUrl}
