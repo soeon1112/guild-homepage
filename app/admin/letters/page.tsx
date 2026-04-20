@@ -7,7 +7,6 @@ import {
   collection,
   doc,
   onSnapshot,
-  orderBy,
   query,
   serverTimestamp,
   Timestamp,
@@ -32,17 +31,18 @@ export default function AdminLettersPage() {
   const [err, setErr] = useState("");
   const [letters, setLetters] = useState<PendingLetter[]>([]);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [loadErr, setLoadErr] = useState<string | null>(null);
 
   useEffect(() => {
     if (!verified) return;
     const q = query(
       collection(db, "letters"),
       where("status", "==", "pending"),
-      orderBy("createdAt", "asc"),
     );
-    const unsub = onSnapshot(q, (snap) => {
-      setLetters(
-        snap.docs.map((d) => {
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const list: PendingLetter[] = snap.docs.map((d) => {
           const data = d.data();
           return {
             id: d.id,
@@ -51,9 +51,20 @@ export default function AdminLettersPage() {
             content: data.content ?? "",
             createdAt: (data.createdAt as Timestamp | null) ?? null,
           };
-        }),
-      );
-    });
+        });
+        list.sort((a, b) => {
+          const at = a.createdAt?.toMillis?.() ?? 0;
+          const bt = b.createdAt?.toMillis?.() ?? 0;
+          return at - bt;
+        });
+        setLetters(list);
+        setLoadErr(null);
+      },
+      (e) => {
+        console.error("letters snapshot error", e);
+        setLoadErr("편지를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.");
+      },
+    );
     return () => unsub();
   }, [verified]);
 
@@ -126,6 +137,8 @@ export default function AdminLettersPage() {
         ← 홈으로
       </BackLink>
       <h1 className="admin-exchange-title">대기 편지 관리</h1>
+
+      {loadErr && <p className="loginbar-error">{loadErr}</p>}
 
       {letters.length === 0 ? (
         <p className="admin-exchange-empty">대기 중인 편지가 없습니다.</p>
