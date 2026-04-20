@@ -373,7 +373,7 @@ select {
 }
 
 .guestbook-title {
-  font-size: 1.125rem;
+  font-size: 1.05rem;
   font-weight: 400;
   color: #4a90d9;
   text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;
