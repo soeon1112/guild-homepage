@@ -1590,8 +1590,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  max-height: 180px;
-  overflow-y: auto;
 }
 
 .minihome-photo-comment {
