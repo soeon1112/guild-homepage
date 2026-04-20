@@ -420,6 +420,26 @@ function BoardCommentItem({
     setSubmitting(false);
   };
 
+  const handleDeleteComment = async () => {
+    if (!confirm("정말 삭제하시겠습니까?")) return;
+    try {
+      await deleteDoc(doc(db, "board", boardId, "comments", comment.id));
+    } catch {
+      alert("댓글 삭제에 실패했습니다.");
+    }
+  };
+
+  const handleDeleteReply = async (replyId: string) => {
+    if (!confirm("정말 삭제하시겠습니까?")) return;
+    try {
+      await deleteDoc(
+        doc(db, "board", boardId, "comments", comment.id, "replies", replyId),
+      );
+    } catch {
+      alert("대댓글 삭제에 실패했습니다.");
+    }
+  };
+
   return (
     <div className="board-comment-item">
       <div className="board-comment-header">
@@ -434,6 +454,15 @@ function BoardCommentItem({
             답글
           </button>
         )}
+        {loginNick === comment.nickname && (
+          <button
+            type="button"
+            className="board-reply-btn"
+            onClick={handleDeleteComment}
+          >
+            삭제
+          </button>
+        )}
       </div>
       <p className="board-comment-body">{comment.content}</p>
       {comment.imageUrl && <CommentImageView url={comment.imageUrl} />}
@@ -444,6 +473,15 @@ function BoardCommentItem({
               <div className="board-comment-header">
                 <span className="board-comment-nick">↳ {r.nickname}</span>
                 <span className="board-comment-date">{formatDate(r.createdAt)}</span>
+                {loginNick === r.nickname && (
+                  <button
+                    type="button"
+                    className="board-reply-btn"
+                    onClick={() => handleDeleteReply(r.id)}
+                  >
+                    삭제
+                  </button>
+                )}
               </div>
               <p className="board-comment-body">{r.content}</p>
               {r.imageUrl && <CommentImageView url={r.imageUrl} />}

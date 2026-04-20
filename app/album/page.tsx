@@ -974,6 +974,28 @@ function AlbumCommentItem({
     setSubmitting(false);
   };
 
+  const handleDeleteComment = async () => {
+    if (!confirm("정말 삭제하시겠습니까?")) return;
+    try {
+      await deleteDoc(doc(db, "album", photoId, "comments", comment.id));
+    } catch (e) {
+      console.error(e);
+      alert("댓글 삭제에 실패했습니다.");
+    }
+  };
+
+  const handleDeleteReply = async (replyId: string) => {
+    if (!confirm("정말 삭제하시겠습니까?")) return;
+    try {
+      await deleteDoc(
+        doc(db, "album", photoId, "comments", comment.id, "replies", replyId),
+      );
+    } catch (e) {
+      console.error(e);
+      alert("대댓글 삭제에 실패했습니다.");
+    }
+  };
+
   return (
     <div className="minihome-photo-comment-block">
       <div className="minihome-photo-comment">
@@ -989,6 +1011,15 @@ function AlbumCommentItem({
             답글
           </button>
         )}
+        {loginNick === comment.nickname && (
+          <button
+            type="button"
+            className="minihome-reply-btn"
+            onClick={handleDeleteComment}
+          >
+            삭제
+          </button>
+        )}
       </div>
       {comment.imageUrl && <CommentImageView url={comment.imageUrl} />}
       {(replies.length > 0 || replyOpen) && (
@@ -999,6 +1030,15 @@ function AlbumCommentItem({
                 <span className="minihome-gb-nick">↳ {r.nickname}</span>
                 <span className="minihome-gb-msg">: {r.content}</span>
                 <span className="minihome-gb-time">{formatTime(r.createdAt)}</span>
+                {loginNick === r.nickname && (
+                  <button
+                    type="button"
+                    className="minihome-reply-btn"
+                    onClick={() => handleDeleteReply(r.id)}
+                  >
+                    삭제
+                  </button>
+                )}
               </div>
               {r.imageUrl && <CommentImageView url={r.imageUrl} />}
             </div>
