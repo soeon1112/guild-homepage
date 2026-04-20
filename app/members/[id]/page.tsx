@@ -356,7 +356,9 @@ function ProfileSection({
     try {
       const newStatus = editStatus.trim();
       const newBgmUrl = editBgmUrl.trim();
+      const prevBgmUrl = member.bgmUrl ?? "";
       const statusChanged = newStatus !== member.statusMessage;
+      const bgmChanged = newBgmUrl !== prevBgmUrl;
       const updates = { statusMessage: newStatus, bgmUrl: newBgmUrl };
       await updateDoc(doc(db, "members", id), updates);
       onChange({ ...member, ...updates });
@@ -365,6 +367,16 @@ function ProfileSection({
           "status",
           member.nickname,
           `${member.nickname}님이 한마디를 수정했습니다`,
+          `/members/${id}`,
+        );
+      }
+      if (bgmChanged && newBgmUrl) {
+        await logActivity(
+          "bgm",
+          member.nickname,
+          prevBgmUrl
+            ? `${member.nickname}님이 배경음악을 변경했습니다`
+            : `${member.nickname}님이 배경음악을 설정했습니다`,
           `/members/${id}`,
         );
       }
