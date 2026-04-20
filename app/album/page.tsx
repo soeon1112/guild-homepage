@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import BackLink from "@/app/components/BackLink";
 import { useAuth } from "@/app/components/AuthProvider";
 import { db, storage } from "@/src/lib/firebase";
@@ -126,13 +126,53 @@ export default function AlbumPage() {
       setCommentCounts({});
       return;
     }
-    const unsubs = ids.map((id) =>
-      onSnapshot(collection(db, "album", id, "comments"), (snap) => {
-        setCommentCounts((prev) => ({ ...prev, [id]: snap.size }));
+    const commentsByPhoto: Record<string, string[]> = {};
+    const replyCounts: Record<string, number> = {};
+    const replyUnsubs: Record<string, () => void> = {};
+
+    const recompute = () => {
+      const totals: Record<string, number> = {};
+      for (const pid of ids) {
+        const cIds = commentsByPhoto[pid] ?? [];
+        let n = cIds.length;
+        for (const cid of cIds) n += replyCounts[`${pid}|${cid}`] ?? 0;
+        totals[pid] = n;
+      }
+      setCommentCounts(totals);
+    };
+
+    const commentUnsubs = ids.map((pid) =>
+      onSnapshot(collection(db, "album", pid, "comments"), (snap) => {
+        const newIds = snap.docs.map((d) => d.id);
+        const oldIds = commentsByPhoto[pid] ?? [];
+        commentsByPhoto[pid] = newIds;
+        for (const cid of oldIds) {
+          if (!newIds.includes(cid)) {
+            const key = `${pid}|${cid}`;
+            replyUnsubs[key]?.();
+            delete replyUnsubs[key];
+            delete replyCounts[key];
+          }
+        }
+        for (const cid of newIds) {
+          const key = `${pid}|${cid}`;
+          if (!replyUnsubs[key]) {
+            replyUnsubs[key] = onSnapshot(
+              collection(db, "album", pid, "comments", cid, "replies"),
+              (rSnap) => {
+                replyCounts[key] = rSnap.size;
+                recompute();
+              },
+            );
+          }
+        }
+        recompute();
       }),
     );
+
     return () => {
-      unsubs.forEach((u) => u());
+      commentUnsubs.forEach((u) => u());
+      Object.values(replyUnsubs).forEach((u) => u());
     };
   }, [photoIdsKey]);
 
@@ -723,6 +763,13 @@ function AlbumCommentsSection({
   const [content, setContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [openReplyId, setOpenReplyId] = useState<string | null>(null);
+  const [replyCounts, setReplyCounts] = useState<Record<string, number>>({});
+
+  const reportReplyCount = useCallback((commentId: string, count: number) => {
+    setReplyCounts((prev) =>
+      prev[commentId] === count ? prev : { ...prev, [commentId]: count },
+    );
+  }, []);
 
   useEffect(() => {
     const q = query(
@@ -736,6 +783,10 @@ function AlbumCommentsSection({
     });
     return () => unsub();
   }, [photoId]);
+
+  const totalCount =
+    comments.length +
+    comments.reduce((n, c) => n + (replyCounts[c.id] ?? 0), 0);
 
   const handleSubmit = async () => {
     if (!loginNick || !content.trim()) return;
@@ -755,7 +806,7 @@ function AlbumCommentsSection({
 
   return (
     <div className="minihome-photo-comments">
-      <h4 className="minihome-photo-comments-title">댓글 ({comments.length})</h4>
+      <h4 className="minihome-photo-comments-title">댓글 ({totalCount})</h4>
       <div className="minihome-photo-comments-list">
         {comments.length === 0 ? (
           <p className="minihome-hint">아직 댓글이 없습니다.</p>
@@ -771,6 +822,7 @@ function AlbumCommentsSection({
                 setOpenReplyId((cur) => (cur === c.id ? null : c.id))
               }
               onCloseReply={() => setOpenReplyId(null)}
+              onReplyCountChange={reportReplyCount}
             />
           ))
         )}
@@ -809,6 +861,7 @@ function AlbumCommentItem({
   replyOpen,
   onToggleReply,
   onCloseReply,
+  onReplyCountChange,
 }: {
   photoId: string;
   comment: AlbumComment;
@@ -816,6 +869,7 @@ function AlbumCommentItem({
   replyOpen: boolean;
   onToggleReply: () => void;
   onCloseReply: () => void;
+  onReplyCountChange: (commentId: string, count: number) => void;
 }) {
   const [replies, setReplies] = useState<AlbumComment[]>([]);
   const [msg, setMsg] = useState("");
@@ -830,9 +884,10 @@ function AlbumCommentItem({
       setReplies(
         snap.docs.map((d) => ({ id: d.id, ...d.data() })) as AlbumComment[],
       );
+      onReplyCountChange(comment.id, snap.size);
     });
     return () => unsub();
-  }, [photoId, comment.id]);
+  }, [photoId, comment.id, onReplyCountChange]);
 
   const handleReply = async () => {
     if (!loginNick || !msg.trim()) return;

@@ -63,13 +63,23 @@ export default function BoardPage() {
         snap.docs.map(async (doc) => {
           const d = doc.data();
           const commentsCol = collection(db, "board", doc.id, "comments");
-          const countSnap = await getCountFromServer(commentsCol);
+          const commentsSnap = await getDocs(commentsCol);
+          const replyCounts = await Promise.all(
+            commentsSnap.docs.map(async (c) => {
+              const rSnap = await getCountFromServer(
+                collection(db, "board", doc.id, "comments", c.id, "replies"),
+              );
+              return rSnap.data().count;
+            }),
+          );
+          const total =
+            commentsSnap.size + replyCounts.reduce((a, b) => a + b, 0);
           return {
             id: doc.id,
             title: d.title,
             nickname: d.nickname,
             createdAt: d.createdAt?.toDate?.() ?? new Date(),
-            commentCount: countSnap.data().count,
+            commentCount: total,
           };
         })
       );

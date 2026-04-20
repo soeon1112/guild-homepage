@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useCallback, useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import BackLink from "@/app/components/BackLink";
 import {
@@ -46,6 +46,17 @@ export default function BoardDetailPage({
   const [commentContent, setCommentContent] = useState("");
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [openReplyId, setOpenReplyId] = useState<string | null>(null);
+  const [replyCounts, setReplyCounts] = useState<Record<string, number>>({});
+
+  const reportReplyCount = useCallback((commentId: string, count: number) => {
+    setReplyCounts((prev) =>
+      prev[commentId] === count ? prev : { ...prev, [commentId]: count },
+    );
+  }, []);
+
+  const totalCommentCount =
+    comments.length +
+    comments.reduce((n, c) => n + (replyCounts[c.id] ?? 0), 0);
 
   useEffect(() => {
     (async () => {
@@ -186,7 +197,7 @@ export default function BoardDetailPage({
 
       {/* Comments */}
       <div className="board-comments">
-        <h2 className="board-comments-title">댓글 ({comments.length})</h2>
+        <h2 className="board-comments-title">댓글 ({totalCommentCount})</h2>
 
         <div className="board-comment-list">
           {comments.map((c) => (
@@ -201,6 +212,7 @@ export default function BoardDetailPage({
                 setOpenReplyId((cur) => (cur === c.id ? null : c.id))
               }
               onCloseReply={() => setOpenReplyId(null)}
+              onReplyCountChange={reportReplyCount}
             />
           ))}
         </div>
@@ -240,6 +252,7 @@ function BoardCommentItem({
   replyOpen,
   onToggleReply,
   onCloseReply,
+  onReplyCountChange,
 }: {
   boardId: string;
   comment: Comment;
@@ -248,6 +261,7 @@ function BoardCommentItem({
   replyOpen: boolean;
   onToggleReply: () => void;
   onCloseReply: () => void;
+  onReplyCountChange: (commentId: string, count: number) => void;
 }) {
   const [replies, setReplies] = useState<Comment[]>([]);
   const [msg, setMsg] = useState("");
@@ -267,9 +281,10 @@ function BoardCommentItem({
           createdAt: d.data().createdAt?.toDate?.() ?? new Date(),
         })),
       );
+      onReplyCountChange(comment.id, snap.size);
     });
     return unsub;
-  }, [boardId, comment.id]);
+  }, [boardId, comment.id, onReplyCountChange]);
 
   const handleReply = async () => {
     if (!loginNick || !msg.trim()) return;
