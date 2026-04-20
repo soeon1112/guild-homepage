@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import BackLink from "@/app/components/BackLink";
 import { useAuth } from "@/app/components/AuthProvider";
 import { db, storage } from "@/src/lib/firebase";
@@ -119,6 +119,23 @@ export default function AlbumPage() {
   const [uploading, setUploading] = useState(false);
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
   const photoIdsKey = photos.map((p) => p.id).sort().join(",");
+  const autoOpenedRef = useRef(false);
+
+  useEffect(() => {
+    if (autoOpenedRef.current) return;
+    if (photos.length === 0) return;
+    const params = new URLSearchParams(window.location.search);
+    const pid = params.get("photo");
+    if (!pid) {
+      autoOpenedRef.current = true;
+      return;
+    }
+    const target = photos.find((p) => p.id === pid);
+    if (target) {
+      setViewer(target);
+      autoOpenedRef.current = true;
+    }
+  }, [photos]);
 
   useEffect(() => {
     const ids = photoIdsKey ? photoIdsKey.split(",") : [];
@@ -257,7 +274,7 @@ export default function AlbumPage() {
       const storageRef = ref(storage, `album/${filename}`);
       await uploadBytes(storageRef, file);
       const url = await getDownloadURL(storageRef);
-      await addDoc(collection(db, "album"), {
+      const newRef = await addDoc(collection(db, "album"), {
         imageUrl: url,
         caption: caption.trim(),
         photographer: photographer.trim(),
@@ -267,7 +284,12 @@ export default function AlbumPage() {
         createdAt: serverTimestamp(),
       });
       setUploadOpen(false);
-      await logActivity("album", "", "새 앨범 사진이 업로드되었습니다");
+      await logActivity(
+        "album",
+        "",
+        "새 앨범 사진이 업로드되었습니다",
+        `/album?photo=${newRef.id}`,
+      );
     } catch (e) {
       console.error(e);
       alert("업로드 실패");
@@ -802,6 +824,7 @@ function AlbumCommentsSection({
         "album_comment",
         loginNick,
         "앨범에 새 댓글이 달렸습니다",
+        `/album?photo=${photoId}`,
       );
     } catch (e) {
       console.error(e);
@@ -912,6 +935,7 @@ function AlbumCommentItem({
         "album_comment",
         loginNick,
         "앨범에 새 댓글이 달렸습니다",
+        `/album?photo=${photoId}`,
       );
     } catch (e) {
       console.error(e);

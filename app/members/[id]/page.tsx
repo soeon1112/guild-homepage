@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useCallback, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import BackLink from "@/app/components/BackLink";
 import { useAuth } from "@/app/components/AuthProvider";
@@ -215,6 +215,7 @@ function ProfileSection({
           "status",
           member.nickname,
           `${member.nickname}님이 한마디를 수정했습니다`,
+          `/members/${id}`,
         );
       }
       setEditMode(false);
@@ -238,6 +239,7 @@ function ProfileSection({
         "profile_image",
         member.nickname,
         `${member.nickname}님이 프로필 사진을 수정했습니다`,
+        `/members/${id}`,
       );
     } catch (e) {
       console.error(e);
@@ -408,6 +410,7 @@ function GuestbookSection({
           "guestbook",
           loginNick,
           `${memberNickname}님의 공간에 방명록이 달렸습니다`,
+          `/members/${id}`,
         );
       }
     } catch (e) {
@@ -545,6 +548,7 @@ function GuestbookItem({
           "guestbook",
           loginNick,
           `${memberNickname}님의 공간에 댓글이 달렸습니다`,
+          `/members/${memberId}`,
         );
       }
     } catch (e) {
@@ -621,6 +625,7 @@ function PhotoSection({
   const [caption, setCaption] = useState("");
   const [uploading, setUploading] = useState(false);
   const [viewer, setViewer] = useState<PhotoEntry | null>(null);
+  const autoOpenedRef = useRef(false);
 
   useEffect(() => {
     const q = query(
@@ -634,6 +639,22 @@ function PhotoSection({
     });
     return () => unsub();
   }, [id]);
+
+  useEffect(() => {
+    if (autoOpenedRef.current) return;
+    if (photos.length === 0) return;
+    const params = new URLSearchParams(window.location.search);
+    const pid = params.get("photo");
+    if (!pid) {
+      autoOpenedRef.current = true;
+      return;
+    }
+    const target = photos.find((p) => p.id === pid);
+    if (target) {
+      setViewer(target);
+      autoOpenedRef.current = true;
+    }
+  }, [photos]);
 
   useEffect(() => {
     if (!viewer) return;
@@ -739,7 +760,7 @@ function PhotoSection({
       const storageRef = ref(storage, `members/${id}/photos/${filename}`);
       await uploadBytes(storageRef, file);
       const url = await getDownloadURL(storageRef);
-      await addDoc(collection(db, "members", id, "photos"), {
+      const newRef = await addDoc(collection(db, "members", id, "photos"), {
         imageUrl: url,
         caption: caption.trim(),
         fileType: detectFileType(file),
@@ -752,6 +773,7 @@ function PhotoSection({
           "photo",
           actor,
           `${actor}님의 공간이 업데이트되었습니다`,
+          `/members/${id}?photo=${newRef.id}`,
         );
       }
     } catch (e) {
@@ -1075,6 +1097,7 @@ function PhotoCommentsSection({
           "minihome_photo_comment",
           loginNick,
           `${memberNickname}님의 공간에 댓글이 달렸습니다`,
+          `/members/${memberId}?photo=${photoId}`,
         );
       }
     } catch (e) {
@@ -1211,6 +1234,7 @@ function PhotoCommentItem({
           "minihome_photo_comment",
           loginNick,
           `${memberNickname}님의 공간에 댓글이 달렸습니다`,
+          `/members/${memberId}?photo=${photoId}`,
         );
       }
     } catch (e) {

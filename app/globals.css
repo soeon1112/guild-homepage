@@ -320,6 +320,29 @@ body {
   border-bottom: none;
 }
 
+.feed-link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem;
+  width: 100%;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+.feed-link:hover .feed-text,
+.feed-link:focus-visible .feed-text {
+  text-decoration: underline;
+  filter: brightness(1.2);
+}
+
+.feed-link:hover .feed-time,
+.feed-link:focus-visible .feed-time {
+  filter: brightness(1.4);
+}
+
 .feed-text {
   color: #ffffff;
   text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;

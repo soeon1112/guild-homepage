@@ -136,6 +136,7 @@ export default function BoardDetailPage({
         "board_comment",
         loginNick,
         "정보 게시판에 새 댓글이 달렸습니다",
+        `/board/${id}`,
       );
     } catch {
       alert("댓글 등록에 실패했습니다.");
@@ -310,6 +311,7 @@ function BoardCommentItem({
         "board_comment",
         loginNick,
         "정보 게시판에 새 댓글이 달렸습니다",
+        `/board/${boardId}`,
       );
     } catch {
       alert("대댓글 등록에 실패했습니다.");

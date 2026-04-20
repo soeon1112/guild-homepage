@@ -26,7 +26,7 @@ export default function BoardWritePage() {
     setSubmitting(true);
     try {
       const cleanTitle = title.trim();
-      await addDoc(collection(db, "board"), {
+      const newRef = await addDoc(collection(db, "board"), {
         title: cleanTitle,
         content: content.trim(),
         nickname,
@@ -37,6 +37,7 @@ export default function BoardWritePage() {
         "board",
         nickname,
         `정보 게시판에 새 글이 등록되었습니다: ${cleanTitle}`,
+        `/board/${newRef.id}`,
       );
       router.push("/board");
     } catch {

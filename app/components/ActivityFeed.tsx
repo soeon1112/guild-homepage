@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   collection,
   query,
@@ -16,6 +17,7 @@ type ActivityItem = {
   type: string;
   nickname: string;
   message: string;
+  link?: string;
   createdAt: Timestamp | null;
 };
 
@@ -77,8 +79,17 @@ export default function ActivityFeed() {
         <ul className="feed-list">
           {items.map((it) => (
             <li key={it.id} className="feed-item">
-              <span className="feed-text">{renderMessage(it)}</span>
-              <span className="feed-time">{formatTime(it.createdAt)}</span>
+              {it.link ? (
+                <Link href={it.link} className="feed-link">
+                  <span className="feed-text">{renderMessage(it)}</span>
+                  <span className="feed-time">{formatTime(it.createdAt)}</span>
+                </Link>
+              ) : (
+                <>
+                  <span className="feed-text">{renderMessage(it)}</span>
+                  <span className="feed-time">{formatTime(it.createdAt)}</span>
+                </>
+              )}
             </li>
           ))}
         </ul>
