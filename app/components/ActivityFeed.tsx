@@ -60,7 +60,7 @@ export default function ActivityFeed() {
     const q = query(
       collection(db, "activity"),
       orderBy("createdAt", "desc"),
-      limit(10),
+      limit(20),
     );
     const unsub = onSnapshot(q, (snap) => {
       setItems(
