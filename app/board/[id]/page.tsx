@@ -45,6 +45,7 @@ export default function BoardDetailPage({
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentContent, setCommentContent] = useState("");
   const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [openReplyId, setOpenReplyId] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -189,13 +190,18 @@ export default function BoardDetailPage({
 
         <div className="board-comment-list">
           {comments.map((c) => (
-            <div key={c.id} className="board-comment-item">
-              <div className="board-comment-header">
-                <span className="board-comment-nick">{c.nickname}</span>
-                <span className="board-comment-date">{formatDate(c.createdAt)}</span>
-              </div>
-              <p className="board-comment-body">{c.content}</p>
-            </div>
+            <BoardCommentItem
+              key={c.id}
+              boardId={id}
+              comment={c}
+              loginNick={loginNick}
+              formatDate={formatDate}
+              replyOpen={openReplyId === c.id}
+              onToggleReply={() =>
+                setOpenReplyId((cur) => (cur === c.id ? null : c.id))
+              }
+              onCloseReply={() => setOpenReplyId(null)}
+            />
           ))}
         </div>
 
@@ -222,6 +228,119 @@ export default function BoardDetailPage({
           <p className="login-required">로그인이 필요합니다.</p>
         )}
       </div>
+    </div>
+  );
+}
+
+function BoardCommentItem({
+  boardId,
+  comment,
+  loginNick,
+  formatDate,
+  replyOpen,
+  onToggleReply,
+  onCloseReply,
+}: {
+  boardId: string;
+  comment: Comment;
+  loginNick: string | null;
+  formatDate: (d: Date) => string;
+  replyOpen: boolean;
+  onToggleReply: () => void;
+  onCloseReply: () => void;
+}) {
+  const [replies, setReplies] = useState<Comment[]>([]);
+  const [msg, setMsg] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const q = query(
+      collection(db, "board", boardId, "comments", comment.id, "replies"),
+      orderBy("createdAt", "asc"),
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      setReplies(
+        snap.docs.map((d) => ({
+          id: d.id,
+          nickname: d.data().nickname,
+          content: d.data().content,
+          createdAt: d.data().createdAt?.toDate?.() ?? new Date(),
+        })),
+      );
+    });
+    return unsub;
+  }, [boardId, comment.id]);
+
+  const handleReply = async () => {
+    if (!loginNick || !msg.trim()) return;
+    setSubmitting(true);
+    try {
+      await addDoc(
+        collection(db, "board", boardId, "comments", comment.id, "replies"),
+        {
+          nickname: loginNick,
+          content: msg.trim(),
+          createdAt: serverTimestamp(),
+        },
+      );
+      setMsg("");
+      onCloseReply();
+    } catch {
+      alert("대댓글 등록에 실패했습니다.");
+    }
+    setSubmitting(false);
+  };
+
+  return (
+    <div className="board-comment-item">
+      <div className="board-comment-header">
+        <span className="board-comment-nick">{comment.nickname}</span>
+        <span className="board-comment-date">{formatDate(comment.createdAt)}</span>
+        {loginNick && (
+          <button
+            type="button"
+            className="board-reply-btn"
+            onClick={onToggleReply}
+          >
+            답글
+          </button>
+        )}
+      </div>
+      <p className="board-comment-body">{comment.content}</p>
+      {(replies.length > 0 || replyOpen) && (
+        <div className="board-reply-list">
+          {replies.map((r) => (
+            <div key={r.id} className="board-reply-item">
+              <div className="board-comment-header">
+                <span className="board-comment-nick">↳ {r.nickname}</span>
+                <span className="board-comment-date">{formatDate(r.createdAt)}</span>
+              </div>
+              <p className="board-comment-body">{r.content}</p>
+            </div>
+          ))}
+          {replyOpen && loginNick && (
+            <div className="board-comment-form board-reply-form">
+              <input
+                className="board-input board-comment-content-input"
+                placeholder="대댓글을 입력하세요"
+                value={msg}
+                onChange={(e) => setMsg(e.target.value)}
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.nativeEvent.isComposing) handleReply();
+                }}
+              />
+              <button
+                className="board-btn"
+                onClick={handleReply}
+                disabled={submitting}
+              >
+                등록
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

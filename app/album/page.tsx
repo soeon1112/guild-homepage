@@ -722,6 +722,7 @@ function AlbumCommentsSection({
   const [comments, setComments] = useState<AlbumComment[]>([]);
   const [content, setContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [openReplyId, setOpenReplyId] = useState<string | null>(null);
 
   useEffect(() => {
     const q = query(
@@ -760,11 +761,17 @@ function AlbumCommentsSection({
           <p className="minihome-hint">아직 댓글이 없습니다.</p>
         ) : (
           comments.map((c) => (
-            <div key={c.id} className="minihome-photo-comment">
-              <span className="minihome-gb-nick">{c.nickname}</span>
-              <span className="minihome-gb-msg">: {c.content}</span>
-              <span className="minihome-gb-time">{formatTime(c.createdAt)}</span>
-            </div>
+            <AlbumCommentItem
+              key={c.id}
+              photoId={photoId}
+              comment={c}
+              loginNick={loginNick}
+              replyOpen={openReplyId === c.id}
+              onToggleReply={() =>
+                setOpenReplyId((cur) => (cur === c.id ? null : c.id))
+              }
+              onCloseReply={() => setOpenReplyId(null)}
+            />
           ))
         )}
       </div>
@@ -790,6 +797,111 @@ function AlbumCommentsSection({
         </div>
       ) : (
         <p className="login-required login-required-sm">로그인이 필요합니다.</p>
+      )}
+    </div>
+  );
+}
+
+function AlbumCommentItem({
+  photoId,
+  comment,
+  loginNick,
+  replyOpen,
+  onToggleReply,
+  onCloseReply,
+}: {
+  photoId: string;
+  comment: AlbumComment;
+  loginNick: string | null;
+  replyOpen: boolean;
+  onToggleReply: () => void;
+  onCloseReply: () => void;
+}) {
+  const [replies, setReplies] = useState<AlbumComment[]>([]);
+  const [msg, setMsg] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const q = query(
+      collection(db, "album", photoId, "comments", comment.id, "replies"),
+      orderBy("createdAt", "asc"),
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      setReplies(
+        snap.docs.map((d) => ({ id: d.id, ...d.data() })) as AlbumComment[],
+      );
+    });
+    return () => unsub();
+  }, [photoId, comment.id]);
+
+  const handleReply = async () => {
+    if (!loginNick || !msg.trim()) return;
+    setSubmitting(true);
+    try {
+      await addDoc(
+        collection(db, "album", photoId, "comments", comment.id, "replies"),
+        {
+          nickname: loginNick,
+          content: msg.trim(),
+          createdAt: serverTimestamp(),
+        },
+      );
+      setMsg("");
+      onCloseReply();
+    } catch (e) {
+      console.error(e);
+    }
+    setSubmitting(false);
+  };
+
+  return (
+    <div className="minihome-photo-comment-block">
+      <div className="minihome-photo-comment">
+        <span className="minihome-gb-nick">{comment.nickname}</span>
+        <span className="minihome-gb-msg">: {comment.content}</span>
+        <span className="minihome-gb-time">{formatTime(comment.createdAt)}</span>
+        {loginNick && (
+          <button
+            type="button"
+            className="minihome-reply-btn"
+            onClick={onToggleReply}
+          >
+            답글
+          </button>
+        )}
+      </div>
+      {(replies.length > 0 || replyOpen) && (
+        <div className="minihome-gb-replies">
+          {replies.map((r) => (
+            <div key={r.id} className="minihome-gb-reply">
+              <span className="minihome-gb-nick">↳ {r.nickname}</span>
+              <span className="minihome-gb-msg">: {r.content}</span>
+              <span className="minihome-gb-time">{formatTime(r.createdAt)}</span>
+            </div>
+          ))}
+          {replyOpen && loginNick && (
+            <div className="minihome-form minihome-form-inline">
+              <input
+                className="minihome-input"
+                placeholder="대댓글"
+                value={msg}
+                onChange={(e) => setMsg(e.target.value)}
+                maxLength={200}
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.nativeEvent.isComposing) handleReply();
+                }}
+              />
+              <button
+                className="minihome-btn minihome-btn-small"
+                onClick={handleReply}
+                disabled={submitting}
+              >
+                등록
+              </button>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

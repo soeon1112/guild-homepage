@@ -372,6 +372,7 @@ function GuestbookSection({
   const [msg, setMsg] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [showCount, setShowCount] = useState(10);
+  const [openReplyId, setOpenReplyId] = useState<string | null>(null);
 
   useEffect(() => {
     const q = query(
@@ -445,6 +446,11 @@ function GuestbookSection({
               memberId={id}
               entry={e}
               loginNick={loginNick}
+              replyOpen={openReplyId === e.id}
+              onToggleReply={() =>
+                setOpenReplyId((cur) => (cur === e.id ? null : e.id))
+              }
+              onCloseReply={() => setOpenReplyId(null)}
             />
           ))}
         </ul>
@@ -467,10 +473,16 @@ function GuestbookItem({
   memberId,
   entry,
   loginNick,
+  replyOpen,
+  onToggleReply,
+  onCloseReply,
 }: {
   memberId: string;
   entry: GuestbookEntry;
   loginNick: string | null;
+  replyOpen: boolean;
+  onToggleReply: () => void;
+  onCloseReply: () => void;
 }) {
   const [replies, setReplies] = useState<ReplyEntry[]>([]);
   const [msg, setMsg] = useState("");
@@ -516,6 +528,7 @@ function GuestbookItem({
         },
       );
       setMsg("");
+      onCloseReply();
     } catch (e) {
       console.error(e);
     }
@@ -528,6 +541,15 @@ function GuestbookItem({
         <span className="minihome-gb-nick">{entry.nickname}</span>
         <span className="minihome-gb-msg">: {entry.message}</span>
         <span className="minihome-gb-time">{formatTime(entry.createdAt)}</span>
+        {loginNick && (
+          <button
+            type="button"
+            className="minihome-reply-btn"
+            onClick={onToggleReply}
+          >
+            답글
+          </button>
+        )}
       </div>
       <div className="minihome-gb-replies">
         {replies.map((r) => (
@@ -537,7 +559,7 @@ function GuestbookItem({
             <span className="minihome-gb-time">{formatTime(r.createdAt)}</span>
           </div>
         ))}
-        {loginNick ? (
+        {replyOpen && loginNick && (
           <div className="minihome-form minihome-form-inline">
             <input
               className="minihome-input"
@@ -545,8 +567,9 @@ function GuestbookItem({
               value={msg}
               onChange={(e) => setMsg(e.target.value)}
               maxLength={200}
+              autoFocus
               onKeyDown={(e) => {
-                if (e.key === "Enter") handleReply();
+                if (e.key === "Enter" && !e.nativeEvent.isComposing) handleReply();
               }}
             />
             <button
@@ -557,8 +580,6 @@ function GuestbookItem({
               등록
             </button>
           </div>
-        ) : (
-          <p className="login-required login-required-sm">로그인이 필요합니다.</p>
         )}
       </div>
     </li>
@@ -937,6 +958,7 @@ function PhotoCommentsSection({
   const [comments, setComments] = useState<PhotoComment[]>([]);
   const [content, setContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [openReplyId, setOpenReplyId] = useState<string | null>(null);
 
   useEffect(() => {
     const q = query(
@@ -978,11 +1000,18 @@ function PhotoCommentsSection({
           <p className="minihome-hint">아직 댓글이 없습니다.</p>
         ) : (
           comments.map((c) => (
-            <div key={c.id} className="minihome-photo-comment">
-              <span className="minihome-gb-nick">{c.nickname}</span>
-              <span className="minihome-gb-msg">: {c.content}</span>
-              <span className="minihome-gb-time">{formatTime(c.createdAt)}</span>
-            </div>
+            <PhotoCommentItem
+              key={c.id}
+              memberId={memberId}
+              photoId={photoId}
+              comment={c}
+              loginNick={loginNick}
+              replyOpen={openReplyId === c.id}
+              onToggleReply={() =>
+                setOpenReplyId((cur) => (cur === c.id ? null : c.id))
+              }
+              onCloseReply={() => setOpenReplyId(null)}
+            />
           ))
         )}
       </div>
@@ -1008,6 +1037,131 @@ function PhotoCommentsSection({
         </div>
       ) : (
         <p className="login-required login-required-sm">로그인이 필요합니다.</p>
+      )}
+    </div>
+  );
+}
+
+function PhotoCommentItem({
+  memberId,
+  photoId,
+  comment,
+  loginNick,
+  replyOpen,
+  onToggleReply,
+  onCloseReply,
+}: {
+  memberId: string;
+  photoId: string;
+  comment: PhotoComment;
+  loginNick: string | null;
+  replyOpen: boolean;
+  onToggleReply: () => void;
+  onCloseReply: () => void;
+}) {
+  const [replies, setReplies] = useState<PhotoComment[]>([]);
+  const [msg, setMsg] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const q = query(
+      collection(
+        db,
+        "members",
+        memberId,
+        "photos",
+        photoId,
+        "comments",
+        comment.id,
+        "replies",
+      ),
+      orderBy("createdAt", "asc"),
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      setReplies(
+        snap.docs.map((d) => ({ id: d.id, ...d.data() })) as PhotoComment[],
+      );
+    });
+    return () => unsub();
+  }, [memberId, photoId, comment.id]);
+
+  const handleReply = async () => {
+    if (!loginNick || !msg.trim()) return;
+    setSubmitting(true);
+    try {
+      await addDoc(
+        collection(
+          db,
+          "members",
+          memberId,
+          "photos",
+          photoId,
+          "comments",
+          comment.id,
+          "replies",
+        ),
+        {
+          nickname: loginNick,
+          content: msg.trim(),
+          createdAt: serverTimestamp(),
+        },
+      );
+      setMsg("");
+      onCloseReply();
+    } catch (e) {
+      console.error(e);
+    }
+    setSubmitting(false);
+  };
+
+  return (
+    <div className="minihome-photo-comment-block">
+      <div className="minihome-photo-comment">
+        <span className="minihome-gb-nick">{comment.nickname}</span>
+        <span className="minihome-gb-msg">: {comment.content}</span>
+        <span className="minihome-gb-time">{formatTime(comment.createdAt)}</span>
+        {loginNick && (
+          <button
+            type="button"
+            className="minihome-reply-btn"
+            onClick={onToggleReply}
+          >
+            답글
+          </button>
+        )}
+      </div>
+      {(replies.length > 0 || replyOpen) && (
+        <div className="minihome-gb-replies">
+          {replies.map((r) => (
+            <div key={r.id} className="minihome-gb-reply">
+              <span className="minihome-gb-nick">↳ {r.nickname}</span>
+              <span className="minihome-gb-msg">: {r.content}</span>
+              <span className="minihome-gb-time">{formatTime(r.createdAt)}</span>
+            </div>
+          ))}
+          {replyOpen && loginNick && (
+            <div className="minihome-form minihome-form-inline">
+              <input
+                className="minihome-input"
+                placeholder="대댓글"
+                value={msg}
+                onChange={(e) => setMsg(e.target.value)}
+                maxLength={200}
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.nativeEvent.isComposing) handleReply();
+                }}
+              />
+              <button
+                className="minihome-btn minihome-btn-small"
+                onClick={handleReply}
+                disabled={submitting}
+              >
+                등록
+              </button>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
