@@ -1,4 +1,12 @@
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  getDocs,
+  query,
+  serverTimestamp,
+  where,
+} from "firebase/firestore";
 import { db } from "./firebase";
 
 export async function logActivity(
@@ -17,5 +25,16 @@ export async function logActivity(
     });
   } catch (e) {
     console.error("Failed to log activity:", e);
+  }
+}
+
+export async function deleteActivitiesByLink(link: string): Promise<void> {
+  if (!link) return;
+  try {
+    const q = query(collection(db, "activity"), where("link", "==", link));
+    const snap = await getDocs(q);
+    await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
+  } catch (e) {
+    console.error("Failed to delete activities by link:", e);
   }
 }

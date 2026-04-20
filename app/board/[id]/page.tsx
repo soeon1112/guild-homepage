@@ -16,7 +16,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
 import { useAuth } from "@/app/components/AuthProvider";
-import { logActivity } from "@/src/lib/activity";
+import { deleteActivitiesByLink, logActivity } from "@/src/lib/activity";
 
 interface PostData {
   title: string;
@@ -115,6 +115,7 @@ export default function BoardDetailPage({
     if (pw === "dawnlight2024") {
       if (confirm("정말 삭제하시겠습니까?")) {
         await deleteDoc(doc(db, "board", id));
+        await deleteActivitiesByLink(`/board/${id}`);
         router.push("/board");
       }
     } else {

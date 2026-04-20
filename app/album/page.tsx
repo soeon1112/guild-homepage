@@ -17,7 +17,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
-import { logActivity } from "@/src/lib/activity";
+import { deleteActivitiesByLink, logActivity } from "@/src/lib/activity";
 
 const ADMIN_PASSWORD = "dawnlight2024";
 
@@ -587,6 +587,7 @@ function AlbumPhotoViewer({
         console.warn("storage delete failed", e);
       }
       await deleteDoc(doc(db, "album", photo.id));
+      await deleteActivitiesByLink(`/album?photo=${photo.id}`);
       onClose();
     } catch (e) {
       console.error(e);

@@ -20,7 +20,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
-import { logActivity } from "@/src/lib/activity";
+import { deleteActivitiesByLink, logActivity } from "@/src/lib/activity";
 
 const detailIds = new Set([
   "a", "1", "1-2", "2", "3", "4", "5", "6", "7", "8", "9",
@@ -944,6 +944,7 @@ function MemberPhotoViewer({
         console.warn("storage delete failed", e);
       }
       await deleteDoc(doc(db, "members", memberId, "photos", photo.id));
+      await deleteActivitiesByLink(`/members/${memberId}?photo=${photo.id}`);
       onClose();
     } catch (e) {
       console.error(e);
