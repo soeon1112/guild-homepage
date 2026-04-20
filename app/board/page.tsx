@@ -114,7 +114,7 @@ export default function BoardPage() {
         ← 홈으로
       </BackLink>
 
-      <h1 className="board-title">정보 게시판</h1>
+      <h1 className="board-title">게시판</h1>
 
       <div className="board-write-btn-wrap">
         <Link href="/board/write" className="board-btn">

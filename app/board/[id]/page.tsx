@@ -173,10 +173,10 @@ export default function BoardDetailPage({
       await logActivity(
         "board_comment",
         loginNick,
-        "정보 게시판에 새 댓글이 달렸습니다",
+        "게시판에 새 댓글이 달렸습니다",
         `/board/${id}`,
       );
-      await addPoints(loginNick, "댓글", 1, "정보 게시판에 댓글 작성");
+      await addPoints(loginNick, "댓글", 1, "게시판에 댓글 작성");
     } catch {
       alert("댓글 등록에 실패했습니다.");
     }
@@ -386,10 +386,10 @@ function BoardCommentItem({
       await logActivity(
         "board_comment",
         loginNick,
-        "정보 게시판에 새 댓글이 달렸습니다",
+        "게시판에 새 댓글이 달렸습니다",
         `/board/${boardId}`,
       );
-      await addPoints(loginNick, "대댓글", 1, "정보 게시판에 대댓글 작성");
+      await addPoints(loginNick, "대댓글", 1, "게시판에 대댓글 작성");
     } catch {
       alert("대댓글 등록에 실패했습니다.");
     }
