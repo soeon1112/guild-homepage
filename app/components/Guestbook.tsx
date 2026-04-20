@@ -11,6 +11,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
+import { useAuth } from "./AuthProvider";
 
 interface GuestbookEntry {
   id: string;
@@ -42,7 +43,7 @@ function formatTime(timestamp: Timestamp | null): string {
 const PAGE_SIZE = 5;
 
 export default function Guestbook() {
-  const [nickname, setNickname] = useState("");
+  const { nickname } = useAuth();
   const [message, setMessage] = useState("");
   const [entries, setEntries] = useState<GuestbookEntry[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -67,15 +68,14 @@ export default function Guestbook() {
   const pagedEntries = entries.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   const handleSubmit = async () => {
-    if (!nickname.trim() || !message.trim()) return;
+    if (!nickname || !message.trim()) return;
     setSubmitting(true);
     try {
       await addDoc(collection(db, "guestbook"), {
-        nickname: nickname.trim(),
+        nickname,
         message: message.trim(),
         createdAt: serverTimestamp(),
       });
-      setNickname("");
       setMessage("");
     } catch (e) {
       console.error("Failed to add guestbook entry:", e);
@@ -86,34 +86,30 @@ export default function Guestbook() {
   return (
     <section className="guestbook">
       <h2 className="guestbook-title">흔적 남기기</h2>
-      <div className="guestbook-form">
-        <input
-          className="guestbook-input guestbook-nickname"
-          type="text"
-          placeholder="닉네임"
-          value={nickname}
-          onChange={(e) => setNickname(e.target.value)}
-          maxLength={20}
-        />
-        <input
-          className="guestbook-input guestbook-message"
-          type="text"
-          placeholder="한마디를 남겨주세요"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          maxLength={100}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") handleSubmit();
-          }}
-        />
-        <button
-          className="guestbook-btn"
-          onClick={handleSubmit}
-          disabled={submitting}
-        >
-          등록
-        </button>
-      </div>
+      {nickname ? (
+        <div className="guestbook-form">
+          <input
+            className="guestbook-input guestbook-message"
+            type="text"
+            placeholder="한마디를 남겨주세요"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            maxLength={100}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSubmit();
+            }}
+          />
+          <button
+            className="guestbook-btn"
+            onClick={handleSubmit}
+            disabled={submitting}
+          >
+            등록
+          </button>
+        </div>
+      ) : (
+        <p className="login-required">로그인이 필요합니다.</p>
+      )}
       <ul className="guestbook-list">
         {pagedEntries.map((entry) => (
           <li key={entry.id} className="guestbook-entry">

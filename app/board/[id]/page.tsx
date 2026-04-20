@@ -2,7 +2,6 @@
 
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import BackLink from "@/app/components/BackLink";
 import {
   doc,
@@ -16,12 +15,12 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
+import { useAuth } from "@/app/components/AuthProvider";
 
 interface PostData {
   title: string;
   content: string;
   nickname: string;
-  password: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -40,10 +39,10 @@ export default function BoardDetailPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
+  const { nickname: loginNick } = useAuth();
   const [post, setPost] = useState<PostData | null>(null);
   const [loading, setLoading] = useState(true);
   const [comments, setComments] = useState<Comment[]>([]);
-  const [commentNick, setCommentNick] = useState("");
   const [commentContent, setCommentContent] = useState("");
   const [commentSubmitting, setCommentSubmitting] = useState(false);
 
@@ -56,7 +55,6 @@ export default function BoardDetailPage({
           title: d.title,
           content: d.content,
           nickname: d.nickname,
-          password: d.password,
           createdAt: d.createdAt?.toDate?.() ?? new Date(),
           updatedAt: d.updatedAt?.toDate?.() ?? new Date(),
         });
@@ -92,14 +90,10 @@ export default function BoardDetailPage({
     return `${y}.${m}.${day} ${h}:${min}`;
   };
 
+  const isAuthor = !!loginNick && !!post && post.nickname === loginNick;
+
   const handleEdit = () => {
-    const pw = prompt("비밀번호를 입력하세요.");
-    if (pw === null) return;
-    if (pw === post?.password) {
-      router.push(`/board/edit/${id}`);
-    } else {
-      alert("비밀번호가 일치하지 않습니다.");
-    }
+    router.push(`/board/edit/${id}`);
   };
 
   const handleDelete = async () => {
@@ -116,14 +110,11 @@ export default function BoardDetailPage({
   };
 
   const handleAddComment = async () => {
-    if (!commentNick.trim() || !commentContent.trim()) {
-      alert("닉네임과 댓글을 입력해주세요.");
-      return;
-    }
+    if (!loginNick || !commentContent.trim()) return;
     setCommentSubmitting(true);
     try {
       await addDoc(collection(db, "board", id, "comments"), {
-        nickname: commentNick.trim(),
+        nickname: loginNick,
         content: commentContent.trim(),
         createdAt: serverTimestamp(),
       });
@@ -178,9 +169,11 @@ export default function BoardDetailPage({
         </div>
 
         <div className="board-detail-actions">
-          <button className="board-btn" onClick={handleEdit}>
-            수정
-          </button>
+          {isAuthor && (
+            <button className="board-btn" onClick={handleEdit}>
+              수정
+            </button>
+          )}
           <button className="board-btn board-btn-cancel" onClick={handleDelete}>
             삭제
           </button>
@@ -206,30 +199,28 @@ export default function BoardDetailPage({
           ))}
         </div>
 
-        <div className="board-comment-form">
-          <input
-            className="board-input board-comment-nick-input"
-            placeholder="닉네임"
-            value={commentNick}
-            onChange={(e) => setCommentNick(e.target.value)}
-          />
-          <input
-            className="board-input board-comment-content-input"
-            placeholder="댓글을 입력하세요"
-            value={commentContent}
-            onChange={(e) => setCommentContent(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.nativeEvent.isComposing) handleAddComment();
-            }}
-          />
-          <button
-            className="board-btn"
-            onClick={handleAddComment}
-            disabled={commentSubmitting}
-          >
-            등록
-          </button>
-        </div>
+        {loginNick ? (
+          <div className="board-comment-form">
+            <input
+              className="board-input board-comment-content-input"
+              placeholder="댓글을 입력하세요"
+              value={commentContent}
+              onChange={(e) => setCommentContent(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.nativeEvent.isComposing) handleAddComment();
+              }}
+            />
+            <button
+              className="board-btn"
+              onClick={handleAddComment}
+              disabled={commentSubmitting}
+            >
+              등록
+            </button>
+          </div>
+        ) : (
+          <p className="login-required">로그인이 필요합니다.</p>
+        )}
       </div>
     </div>
   );
