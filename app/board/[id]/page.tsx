@@ -17,7 +17,7 @@ import {
 import { ref, deleteObject } from "firebase/storage";
 import { db, storage } from "@/src/lib/firebase";
 import { useAuth } from "@/app/components/AuthProvider";
-import { deleteActivitiesByLink, logActivity } from "@/src/lib/activity";
+import { deleteActivitiesByLink, deleteActivitiesByTargetPath, logActivity } from "@/src/lib/activity";
 import { addPoints } from "@/src/lib/points";
 import { uploadCommentImage } from "@/src/lib/commentImage";
 import {
@@ -174,7 +174,7 @@ export default function BoardDetailPage({
       if (commentImage) {
         imageUrl = await uploadCommentImage(commentImage);
       }
-      await addDoc(collection(db, "board", id, "comments"), {
+      const commentRef = await addDoc(collection(db, "board", id, "comments"), {
         nickname: loginNick,
         content: commentContent.trim(),
         imageUrl,
@@ -187,6 +187,7 @@ export default function BoardDetailPage({
         loginNick,
         "게시판에 새 댓글이 달렸습니다",
         `/board/${id}`,
+        `board/${id}/comments/${commentRef.id}`,
       );
       await addPoints(loginNick, "댓글", 1, "게시판에 댓글 작성");
     } catch {
@@ -395,7 +396,7 @@ function BoardCommentItem({
       if (replyImage) {
         imageUrl = await uploadCommentImage(replyImage);
       }
-      await addDoc(
+      const replyRef = await addDoc(
         collection(db, "board", boardId, "comments", comment.id, "replies"),
         {
           nickname: loginNick,
@@ -412,6 +413,7 @@ function BoardCommentItem({
         loginNick,
         "게시판에 새 댓글이 달렸습니다",
         `/board/${boardId}`,
+        `board/${boardId}/comments/${comment.id}/replies/${replyRef.id}`,
       );
       await addPoints(loginNick, "대댓글", 1, "게시판에 대댓글 작성");
     } catch {
@@ -424,6 +426,9 @@ function BoardCommentItem({
     if (!confirm("정말 삭제하시겠습니까?")) return;
     try {
       await deleteDoc(doc(db, "board", boardId, "comments", comment.id));
+      await deleteActivitiesByTargetPath(
+        `board/${boardId}/comments/${comment.id}`,
+      );
     } catch {
       alert("댓글 삭제에 실패했습니다.");
     }
@@ -434,6 +439,9 @@ function BoardCommentItem({
     try {
       await deleteDoc(
         doc(db, "board", boardId, "comments", comment.id, "replies", replyId),
+      );
+      await deleteActivitiesByTargetPath(
+        `board/${boardId}/comments/${comment.id}/replies/${replyId}`,
       );
     } catch {
       alert("대댓글 삭제에 실패했습니다.");

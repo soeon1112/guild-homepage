@@ -14,6 +14,7 @@ export async function logActivity(
   nickname: string,
   message: string,
   link?: string,
+  targetPath?: string,
 ): Promise<void> {
   try {
     await addDoc(collection(db, "activity"), {
@@ -21,6 +22,7 @@ export async function logActivity(
       nickname,
       message,
       link: link ?? "",
+      targetPath: targetPath ?? "",
       createdAt: serverTimestamp(),
     });
   } catch (e) {
@@ -36,5 +38,33 @@ export async function deleteActivitiesByLink(link: string): Promise<void> {
     await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
   } catch (e) {
     console.error("Failed to delete activities by link:", e);
+  }
+}
+
+export async function deleteActivitiesByTargetPath(path: string): Promise<void> {
+  if (!path) return;
+  try {
+    const exact = query(
+      collection(db, "activity"),
+      where("targetPath", "==", path),
+    );
+    const prefix = query(
+      collection(db, "activity"),
+      where("targetPath", ">=", `${path}/`),
+      where("targetPath", "<", `${path}/\uf8ff`),
+    );
+    const [exactSnap, prefixSnap] = await Promise.all([
+      getDocs(exact),
+      getDocs(prefix),
+    ]);
+    const seen = new Set<string>();
+    const docs = [...exactSnap.docs, ...prefixSnap.docs].filter((d) => {
+      if (seen.has(d.id)) return false;
+      seen.add(d.id);
+      return true;
+    });
+    await Promise.all(docs.map((d) => deleteDoc(d.ref)));
+  } catch (e) {
+    console.error("Failed to delete activities by target path:", e);
   }
 }

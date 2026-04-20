@@ -17,7 +17,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
-import { deleteActivitiesByLink, logActivity } from "@/src/lib/activity";
+import { deleteActivitiesByLink, deleteActivitiesByTargetPath, logActivity } from "@/src/lib/activity";
 import { addPoints } from "@/src/lib/points";
 import { uploadCommentImage } from "@/src/lib/commentImage";
 import {
@@ -296,6 +296,7 @@ export default function AlbumPage() {
         "",
         "새 앨범 사진이 업로드되었습니다",
         `/album?photo=${newRef.id}`,
+        `album/${newRef.id}`,
       );
     } catch (e) {
       console.error(e);
@@ -828,7 +829,7 @@ function AlbumCommentsSection({
       if (image) {
         imageUrl = await uploadCommentImage(image);
       }
-      await addDoc(collection(db, "album", photoId, "comments"), {
+      const commentRef = await addDoc(collection(db, "album", photoId, "comments"), {
         nickname: loginNick,
         content: content.trim(),
         imageUrl,
@@ -841,6 +842,7 @@ function AlbumCommentsSection({
         loginNick,
         "앨범에 새 댓글이 달렸습니다",
         `/album?photo=${photoId}`,
+        `album/${photoId}/comments/${commentRef.id}`,
       );
       await addPoints(loginNick, "댓글", 1, "앨범에 댓글 작성");
     } catch (e) {
@@ -949,7 +951,7 @@ function AlbumCommentItem({
       if (replyImage) {
         imageUrl = await uploadCommentImage(replyImage);
       }
-      await addDoc(
+      const replyRef = await addDoc(
         collection(db, "album", photoId, "comments", comment.id, "replies"),
         {
           nickname: loginNick,
@@ -966,6 +968,7 @@ function AlbumCommentItem({
         loginNick,
         "앨범에 새 댓글이 달렸습니다",
         `/album?photo=${photoId}`,
+        `album/${photoId}/comments/${comment.id}/replies/${replyRef.id}`,
       );
       await addPoints(loginNick, "대댓글", 1, "앨범 댓글에 대댓글 작성");
     } catch (e) {
@@ -978,6 +981,9 @@ function AlbumCommentItem({
     if (!confirm("정말 삭제하시겠습니까?")) return;
     try {
       await deleteDoc(doc(db, "album", photoId, "comments", comment.id));
+      await deleteActivitiesByTargetPath(
+        `album/${photoId}/comments/${comment.id}`,
+      );
     } catch (e) {
       console.error(e);
       alert("댓글 삭제에 실패했습니다.");
@@ -989,6 +995,9 @@ function AlbumCommentItem({
     try {
       await deleteDoc(
         doc(db, "album", photoId, "comments", comment.id, "replies", replyId),
+      );
+      await deleteActivitiesByTargetPath(
+        `album/${photoId}/comments/${comment.id}/replies/${replyId}`,
       );
     } catch (e) {
       console.error(e);

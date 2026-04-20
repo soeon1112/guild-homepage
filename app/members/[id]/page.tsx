@@ -20,7 +20,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
-import { deleteActivitiesByLink, logActivity } from "@/src/lib/activity";
+import { deleteActivitiesByLink, deleteActivitiesByTargetPath, logActivity } from "@/src/lib/activity";
 import { addPoints } from "@/src/lib/points";
 import { uploadCommentImage } from "@/src/lib/commentImage";
 import {
@@ -676,7 +676,7 @@ function GuestbookSection({
       if (image) {
         imageUrl = await uploadCommentImage(image);
       }
-      await addDoc(collection(db, "members", id, "guestbook"), {
+      const entryRef = await addDoc(collection(db, "members", id, "guestbook"), {
         nickname: loginNick,
         message: msg.trim(),
         imageUrl,
@@ -690,6 +690,7 @@ function GuestbookSection({
           loginNick,
           `${memberNickname}님의 공간에 방명록이 달렸습니다`,
           `/members/${id}`,
+          `members/${id}/guestbook/${entryRef.id}`,
         );
       }
       await addPoints(
@@ -840,7 +841,7 @@ function GuestbookItem({
       if (replyImage) {
         imageUrl = await uploadCommentImage(replyImage);
       }
-      await addDoc(
+      const replyRef = await addDoc(
         collection(
           db,
           "members",
@@ -865,6 +866,7 @@ function GuestbookItem({
           loginNick,
           `${memberNickname}님의 공간에 댓글이 달렸습니다`,
           `/members/${memberId}`,
+          `members/${memberId}/guestbook/${entry.id}/replies/${replyRef.id}`,
         );
       }
       await addPoints(
@@ -883,6 +885,9 @@ function GuestbookItem({
     if (!confirm("정말 삭제하시겠습니까?")) return;
     try {
       await deleteDoc(doc(db, "members", memberId, "guestbook", entry.id));
+      await deleteActivitiesByTargetPath(
+        `members/${memberId}/guestbook/${entry.id}`,
+      );
     } catch (e) {
       console.error(e);
       alert("방명록 삭제에 실패했습니다.");
@@ -894,6 +899,9 @@ function GuestbookItem({
     try {
       await deleteDoc(
         doc(db, "members", memberId, "guestbook", entry.id, "replies", replyId),
+      );
+      await deleteActivitiesByTargetPath(
+        `members/${memberId}/guestbook/${entry.id}/replies/${replyId}`,
       );
     } catch (e) {
       console.error(e);
@@ -1026,7 +1034,7 @@ function AdventureSection({
     if (!date || !content.trim()) return;
     setSubmitting(true);
     try {
-      await addDoc(collection(db, "members", id, "adventures"), {
+      const advRef = await addDoc(collection(db, "members", id, "adventures"), {
         date,
         content: content.trim(),
         createdAt: serverTimestamp(),
@@ -1038,6 +1046,7 @@ function AdventureSection({
           memberNickname,
           `${memberNickname}님이 새로운 모험 기록을 남겼습니다`,
           `/members/${id}`,
+          `members/${id}/adventures/${advRef.id}`,
         );
       }
     } catch (e) {
@@ -1052,6 +1061,9 @@ function AdventureSection({
     if (!confirm("정말 삭제하시겠습니까?")) return;
     try {
       await deleteDoc(doc(db, "members", id, "adventures", entryId));
+      await deleteActivitiesByTargetPath(
+        `members/${id}/adventures/${entryId}`,
+      );
     } catch (e) {
       console.error(e);
       alert("삭제에 실패했습니다.");
@@ -1306,6 +1318,7 @@ function PhotoSection({
           actor,
           `${actor}님의 공간이 업데이트되었습니다`,
           `/members/${id}?photo=${newRef.id}`,
+          `members/${id}/photos/${newRef.id}`,
         );
       }
       await addPoints(loginNick, "사진", 2, "미니홈피 사진첩에 사진 업로드");
@@ -1623,7 +1636,7 @@ function PhotoCommentsSection({
       if (image) {
         imageUrl = await uploadCommentImage(image);
       }
-      await addDoc(
+      const commentRef = await addDoc(
         collection(db, "members", memberId, "photos", photoId, "comments"),
         {
           nickname: loginNick,
@@ -1640,6 +1653,7 @@ function PhotoCommentsSection({
           loginNick,
           `${memberNickname}님의 공간에 댓글이 달렸습니다`,
           `/members/${memberId}?photo=${photoId}`,
+          `members/${memberId}/photos/${photoId}/comments/${commentRef.id}`,
         );
       }
       await addPoints(
@@ -1769,7 +1783,7 @@ function PhotoCommentItem({
       if (replyImage) {
         imageUrl = await uploadCommentImage(replyImage);
       }
-      await addDoc(
+      const replyRef = await addDoc(
         collection(
           db,
           "members",
@@ -1796,6 +1810,7 @@ function PhotoCommentItem({
           loginNick,
           `${memberNickname}님의 공간에 댓글이 달렸습니다`,
           `/members/${memberId}?photo=${photoId}`,
+          `members/${memberId}/photos/${photoId}/comments/${comment.id}/replies/${replyRef.id}`,
         );
       }
       await addPoints(
@@ -1815,6 +1830,9 @@ function PhotoCommentItem({
     try {
       await deleteDoc(
         doc(db, "members", memberId, "photos", photoId, "comments", comment.id),
+      );
+      await deleteActivitiesByTargetPath(
+        `members/${memberId}/photos/${photoId}/comments/${comment.id}`,
       );
     } catch (e) {
       console.error(e);
@@ -1837,6 +1855,9 @@ function PhotoCommentItem({
           "replies",
           replyId,
         ),
+      );
+      await deleteActivitiesByTargetPath(
+        `members/${memberId}/photos/${photoId}/comments/${comment.id}/replies/${replyId}`,
       );
     } catch (e) {
       console.error(e);

@@ -98,6 +98,7 @@ export default function BoardWritePage() {
         nickname,
         `게시판에 새 글이 등록되었습니다: ${cleanTitle}`,
         `/board/${newRef.id}`,
+        `board/${newRef.id}`,
       );
       await addPoints(nickname, "게시글", 2, `게시판 글 작성: ${cleanTitle}`);
       pending.forEach((p) => URL.revokeObjectURL(p.previewUrl));
