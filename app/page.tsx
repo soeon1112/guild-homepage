@@ -35,18 +35,6 @@ export default function Home() {
         {/* Activity Feed */}
         <ActivityFeed />
 
-        {/* YouTube */}
-        <section className="youtube-section">
-          <div className="youtube-wrapper">
-            <iframe
-              src="https://www.youtube.com/embed/-ZdAFoqcnPA"
-              title="YouTube video"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
-          </div>
-        </section>
-
         {/* Guestbook */}
         <Guestbook />
 
