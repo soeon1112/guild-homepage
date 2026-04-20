@@ -2,7 +2,7 @@
 
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import BackLink from "@/app/components/BackLink";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/components/AuthProvider";
 import { db, storage } from "@/src/lib/firebase";
 import {
@@ -240,9 +240,18 @@ export default function MemberMiniHomePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const router = useRouter();
   const { nickname: loginNick } = useAuth();
   const [member, setMember] = useState<MemberDoc | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const handleBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/");
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -261,7 +270,9 @@ export default function MemberMiniHomePage({
 
   return (
     <div className="minihome">
-      <BackLink href="/members" className="back-link">← 돌아가기</BackLink>
+      <button type="button" className="back-link" onClick={handleBack}>
+        ← 돌아가기
+      </button>
       {member?.bgmUrl && <BgmPlayer bgmUrl={member.bgmUrl} />}
       {loading ? (
         <p className="minihome-hint">로딩 중...</p>
