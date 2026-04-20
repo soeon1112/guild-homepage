@@ -882,7 +882,7 @@ function AlbumCommentsSection({
         )}
       </div>
       {loginNick ? (
-        <div className="minihome-form minihome-form-inline">
+        <div className="minihome-form minihome-form-inline cbar">
           <input
             className="minihome-input"
             placeholder="댓글을 입력하세요"
@@ -899,7 +899,7 @@ function AlbumCommentsSection({
             disabled={submitting}
           />
           <button
-            className="minihome-btn minihome-btn-small"
+            className="minihome-btn minihome-btn-small cbar-submit"
             onClick={handleSubmit}
             disabled={submitting}
           >
@@ -1066,7 +1066,7 @@ function AlbumCommentItem({
             </div>
           ))}
           {replyOpen && loginNick && (
-            <div className="minihome-form minihome-form-inline">
+            <div className="minihome-form minihome-form-inline cbar">
               <input
                 className="minihome-input"
                 placeholder="대댓글"
@@ -1084,7 +1084,7 @@ function AlbumCommentItem({
                 disabled={submitting}
               />
               <button
-                className="minihome-btn minihome-btn-small"
+                className="minihome-btn minihome-btn-small cbar-submit"
                 onClick={handleReply}
                 disabled={submitting}
               >

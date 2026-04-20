@@ -757,7 +757,7 @@ function GuestbookSection({
     <section className="minihome-section">
       <h2 className="minihome-section-title">방명록</h2>
       {loginNick ? (
-        <div className="minihome-form">
+        <div className="minihome-form cbar">
           <input
             className="minihome-input"
             placeholder="한마디를 남겨주세요"
@@ -774,7 +774,7 @@ function GuestbookSection({
             disabled={submitting}
           />
           <button
-            className="minihome-btn"
+            className="minihome-btn cbar-submit"
             onClick={handleSubmit}
             disabled={submitting}
           >
@@ -1003,7 +1003,7 @@ function GuestbookItem({
           </div>
         ))}
         {replyOpen && loginNick && (
-          <div className="minihome-form minihome-form-inline">
+          <div className="minihome-form minihome-form-inline cbar">
             <input
               className="minihome-input"
               placeholder="대댓글"
@@ -1021,7 +1021,7 @@ function GuestbookItem({
               disabled={submitting}
             />
             <button
-              className="minihome-btn minihome-btn-small"
+              className="minihome-btn minihome-btn-small cbar-submit"
               onClick={handleReply}
               disabled={submitting}
             >
@@ -1761,7 +1761,7 @@ function PhotoCommentsSection({
         )}
       </div>
       {loginNick ? (
-        <div className="minihome-form minihome-form-inline">
+        <div className="minihome-form minihome-form-inline cbar">
           <input
             className="minihome-input"
             placeholder="댓글을 입력하세요"
@@ -1778,7 +1778,7 @@ function PhotoCommentsSection({
             disabled={submitting}
           />
           <button
-            className="minihome-btn minihome-btn-small"
+            className="minihome-btn minihome-btn-small cbar-submit"
             onClick={handleSubmit}
             disabled={submitting}
           >
@@ -1986,7 +1986,7 @@ function PhotoCommentItem({
             </div>
           ))}
           {replyOpen && loginNick && (
-            <div className="minihome-form minihome-form-inline">
+            <div className="minihome-form minihome-form-inline cbar">
               <input
                 className="minihome-input"
                 placeholder="대댓글"
@@ -2004,7 +2004,7 @@ function PhotoCommentItem({
                 disabled={submitting}
               />
               <button
-                className="minihome-btn minihome-btn-small"
+                className="minihome-btn minihome-btn-small cbar-submit"
                 onClick={handleReply}
                 disabled={submitting}
               >

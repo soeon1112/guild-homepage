@@ -319,7 +319,7 @@ export default function BoardDetailPage({
         </div>
 
         {loginNick ? (
-          <div className="board-comment-form">
+          <div className="board-comment-form cbar">
             <input
               className="board-input board-comment-content-input"
               placeholder="댓글을 입력하세요"
@@ -335,7 +335,7 @@ export default function BoardDetailPage({
               disabled={commentSubmitting}
             />
             <button
-              className="board-btn"
+              className="board-btn cbar-submit"
               onClick={handleAddComment}
               disabled={commentSubmitting}
             >
@@ -509,7 +509,7 @@ function BoardCommentItem({
             </div>
           ))}
           {replyOpen && loginNick && (
-            <div className="board-comment-form board-reply-form">
+            <div className="board-comment-form board-reply-form cbar">
               <input
                 className="board-input board-comment-content-input"
                 placeholder="대댓글을 입력하세요"
@@ -526,7 +526,7 @@ function BoardCommentItem({
                 disabled={submitting}
               />
               <button
-                className="board-btn"
+                className="board-btn cbar-submit"
                 onClick={handleReply}
                 disabled={submitting}
               >
