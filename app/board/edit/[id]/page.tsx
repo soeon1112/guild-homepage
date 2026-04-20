@@ -151,7 +151,7 @@ export default function BoardEditPage({
   if (authorNick === null) {
     return (
       <div className="board-content">
-        <BackLink href="/board" className="back-link">← 목록으로</BackLink>
+        <BackLink back className="back-link">← 목록으로</BackLink>
         <p className="board-loading">존재하지 않는 게시글입니다.</p>
       </div>
     );
@@ -160,7 +160,7 @@ export default function BoardEditPage({
   if (!loginNick || loginNick !== authorNick) {
     return (
       <div className="board-content">
-        <BackLink href={`/board/${id}`} className="back-link">← 돌아가기</BackLink>
+        <BackLink back className="back-link">← 돌아가기</BackLink>
         <p className="login-required">작성자만 수정할 수 있습니다.</p>
       </div>
     );
@@ -168,7 +168,7 @@ export default function BoardEditPage({
 
   return (
     <div className="board-content">
-      <BackLink href={`/board/${id}`} className="back-link">
+      <BackLink back className="back-link">
         ← 돌아가기
       </BackLink>
 

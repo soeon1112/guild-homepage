@@ -4,11 +4,13 @@ import { useRouter, usePathname } from "next/navigation";
 
 export default function BackLink({
   href,
+  back,
   className,
   style,
   children,
 }: {
-  href: string;
+  href?: string;
+  back?: boolean;
   className?: string;
   style?: React.CSSProperties;
   children: React.ReactNode;
@@ -19,13 +21,26 @@ export default function BackLink({
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     sessionStorage.setItem(`scroll:${pathname}`, String(window.scrollY));
-    sessionStorage.setItem("scroll:restore", href);
     document.body.style.opacity = "0";
-    router.push(href);
+
+    if (back) {
+      if (typeof window !== "undefined" && window.history.length > 1) {
+        router.back();
+      } else {
+        sessionStorage.setItem("scroll:restore", "/");
+        router.push("/");
+      }
+      return;
+    }
+
+    if (href) {
+      sessionStorage.setItem("scroll:restore", href);
+      router.push(href);
+    }
   };
 
   return (
-    <a href={href} className={className} style={style} onClick={handleClick}>
+    <a href={href ?? "#"} className={className} style={style} onClick={handleClick}>
       {children}
     </a>
   );

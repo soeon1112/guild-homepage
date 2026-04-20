@@ -120,7 +120,7 @@ export default function BoardWritePage() {
   if (!nickname) {
     return (
       <div className="board-content">
-        <BackLink href="/board" className="back-link">
+        <BackLink back className="back-link">
           ← 목록으로
         </BackLink>
         <h1 className="board-title">글쓰기</h1>
@@ -131,7 +131,7 @@ export default function BoardWritePage() {
 
   return (
     <div className="board-content">
-      <BackLink href="/board" className="back-link">
+      <BackLink back className="back-link">
         ← 목록으로
       </BackLink>
 

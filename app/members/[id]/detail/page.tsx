@@ -12,13 +12,12 @@ export default async function MemberDetailPage({
 }) {
   const { id } = await params;
   const hasDetail = detailIds.has(id);
-  const backHref = `/members/${id}`;
 
   return (
     <div className="flex min-h-screen flex-col items-center px-4 py-8">
       <div className="w-full max-w-4xl">
         <BackLink
-          href={backHref}
+          back
           className="mb-6 inline-flex items-center gap-1 text-sm text-foreground/50 hover:text-foreground/80"
         >
           ← 돌아가기
