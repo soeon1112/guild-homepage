@@ -12,6 +12,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
 import { formatSmart } from "@/src/lib/formatSmart";
+import TitlePrefix from "./TitlePrefix";
 
 type ActivityItem = {
   id: string;
@@ -33,6 +34,7 @@ function renderMessage(it: ActivityItem) {
     const rest = it.message.slice(prefix.length);
     return (
       <>
+        <TitlePrefix nickname={it.nickname} />
         <span className="feed-nick">{it.nickname}</span>
         <span>님{rest}</span>
       </>

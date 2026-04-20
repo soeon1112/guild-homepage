@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuth } from "./AuthProvider";
 import AttendanceButton from "./AttendanceButton";
 import MySpaceLink from "./MySpaceLink";
+import TitlePrefix from "./TitlePrefix";
 
 export default function LoginBar() {
   const { nickname, ready, login, signup, logout } = useAuth();
@@ -59,11 +60,15 @@ export default function LoginBar() {
     return (
       <section className="loginbar loginbar-loggedin">
         <span className="loginbar-welcome">
+          <TitlePrefix nickname={nickname} />
           <strong>{nickname}</strong>님 환영합니다
         </span>
         <div className="loginbar-actions">
           <AttendanceButton />
           <MySpaceLink />
+          <Link href="/shop" className="loginbar-link-btn">
+            칭호 상점
+          </Link>
           <Link href="/mypage" className="loginbar-link-btn">
             MY
           </Link>
