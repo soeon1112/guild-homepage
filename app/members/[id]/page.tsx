@@ -138,7 +138,11 @@ export default function MemberMiniHomePage({
           onChange={setMember}
         />
       )}
-      <GuestbookSection id={id} loginNick={loginNick} />
+      <GuestbookSection
+        id={id}
+        loginNick={loginNick}
+        memberNickname={member?.nickname ?? null}
+      />
       <PhotoSection
         id={id}
         isOwner={isOwner}
@@ -364,9 +368,11 @@ function ProfileSection({
 function GuestbookSection({
   id,
   loginNick,
+  memberNickname,
 }: {
   id: string;
   loginNick: string | null;
+  memberNickname: string | null;
 }) {
   const [entries, setEntries] = useState<GuestbookEntry[]>([]);
   const [msg, setMsg] = useState("");
@@ -397,11 +403,13 @@ function GuestbookSection({
         createdAt: serverTimestamp(),
       });
       setMsg("");
-      await logActivity(
-        "guestbook",
-        loginNick,
-        `${loginNick}님이 방명록을 남겼습니다`,
-      );
+      if (memberNickname) {
+        await logActivity(
+          "guestbook",
+          loginNick,
+          `${memberNickname}님의 공간에 방명록이 달렸습니다`,
+        );
+      }
     } catch (e) {
       console.error(e);
     }
@@ -446,6 +454,7 @@ function GuestbookSection({
               memberId={id}
               entry={e}
               loginNick={loginNick}
+              memberNickname={memberNickname}
               replyOpen={openReplyId === e.id}
               onToggleReply={() =>
                 setOpenReplyId((cur) => (cur === e.id ? null : e.id))
@@ -473,6 +482,7 @@ function GuestbookItem({
   memberId,
   entry,
   loginNick,
+  memberNickname,
   replyOpen,
   onToggleReply,
   onCloseReply,
@@ -480,6 +490,7 @@ function GuestbookItem({
   memberId: string;
   entry: GuestbookEntry;
   loginNick: string | null;
+  memberNickname: string | null;
   replyOpen: boolean;
   onToggleReply: () => void;
   onCloseReply: () => void;
@@ -529,6 +540,13 @@ function GuestbookItem({
       );
       setMsg("");
       onCloseReply();
+      if (memberNickname) {
+        await logActivity(
+          "guestbook",
+          loginNick,
+          `${memberNickname}님의 공간에 댓글이 달렸습니다`,
+        );
+      }
     } catch (e) {
       console.error(e);
     }
@@ -847,6 +865,7 @@ function PhotoSection({
           photo={viewer}
           loginNick={loginNick}
           isOwner={isOwner}
+          memberNickname={memberNickname}
           onClose={() => setViewer(null)}
         />
       )}
@@ -859,12 +878,14 @@ function MemberPhotoViewer({
   photo,
   loginNick,
   isOwner,
+  memberNickname,
   onClose,
 }: {
   memberId: string;
   photo: PhotoEntry;
   loginNick: string | null;
   isOwner: boolean;
+  memberNickname: string | null;
   onClose: () => void;
 }) {
   const [editMode, setEditMode] = useState(false);
@@ -989,6 +1010,7 @@ function MemberPhotoViewer({
           memberId={memberId}
           photoId={photo.id}
           loginNick={loginNick}
+          memberNickname={memberNickname}
         />
       </div>
     </div>
@@ -999,10 +1021,12 @@ function PhotoCommentsSection({
   memberId,
   photoId,
   loginNick,
+  memberNickname,
 }: {
   memberId: string;
   photoId: string;
   loginNick: string | null;
+  memberNickname: string | null;
 }) {
   const [comments, setComments] = useState<PhotoComment[]>([]);
   const [content, setContent] = useState("");
@@ -1046,6 +1070,13 @@ function PhotoCommentsSection({
         },
       );
       setContent("");
+      if (memberNickname) {
+        await logActivity(
+          "minihome_photo_comment",
+          loginNick,
+          `${memberNickname}님의 공간에 댓글이 달렸습니다`,
+        );
+      }
     } catch (e) {
       console.error(e);
     }
@@ -1066,6 +1097,7 @@ function PhotoCommentsSection({
               photoId={photoId}
               comment={c}
               loginNick={loginNick}
+              memberNickname={memberNickname}
               replyOpen={openReplyId === c.id}
               onToggleReply={() =>
                 setOpenReplyId((cur) => (cur === c.id ? null : c.id))
@@ -1108,6 +1140,7 @@ function PhotoCommentItem({
   photoId,
   comment,
   loginNick,
+  memberNickname,
   replyOpen,
   onToggleReply,
   onCloseReply,
@@ -1117,6 +1150,7 @@ function PhotoCommentItem({
   photoId: string;
   comment: PhotoComment;
   loginNick: string | null;
+  memberNickname: string | null;
   replyOpen: boolean;
   onToggleReply: () => void;
   onCloseReply: () => void;
@@ -1172,6 +1206,13 @@ function PhotoCommentItem({
       );
       setMsg("");
       onCloseReply();
+      if (memberNickname) {
+        await logActivity(
+          "minihome_photo_comment",
+          loginNick,
+          `${memberNickname}님의 공간에 댓글이 달렸습니다`,
+        );
+      }
     } catch (e) {
       console.error(e);
     }

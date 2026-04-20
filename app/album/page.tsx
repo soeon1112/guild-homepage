@@ -798,6 +798,11 @@ function AlbumCommentsSection({
         createdAt: serverTimestamp(),
       });
       setContent("");
+      await logActivity(
+        "album_comment",
+        loginNick,
+        "앨범에 새 댓글이 달렸습니다",
+      );
     } catch (e) {
       console.error(e);
     }
@@ -903,6 +908,11 @@ function AlbumCommentItem({
       );
       setMsg("");
       onCloseReply();
+      await logActivity(
+        "album_comment",
+        loginNick,
+        "앨범에 새 댓글이 달렸습니다",
+      );
     } catch (e) {
       console.error(e);
     }

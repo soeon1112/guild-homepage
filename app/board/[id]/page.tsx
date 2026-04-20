@@ -16,6 +16,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
 import { useAuth } from "@/app/components/AuthProvider";
+import { logActivity } from "@/src/lib/activity";
 
 interface PostData {
   title: string;
@@ -131,6 +132,11 @@ export default function BoardDetailPage({
         createdAt: serverTimestamp(),
       });
       setCommentContent("");
+      await logActivity(
+        "board_comment",
+        loginNick,
+        "정보 게시판에 새 댓글이 달렸습니다",
+      );
     } catch {
       alert("댓글 등록에 실패했습니다.");
     }
@@ -300,6 +306,11 @@ function BoardCommentItem({
       );
       setMsg("");
       onCloseReply();
+      await logActivity(
+        "board_comment",
+        loginNick,
+        "정보 게시판에 새 댓글이 달렸습니다",
+      );
     } catch {
       alert("대댓글 등록에 실패했습니다.");
     }
