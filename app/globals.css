@@ -2489,6 +2489,276 @@ body {
   justify-content: center;
 }
 
+/* ── Guild chat ── */
+.guild-chat-toggle {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #daa520;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 80;
+  transition: background 0.15s, transform 0.15s;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+.guild-chat-toggle:hover {
+  background: rgba(0, 0, 0, 0.85);
+  transform: scale(1.05);
+}
+
+.guild-chat-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  background: #e43b3b;
+  color: #ffffff;
+  border-radius: 10px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(0, 0, 0, 0.7);
+  box-shadow: 0 0 6px rgba(228, 59, 59, 0.7);
+  line-height: 1;
+  pointer-events: none;
+}
+
+.guild-chat-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  flex-direction: column;
+  color: #ffffff;
+}
+
+@media (min-width: 640px) {
+  .guild-chat-panel {
+    inset: auto;
+    right: 1rem;
+    bottom: 1rem;
+    width: 360px;
+    height: 500px;
+    max-height: calc(100vh - 2rem);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  }
+}
+
+.guild-chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.guild-chat-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #4a90d9;
+  text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;
+  font-family: 'Noto Serif KR', serif;
+}
+
+.guild-chat-close {
+  background: transparent;
+  border: 0;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 1.5rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 0.3rem;
+}
+
+.guild-chat-close:hover {
+  color: #ffffff;
+}
+
+.guild-chat-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.guild-chat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 85%;
+}
+
+.guild-chat-item-mine {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.guild-chat-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin-bottom: 0.15rem;
+  padding: 0 0.2rem;
+}
+
+.guild-chat-nick {
+  color: #4a90d9;
+  font-size: 0.8rem;
+}
+
+.guild-chat-time {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.7rem;
+}
+
+.guild-chat-bubble {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  padding: 0.5rem 0.7rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  word-break: break-word;
+  white-space: pre-wrap;
+  line-height: 1.35;
+}
+
+.guild-chat-item-mine .guild-chat-bubble {
+  background: rgba(74, 144, 217, 0.3);
+}
+
+.guild-chat-empty {
+  padding: 0.9rem 1rem;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.85rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.guild-chat-compose {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.guild-chat-form {
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.6rem 0.7rem;
+}
+
+.guild-chat-media-video {
+  margin-top: 0.35rem;
+  max-width: 240px;
+  max-height: 240px;
+  border-radius: 8px;
+  display: block;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.guild-chat-pending {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.7rem 0;
+}
+
+.guild-chat-pending-preview {
+  width: 42px;
+  height: 42px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: rgba(0, 0, 0, 0.3);
+  flex: 0 0 auto;
+}
+
+.guild-chat-pending-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.8);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.guild-chat-pending-remove {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.8);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.guild-chat-pending-remove:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.guild-chat-input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+  color: #ffffff;
+  font-size: 0.9rem;
+  outline: none;
+  font-family: inherit;
+  min-width: 0;
+}
+
+.guild-chat-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.guild-chat-input:focus {
+  border-color: rgba(218, 165, 32, 0.6);
+}
+
+.guild-chat-send {
+  background: transparent;
+  border: 1px solid #daa520;
+  color: #daa520;
+  border-radius: 8px;
+  padding: 0.5rem 0.9rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.guild-chat-send:hover:not(:disabled) {
+  background: rgba(218, 165, 32, 0.15);
+}
+
+.guild-chat-send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* ── Nickname link popup ── */
 .nickname-link-wrap {
   position: relative;
