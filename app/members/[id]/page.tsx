@@ -37,6 +37,7 @@ type MemberDoc = {
   nickname: string;
   statusMessage: string;
   profileImage: string;
+  bgmUrl?: string;
 };
 
 type GuestbookEntry = {
@@ -108,6 +109,131 @@ function formatTime(ts: Timestamp | null): string {
   return `${M}/${D} ${hh}:${mm}`;
 }
 
+function extractYouTubeId(url: string): string | null {
+  if (!url) return null;
+  const m = url.match(
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/|youtube\.com\/v\/|youtube\.com\/live\/)([A-Za-z0-9_-]{11})/,
+  );
+  return m ? m[1] : null;
+}
+
+type YTPlayer = {
+  playVideo: () => void;
+  pauseVideo: () => void;
+  destroy: () => void;
+};
+
+type YTPlayerConstructor = new (
+  element: HTMLElement,
+  options: {
+    videoId: string;
+    playerVars?: Record<string, number>;
+    events?: {
+      onReady?: () => void;
+      onStateChange?: (e: { data: number }) => void;
+    };
+  },
+) => YTPlayer;
+
+declare global {
+  interface Window {
+    YT?: { Player: YTPlayerConstructor };
+    onYouTubeIframeAPIReady?: (() => void) | null;
+  }
+}
+
+let ytApiPromise: Promise<void> | null = null;
+
+function loadYouTubeApi(): Promise<void> {
+  if (typeof window === "undefined") return Promise.resolve();
+  if (window.YT?.Player) return Promise.resolve();
+  if (ytApiPromise) return ytApiPromise;
+  ytApiPromise = new Promise((resolve) => {
+    const prev = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => {
+      prev?.();
+      resolve();
+    };
+    const tag = document.createElement("script");
+    tag.src = "https://www.youtube.com/iframe_api";
+    document.head.appendChild(tag);
+  });
+  return ytApiPromise;
+}
+
+function BgmPlayer({ bgmUrl }: { bgmUrl: string }) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const playerRef = useRef<YTPlayer | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const [ready, setReady] = useState(false);
+  const videoId = extractYouTubeId(bgmUrl);
+
+  useEffect(() => {
+    if (!videoId || !hostRef.current) return;
+    let cancelled = false;
+    const host = hostRef.current;
+    const target = document.createElement("div");
+    host.appendChild(target);
+
+    loadYouTubeApi().then(() => {
+      if (cancelled || !window.YT) return;
+      try {
+        playerRef.current = new window.YT.Player(target, {
+          videoId,
+          playerVars: { autoplay: 0, controls: 0, playsinline: 1 },
+          events: {
+            onReady: () => {
+              if (!cancelled) setReady(true);
+            },
+            onStateChange: (e) => {
+              if (cancelled) return;
+              if (e.data === 1) setPlaying(true);
+              else if (e.data === 2 || e.data === 0) setPlaying(false);
+            },
+          },
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      try {
+        playerRef.current?.destroy();
+      } catch {}
+      playerRef.current = null;
+      setPlaying(false);
+      setReady(false);
+      host.innerHTML = "";
+    };
+  }, [videoId]);
+
+  if (!videoId) return null;
+
+  const toggle = () => {
+    if (!ready || !playerRef.current) return;
+    if (playing) playerRef.current.pauseVideo();
+    else playerRef.current.playVideo();
+  };
+
+  return (
+    <div className="minihome-bgm">
+      <button
+        type="button"
+        className="minihome-bgm-btn"
+        onClick={toggle}
+        disabled={!ready}
+        aria-label={playing ? "배경음악 일시정지" : "배경음악 재생"}
+      >
+        {playing ? "⏸" : "♪"}
+      </button>
+      {playing && <span className="minihome-bgm-status">♪ 재생 중</span>}
+      <div ref={hostRef} className="minihome-bgm-frame" aria-hidden="true" />
+    </div>
+  );
+}
+
 export default function MemberMiniHomePage({
   params,
 }: {
@@ -136,6 +262,7 @@ export default function MemberMiniHomePage({
   return (
     <div className="minihome">
       <BackLink href="/members" className="back-link">← 돌아가기</BackLink>
+      {member?.bgmUrl && <BgmPlayer bgmUrl={member.bgmUrl} />}
       {loading ? (
         <p className="minihome-hint">로딩 중...</p>
       ) : (
@@ -179,6 +306,7 @@ function ProfileSection({
   const [editMode, setEditMode] = useState(false);
   const [editNick, setEditNick] = useState(member?.nickname ?? "");
   const [editStatus, setEditStatus] = useState(member?.statusMessage ?? "");
+  const [editBgmUrl, setEditBgmUrl] = useState(member?.bgmUrl ?? "");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [claiming, setClaiming] = useState(false);
@@ -186,6 +314,7 @@ function ProfileSection({
   const startEdit = () => {
     setEditNick(member?.nickname ?? loginNick ?? "");
     setEditStatus(member?.statusMessage ?? "");
+    setEditBgmUrl(member?.bgmUrl ?? "");
     setEditMode(true);
   };
 
@@ -215,8 +344,9 @@ function ProfileSection({
     setSaving(true);
     try {
       const newStatus = editStatus.trim();
+      const newBgmUrl = editBgmUrl.trim();
       const statusChanged = newStatus !== member.statusMessage;
-      const updates = { statusMessage: newStatus };
+      const updates = { statusMessage: newStatus, bgmUrl: newBgmUrl };
       await updateDoc(doc(db, "members", id), updates);
       onChange({ ...member, ...updates });
       if (statusChanged) {
@@ -231,6 +361,20 @@ function ProfileSection({
     } catch (e) {
       console.error(e);
       alert("저장 실패");
+    }
+    setSaving(false);
+  };
+
+  const handleBgmDelete = async () => {
+    if (!member) return;
+    setSaving(true);
+    try {
+      await updateDoc(doc(db, "members", id), { bgmUrl: "" });
+      onChange({ ...member, bgmUrl: "" });
+      setEditBgmUrl("");
+    } catch (e) {
+      console.error(e);
+      alert("삭제 실패");
     }
     setSaving(false);
   };
@@ -327,6 +471,23 @@ function ProfileSection({
                 placeholder="한마디"
                 maxLength={60}
               />
+              <div className="minihome-bgm-edit">
+                <input
+                  className="minihome-input"
+                  value={editBgmUrl}
+                  onChange={(e) => setEditBgmUrl(e.target.value)}
+                  placeholder="배경음악 유튜브 링크 (선택)"
+                  maxLength={200}
+                />
+                <button
+                  type="button"
+                  className="minihome-btn minihome-btn-small minihome-btn-cancel"
+                  onClick={handleBgmDelete}
+                  disabled={saving || uploading || !member?.bgmUrl}
+                >
+                  삭제
+                </button>
+              </div>
             </>
           ) : (
             <>
