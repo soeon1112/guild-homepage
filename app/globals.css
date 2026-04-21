@@ -367,6 +367,40 @@ select {
   white-space: nowrap;
 }
 
+.feed-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.75rem;
+}
+
+.feed-page-btn {
+  background: rgba(74, 144, 217, 0.15);
+  border: 1px solid rgba(74, 144, 217, 0.4);
+  border-radius: 8px;
+  color: #4a90d9;
+  padding: 0.35rem 1rem;
+  font-size: 0.825rem;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.feed-page-btn:hover:not(:disabled) {
+  background: rgba(74, 144, 217, 0.3);
+  border-color: #4a90d9;
+}
+
+.feed-page-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.feed-page-info {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.8rem;
+}
+
 /* ── Guestbook ── */
 .guestbook {
   margin-bottom: 2.5rem;

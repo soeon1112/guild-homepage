@@ -6,7 +6,6 @@ import {
   collection,
   query,
   orderBy,
-  limit,
   onSnapshot,
   Timestamp,
 } from "firebase/firestore";
@@ -43,14 +42,16 @@ function renderMessage(it: ActivityItem) {
   return <span>{it.message}</span>;
 }
 
+const PAGE_SIZE = 20;
+
 export default function ActivityFeed() {
   const [items, setItems] = useState<ActivityItem[]>([]);
+  const [page, setPage] = useState(0);
 
   useEffect(() => {
     const q = query(
       collection(db, "activity"),
       orderBy("createdAt", "desc"),
-      limit(20),
     );
     const unsub = onSnapshot(q, (snap) => {
       setItems(
@@ -60,29 +61,58 @@ export default function ActivityFeed() {
     return () => unsub();
   }, []);
 
+  const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+  useEffect(() => {
+    if (page > totalPages - 1) setPage(totalPages - 1);
+  }, [page, totalPages]);
+  const pagedItems = items.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
   return (
     <section className="feed">
       <h2 className="feed-title">최신 현황</h2>
       {items.length === 0 ? (
         <p className="feed-empty">아직 활동이 없습니다.</p>
       ) : (
-        <ul className="feed-list">
-          {items.map((it) => (
-            <li key={it.id} className="feed-item">
-              {it.link ? (
-                <Link href={it.link} className="feed-link">
-                  <span className="feed-text">{renderMessage(it)}</span>
-                  <span className="feed-time">{formatTime(it.createdAt)}</span>
-                </Link>
-              ) : (
-                <>
-                  <span className="feed-text">{renderMessage(it)}</span>
-                  <span className="feed-time">{formatTime(it.createdAt)}</span>
-                </>
-              )}
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="feed-list">
+            {pagedItems.map((it) => (
+              <li key={it.id} className="feed-item">
+                {it.link ? (
+                  <Link href={it.link} className="feed-link">
+                    <span className="feed-text">{renderMessage(it)}</span>
+                    <span className="feed-time">{formatTime(it.createdAt)}</span>
+                  </Link>
+                ) : (
+                  <>
+                    <span className="feed-text">{renderMessage(it)}</span>
+                    <span className="feed-time">{formatTime(it.createdAt)}</span>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+          {totalPages > 1 && (
+            <div className="feed-pagination">
+              <button
+                className="feed-page-btn"
+                onClick={() => setPage((p) => p - 1)}
+                disabled={page === 0}
+              >
+                이전
+              </button>
+              <span className="feed-page-info">
+                {page + 1} / {totalPages}
+              </span>
+              <button
+                className="feed-page-btn"
+                onClick={() => setPage((p) => p + 1)}
+                disabled={page >= totalPages - 1}
+              >
+                다음
+              </button>
+            </div>
+          )}
+        </>
       )}
     </section>
   );
