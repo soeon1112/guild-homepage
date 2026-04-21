@@ -67,7 +67,6 @@ export default function GuildChat() {
   );
   const listRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const messageInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     const q = query(
@@ -174,9 +173,6 @@ export default function GuildChat() {
       alert("메시지 전송에 실패했습니다.");
     }
     setSending(false);
-    requestAnimationFrame(() => {
-      messageInputRef.current?.focus();
-    });
   };
 
   return (
@@ -310,7 +306,6 @@ export default function GuildChat() {
                   <Camera size={18} />
                 </button>
                 <input
-                  ref={messageInputRef}
                   className="guild-chat-input"
                   placeholder="메시지를 입력하세요"
                   value={draft}
