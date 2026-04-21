@@ -492,10 +492,7 @@ export default function GrowthAnalysis({ characters, owner, ready }: Props) {
             <li className="growth-stat">
               <span className="growth-stat-label">평균 투력</span>
               <span className="growth-stat-value">
-                {guildStats.avgCp.toLocaleString(undefined, {
-                  minimumFractionDigits: 1,
-                  maximumFractionDigits: 1,
-                })}
+                {Math.round(guildStats.avgCp).toLocaleString()}
               </span>
             </li>
             <li className="growth-stat">
