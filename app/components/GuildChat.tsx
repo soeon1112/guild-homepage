@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { Camera, MessageCircle } from "lucide-react";
 import {
   addDoc,
@@ -45,6 +45,46 @@ function detectFileType(file: File): ChatFileType {
 
 const LAST_READ_KEY = "chat:lastRead";
 
+type MessageItemProps = {
+  m: ChatMessage;
+  mine: boolean;
+};
+
+const MessageItem = memo(
+  function MessageItem({ m, mine }: MessageItemProps) {
+    return (
+      <div
+        className={"guild-chat-item" + (mine ? " guild-chat-item-mine" : "")}
+      >
+        <div className="guild-chat-meta">
+          <NicknameLink nickname={m.nickname} className="guild-chat-nick" />
+          <span className="guild-chat-time">{formatTime(m.createdAt)}</span>
+        </div>
+        {m.message && <div className="guild-chat-bubble">{m.message}</div>}
+        {m.imageUrl &&
+          (m.fileType === "video" ? (
+            <video
+              src={m.imageUrl}
+              controls
+              playsInline
+              className="guild-chat-media-video"
+            />
+          ) : (
+            <CommentImageView url={m.imageUrl} />
+          ))}
+      </div>
+    );
+  },
+  (prev, next) =>
+    prev.mine === next.mine &&
+    prev.m.id === next.m.id &&
+    prev.m.message === next.m.message &&
+    prev.m.imageUrl === next.m.imageUrl &&
+    prev.m.fileType === next.m.fileType &&
+    prev.m.nickname === next.m.nickname &&
+    prev.m.createdAt?.toMillis() === next.m.createdAt?.toMillis(),
+);
+
 export default function GuildChat() {
   const { nickname, ready } = useAuth();
   const [open, setOpen] = useState(false);
@@ -67,6 +107,8 @@ export default function GuildChat() {
   );
   const listRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const messageInputRef = useRef<HTMLInputElement | null>(null);
+  const prevMessageCountRef = useRef(0);
 
   useEffect(() => {
     const q = query(
@@ -109,10 +151,25 @@ export default function GuildChat() {
     });
 
   useEffect(() => {
+    if (!open) {
+      prevMessageCountRef.current = messages.length;
+      return;
+    }
+    const el = listRef.current;
+    if (!el) return;
+    const grew = messages.length > prevMessageCountRef.current;
+    prevMessageCountRef.current = messages.length;
+    if (grew) el.scrollTop = el.scrollHeight;
+  }, [messages, open]);
+
+  useEffect(() => {
     if (!open) return;
     const el = listRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [messages, open]);
+    requestAnimationFrame(() => {
+      messageInputRef.current?.focus();
+    });
+  }, [open]);
 
   useEffect(() => {
     if (!filePreview) return;
@@ -139,18 +196,25 @@ export default function GuildChat() {
 
   const handleSend = async () => {
     if (!nickname) return;
+    if (sending) return;
     const text = draft.trim();
-    if (!text && !file) return;
+    const pendingFile = file;
+    if (!text && !pendingFile) return;
+
+    setDraft("");
+    setFile(null);
     setSending(true);
+    messageInputRef.current?.focus();
+
     try {
       let imageUrl = "";
       let fileType: ChatFileType | undefined;
-      if (file) {
-        fileType = detectFileType(file);
-        const safeName = file.name.replace(/[^\w.\-]/g, "_");
+      if (pendingFile) {
+        fileType = detectFileType(pendingFile);
+        const safeName = pendingFile.name.replace(/[^\w.\-]/g, "_");
         const path = `chat/${Date.now()}_${safeName}`;
         const r = ref(storage, path);
-        await uploadBytes(r, file);
+        await uploadBytes(r, pendingFile);
         imageUrl = await getDownloadURL(r);
       }
       await addDoc(collection(db, "chat"), {
@@ -160,8 +224,6 @@ export default function GuildChat() {
         fileType: fileType ?? "",
         createdAt: serverTimestamp(),
       });
-      setDraft("");
-      setFile(null);
       handleEvent({
         type: "chat",
         nickname,
@@ -171,8 +233,11 @@ export default function GuildChat() {
     } catch (e) {
       console.error(e);
       alert("메시지 전송에 실패했습니다.");
+      setDraft(text);
+      setFile(pendingFile);
     }
     setSending(false);
+    messageInputRef.current?.focus();
   };
 
   return (
@@ -211,42 +276,13 @@ export default function GuildChat() {
             </button>
           </div>
           <div className="guild-chat-list" ref={listRef}>
-            {messages.map((m) => {
-              const mine = !!nickname && m.nickname === nickname;
-              return (
-                <div
-                  key={m.id}
-                  className={
-                    "guild-chat-item" +
-                    (mine ? " guild-chat-item-mine" : "")
-                  }
-                >
-                  <div className="guild-chat-meta">
-                    <NicknameLink
-                      nickname={m.nickname}
-                      className="guild-chat-nick"
-                    />
-                    <span className="guild-chat-time">
-                      {formatTime(m.createdAt)}
-                    </span>
-                  </div>
-                  {m.message && (
-                    <div className="guild-chat-bubble">{m.message}</div>
-                  )}
-                  {m.imageUrl &&
-                    (m.fileType === "video" ? (
-                      <video
-                        src={m.imageUrl}
-                        controls
-                        playsInline
-                        className="guild-chat-media-video"
-                      />
-                    ) : (
-                      <CommentImageView url={m.imageUrl} />
-                    ))}
-                </div>
-              );
-            })}
+            {messages.map((m) => (
+              <MessageItem
+                key={m.id}
+                m={m}
+                mine={!!nickname && m.nickname === nickname}
+              />
+            ))}
           </div>
           {!ready ? (
             <div className="guild-chat-empty">불러오는 중...</div>
@@ -306,6 +342,7 @@ export default function GuildChat() {
                   <Camera size={18} />
                 </button>
                 <input
+                  ref={messageInputRef}
                   className="guild-chat-input"
                   placeholder="메시지를 입력하세요"
                   value={draft}
@@ -313,7 +350,6 @@ export default function GuildChat() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.nativeEvent.isComposing) handleSend();
                   }}
-                  disabled={sending}
                 />
                 <button
                   type="button"
