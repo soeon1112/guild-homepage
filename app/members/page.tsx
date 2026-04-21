@@ -4,7 +4,7 @@ import BackLink from "@/app/components/BackLink";
 
 const memberIds: (number | string)[] = [
   "a", 1, "1-2",
-  2, 3, 4, 5, 6, 7, 8, 9,
+  2, 3, 4, 6, 7, 8, 9,
   12, 13, 14, "14-1", 15, 16, 17, "17-1", 18, 19, 20, 21, 22,
 ];
 

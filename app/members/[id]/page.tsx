@@ -33,7 +33,7 @@ import BadgeCollection from "@/app/components/BadgeCollection";
 import { handleEvent } from "@/src/lib/badgeCheck";
 
 const detailIds = new Set([
-  "a", "1", "1-2", "2", "3", "4", "5", "6", "7", "8", "9",
+  "a", "1", "1-2", "2", "3", "4", "6", "7", "8", "9",
   "12", "13", "14", "14-1", "15", "16", "17", "17-1", "18", "19", "20", "21", "22",
 ]);
 
