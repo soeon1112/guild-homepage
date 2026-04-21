@@ -108,7 +108,6 @@ export default function GuildChat() {
   const listRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const messageInputRef = useRef<HTMLInputElement | null>(null);
-  const prevMessageCountRef = useRef(0);
 
   useEffect(() => {
     const q = query(
@@ -151,15 +150,18 @@ export default function GuildChat() {
     });
 
   useEffect(() => {
-    if (!open) {
-      prevMessageCountRef.current = messages.length;
-      return;
-    }
-    const el = listRef.current;
-    if (!el) return;
-    const grew = messages.length > prevMessageCountRef.current;
-    prevMessageCountRef.current = messages.length;
-    if (grew) el.scrollTop = el.scrollHeight;
+    if (!open) return;
+    const scrollToBottom = () => {
+      const el = listRef.current;
+      if (el) el.scrollTop = el.scrollHeight;
+    };
+    scrollToBottom();
+    const raf = requestAnimationFrame(scrollToBottom);
+    const t = window.setTimeout(scrollToBottom, 120);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearTimeout(t);
+    };
   }, [messages, open]);
 
   useEffect(() => {
