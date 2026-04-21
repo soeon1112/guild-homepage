@@ -628,7 +628,7 @@ export default function CombatPage() {
                       onClick={() => toggleExpand(c.id)}
                     >
                       <td className="col-owner">
-                        <NicknameLink nickname={c.owner} />
+                        <NicknameLink nickname={c.owner} hideTitle />
                       </td>
                       <td className="col-nickname">{c.nickname}</td>
                       <td className="col-job">{c.job}</td>

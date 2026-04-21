@@ -12,10 +12,12 @@ export default function NicknameLink({
   nickname,
   className,
   prefix,
+  hideTitle,
 }: {
   nickname: string;
   className?: string;
   prefix?: string;
+  hideTitle?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [lookup, setLookup] = useState<Lookup>("idle");
@@ -95,7 +97,7 @@ export default function NicknameLink({
         }}
       >
         {prefix}
-        <TitlePrefix nickname={nickname} />
+        {!hideTitle && <TitlePrefix nickname={nickname} />}
         {nickname}
       </span>
       {open && (
