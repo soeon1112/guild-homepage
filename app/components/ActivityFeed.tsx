@@ -43,10 +43,16 @@ function renderMessage(it: ActivityItem) {
 }
 
 const PAGE_SIZE = 20;
+const PAGE_STORAGE_KEY = "activityPage";
 
 export default function ActivityFeed() {
   const [items, setItems] = useState<ActivityItem[]>([]);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(() => {
+    if (typeof window === "undefined") return 0;
+    const saved = window.sessionStorage.getItem(PAGE_STORAGE_KEY);
+    const n = saved === null ? NaN : parseInt(saved, 10);
+    return Number.isFinite(n) && n >= 0 ? n : 0;
+  });
 
   useEffect(() => {
     const q = query(
@@ -65,6 +71,9 @@ export default function ActivityFeed() {
   useEffect(() => {
     if (page > totalPages - 1) setPage(totalPages - 1);
   }, [page, totalPages]);
+  useEffect(() => {
+    window.sessionStorage.setItem(PAGE_STORAGE_KEY, String(page));
+  }, [page]);
   const pagedItems = items.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   return (
