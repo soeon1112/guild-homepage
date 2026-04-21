@@ -47,6 +47,7 @@ const PAGE_STORAGE_KEY = "activityPage";
 
 export default function ActivityFeed() {
   const [items, setItems] = useState<ActivityItem[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [page, setPage] = useState(() => {
     if (typeof window === "undefined") return 0;
     const saved = window.sessionStorage.getItem(PAGE_STORAGE_KEY);
@@ -63,17 +64,20 @@ export default function ActivityFeed() {
       setItems(
         snap.docs.map((d) => ({ id: d.id, ...d.data() })) as ActivityItem[],
       );
+      setLoaded(true);
     });
     return () => unsub();
   }, []);
 
   const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
   useEffect(() => {
+    if (!loaded) return;
     if (page > totalPages - 1) setPage(totalPages - 1);
-  }, [page, totalPages]);
+  }, [loaded, page, totalPages]);
   useEffect(() => {
+    if (!loaded) return;
     window.sessionStorage.setItem(PAGE_STORAGE_KEY, String(page));
-  }, [page]);
+  }, [loaded, page]);
   const pagedItems = items.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   return (
