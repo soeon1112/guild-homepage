@@ -9,7 +9,7 @@ const menuItems: { href: string; icon: string; label: string }[] = [
   { href: "/notice", icon: "/images/guild-rules.png", label: "공지 게시판" },
   { href: "/schedule", icon: "/images/schedule.png", label: "일정" },
   { href: "/members", icon: "/images/members.png", label: "길드원" },
-  { href: "/stats", icon: "/images/combat-status.png", label: "투력 및 지옥 현황" },
+  { href: "/combat", icon: "/images/combat-status.png", label: "투력 및 지옥 현황" },
   { href: "/album", icon: "/images/album.png", label: "앨범" },
   { href: "/board", icon: "/images/guild-memories.png", label: "길드 추억" },
 ];

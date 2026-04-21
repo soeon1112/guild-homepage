@@ -567,8 +567,8 @@ select {
   font-size: 0.8rem;
 }
 
-/* ── Stats page ── */
-.stats-content {
+/* ── Combat page ── */
+.combat-content {
   position: relative;
   z-index: 10;
   max-width: 640px;
@@ -576,75 +576,605 @@ select {
   padding: 2rem 1rem;
 }
 
-.stats-title {
+.combat-title {
   font-size: 1.25rem;
   font-weight: 400;
   color: #b388ff;
   text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;
   font-family: 'Noto Serif KR', serif;
   text-align: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
 }
 
-.stats-loading {
+.combat-subtitle {
+  font-size: 1rem;
+  color: #ffffff;
+  margin: 0 0 0.75rem 0;
+  font-weight: 600;
+}
+
+.combat-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
+.combat-loading {
   text-align: center;
   color: rgba(255, 255, 255, 0.5);
   padding: 3rem 0;
 }
 
-.stats-table-wrap {
+.combat-section {
+  margin-bottom: 1.25rem;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+}
+
+.combat-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.combat-section-head .combat-subtitle {
+  margin: 0;
+}
+
+.combat-login-hint {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.9rem;
+  margin: 0.5rem 0;
+  text-align: center;
+  padding: 0.75rem 0;
+}
+
+.combat-my-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.combat-my-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.combat-my-item:first-child {
+  border-top: none;
+}
+
+.combat-my-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.combat-my-nick {
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.combat-my-meta {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.8rem;
+}
+
+.combat-my-buttons {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.combat-my-runes {
+  list-style: none;
+  padding: 0.4rem 0.6rem;
+  margin: 0.2rem 0 0 0;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.combat-my-rune {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  color: #ffffff;
+}
+
+.combat-form-wrap {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 1rem;
+  margin-top: 0.75rem;
+}
+
+/* ── Growth analysis ── */
+.growth {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.growth-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.growth-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 720px) {
+  .growth-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.growth-card {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 0.85rem 0.9rem;
+  min-width: 0;
+}
+
+.growth-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+
+.growth-card-title {
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.growth-range-toggle {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.growth-range-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.7);
+  border-radius: 6px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.growth-range-btn:hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.growth-range-btn.active {
+  background: rgba(212, 175, 55, 0.15);
+  border-color: #d4af37;
+  color: #d4af37;
+}
+
+.growth-chart-body {
+  width: 100%;
+}
+
+.growth-empty {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 2.5rem 0.5rem;
+  margin: 0;
+}
+
+.growth-metrics-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.growth-metric {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: #ffffff;
+  font-size: 0.9rem;
+  padding: 0.35rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.growth-metric:first-child {
+  border-top: none;
+}
+
+.growth-metric-label {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.growth-metric-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #d4af37;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.growth-metric-empty {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.8rem;
+}
+
+.growth-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  line-height: 1;
+}
+
+.growth-arrow-up {
+  color: #5bd27a;
+}
+
+.growth-arrow-down {
+  color: #ff8a8a;
+}
+
+.growth-arrow-flat {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.growth-top-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.growth-top-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #ffffff;
+  font-size: 0.85rem;
+  padding: 0.3rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.growth-top-item:first-child {
+  border-top: none;
+}
+
+.growth-top-rank {
+  color: rgba(255, 255, 255, 0.6);
+  width: 1.2rem;
+  flex-shrink: 0;
+}
+
+.growth-top-nick {
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.growth-top-job {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.8rem;
+}
+
+.growth-top-delta {
+  color: #d4af37;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.growth-stats-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.growth-stat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: #ffffff;
+  font-size: 0.9rem;
+  padding: 0.3rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.growth-stat:first-child {
+  border-top: none;
+}
+
+.growth-stat-label {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.growth-stat-value {
+  color: #d4af37;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.combat-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.combat-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.combat-label-text {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.8rem;
+}
+
+.combat-error {
+  color: #ff8a8a;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.combat-table-wrap {
   background: rgba(0, 0, 0, 0.5);
   border-radius: 12px;
   overflow: hidden;
 }
 
-.stats-table {
+.combat-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 12px;
   table-layout: auto;
 }
 
-.stats-table th,
-.stats-table td {
+.combat-table th,
+.combat-table td {
   padding: 6px 6px;
   color: #ffffff;
   white-space: nowrap;
   text-align: center;
 }
 
-.stats-table th {
+.combat-table th {
   background: rgba(255, 255, 255, 0.1);
   font-weight: 600;
   font-size: 12px;
 }
 
-.stats-table tbody tr {
+.combat-table tbody tr {
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.stats-table .col-nickname {
+.combat-table .col-owner,
+.combat-table .col-nickname {
   text-align: left;
-  min-width: 70px;
+  min-width: 60px;
   white-space: normal;
 }
 
-.stats-table .col-job,
-.stats-table .col-combat,
-.stats-table .col-hell,
-.stats-table .col-challenge {
+.combat-table .col-job,
+.combat-table .col-combat,
+.combat-table .col-dps,
+.combat-table .col-hell,
+.combat-table .col-challenge {
   width: 1%;
 }
 
+.combat-row {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.combat-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.combat-row-detail td {
+  background: rgba(0, 0, 0, 0.35);
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+  white-space: normal;
+}
+
+.combat-detail-empty {
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.combat-detail-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.combat-detail-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: #ffffff;
+}
+
+.combat-detail-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.combat-detail-lock {
+  color: rgba(255, 255, 255, 0.7);
+  flex-shrink: 0;
+}
+
+.combat-detail-dps {
+  color: #daa520;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Rune build form section */
+.combat-runes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+}
+
+.combat-runes-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.combat-runes-add {
+  padding: 0.25rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+.combat-runes-empty {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.combat-runes-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.combat-rune-item {
+  display: grid;
+  grid-template-columns: 1fr 90px auto auto;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.combat-rune-name,
+.combat-rune-dps {
+  padding: 0.5rem 0.65rem;
+  font-size: 0.9rem;
+}
+
+.combat-rune-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.combat-rune-toggle input {
+  accent-color: #daa520;
+}
+
+.combat-rune-remove {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0 0.3rem;
+  cursor: pointer;
+}
+
+.combat-rune-remove:hover {
+  color: #ff8a8a;
+}
+
+@media (max-width: 480px) {
+  .combat-rune-item {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "name remove"
+      "dps toggle";
+    gap: 0.4rem;
+  }
+  .combat-rune-name {
+    grid-area: name;
+  }
+  .combat-rune-dps {
+    grid-area: dps;
+  }
+  .combat-rune-toggle {
+    grid-area: toggle;
+    justify-self: end;
+  }
+  .combat-rune-remove {
+    grid-area: remove;
+    justify-self: end;
+  }
+}
+
 @media (min-width: 640px) {
-  .stats-content {
-    max-width: 720px;
+  .combat-content {
+    max-width: 760px;
     padding: 2rem 2rem;
   }
-  .stats-table {
+  .combat-table {
     font-size: 13px;
   }
-  .stats-table th {
+  .combat-table th {
     font-size: 13px;
   }
 }
