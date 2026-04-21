@@ -2,7 +2,7 @@
 
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
-import BackLink from "@/app/components/BackLink";
+import Link from "next/link";
 import { doc, getDoc, deleteDoc } from "firebase/firestore";
 import { ref, deleteObject } from "firebase/storage";
 import { db, storage } from "@/src/lib/firebase";
@@ -111,18 +111,18 @@ export default function NoticeDetailPage({
     return (
       <div className="board-content">
         <p className="board-loading">존재하지 않는 공지입니다.</p>
-        <BackLink href="/notice" className="board-btn" style={{ display: "inline-block", marginTop: "1rem" }}>
+        <Link href="/notice" className="board-btn" style={{ display: "inline-block", marginTop: "1rem" }}>
           목록으로
-        </BackLink>
+        </Link>
       </div>
     );
   }
 
   return (
     <div className="board-content">
-      <BackLink href="/notice" className="back-link">
+      <Link href="/notice" className="back-link">
         ← 목록으로
-      </BackLink>
+      </Link>
 
       <div className="board-detail">
         <h1 className="board-detail-title">{post.title}</h1>
@@ -180,9 +180,9 @@ export default function NoticeDetailPage({
           <button className="board-btn board-btn-cancel" onClick={handleDelete}>
             삭제
           </button>
-          <BackLink href="/notice" className="board-btn">
+          <Link href="/notice" className="board-btn">
             목록으로
-          </BackLink>
+          </Link>
         </div>
       </div>
     </div>
