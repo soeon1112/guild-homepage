@@ -79,18 +79,34 @@ const MOUTH_ITEMS: { id: string; src: string; price: number }[] = Array.from(
   },
 );
 
+const EYE_PRICE = 35;
 const EYE_GROUPS: {
   group: number;
   price: number;
   items: { id: string; src: string }[];
-}[] = [1, 2, 3, 4].map((group) => ({
-  group,
-  price: 35,
-  items: [1, 2, 3].map((v) => ({
-    id: `eye${group}_${v}`,
-    src: `/images/avatar/eyes/eye${group}_${v}.png`,
+}[] = [
+  ...[1, 2, 3, 4, 5, 6, 7].map((group) => ({
+    group,
+    price: EYE_PRICE,
+    items: [1, 2, 3].map((v) => ({
+      id: `eye${group}_${v}`,
+      src: `/images/avatar/eyes/eye${group}_${v}.png`,
+    })),
   })),
-}));
+  {
+    group: 8,
+    price: EYE_PRICE,
+    items: [{ id: "eye8", src: "/images/avatar/eyes/eye8.png" }],
+  },
+  {
+    group: 9,
+    price: EYE_PRICE,
+    items: [1, 2, 3].map((v) => ({
+      id: `eye9_${v}`,
+      src: `/images/avatar/eyes/eye9_${v}.png`,
+    })),
+  },
+];
 
 const CHEEK_PRICE = 20;
 const CHEEK_ITEMS: { id: string; src: string; price: number }[] = [
@@ -567,7 +583,8 @@ export default function ShopPage() {
                 {EYE_GROUPS.map((grp) => (
                   <section key={grp.group} className="shop-eye-group">
                     <h3 className="shop-eye-group-title">
-                      eye{grp.group} 그룹{" "}
+                      eye{grp.group}
+                      {grp.items.length > 1 ? " 그룹" : ""}{" "}
                       <span className="shop-eye-group-price">
                         {grp.price}p
                       </span>
