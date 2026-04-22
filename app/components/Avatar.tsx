@@ -32,7 +32,7 @@ const FEATURE_COORDS: Record<
   { eyes: Coord; mouth: Coord; cheeks: Coord }
 > = {
   adult_female: {
-    eyes: [223, 164, 55, 27],
+    eyes: [224, 164, 55, 27],
     mouth: [241, 197, 22, 13],
     cheeks: [225, 183, 52, 22],
   },
