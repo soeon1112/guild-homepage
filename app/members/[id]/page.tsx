@@ -13,6 +13,7 @@ import {
   deleteDoc,
   collection,
   addDoc,
+  increment,
   query,
   orderBy,
   onSnapshot,
@@ -30,6 +31,12 @@ import {
 import NicknameLink from "@/app/components/NicknameLink";
 import { formatSmart } from "@/src/lib/formatSmart";
 import BadgeCollection from "@/app/components/BadgeCollection";
+import Avatar, {
+  BODY_TYPES,
+  BodyType,
+  isBodyType,
+  useAvatarData,
+} from "@/app/components/Avatar";
 import { handleEvent } from "@/src/lib/badgeCheck";
 
 const detailIds = new Set([
@@ -350,15 +357,20 @@ function ProfileSection({
   const [editStatus, setEditStatus] = useState(member?.statusMessage ?? "");
   const [editBgmUrl, setEditBgmUrl] = useState(member?.bgmUrl ?? "");
   const [editMood, setEditMood] = useState(member?.mood ?? "");
+  const [editBody, setEditBody] = useState<BodyType | "">("");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [claiming, setClaiming] = useState(false);
+  const [showWardrobe, setShowWardrobe] = useState(false);
+
+  const avatarData = useAvatarData(member?.nickname ?? null);
 
   const startEdit = () => {
     setEditNick(member?.nickname ?? loginNick ?? "");
     setEditStatus(member?.statusMessage ?? "");
     setEditBgmUrl(member?.bgmUrl ?? "");
     setEditMood(member?.mood ?? "");
+    setEditBody(isBodyType(avatarData?.avatarBody) ? avatarData.avatarBody : "");
     setEditMode(true);
   };
 
@@ -390,6 +402,23 @@ function ProfileSection({
 
   const handleSave = async () => {
     if (!member) return;
+    const currentBody = isBodyType(avatarData?.avatarBody)
+      ? avatarData.avatarBody
+      : "";
+    const bodyChanged = editBody !== currentBody;
+    const bodyAlreadySelected = !!avatarData?.bodySelected;
+    const ownerPoints = avatarData?.points ?? 0;
+
+    if (bodyChanged && bodyAlreadySelected) {
+      if (ownerPoints < 100) {
+        alert("포인트가 부족합니다. (100p 필요)");
+        return;
+      }
+      if (!confirm("환생하시겠습니까? 100포인트가 차감됩니다.")) {
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       const newStatus = editStatus.trim();
@@ -407,6 +436,27 @@ function ProfileSection({
       };
       await updateDoc(doc(db, "members", id), updates);
       onChange({ ...member, ...updates });
+      if (bodyChanged) {
+        const patch: Record<string, unknown> = { avatarBody: editBody };
+        if (editBody !== "" && !bodyAlreadySelected) {
+          patch.bodySelected = true;
+        }
+        if (bodyAlreadySelected) {
+          patch.points = increment(-100);
+        }
+        await setDoc(doc(db, "users", member.nickname), patch, { merge: true });
+        if (bodyAlreadySelected) {
+          await addDoc(
+            collection(db, "users", member.nickname, "pointHistory"),
+            {
+              type: "아바타",
+              points: -100,
+              description: "체형 환생",
+              createdAt: serverTimestamp(),
+            },
+          );
+        }
+      }
       if (statusChanged) {
         await logActivity(
           "status",
@@ -607,6 +657,36 @@ function ProfileSection({
                   ))}
                 </div>
               </div>
+              <div className="minihome-body-edit">
+                <label
+                  htmlFor="avatar-body-select"
+                  className="minihome-body-edit-label"
+                >
+                  체형
+                </label>
+                <select
+                  id="avatar-body-select"
+                  className="minihome-body-select"
+                  value={editBody}
+                  onChange={(e) =>
+                    setEditBody(e.target.value as BodyType | "")
+                  }
+                >
+                  {!avatarData?.bodySelected && (
+                    <option value="">선택 안 함</option>
+                  )}
+                  {BODY_TYPES.map((b) => (
+                    <option key={b.value} value={b.value}>
+                      {b.label}
+                    </option>
+                  ))}
+                </select>
+                {avatarData?.bodySelected && (
+                  <span className="minihome-body-cost">
+                    변경 시 100p (현재 {avatarData?.points ?? 0}p)
+                  </span>
+                )}
+              </div>
             </>
           ) : (
             <>
@@ -651,6 +731,14 @@ function ProfileSection({
                 프로필 수정
               </button>
             )}
+            {isOwner && (
+              <button
+                className="minihome-btn"
+                onClick={() => setShowWardrobe((v) => !v)}
+              >
+                옷장
+              </button>
+            )}
             {hasDetail && (
               <Link className="minihome-btn" href={`/members/${id}/detail`}>
                 길드원 소개
@@ -658,6 +746,29 @@ function ProfileSection({
             )}
           </>
         )}
+      </div>
+
+      {isOwner && showWardrobe && (
+        <div className="wardrobe-panel">
+          <h3 className="wardrobe-panel-title">옷장</h3>
+          <p className="wardrobe-panel-empty">
+            아직 옷이 없습니다. 상점에서 구매해보세요!
+          </p>
+        </div>
+      )}
+
+      <div className="profile-avatar-slot">
+        {isBodyType(avatarData?.avatarBody) ? (
+          <Avatar data={avatarData} className="profile-avatar" />
+        ) : isOwner ? (
+          <button
+            type="button"
+            className="profile-avatar profile-avatar-empty"
+            onClick={startEdit}
+          >
+            체형을 선택해주세요
+          </button>
+        ) : null}
       </div>
     </section>
   );

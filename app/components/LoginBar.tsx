@@ -67,7 +67,7 @@ export default function LoginBar() {
           <AttendanceButton />
           <MySpaceLink />
           <Link href="/shop" className="loginbar-link-btn">
-            칭호 상점
+            상점
           </Link>
           <Link href="/mypage" className="loginbar-link-btn">
             MY

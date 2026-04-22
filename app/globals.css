@@ -1689,6 +1689,12 @@ select {
   gap: 0.5rem;
 }
 
+.profile-avatar-slot {
+  display: flex;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
 .profile-img-wrap {
   position: relative;
   width: 200px;
@@ -1800,6 +1806,133 @@ select {
 .minihome-mood-option-active {
   background: rgba(74, 144, 217, 0.3);
   border-color: #4a90d9;
+}
+
+/* ── Avatar ── */
+.avatar {
+  width: 350px;
+  display: block;
+  overflow: hidden;
+}
+
+@media (min-width: 768px) {
+  .avatar {
+    width: 500px;
+  }
+}
+
+.avatar-canvas {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 5 / 8;
+}
+
+.avatar-adult_male .avatar-canvas {
+  margin-top: 0;
+}
+
+.avatar-adult_female .avatar-canvas {
+  margin-top: -20%;
+}
+
+.avatar-child_male .avatar-canvas,
+.avatar-child_female .avatar-canvas {
+  margin-top: -70%;
+}
+
+.avatar-layer {
+  position: absolute;
+  pointer-events: none;
+  user-select: none;
+}
+
+.avatar-layer-full {
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.profile-avatar {
+  flex: 0 0 auto;
+}
+
+.profile-avatar-empty {
+  width: 350px;
+  aspect-ratio: 5 / 8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px dashed rgba(255, 255, 255, 0.3);
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 1rem;
+}
+
+.profile-avatar-empty:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #daa520;
+  color: #daa520;
+}
+
+@media (min-width: 768px) {
+  .profile-avatar-empty {
+    width: 500px;
+  }
+}
+
+.minihome-body-cost {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.75rem;
+  margin-left: 0.4rem;
+}
+
+.minihome-body-edit {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+
+.minihome-body-edit-label {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.8rem;
+}
+
+.minihome-body-select {
+  background: rgba(0, 0, 0, 0.4);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.85rem;
+}
+
+/* ── Avatar Shop ── */
+.avatar-shop-page {
+  min-height: 60vh;
+  padding: 2rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.avatar-shop-title {
+  color: #daa520;
+  font-family: 'Noto Serif KR', serif;
+  font-size: 1.5rem;
+  margin: 0;
+}
+
+.avatar-shop-hint {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 1rem;
+  text-align: center;
 }
 
 /* ── Adventure Log ── */
@@ -4700,6 +4833,118 @@ select {
   width: 100%;
   padding: 0.45rem 0.6rem;
   font-size: 0.82rem;
+}
+
+.shop-card-preview-wrap {
+  width: 100%;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 218, 185, 0.4);
+  border-radius: 8px;
+}
+
+.shop-eye-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.shop-eye-group-title {
+  color: #daa520;
+  font-family: 'Noto Serif KR', serif;
+  font-size: 1rem;
+  margin: 0 0 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.shop-eye-group-price {
+  color: #d4af37;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.shop-avatar-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+}
+
+.shop-avatar-warn {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.95rem;
+  text-align: center;
+  margin: 1rem 0;
+}
+
+.shop-avatar-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.shop-card-clickable {
+  cursor: pointer;
+  outline: none;
+}
+
+.shop-card-clickable:focus-visible {
+  border-color: #daa520;
+}
+
+.shop-card-previewed {
+  border-color: #daa520;
+  box-shadow: 0 0 0 1px #daa520 inset;
+}
+
+.shop-card-status {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.8);
+  min-height: 1em;
+}
+
+.shop-card-none {
+  color: rgba(0, 0, 0, 0.6);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.shop-card-preview {
+  max-width: 90%;
+  max-height: 80%;
+  object-fit: contain;
+}
+
+.wardrobe-panel {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.wardrobe-panel-title {
+  color: #daa520;
+  font-family: 'Noto Serif KR', serif;
+  font-size: 1rem;
+  margin: 0 0 0.5rem;
+}
+
+.wardrobe-panel-empty {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+  margin: 0;
 }
 
 .shop-card-equipped {

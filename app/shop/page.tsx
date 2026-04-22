@@ -1,9 +1,22 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { collection, doc, onSnapshot } from "firebase/firestore";
+import {
+  addDoc,
+  collection,
+  doc,
+  increment,
+  onSnapshot,
+  serverTimestamp,
+  setDoc,
+} from "firebase/firestore";
 import BackLink from "@/app/components/BackLink";
 import { useAuth } from "@/app/components/AuthProvider";
+import Avatar, {
+  AvatarData,
+  isBodyType,
+  useAvatarData,
+} from "@/app/components/Avatar";
 import { db } from "@/src/lib/firebase";
 import { logActivity } from "@/src/lib/activity";
 import {
@@ -26,15 +39,93 @@ type WordStatus = {
   purchasedMonth: string;
 };
 
+type AvatarSubTab = "eyes" | "cheeks" | "mouth" | "hair" | "fashion";
+type HairSubTab = "male" | "female";
+type FashionSubTab =
+  | "adult_male"
+  | "adult_female"
+  | "child_male"
+  | "child_female";
+
+const AVATAR_SUB_TABS: { value: AvatarSubTab; label: string }[] = [
+  { value: "eyes", label: "눈" },
+  { value: "cheeks", label: "볼터치" },
+  { value: "mouth", label: "입" },
+  { value: "hair", label: "헤어" },
+  { value: "fashion", label: "패션" },
+];
+
+const HAIR_SUB_TABS: { value: HairSubTab; label: string }[] = [
+  { value: "male", label: "남" },
+  { value: "female", label: "여" },
+];
+
+const FASHION_SUB_TABS: { value: FashionSubTab; label: string }[] = [
+  { value: "adult_male", label: "성인남" },
+  { value: "adult_female", label: "성인여" },
+  { value: "child_male", label: "어린이남" },
+  { value: "child_female", label: "어린이여" },
+];
+
+const MOUTH_ITEMS: { id: string; src: string; price: number }[] = Array.from(
+  { length: 17 },
+  (_, i) => {
+    const n = i + 1;
+    return {
+      id: `mouth${n}`,
+      src: `/images/avatar/mouths/mouth${n}.png`,
+      price: 30,
+    };
+  },
+);
+
+const EYE_GROUPS: {
+  group: number;
+  price: number;
+  items: { id: string; src: string }[];
+}[] = [1, 2, 3, 4].map((group) => ({
+  group,
+  price: 35,
+  items: [1, 2, 3].map((v) => ({
+    id: `eye${group}_${v}`,
+    src: `/images/avatar/eyes/eye${group}_${v}.png`,
+  })),
+}));
+
+const CHEEK_PRICE = 20;
+const CHEEK_ITEMS: { id: string; src: string; price: number }[] = [
+  { id: "none", src: "", price: 0 },
+  ...[1, 2, 3].map((n) => ({
+    id: `cheek${n}`,
+    src: `/images/avatar/cheeks/cheek${n}.png`,
+    price: CHEEK_PRICE,
+  })),
+];
+
 export default function ShopPage() {
   const { nickname, ready } = useAuth();
+  const [mainTab, setMainTab] = useState<"title" | "avatar">("title");
+  const [avatarSubTab, setAvatarSubTab] = useState<AvatarSubTab>("eyes");
+  const [hairSubTab, setHairSubTab] = useState<HairSubTab>("male");
+  const [fashionSubTab, setFashionSubTab] =
+    useState<FashionSubTab>("adult_male");
   const [tab, setTab] = useState<TitleType>("front");
   const [points, setPoints] = useState(0);
   const [frontTitle, setFrontTitle] = useState("");
   const [backTitle, setBackTitle] = useState("");
+  const [avatarMouth, setAvatarMouth] = useState("");
+  const [avatarEyes, setAvatarEyes] = useState("");
+  const [avatarCheeks, setAvatarCheeks] = useState("");
   const [statuses, setStatuses] = useState<Record<string, WordStatus>>({});
   const [busyWordId, setBusyWordId] = useState<string | null>(null);
+  const [busyMouthId, setBusyMouthId] = useState<string | null>(null);
+  const [busyEyesId, setBusyEyesId] = useState<string | null>(null);
+  const [busyCheeksId, setBusyCheeksId] = useState<string | null>(null);
+  const [previewEyes, setPreviewEyes] = useState<string | null>(null);
+  const [previewMouth, setPreviewMouth] = useState<string | null>(null);
+  const [previewCheeks, setPreviewCheeks] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const avatarData = useAvatarData(nickname);
   const monthKey = currentMonthKey();
 
   useEffect(() => {
@@ -50,6 +141,9 @@ export default function ShopPage() {
       setPoints(typeof data?.points === "number" ? data.points : 0);
       setFrontTitle((data?.frontTitle as string | undefined) ?? "");
       setBackTitle((data?.backTitle as string | undefined) ?? "");
+      setAvatarMouth((data?.avatarMouth as string | undefined) ?? "");
+      setAvatarEyes((data?.avatarEyes as string | undefined) ?? "");
+      setAvatarCheeks((data?.avatarCheeks as string | undefined) ?? "");
     });
     return () => unsub();
   }, [nickname]);
@@ -144,6 +238,109 @@ export default function ShopPage() {
     }
   };
 
+  const handleBuyEyes = async (item: { id: string; price: number }) => {
+    if (!nickname) return;
+    if (avatarEyes === item.id) return;
+    if (points < item.price) {
+      setMessage("포인트가 부족합니다.");
+      return;
+    }
+    if (!confirm(`이 눈을 ${item.price}p에 구매하시겠습니까?`)) return;
+    setBusyEyesId(item.id);
+    setMessage(null);
+    try {
+      await setDoc(
+        doc(db, "users", nickname),
+        { avatarEyes: item.id, points: increment(-item.price) },
+        { merge: true },
+      );
+      await addDoc(collection(db, "users", nickname, "pointHistory"), {
+        type: "아바타",
+        points: -item.price,
+        description: `눈 변경 (${item.id})`,
+        createdAt: serverTimestamp(),
+      });
+      setMessage("구매 완료! 눈이 변경되었습니다.");
+      setPreviewEyes(null);
+    } catch (e) {
+      console.error(e);
+      setMessage("구매 실패. 잠시 후 다시 시도해주세요.");
+    }
+    setBusyEyesId(null);
+  };
+
+  const handleBuyCheeks = async (item: { id: string; price: number }) => {
+    if (!nickname) return;
+    const currentCheekKey = avatarCheeks || "none";
+    if (currentCheekKey === item.id) return;
+    if (item.price > 0 && points < item.price) {
+      setMessage("포인트가 부족합니다.");
+      return;
+    }
+    const confirmMsg =
+      item.id === "none"
+        ? "볼터치를 제거하시겠습니까?"
+        : `이 볼터치를 ${item.price}p에 구매하시겠습니까?`;
+    if (!confirm(confirmMsg)) return;
+    setBusyCheeksId(item.id);
+    setMessage(null);
+    try {
+      const storedValue = item.id === "none" ? "" : item.id;
+      const patch: Record<string, unknown> = { avatarCheeks: storedValue };
+      if (item.price > 0) patch.points = increment(-item.price);
+      await setDoc(doc(db, "users", nickname), patch, { merge: true });
+      if (item.price > 0) {
+        await addDoc(collection(db, "users", nickname, "pointHistory"), {
+          type: "아바타",
+          points: -item.price,
+          description: `볼터치 변경 (${item.id})`,
+          createdAt: serverTimestamp(),
+        });
+      }
+      setMessage(
+        item.id === "none"
+          ? "볼터치가 제거되었습니다."
+          : "구매 완료! 볼터치가 변경되었습니다.",
+      );
+      setPreviewCheeks(null);
+    } catch (e) {
+      console.error(e);
+      setMessage("구매 실패. 잠시 후 다시 시도해주세요.");
+    }
+    setBusyCheeksId(null);
+  };
+
+  const handleBuyMouth = async (item: (typeof MOUTH_ITEMS)[number]) => {
+    if (!nickname) return;
+    if (avatarMouth === item.id) return;
+    if (points < item.price) {
+      setMessage("포인트가 부족합니다.");
+      return;
+    }
+    if (!confirm(`이 입을 ${item.price}p에 구매하시겠습니까?`)) return;
+    setBusyMouthId(item.id);
+    setMessage(null);
+    try {
+      await setDoc(
+        doc(db, "users", nickname),
+        { avatarMouth: item.id, points: increment(-item.price) },
+        { merge: true },
+      );
+      await addDoc(collection(db, "users", nickname, "pointHistory"), {
+        type: "아바타",
+        points: -item.price,
+        description: `입 변경 (${item.id})`,
+        createdAt: serverTimestamp(),
+      });
+      setMessage("구매 완료! 입이 변경되었습니다.");
+      setPreviewMouth(null);
+    } catch (e) {
+      console.error(e);
+      setMessage("구매 실패. 잠시 후 다시 시도해주세요.");
+    }
+    setBusyMouthId(null);
+  };
+
   if (!ready) {
     return (
       <div className="shop-page">
@@ -165,6 +362,65 @@ export default function ShopPage() {
 
   const previewText = formatTitlePrefix(frontTitle, backTitle);
 
+  const hasBody = isBodyType(avatarData?.avatarBody);
+  const resolvedPreviewCheeks =
+    previewCheeks === null
+      ? (avatarData?.avatarCheeks ?? "")
+      : previewCheeks === "none"
+        ? ""
+        : previewCheeks;
+  const previewAvatarData: AvatarData | null =
+    hasBody && avatarData
+      ? {
+          ...avatarData,
+          avatarEyes: previewEyes ?? avatarData.avatarEyes ?? "",
+          avatarMouth: previewMouth ?? avatarData.avatarMouth ?? "",
+          avatarCheeks: resolvedPreviewCheeks,
+        }
+      : null;
+
+  const activePreview:
+    | { kind: "eyes" | "mouth" | "cheeks"; id: string; price: number }
+    | null = (() => {
+    if (avatarSubTab === "eyes" && previewEyes) {
+      return { kind: "eyes", id: previewEyes, price: 35 };
+    }
+    if (avatarSubTab === "mouth" && previewMouth) {
+      return { kind: "mouth", id: previewMouth, price: 30 };
+    }
+    if (avatarSubTab === "cheeks" && previewCheeks) {
+      return {
+        kind: "cheeks",
+        id: previewCheeks,
+        price: previewCheeks === "none" ? 0 : CHEEK_PRICE,
+      };
+    }
+    return null;
+  })();
+
+  const buyingPreview =
+    (activePreview?.kind === "eyes" && busyEyesId === activePreview.id) ||
+    (activePreview?.kind === "mouth" && busyMouthId === activePreview.id) ||
+    (activePreview?.kind === "cheeks" && busyCheeksId === activePreview.id);
+
+  const handleBuyPreview = async () => {
+    if (!activePreview) return;
+    if (activePreview.kind === "eyes") {
+      await handleBuyEyes({ id: activePreview.id, price: activePreview.price });
+    } else if (activePreview.kind === "mouth") {
+      await handleBuyMouth({
+        id: activePreview.id,
+        src: `/images/avatar/mouths/${activePreview.id}.png`,
+        price: activePreview.price,
+      });
+    } else {
+      await handleBuyCheeks({
+        id: activePreview.id,
+        price: activePreview.price,
+      });
+    }
+  };
+
   return (
     <div className="shop-page">
       <BackLink href="/" className="back-link">
@@ -172,11 +428,313 @@ export default function ShopPage() {
       </BackLink>
       <div className="shop-container">
         <header className="shop-header">
-          <h1 className="shop-title">칭호 상점</h1>
-          <p className="shop-subtitle">
-            앞 단어와 뒤 단어를 <strong>둘 다</strong> 구매해야 칭호가 완성되어 닉네임에 표시됩니다
-          </p>
+          <h1 className="shop-title">상점</h1>
         </header>
+
+        <div className="shop-tabs shop-main-tabs">
+          <button
+            type="button"
+            className={"shop-tab" + (mainTab === "title" ? " shop-tab-active" : "")}
+            onClick={() => setMainTab("title")}
+          >
+            칭호
+          </button>
+          <button
+            type="button"
+            className={"shop-tab" + (mainTab === "avatar" ? " shop-tab-active" : "")}
+            onClick={() => setMainTab("avatar")}
+          >
+            아바타
+          </button>
+        </div>
+
+        {mainTab === "avatar" ? (
+          <>
+            <section className="shop-avatar-preview">
+              {hasBody && previewAvatarData ? (
+                <Avatar
+                  data={previewAvatarData}
+                  className="shop-avatar-preview-img"
+                />
+              ) : (
+                <p className="shop-avatar-warn">체형을 먼저 선택해주세요</p>
+              )}
+              {activePreview && (
+                <div className="shop-avatar-actions">
+                  <button
+                    type="button"
+                    className="minihome-btn"
+                    onClick={handleBuyPreview}
+                    disabled={
+                      buyingPreview ||
+                      points < activePreview.price ||
+                      (activePreview.kind === "eyes" &&
+                        avatarEyes === activePreview.id) ||
+                      (activePreview.kind === "mouth" &&
+                        avatarMouth === activePreview.id) ||
+                      (activePreview.kind === "cheeks" &&
+                        (avatarCheeks || "none") === activePreview.id)
+                    }
+                  >
+                    {buyingPreview
+                      ? "구매 중..."
+                      : activePreview.price === 0
+                        ? "적용"
+                        : `구매 (${activePreview.price}p)`}
+                  </button>
+                  <button
+                    type="button"
+                    className="minihome-btn minihome-btn-cancel"
+                    onClick={() => {
+                      if (activePreview.kind === "eyes") setPreviewEyes(null);
+                      else if (activePreview.kind === "mouth")
+                        setPreviewMouth(null);
+                      else setPreviewCheeks(null);
+                    }}
+                    disabled={buyingPreview}
+                  >
+                    취소
+                  </button>
+                </div>
+              )}
+            </section>
+
+            <section className="shop-status">
+              <div className="shop-status-row">
+                <span className="shop-status-label">내 포인트</span>
+                <span className="shop-status-value shop-status-points">
+                  {points.toLocaleString()}p
+                </span>
+              </div>
+            </section>
+
+            <div className="shop-tabs">
+              {AVATAR_SUB_TABS.map((t) => (
+                <button
+                  key={t.value}
+                  type="button"
+                  className={
+                    "shop-tab" +
+                    (avatarSubTab === t.value ? " shop-tab-active" : "")
+                  }
+                  onClick={() => setAvatarSubTab(t.value)}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            {avatarSubTab === "hair" && (
+              <div className="shop-tabs shop-subtabs">
+                {HAIR_SUB_TABS.map((t) => (
+                  <button
+                    key={t.value}
+                    type="button"
+                    className={
+                      "shop-tab" +
+                      (hairSubTab === t.value ? " shop-tab-active" : "")
+                    }
+                    onClick={() => setHairSubTab(t.value)}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {avatarSubTab === "fashion" && (
+              <div className="shop-tabs shop-subtabs">
+                {FASHION_SUB_TABS.map((t) => (
+                  <button
+                    key={t.value}
+                    type="button"
+                    className={
+                      "shop-tab" +
+                      (fashionSubTab === t.value ? " shop-tab-active" : "")
+                    }
+                    onClick={() => setFashionSubTab(t.value)}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {message && <p className="shop-message">{message}</p>}
+
+            {avatarSubTab === "eyes" ? (
+              <div className="shop-eye-groups">
+                {EYE_GROUPS.map((grp) => (
+                  <section key={grp.group} className="shop-eye-group">
+                    <h3 className="shop-eye-group-title">
+                      eye{grp.group} 그룹{" "}
+                      <span className="shop-eye-group-price">
+                        {grp.price}p
+                      </span>
+                    </h3>
+                    <div className="shop-grid">
+                      {grp.items.map((item) => {
+                        const equipped = avatarEyes === item.id;
+                        const previewed = previewEyes === item.id;
+                        const cardClass = [
+                          "shop-card",
+                          "shop-card-clickable",
+                          equipped ? "shop-card-equipped" : "",
+                          previewed ? "shop-card-previewed" : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" ");
+                        const toggle = () => {
+                          if (equipped) return;
+                          setPreviewEyes(previewed ? null : item.id);
+                        };
+                        return (
+                          <div
+                            key={item.id}
+                            className={cardClass}
+                            role="button"
+                            tabIndex={equipped ? -1 : 0}
+                            onClick={toggle}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                toggle();
+                              }
+                            }}
+                          >
+                            <div className="shop-card-preview-wrap">
+                              <img
+                                src={item.src}
+                                alt=""
+                                className="shop-card-preview"
+                                draggable={false}
+                              />
+                            </div>
+                            <div className="shop-card-price">{grp.price}p</div>
+                            <div className="shop-card-status">
+                              {equipped
+                                ? "장착 중"
+                                : previewed
+                                  ? "미리보기"
+                                  : ""}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </section>
+                ))}
+              </div>
+            ) : avatarSubTab === "cheeks" ? (
+              <div className="shop-grid">
+                {CHEEK_ITEMS.map((item) => {
+                  const currentCheekKey = avatarCheeks || "none";
+                  const equipped = currentCheekKey === item.id;
+                  const previewed = previewCheeks === item.id;
+                  const cardClass = [
+                    "shop-card",
+                    "shop-card-clickable",
+                    equipped ? "shop-card-equipped" : "",
+                    previewed ? "shop-card-previewed" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ");
+                  const toggle = () => {
+                    if (equipped) return;
+                    setPreviewCheeks(previewed ? null : item.id);
+                  };
+                  return (
+                    <div
+                      key={item.id}
+                      className={cardClass}
+                      role="button"
+                      tabIndex={equipped ? -1 : 0}
+                      onClick={toggle}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          toggle();
+                        }
+                      }}
+                    >
+                      <div className="shop-card-preview-wrap">
+                        {item.id === "none" ? (
+                          <span className="shop-card-none">없음</span>
+                        ) : (
+                          <img
+                            src={item.src}
+                            alt=""
+                            className="shop-card-preview"
+                            draggable={false}
+                          />
+                        )}
+                      </div>
+                      <div className="shop-card-price">
+                        {item.price === 0 ? "무료" : `${item.price}p`}
+                      </div>
+                      <div className="shop-card-status">
+                        {equipped ? "장착 중" : previewed ? "미리보기" : ""}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : avatarSubTab === "mouth" ? (
+              <div className="shop-grid">
+                {MOUTH_ITEMS.map((item) => {
+                  const equipped = avatarMouth === item.id;
+                  const previewed = previewMouth === item.id;
+                  const cardClass = [
+                    "shop-card",
+                    "shop-card-clickable",
+                    equipped ? "shop-card-equipped" : "",
+                    previewed ? "shop-card-previewed" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ");
+                  const toggle = () => {
+                    if (equipped) return;
+                    setPreviewMouth(previewed ? null : item.id);
+                  };
+                  return (
+                    <div
+                      key={item.id}
+                      className={cardClass}
+                      role="button"
+                      tabIndex={equipped ? -1 : 0}
+                      onClick={toggle}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          toggle();
+                        }
+                      }}
+                    >
+                      <div className="shop-card-preview-wrap">
+                        <img
+                          src={item.src}
+                          alt=""
+                          className="shop-card-preview"
+                          draggable={false}
+                        />
+                      </div>
+                      <div className="shop-card-price">{item.price}p</div>
+                      <div className="shop-card-status">
+                        {equipped ? "장착 중" : previewed ? "미리보기" : ""}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="avatar-shop-hint">준비 중입니다.</p>
+            )}
+          </>
+        ) : (
+        <>
+        <p className="shop-subtitle">
+          앞 단어와 뒤 단어를 <strong>둘 다</strong> 구매해야 칭호가 완성되어 닉네임에 표시됩니다
+        </p>
 
         <section className="shop-status">
           <div className="shop-status-row">
@@ -281,6 +839,8 @@ export default function ShopPage() {
             );
           })}
         </div>
+        </>
+        )}
       </div>
     </div>
   );

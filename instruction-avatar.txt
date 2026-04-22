@@ -1,0 +1,48 @@
+미니홈피에 아바타 시스템 1단계를 추가해줘.
+
+1) 아바타 표시 위치: 미니홈피 프로필 영역에 프로필 사진 옆 또는 아래에 아바타 표시. 캔버스 크기 500x800px, 화면에는 축소해서 표시 (모바일 150px 너비, PC 200px 너비 정도).
+
+2) 아바타 레이어 구조 (아래서 위로 겹치기):
+- 레이어1: 체형 이미지 (500x800px 전체)
+- 레이어2: 옷 이미지 (500x800px 전체, 나중에 추가)
+- 레이어3: 눈 이미지 (원본 200x100px, 체형별 위치/크기로 배치)
+- 레이어4: 입 이미지 (원본 150x80px, 체형별 위치/크기로 배치)
+- 레이어5: 헤어 이미지 (500x800px 전체, 나중에 추가)
+
+CSS position absolute로 레이어 겹치기. 부모 div에 position relative, width/height 비율 유지.
+
+3) 눈/입 위치 좌표 (x, y, width, height - 500x800 캔버스 기준):
+- 성인여: 눈(223, 164, 55, 27) 입(241, 197, 22, 13)
+- 성인남: 눈(222, 78, 56, 27) 입(238, 113, 25, 13)
+- 어린이여: 눈(223, 415, 54, 27) 입(241, 445, 19, 11)
+- 어린이남: 눈(223, 407, 59, 29) 입(242, 439, 20, 13)
+
+4) Firestore users/{nickname} 문서에 아바타 필드 추가:
+- avatarBody(string): "adult_female", "adult_male", "child_female", "child_male"
+- avatarEyes(string): 눈 이미지 파일명 (없으면 기본)
+- avatarMouth(string): 입 이미지 파일명 (없으면 기본)
+- avatarHair(string): 헤어 이미지 파일명 (없으면 없음 = 대머리)
+- avatarClothes(string): 옷 이미지 파일명 (없으면 기본 체형 옷)
+- ownedClothes(array): 구매한 옷 목록 (옷장)
+
+5) 체형 선택:
+- 미니홈피 프로필 수정에서 체형 선택 드롭다운: 성인 여자, 성인 남자, 어린이 여자, 어린이 남자. 무료.
+- 선택하면 avatarBody 값 변경.
+
+6) 이미지 경로:
+- 체형: /images/avatar/bodies/{adult_female|adult_male|child_female|child_male}.png
+- 눈: /images/avatar/eyes/{파일명}.png
+- 입: /images/avatar/mouths/{파일명}.png
+- 헤어: /images/avatar/hair/{adult|child}_{female|male}_{파일명}.png
+- 옷: /images/avatar/clothes/{adult_female|adult_male|child_female|child_male}_{파일명}.png
+
+7) 아바타 상점 (/avatar-shop):
+- 메인 페이지 로그인 영역에 "아바타 상점" 버튼 추가. 로그인한 사람만.
+- 페이지에 "준비 중입니다" 표시.
+- 나중에 눈/입/헤어/옷 탭으로 구성 예정.
+
+8) 현재 단계에서는 기본 체형 4종만 표시. 눈/입/헤어/옷은 아직 없으면 기본 체형 이미지만 보여줌.
+
+9) 디자인:
+- 아바타 배경 투명. 미니홈피 배경 위에 자연스럽게.
+- 이미지에 filter 적용하지 마.
