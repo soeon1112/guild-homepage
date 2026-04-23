@@ -79,7 +79,7 @@ export default function AttendanceButton() {
         createdAt: serverTimestamp(),
       });
       setAlreadyToday(true);
-      setMessage("출석 완료! 1점 적립되었습니다");
+      setMessage("출석 완료! 1 별빛 적립되었습니다");
       handleEvent({ type: "attend", nickname, when: new Date() });
     } catch (e) {
       console.error(e);

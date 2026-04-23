@@ -68,7 +68,7 @@ export default function MyPage() {
   const handleExchange = useCallback(async () => {
     if (!nickname) return;
     if (points < EXCHANGE_COST) return;
-    if (!confirm(`${EXCHANGE_COST}점을 차감하여 환전을 신청하시겠습니까?`)) {
+    if (!confirm(`${EXCHANGE_COST} 별빛을 차감하여 환전을 신청하시겠습니까?`)) {
       return;
     }
     setRequesting(true);
@@ -124,9 +124,9 @@ export default function MyPage() {
       <section className="mypage-card">
         <h1 className="mypage-nick">{nickname}</h1>
         <div className="mypage-points-wrap">
-          <span className="mypage-points-label">총 포인트</span>
+          <span className="mypage-points-label">총 별빛</span>
           <span className="mypage-points">{points.toLocaleString()}</span>
-          <span className="mypage-points-unit">점</span>
+          <span className="mypage-points-unit">별빛</span>
         </div>
 
         <div className="mypage-exchange">
@@ -140,7 +140,7 @@ export default function MyPage() {
           </button>
           {!canExchange && (
             <p className="mypage-exchange-hint">
-              {EXCHANGE_COST}점 이상 필요합니다. (현재 {points}점)
+              {EXCHANGE_COST} 별빛 이상 필요합니다. (현재 {points} 별빛)
             </p>
           )}
           {message && <p className="mypage-exchange-msg">{message}</p>}
@@ -148,7 +148,7 @@ export default function MyPage() {
       </section>
 
       <section className="mypage-card">
-        <h2 className="mypage-section-title">포인트 내역</h2>
+        <h2 className="mypage-section-title">별빛 내역</h2>
         {history.length === 0 ? (
           <p className="mypage-hint">아직 내역이 없습니다.</p>
         ) : (
@@ -170,7 +170,7 @@ export default function MyPage() {
                         : "mypage-history-points mypage-history-points-minus"
                     }
                   >
-                    {h.points > 0 ? `+${h.points}` : h.points}점
+                    {h.points > 0 ? `+${h.points}` : h.points} 별빛
                   </span>
                 </div>
               </li>

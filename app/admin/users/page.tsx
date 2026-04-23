@@ -217,7 +217,7 @@ export default function AdminUsersPage() {
             <thead>
               <tr>
                 <th>닉네임</th>
-                <th>포인트</th>
+                <th>별빛</th>
                 <th>가입일</th>
                 <th>닉네임 변경</th>
               </tr>
@@ -226,7 +226,7 @@ export default function AdminUsersPage() {
               {filtered.map((u) => (
                 <tr key={u.id}>
                   <td>{u.nickname}</td>
-                  <td>{u.points}점</td>
+                  <td>{u.points} 별빛</td>
                   <td>{formatDate(u.createdAt)}</td>
                   <td>
                     {editingId === u.id ? (

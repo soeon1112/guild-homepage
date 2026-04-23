@@ -40,21 +40,18 @@ export const RENEWAL_EVENT_PREVIEW = "리뉴얼을 축하하며 작은 선물을
 export const RENEWAL_EVENT_CONTENT = [
   "✨ 새벽의 선물 ✨",
   "",
-  "안녕하세요, 별빛 가족 여러분.",
+  "안녕하세요. 길원 여러분!",
   "",
   "작은 소우주에서",
   "새로운 여정이 시작되었습니다.",
   "",
-  "그동안 새벽빛과 함께해 주신",
-  "여러분께 감사의 마음을 담아",
+  "리뉴얼을 기념해서",
   "작은 선물을 준비했습니다.",
   "",
   "✦ 별빛 50 ✦",
   "",
   "앞으로도 함께 빛나는",
   "아름다운 시간이 되기를 바랍니다.",
-  "",
-  "- 새벽빛",
 ].join("\n");
 
 export type RenewalEventDoc = {
@@ -260,7 +257,7 @@ export async function claimRenewalLetter(
     await logActivity(
       "event",
       nickname,
-      `${nickname}님이 새벽의 이벤트로 ${RENEWAL_EVENT_AMOUNT}포인트를 수령했습니다 ✨`,
+      `${nickname}님이 새벽의 이벤트로 ${RENEWAL_EVENT_AMOUNT} 별빛을 수령했습니다 ✨`,
       link,
       `events/${RENEWAL_EVENT_ID}/claims/${nickname}`,
     );

@@ -158,10 +158,10 @@ export function ProfileSection({
 
     if (bodyChanged && bodyAlreadySelected) {
       if (ownerPoints < 100) {
-        alert("포인트가 부족합니다. (100p 필요)");
+        alert("별빛이 부족합니다. (100 별빛 필요)");
         return;
       }
-      if (!confirm("환생하시겠습니까? 100포인트가 차감됩니다.")) {
+      if (!confirm("환생하시겠습니까? 100 별빛이 차감됩니다.")) {
         return;
       }
     }
@@ -532,7 +532,7 @@ export function ProfileSection({
               </select>
               {avatarData?.bodySelected && (
                 <p className="mt-1.5 font-serif text-[10px] italic text-text-sub">
-                  변경 시 100p (현재 {avatarData?.points ?? 0}p)
+                  변경 시 100 별빛 (현재 {avatarData?.points ?? 0} 별빛)
                 </p>
               )}
             </div>

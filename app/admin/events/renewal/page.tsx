@@ -160,7 +160,7 @@ export default function AdminRenewalEventPage() {
     const ok = confirm(
       `${testNick.trim()} 계정의 테스트 편지와 테스트 수령 기록을 삭제할까요?\n` +
         "\n" +
-        "(이미 지급된 포인트는 되돌리지 않습니다)",
+        "(이미 지급된 별빛은 되돌리지 않습니다)",
     );
     if (!ok) return;
     setTestDeleting(true);
@@ -225,7 +225,7 @@ export default function AdminRenewalEventPage() {
         }}
       >
         이벤트 ID: <code>{RENEWAL_EVENT_ID}</code> · 지급액:{" "}
-        <strong>+{RENEWAL_EVENT_AMOUNT}p</strong> · 1인 1회 · 트랜잭션 기반
+        <strong>+{RENEWAL_EVENT_AMOUNT} 별빛</strong> · 1인 1회 · 트랜잭션 기반
         중복 방지
       </p>
 

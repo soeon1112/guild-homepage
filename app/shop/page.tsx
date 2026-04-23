@@ -205,7 +205,7 @@ export default function ShopPage() {
       return;
     }
     if (points < w.price) {
-      setMessage("포인트가 부족합니다.");
+      setMessage("별빛이 부족합니다.");
       return;
     }
     const prevText = w.type === "front" ? frontTitle : backTitle;
@@ -215,7 +215,7 @@ export default function ShopPage() {
     }
     if (
       !confirm(
-        `「${w.word}」 단어를 ${w.price}p에 구매하시겠습니까?\n(기존 ${
+        `「${w.word}」 단어를 ${w.price} 별빛에 구매하시겠습니까?\n(기존 ${
           w.type === "front" ? "앞" : "뒤"
         } 단어는 해제됩니다.)`,
       )
@@ -244,7 +244,7 @@ export default function ShopPage() {
       } else if (result.reason === "taken") {
         setMessage("방금 다른 사람이 선점했습니다.");
       } else if (result.reason === "no_points") {
-        setMessage("포인트가 부족합니다.");
+        setMessage("별빛이 부족합니다.");
       } else {
         setMessage("구매 실패. 잠시 후 다시 시도해주세요.");
       }
@@ -257,10 +257,10 @@ export default function ShopPage() {
     if (!nickname) return;
     if (avatarEyes === item.id) return;
     if (points < item.price) {
-      setMessage("포인트가 부족합니다.");
+      setMessage("별빛이 부족합니다.");
       return;
     }
-    if (!confirm(`이 눈을 ${item.price}p에 구매하시겠습니까?`)) return;
+    if (!confirm(`이 눈을 ${item.price} 별빛에 구매하시겠습니까?`)) return;
     setBusyEyesId(item.id);
     setMessage(null);
     try {
@@ -289,13 +289,13 @@ export default function ShopPage() {
     const currentCheekKey = avatarCheeks || "none";
     if (currentCheekKey === item.id) return;
     if (item.price > 0 && points < item.price) {
-      setMessage("포인트가 부족합니다.");
+      setMessage("별빛이 부족합니다.");
       return;
     }
     const confirmMsg =
       item.id === "none"
         ? "볼터치를 제거하시겠습니까?"
-        : `이 볼터치를 ${item.price}p에 구매하시겠습니까?`;
+        : `이 볼터치를 ${item.price} 별빛에 구매하시겠습니까?`;
     if (!confirm(confirmMsg)) return;
     setBusyCheeksId(item.id);
     setMessage(null);
@@ -329,10 +329,10 @@ export default function ShopPage() {
     if (!nickname) return;
     if (avatarMouth === item.id) return;
     if (points < item.price) {
-      setMessage("포인트가 부족합니다.");
+      setMessage("별빛이 부족합니다.");
       return;
     }
-    if (!confirm(`이 입을 ${item.price}p에 구매하시겠습니까?`)) return;
+    if (!confirm(`이 입을 ${item.price} 별빛에 구매하시겠습니까?`)) return;
     setBusyMouthId(item.id);
     setMessage(null);
     try {
@@ -489,7 +489,7 @@ export default function ShopPage() {
                       ? "구매 중..."
                       : activePreview.price === 0
                         ? "적용"
-                        : `구매 (${activePreview.price}p)`}
+                        : `구매 (${activePreview.price} 별빛)`}
                   </button>
                   <button
                     type="button"
@@ -510,9 +510,9 @@ export default function ShopPage() {
 
             <section className="shop-status">
               <div className="shop-status-row">
-                <span className="shop-status-label">내 포인트</span>
+                <span className="shop-status-label">내 별빛</span>
                 <span className="shop-status-value shop-status-points">
-                  {points.toLocaleString()}p
+                  {points.toLocaleString()} 별빛
                 </span>
               </div>
             </section>
@@ -579,7 +579,7 @@ export default function ShopPage() {
                       eye{grp.group}
                       {grp.items.length > 1 ? " 그룹" : ""}{" "}
                       <span className="shop-eye-group-price">
-                        {grp.price}p
+                        {grp.price} 별빛
                       </span>
                     </h3>
                     <div className="shop-grid">
@@ -620,7 +620,7 @@ export default function ShopPage() {
                                 draggable={false}
                               />
                             </div>
-                            <div className="shop-card-price">{grp.price}p</div>
+                            <div className="shop-card-price">{grp.price} 별빛</div>
                             <div className="shop-card-status">
                               {equipped
                                 ? "장착 중"
@@ -680,7 +680,7 @@ export default function ShopPage() {
                         )}
                       </div>
                       <div className="shop-card-price">
-                        {item.price === 0 ? "무료" : `${item.price}p`}
+                        {item.price === 0 ? "무료" : `${item.price} 별빛`}
                       </div>
                       <div className="shop-card-status">
                         {equipped ? "장착 중" : previewed ? "미리보기" : ""}
@@ -728,7 +728,7 @@ export default function ShopPage() {
                           draggable={false}
                         />
                       </div>
-                      <div className="shop-card-price">{item.price}p</div>
+                      <div className="shop-card-price">{item.price} 별빛</div>
                       <div className="shop-card-status">
                         {equipped ? "장착 중" : previewed ? "미리보기" : ""}
                       </div>
@@ -748,9 +748,9 @@ export default function ShopPage() {
 
         <section className="shop-status">
           <div className="shop-status-row">
-            <span className="shop-status-label">내 포인트</span>
+            <span className="shop-status-label">내 별빛</span>
             <span className="shop-status-value shop-status-points">
-              {points.toLocaleString()}p
+              {points.toLocaleString()} 별빛
             </span>
           </div>
           <div className="shop-status-row">
@@ -826,12 +826,12 @@ export default function ShopPage() {
             if (busyWordId === w.id) btnLabel = "구매 중...";
             else if (equipped) btnLabel = "장착 중";
             else if (takenByOther) btnLabel = "사용 중";
-            else if (notEnoughPoints) btnLabel = "포인트 부족";
+            else if (notEnoughPoints) btnLabel = "별빛 부족";
 
             return (
               <div key={w.id} className={cardClass}>
                 <div className="shop-card-word">{w.word}</div>
-                <div className="shop-card-price">{w.price}p</div>
+                <div className="shop-card-price">{w.price} 별빛</div>
                 {takenByOther && (
                   <div className="shop-card-taken-text">
                     사용 중 ({owner})

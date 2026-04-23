@@ -127,7 +127,7 @@ export default function AdminExchangePage() {
             <thead>
               <tr>
                 <th>닉네임</th>
-                <th>포인트</th>
+                <th>별빛</th>
                 <th>신청일</th>
                 <th>상태</th>
                 <th>처리</th>
@@ -137,7 +137,7 @@ export default function AdminExchangePage() {
               {requests.map((r) => (
                 <tr key={r.id}>
                   <td>{r.nickname}</td>
-                  <td>{r.points}점</td>
+                  <td>{r.points} 별빛</td>
                   <td>{formatDate(r.createdAt)}</td>
                   <td>
                     <span
