@@ -73,7 +73,7 @@ export function GuildMembersSection({
   characters: GuildCharacter[];
   loginNick: string | null;
 }) {
-  const [sortKey, setSortKey] = useState<SortKey>("power");
+  const [sortKey, setSortKey] = useState<SortKey>("nickname");
   const [queryText, setQueryText] = useState("");
   const [jobFilter, setJobFilter] = useState("전체");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
