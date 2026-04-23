@@ -183,7 +183,7 @@ export function NebulaWhispers() {
                   ? formatSmart(a.createdAt.toDate())
                   : "";
 
-                const rowClass = `group flex items-center gap-2.5 rounded-lg border border-nebula-pink/10 bg-abyss/30 px-2.5 py-2 backdrop-blur-sm transition-all ${
+                const rowClass = `group flex items-start gap-2.5 rounded-lg border border-nebula-pink/10 bg-abyss/30 px-2.5 py-2 backdrop-blur-sm transition-all md:items-center ${
                   isHovered ? "border-nebula-pink/40 bg-abyss/60" : ""
                 }`;
 
@@ -203,7 +203,7 @@ export function NebulaWhispers() {
                     </span>
 
                     <div className="min-w-0 flex-1 leading-tight">
-                      <p className="truncate font-serif text-[11px] text-text-primary">
+                      <p className="font-serif text-[11px] text-text-primary md:truncate">
                         {hasNicknamePrefix ? (
                           <>
                             <TitlePrefix nickname={a.nickname} />
