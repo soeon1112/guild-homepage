@@ -395,7 +395,7 @@ function GuestbookItem({
     >
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <p className="min-w-0 flex-1 break-keep font-serif text-[13px] leading-relaxed text-text-primary">
+          <p className="wrap-anywhere min-w-0 flex-1 font-serif text-[13px] leading-relaxed text-text-primary">
             <NicknameLink
               nickname={entry.nickname}
               className="font-medium text-stardust"
@@ -449,7 +449,7 @@ function GuestbookItem({
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <p className="min-w-0 flex-1 break-keep font-serif text-[12px] leading-relaxed text-text-primary">
+                  <p className="wrap-anywhere min-w-0 flex-1 font-serif text-[12px] leading-relaxed text-text-primary">
                     <NicknameLink
                       nickname={r.nickname}
                       className="font-medium text-stardust"

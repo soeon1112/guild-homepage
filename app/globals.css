@@ -5505,6 +5505,19 @@ select {
   scrollbar-color: rgba(216, 150, 200, 0.3) transparent;
 }
 
+/* Long-text wrap utility for comment/message bodies.
+   Guards against CJK runs (e.g., "ㅋㅋㅋㅋ...") overflowing flex containers.
+   Applies every vendor/legacy property for maximum browser coverage.
+   Intentionally wins over Tailwind's `break-keep` (word-break: keep-all). */
+.wrap-anywhere {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  /* Older WebKit fallback — harmless when unsupported. */
+  word-wrap: break-word;
+  min-width: 0;
+  max-width: 100%;
+}
+
 /* Hide legacy layout chrome on pages that mount the redesigned TopHeader.
    - `.site-header`: old logo bar (replaced by TopHeader)
    - `.bg-scene`: legacy background illustration (replaced by CosmicBackground) */
