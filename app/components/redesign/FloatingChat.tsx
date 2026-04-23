@@ -192,6 +192,8 @@ export default function FloatingChat() {
     [file],
   );
   const listRef = useRef<HTMLDivElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
+  const pinnedRef = useRef(true);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const messageInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -240,30 +242,44 @@ export default function FloatingChat() {
 
   const hasUnread = unreadCount > 0;
 
-  // Auto-scroll to bottom when messages change while panel is open
+  // Keep the list pinned to the latest message while the panel is open.
+  // Uses ResizeObserver so late-loading images/videos still nudge the scroll to bottom.
   useEffect(() => {
     if (!open) return;
+    const list = listRef.current;
+    const content = contentRef.current;
+    if (!list) return;
+
+    pinnedRef.current = true;
     const scrollToBottom = () => {
-      const el = listRef.current;
-      if (el) el.scrollTop = el.scrollHeight;
+      list.scrollTop = list.scrollHeight;
     };
     scrollToBottom();
     const raf = requestAnimationFrame(scrollToBottom);
-    const t = window.setTimeout(scrollToBottom, 120);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.clearTimeout(t);
-    };
-  }, [messages, open]);
 
-  // Focus input when panel opens
-  useEffect(() => {
-    if (!open) return;
-    const el = listRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    const ro =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(() => {
+            if (pinnedRef.current) scrollToBottom();
+          })
+        : null;
+    if (ro && content) ro.observe(content);
+
+    const onScroll = () => {
+      pinnedRef.current =
+        list.scrollHeight - list.scrollTop - list.clientHeight < 40;
+    };
+    list.addEventListener("scroll", onScroll, { passive: true });
+
     requestAnimationFrame(() => {
       messageInputRef.current?.focus();
     });
+
+    return () => {
+      cancelAnimationFrame(raf);
+      ro?.disconnect();
+      list.removeEventListener("scroll", onScroll);
+    };
   }, [open]);
 
   // Revoke blob URL on file change
@@ -548,21 +564,23 @@ export default function FloatingChat() {
               ref={listRef}
               className="nebula-scroll relative flex-1 overflow-y-auto overflow-x-hidden px-3 py-2"
             >
-              {messages.length === 0 ? (
-                <div className="flex h-full items-center justify-center">
-                  <p className="font-serif text-[12px] italic text-text-sub/70">
-                    아직 채팅이 없어요
-                  </p>
-                </div>
-              ) : (
-                messages.map((m) => (
-                  <MessageItem
-                    key={m.id}
-                    m={m}
-                    mine={!!nickname && m.nickname === nickname}
-                  />
-                ))
-              )}
+              <div ref={contentRef}>
+                {messages.length === 0 ? (
+                  <div className="flex h-full items-center justify-center">
+                    <p className="font-serif text-[12px] italic text-text-sub/70">
+                      아직 채팅이 없어요
+                    </p>
+                  </div>
+                ) : (
+                  messages.map((m) => (
+                    <MessageItem
+                      key={m.id}
+                      m={m}
+                      mine={!!nickname && m.nickname === nickname}
+                    />
+                  ))
+                )}
+              </div>
             </div>
 
             {/* Compose area / auth gate */}
