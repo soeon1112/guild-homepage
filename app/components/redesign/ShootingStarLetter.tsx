@@ -60,6 +60,17 @@ export function ShootingStarLetter() {
     const unsub = onSnapshot(q, (snap) => {
       const list: LetterDoc[] = snap.docs.map((d) => {
         const data = d.data();
+        // TEMP DIAGNOSTIC — remove once event UI is verified live.
+        // eslint-disable-next-line no-console
+        console.log("[inbox-raw]", d.id, {
+          eventType: data.eventType,
+          eventId: data.eventId,
+          eventClaimed: data.eventClaimed,
+          isTest: data.isTest,
+          from: data.from,
+          status: data.status,
+          rawKeys: Object.keys(data),
+        });
         return {
           id: d.id,
           from: data.from ?? "",
@@ -825,6 +836,24 @@ function InboxModal({
   const current = letters[safeIdx];
   const isEvent = current?.eventType === RENEWAL_EVENT_TYPE;
   const isUnclaimedEvent = isEvent && !current?.eventClaimed;
+
+  // TEMP DIAGNOSTIC — remove once event UI is verified live.
+  useEffect(() => {
+    if (!current) return;
+    // eslint-disable-next-line no-console
+    console.log("[letter-debug]", {
+      id: current.id,
+      from: current.from,
+      to: current.to,
+      eventType: current.eventType,
+      eventId: current.eventId,
+      eventClaimed: current.eventClaimed,
+      isEvent,
+      isUnclaimedEvent,
+      RENEWAL_EVENT_TYPE,
+      typesMatch: current.eventType === RENEWAL_EVENT_TYPE,
+    });
+  }, [current, isEvent, isUnclaimedEvent]);
 
   const handleRead = async () => {
     if (!current || current.read || marking) return;
