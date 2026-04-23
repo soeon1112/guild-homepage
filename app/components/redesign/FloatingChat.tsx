@@ -193,9 +193,35 @@ export default function FloatingChat() {
   );
   const listRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
-  const pinnedRef = useRef(true);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const messageInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Debug helper — enable with `localStorage.setItem("chat:debug","1")` in
+  // the console. Each pin attempt logs scrollTop/scrollHeight so we can see
+  // which frame actually settled on the latest message.
+  const debugLog = (label: string) => {
+    if (typeof window === "undefined") return;
+    try {
+      if (localStorage.getItem("chat:debug") !== "1") return;
+    } catch {
+      return;
+    }
+    const list = listRef.current;
+    if (!list) {
+      // eslint-disable-next-line no-console
+      console.log(`[chat-scroll] ${label} — list ref missing`);
+      return;
+    }
+    // eslint-disable-next-line no-console
+    console.log(`[chat-scroll] ${label}`, {
+      scrollTop: list.scrollTop,
+      scrollHeight: list.scrollHeight,
+      clientHeight: list.clientHeight,
+      distanceFromBottom:
+        list.scrollHeight - list.scrollTop - list.clientHeight,
+      messages: messages.length,
+    });
+  };
 
   // Subscribe to the guild chat collection (last 50 messages, asc for display)
   useEffect(() => {
@@ -242,34 +268,52 @@ export default function FloatingChat() {
 
   const hasUnread = unreadCount > 0;
 
-  // Keep the list pinned to the latest message while the panel is open.
-  // Uses ResizeObserver so late-loading images/videos still nudge the scroll to bottom.
+  // Auto-pin the message list to the latest message.
+  //
+  // Runs whenever the panel opens OR a new message arrives (messages.length
+  // changes) — this covers both Case A (open) and Case B (send/receive).
+  //
+  // Why `scrollTop = scrollHeight` and not `scrollIntoView`:
+  //   Direct container write is synchronous and unaffected by any inherited
+  //   `scroll-behavior: smooth`. scrollIntoView on mobile sometimes animates
+  //   and stops mid-way when the parent is mid-transform (framer-motion).
+  //
+  // Why double requestAnimationFrame:
+  //   React commits the DOM in one frame; the browser paints + settles
+  //   layout in the next. On mobile, measuring scrollHeight before paint can
+  //   return a stale/short value. Two RAFs guarantee we've seen a fresh
+  //   layout. A final ResizeObserver catches late image/video loads that
+  //   inflate scrollHeight after that.
   useEffect(() => {
     if (!open) return;
     const list = listRef.current;
     const content = contentRef.current;
     if (!list) return;
 
-    pinnedRef.current = true;
-    const scrollToBottom = () => {
-      list.scrollTop = list.scrollHeight;
+    const pin = (label: string) => {
+      const l = listRef.current;
+      if (!l) return;
+      l.scrollTop = l.scrollHeight;
+      debugLog(label);
     };
-    scrollToBottom();
-    const raf = requestAnimationFrame(scrollToBottom);
 
+    debugLog("effect-start");
+    pin("sync");
+
+    const raf1 = requestAnimationFrame(() => {
+      pin("raf1");
+    });
+    let raf2Inner = 0;
+    const raf2 = requestAnimationFrame(() => {
+      raf2Inner = requestAnimationFrame(() => pin("raf2"));
+    });
+
+    // Catch-all for image/video lazy loads inflating scrollHeight.
     const ro =
       typeof ResizeObserver !== "undefined"
-        ? new ResizeObserver(() => {
-            if (pinnedRef.current) scrollToBottom();
-          })
+        ? new ResizeObserver(() => pin("resize"))
         : null;
     if (ro && content) ro.observe(content);
-
-    const onScroll = () => {
-      pinnedRef.current =
-        list.scrollHeight - list.scrollTop - list.clientHeight < 40;
-    };
-    list.addEventListener("scroll", onScroll, { passive: true });
 
     // Auto-focus only on devices with a real pointer (desktop). On touch,
     // popping the virtual keyboard on open shifts the viewport and makes the
@@ -285,11 +329,29 @@ export default function FloatingChat() {
     }
 
     return () => {
-      cancelAnimationFrame(raf);
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+      if (raf2Inner) cancelAnimationFrame(raf2Inner);
       ro?.disconnect();
-      list.removeEventListener("scroll", onScroll);
     };
-  }, [open]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, messages.length]);
+
+  // One extra pin after framer-motion's enter animation settles. On mobile
+  // this is the first frame where the panel's scale/opacity are final, which
+  // is the most reliable frame if earlier pins were fighting the animation.
+  const handlePanelAnimationComplete = () => {
+    const list = listRef.current;
+    if (!list || !open) return;
+    list.scrollTop = list.scrollHeight;
+    debugLog("animation-complete");
+    requestAnimationFrame(() => {
+      const l = listRef.current;
+      if (!l) return;
+      l.scrollTop = l.scrollHeight;
+      debugLog("animation-complete+raf");
+    });
+  };
 
   // Revoke blob URL on file change
   useEffect(() => {
@@ -511,6 +573,7 @@ export default function FloatingChat() {
             animate={{ y: 0, opacity: 1, scale: 1 }}
             exit={{ y: 20, opacity: 0, scale: 0.96 }}
             transition={{ duration: 0.25, ease: "easeOut" }}
+            onAnimationComplete={handlePanelAnimationComplete}
             role="dialog"
             aria-label="길드 채팅"
           >
