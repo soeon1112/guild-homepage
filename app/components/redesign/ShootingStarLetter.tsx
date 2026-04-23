@@ -201,8 +201,11 @@ export function ShootingStarLetter() {
                 onClick={handleCompose}
                 className="group relative flex flex-1 items-center justify-center gap-1.5 rounded-full border border-peach-accent/50 bg-peach-accent/10 px-3 py-2 text-[11px] font-serif tracking-wider text-stardust backdrop-blur-sm transition-all hover:border-peach-accent hover:bg-peach-accent/20"
               >
-                <Sparkles className="h-3 w-3" />
-                마음 띄우기
+                <Sparkles className="h-3 w-3 shrink-0" />
+                <span className="flex flex-col items-center leading-tight sm:flex-row sm:gap-1">
+                  <span>마음</span>
+                  <span>띄우기</span>
+                </span>
               </button>
               <button
                 type="button"
