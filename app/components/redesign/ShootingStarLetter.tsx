@@ -18,6 +18,11 @@ import {
 import { db } from "@/src/lib/firebase";
 import { useAuth } from "@/app/components/AuthProvider";
 import { formatSmart } from "@/src/lib/formatSmart";
+import {
+  claimRenewalLetter,
+  RENEWAL_EVENT_AMOUNT,
+  RENEWAL_EVENT_TYPE,
+} from "@/src/lib/renewalEvent";
 
 type LetterDoc = {
   id: string;
@@ -28,6 +33,9 @@ type LetterDoc = {
   createdAt: Timestamp | null;
   deliveredAt: Timestamp | null;
   read: boolean;
+  eventType?: string;
+  eventId?: string;
+  eventClaimed?: boolean;
 };
 
 export function ShootingStarLetter() {
@@ -61,9 +69,18 @@ export function ShootingStarLetter() {
           createdAt: (data.createdAt as Timestamp | null) ?? null,
           deliveredAt: (data.deliveredAt as Timestamp | null) ?? null,
           read: !!data.read,
+          eventType: (data.eventType as string | undefined) ?? undefined,
+          eventId: (data.eventId as string | undefined) ?? undefined,
+          eventClaimed: !!data.eventClaimed,
         };
       });
+      // Sort: unclaimed event gifts first (nudge user to open), then by
+      // delivery time desc. Keeps a claimed event letter chronologically
+      // placed like any other keepsake.
       list.sort((a, b) => {
+        const ap = a.eventType && !a.eventClaimed ? 0 : 1;
+        const bp = b.eventType && !b.eventClaimed ? 0 : 1;
+        if (ap !== bp) return ap - bp;
         const at = a.deliveredAt?.toMillis?.() ?? 0;
         const bt = b.deliveredAt?.toMillis?.() ?? 0;
         return bt - at;
@@ -76,6 +93,16 @@ export function ShootingStarLetter() {
   const unreadCount = useMemo(
     () => (nickname ? inbox.filter((l) => !l.read).length : 0),
     [nickname, inbox],
+  );
+
+  // Has an unclaimed renewal gift waiting? Used to add an extra gold pulse
+  // around the inbox button on top of the normal unread-count badge.
+  const hasUnreadGift = useMemo(
+    () =>
+      inbox.some(
+        (l) => l.eventType === RENEWAL_EVENT_TYPE && !l.eventClaimed,
+      ),
+    [inbox],
   );
 
   const requireLogin = () => {
@@ -207,27 +234,83 @@ export function ShootingStarLetter() {
                   <span>띄우기</span>
                 </span>
               </button>
-              <button
-                type="button"
-                onClick={handleInbox}
-                className="group relative flex items-center justify-center gap-1.5 rounded-full border border-nebula-pink/30 bg-abyss/40 px-3 py-2 text-[11px] font-serif tracking-wider text-text-sub backdrop-blur-sm transition-all hover:border-nebula-pink/60 hover:text-stardust"
-                aria-label={
-                  unreadCount > 0
-                    ? `편지함 열기, 미확인 ${unreadCount}건`
-                    : "편지함 열기"
-                }
-              >
-                <Inbox className="h-3 w-3" />
-                편지함
-                {unreadCount > 0 && (
-                  <span
-                    className="ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-peach-accent px-1 text-[9px] font-bold text-abyss"
-                    style={{ boxShadow: "0 0 6px rgba(255,181,167,0.6)" }}
-                  >
-                    {unreadCount}
-                  </span>
+              <div className="relative">
+                {/* Gold pulse ring — only when an unclaimed renewal gift is
+                    waiting. Sits behind the button, hit-test off. */}
+                {hasUnreadGift && (
+                  <>
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute inset-0 rounded-full"
+                      style={{
+                        background:
+                          "radial-gradient(circle, rgba(255,229,196,0.55) 0%, rgba(255,181,167,0.35) 45%, transparent 75%)",
+                        animation:
+                          "pulse-ring 1.6s cubic-bezier(0,0,0.2,1) infinite",
+                      }}
+                    />
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute inset-0 rounded-full border"
+                      style={{
+                        borderColor: "rgba(255,229,196,0.9)",
+                        animation:
+                          "pulse-ring 1.6s cubic-bezier(0,0,0.2,1) -0.5s infinite",
+                      }}
+                    />
+                  </>
                 )}
-              </button>
+                <button
+                  type="button"
+                  onClick={handleInbox}
+                  className={
+                    "group relative flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-[11px] font-serif tracking-wider backdrop-blur-sm transition-all " +
+                    (hasUnreadGift
+                      ? "border border-peach-accent/70 bg-abyss/50 text-stardust hover:border-peach-accent"
+                      : "border border-nebula-pink/30 bg-abyss/40 text-text-sub hover:border-nebula-pink/60 hover:text-stardust")
+                  }
+                  aria-label={
+                    hasUnreadGift
+                      ? "편지함 열기, 새벽의 선물이 도착했어요"
+                      : unreadCount > 0
+                        ? `편지함 열기, 미확인 ${unreadCount}건`
+                        : "편지함 열기"
+                  }
+                >
+                  <Inbox className="h-3 w-3" />
+                  편지함
+                  {unreadCount > 0 && (
+                    <span
+                      className="ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-peach-accent px-1 text-[9px] font-bold text-abyss"
+                      style={{ boxShadow: "0 0 6px rgba(255,181,167,0.6)" }}
+                    >
+                      {unreadCount}
+                    </span>
+                  )}
+                  {/* Floating NEW ✨ badge — only for unclaimed gift */}
+                  {hasUnreadGift && (
+                    <motion.span
+                      aria-hidden
+                      className="pointer-events-none absolute -right-2 -top-2 rounded-full px-1.5 py-0.5 text-[8px] font-bold tracking-wider text-abyss-deep"
+                      style={{
+                        background:
+                          "linear-gradient(135deg, #FFE5C4, #FFB5A7, #D896C8)",
+                        boxShadow:
+                          "0 0 8px rgba(255,229,196,0.9), 0 0 16px rgba(255,181,167,0.6)",
+                        border: "1px solid rgba(255,255,255,0.7)",
+                      }}
+                      animate={{ y: [0, -2, 0] }}
+                      transition={{
+                        duration: 1.3,
+                        repeat: Number.POSITIVE_INFINITY,
+                        ease: "easeInOut",
+                      }}
+                    >
+                      NEW ✨
+                    </motion.span>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -261,7 +344,11 @@ export function ShootingStarLetter() {
       {/* Inbox modal */}
       <AnimatePresence>
         {inboxOpen && nickname && (
-          <InboxModal letters={inbox} onClose={() => setInboxOpen(false)} />
+          <InboxModal
+            letters={inbox}
+            nickname={nickname}
+            onClose={() => setInboxOpen(false)}
+          />
         )}
       </AnimatePresence>
     </section>
@@ -315,6 +402,140 @@ function NebulaGlows() {
           filter: "blur(32px)",
         }}
       />
+    </>
+  );
+}
+
+/**
+ * Star burst fired when the user claims their renewal gift.
+ * 20 gold stars explode from the card center, each with randomized
+ * direction/distance/delay. Stagger is computed once per mount so every
+ * claim gets a fresh spread.
+ */
+function ClaimBurst() {
+  const stars = useMemo(
+    () =>
+      Array.from({ length: 20 }, (_, i) => {
+        // Fibonacci-ish angle spread for even distribution without clumping.
+        const angle = (i / 20) * Math.PI * 2 + Math.random() * 0.5;
+        const distance = 90 + Math.random() * 110;
+        return {
+          id: i,
+          x: Math.cos(angle) * distance,
+          y: Math.sin(angle) * distance,
+          size: 3 + Math.random() * 4,
+          delay: Math.random() * 0.15,
+          duration: 1.1 + Math.random() * 0.6,
+        };
+      }),
+    [],
+  );
+
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center overflow-visible"
+    >
+      {stars.map((s) => (
+        <motion.span
+          key={s.id}
+          className="absolute rounded-full"
+          style={{
+            width: s.size,
+            height: s.size,
+            background: "#FFE5C4",
+            filter: `drop-shadow(0 0 ${s.size + 3}px #FFE5C4) drop-shadow(0 0 ${
+              s.size + 6
+            }px #FFB5A7)`,
+          }}
+          initial={{ x: 0, y: 0, scale: 0, opacity: 0 }}
+          animate={{
+            x: s.x,
+            y: s.y,
+            scale: [0, 1.2, 0.9, 0],
+            opacity: [0, 1, 1, 0],
+          }}
+          transition={{
+            duration: s.duration,
+            delay: s.delay,
+            ease: "easeOut",
+            times: [0, 0.15, 0.7, 1],
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/** Central overlay shown briefly after a successful claim. */
+function ClaimThanks({ amount }: { amount: number }) {
+  return (
+    <motion.div
+      className="pointer-events-none absolute inset-0 z-40 flex flex-col items-center justify-center gap-3 px-6 text-center"
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 1.05 }}
+      transition={{ duration: 0.35, ease: "easeOut" }}
+    >
+      <motion.p
+        className="font-serif text-[22px] font-medium tracking-wider"
+        style={{
+          backgroundImage: "linear-gradient(135deg, #FFE5C4, #FFB5A7, #D896C8)",
+          WebkitBackgroundClip: "text",
+          backgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+          color: "transparent",
+          filter: "drop-shadow(0 0 18px rgba(255,229,196,0.7))",
+        }}
+        initial={{ y: 8 }}
+        animate={{ y: 0 }}
+        transition={{ delay: 0.1 }}
+      >
+        ✦ 별빛 +{amount} ✦
+      </motion.p>
+      <motion.p
+        className="font-serif text-[13px] italic text-stardust text-balance"
+        style={{ textShadow: "0 0 10px rgba(216,150,200,0.6)" }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.3 }}
+      >
+        새벽의 축복이 함께하기를 ✨
+      </motion.p>
+    </motion.div>
+  );
+}
+
+/** Drifting gold/peach sparkles around the gift letter card. */
+function GiftParticles() {
+  const particles = [
+    { left: "6%", top: "8%", size: 4, delay: 0 },
+    { left: "92%", top: "14%", size: 5, delay: 0.3 },
+    { left: "10%", top: "58%", size: 3, delay: 0.9 },
+    { left: "88%", top: "62%", size: 4, delay: 1.4 },
+    { left: "50%", top: "4%", size: 3, delay: 0.6 },
+    { left: "48%", top: "94%", size: 4, delay: 1.1 },
+    { left: "22%", top: "32%", size: 2.5, delay: 1.8 },
+    { left: "78%", top: "36%", size: 3, delay: 0.15 },
+  ];
+  return (
+    <>
+      {particles.map((p, i) => (
+        <span
+          key={i}
+          aria-hidden
+          className="pointer-events-none absolute rounded-full"
+          style={{
+            left: p.left,
+            top: p.top,
+            width: p.size,
+            height: p.size,
+            background: "#FFE5C4",
+            filter: `drop-shadow(0 0 ${p.size + 3}px #FFE5C4)`,
+            animation: `twinkle 2.4s ease-in-out ${p.delay}s infinite`,
+          }}
+        />
+      ))}
     </>
   );
 }
@@ -553,13 +774,20 @@ function ComposeModal({
 
 function InboxModal({
   letters,
+  nickname,
   onClose,
 }: {
   letters: LetterDoc[];
+  nickname: string;
   onClose: () => void;
 }) {
   const [idx, setIdx] = useState(0);
   const [marking, setMarking] = useState(false);
+  const [claiming, setClaiming] = useState(false);
+  const [claimErr, setClaimErr] = useState<string | null>(null);
+  const [celebration, setCelebration] = useState<{ amount: number } | null>(
+    null,
+  );
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -577,8 +805,26 @@ function InboxModal({
     };
   }, []);
 
+  // Auto-clear the celebration after 2s. Button state flips via snapshot
+  // (eventClaimed: true) independently, so the card stays in the claimed
+  // state even after the overlay fades.
+  useEffect(() => {
+    if (!celebration) return;
+    const t = window.setTimeout(() => setCelebration(null), 2000);
+    return () => window.clearTimeout(t);
+  }, [celebration]);
+
+  // Auto-clear claim errors after 3s.
+  useEffect(() => {
+    if (!claimErr) return;
+    const t = window.setTimeout(() => setClaimErr(null), 3000);
+    return () => window.clearTimeout(t);
+  }, [claimErr]);
+
   const safeIdx = Math.max(0, Math.min(idx, letters.length - 1));
   const current = letters[safeIdx];
+  const isEvent = current?.eventType === RENEWAL_EVENT_TYPE;
+  const isUnclaimedEvent = isEvent && !current?.eventClaimed;
 
   const handleRead = async () => {
     if (!current || current.read || marking) return;
@@ -590,6 +836,54 @@ function InboxModal({
     }
     setMarking(false);
   };
+
+  const handleClaim = async () => {
+    if (!current || claiming) return;
+    if (current.eventClaimed) return;
+    if (current.eventType !== RENEWAL_EVENT_TYPE) return;
+    setClaimErr(null);
+    setClaiming(true);
+    try {
+      await claimRenewalLetter(nickname, current.id);
+      setCelebration({ amount: RENEWAL_EVENT_AMOUNT });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg === "ALREADY_CLAIMED") {
+        setClaimErr("이미 수령한 선물입니다");
+      } else if (msg === "USER_NOT_FOUND") {
+        setClaimErr("계정을 찾을 수 없어요. 다시 로그인해 주세요.");
+      } else {
+        setClaimErr("잠시 후 다시 시도해 주세요");
+        console.error("claimRenewalLetter failed:", e);
+      }
+    }
+    setClaiming(false);
+  };
+
+  // Visual tokens — swap the modal skin based on whether the current letter
+  // is a renewal gift. Keeping this as a single gate avoids forking the
+  // whole render tree.
+  const cardStyle: React.CSSProperties = isEvent
+    ? {
+        background:
+          "linear-gradient(145deg, rgba(46,25,80,0.95) 0%, rgba(26,15,61,0.95) 60%, rgba(60,30,75,0.95) 100%)",
+        border: "1px solid rgba(255,229,196,0.55)",
+        boxShadow:
+          "0 20px 60px rgba(0,0,0,0.6), 0 0 48px rgba(255,181,167,0.45), 0 0 96px rgba(216,150,200,0.25)",
+      }
+    : MODAL_CARD;
+
+  const contentBoxStyle: React.CSSProperties = isEvent
+    ? {
+        background:
+          "linear-gradient(135deg, rgba(255,229,196,0.12), rgba(255,181,167,0.08) 50%, rgba(216,150,200,0.1))",
+        border: "1px solid rgba(255,229,196,0.35)",
+        boxShadow: "inset 0 0 20px rgba(255,229,196,0.08)",
+      }
+    : {
+        background: "rgba(11,8,33,0.4)",
+        border: "1px solid rgba(216,150,200,0.2)",
+      };
 
   return (
     <motion.div
@@ -607,22 +901,72 @@ function InboxModal({
       <motion.div
         onClick={(e) => e.stopPropagation()}
         className="relative w-full max-w-sm overflow-hidden rounded-2xl"
-        style={MODAL_CARD}
+        style={cardStyle}
         initial={{ scale: 0.95, y: 20, opacity: 0 }}
-        animate={{ scale: 1, y: 0, opacity: 1 }}
+        animate={
+          isEvent
+            ? { scale: 1, opacity: 1, y: [0, -4, 0] }
+            : { scale: 1, y: 0, opacity: 1 }
+        }
         exit={{ scale: 0.95, y: 20, opacity: 0 }}
-        transition={{ duration: 0.25, ease: "easeOut" }}
+        transition={
+          isEvent
+            ? {
+                scale: { duration: 0.25, ease: "easeOut" },
+                opacity: { duration: 0.25, ease: "easeOut" },
+                y: {
+                  duration: 4,
+                  repeat: Number.POSITIVE_INFINITY,
+                  ease: "easeInOut",
+                },
+              }
+            : { duration: 0.25, ease: "easeOut" }
+        }
       >
         <NebulaGlows />
+        {isEvent && <GiftParticles />}
         <CloseButton onClose={onClose} />
+
+        {/* Claim celebration overlay — burst + thanks message, auto-clears
+            after 2s. Rendered above all other card contents. */}
+        <AnimatePresence>
+          {celebration && (
+            <>
+              <ClaimBurst key="burst" />
+              <ClaimThanks amount={celebration.amount} />
+            </>
+          )}
+        </AnimatePresence>
+
+        {/* Unclaimed gift — floating NEW badge */}
+        {isUnclaimedEvent && (
+          <motion.span
+            aria-hidden
+            className="pointer-events-none absolute left-3 top-3 z-10 rounded-full px-2.5 py-1 font-serif text-[10px] font-bold tracking-wider text-abyss-deep"
+            style={{
+              background: "linear-gradient(135deg, #FFE5C4, #FFB5A7, #D896C8)",
+              boxShadow:
+                "0 0 10px rgba(255,229,196,0.9), 0 0 20px rgba(255,181,167,0.7)",
+              border: "1px solid rgba(255,255,255,0.6)",
+            }}
+            animate={{ y: [0, -2, 0] }}
+            transition={{
+              duration: 1.4,
+              repeat: Number.POSITIVE_INFINITY,
+              ease: "easeInOut",
+            }}
+          >
+            NEW ✨
+          </motion.span>
+        )}
 
         {/* Title */}
         <div className="relative px-6 pb-3 pt-9 text-center">
           <h2 className="leading-none" style={MODAL_TITLE}>
-            도착한 마음
+            {isEvent ? "새벽의 선물" : "도착한 마음"}
           </h2>
           <p className="mt-2 font-serif text-[10px] tracking-[0.35em] text-nebula-pink/80 uppercase">
-            Letters from Afar
+            {isEvent ? "Gift from Dawnlight" : "Letters from Afar"}
           </p>
         </div>
 
@@ -644,6 +988,11 @@ function InboxModal({
             {/* Meta row */}
             <div className="mb-2 flex items-center justify-between">
               <span className="font-serif text-[10px] italic text-text-sub">
+                {isEvent && (
+                  <span className="mr-2 text-stardust">
+                    from {current.from}
+                  </span>
+                )}
                 {current.deliveredAt
                   ? formatSmart(current.deliveredAt.toDate())
                   : current.createdAt
@@ -666,8 +1015,25 @@ function InboxModal({
             </div>
 
             {/* Letter content */}
-            <div className="nebula-scroll relative max-h-[40vh] overflow-y-auto rounded-xl border border-nebula-pink/20 bg-abyss/40 p-4 backdrop-blur-sm">
-              <p className="wrap-anywhere whitespace-pre-wrap font-serif text-[13px] leading-relaxed text-text-primary">
+            <div
+              className="nebula-scroll relative max-h-[40vh] overflow-y-auto rounded-xl p-4 backdrop-blur-sm"
+              style={contentBoxStyle}
+            >
+              <p
+                className={
+                  "wrap-anywhere whitespace-pre-wrap font-serif leading-relaxed" +
+                  (isEvent
+                    ? " text-center text-[13px] text-stardust"
+                    : " text-[13px] text-text-primary")
+                }
+                style={
+                  isEvent
+                    ? {
+                        textShadow: "0 0 12px rgba(255,229,196,0.35)",
+                      }
+                    : undefined
+                }
+              >
                 {current.content}
               </p>
             </div>
@@ -684,32 +1050,69 @@ function InboxModal({
                 ‹ 이전
               </button>
 
-              <button
-                type="button"
-                onClick={handleRead}
-                disabled={current.read || marking}
-                className="rounded-full px-4 py-2 font-serif text-[11px] font-medium tracking-wider transition-all disabled:cursor-not-allowed"
-                style={{
-                  background: current.read
-                    ? "rgba(26,15,61,0.5)"
-                    : "linear-gradient(135deg, #FFE5C4, #FFB5A7)",
-                  border: current.read
-                    ? "1px solid rgba(216,150,200,0.3)"
-                    : "none",
-                  boxShadow: current.read
-                    ? "none"
-                    : "0 0 12px rgba(255,181,167,0.5)",
-                  color: current.read
-                    ? "rgba(255,229,196,0.7)"
-                    : "rgba(11,8,33,1)",
-                }}
-              >
-                {current.read
-                  ? "읽음"
-                  : marking
-                    ? "처리 중..."
-                    : "읽었습니다"}
-              </button>
+              {isEvent ? (
+                <button
+                  type="button"
+                  onClick={handleClaim}
+                  disabled={!!current.eventClaimed || claiming}
+                  aria-label={
+                    current.eventClaimed ? "이미 수령" : "별빛 받기"
+                  }
+                  className="rounded-full px-5 py-2 font-serif text-[12px] font-medium tracking-wider transition-all disabled:cursor-not-allowed"
+                  style={{
+                    background: current.eventClaimed
+                      ? "rgba(26,15,61,0.55)"
+                      : claiming
+                        ? "rgba(216,150,200,0.3)"
+                        : "linear-gradient(135deg, #FFE5C4, #FFB5A7, #D896C8)",
+                    border: current.eventClaimed
+                      ? "1px solid rgba(216,150,200,0.3)"
+                      : "1px solid rgba(255,255,255,0.5)",
+                    boxShadow:
+                      current.eventClaimed || claiming
+                        ? "none"
+                        : "0 0 14px rgba(255,181,167,0.6), 0 0 28px rgba(216,150,200,0.35)",
+                    color: current.eventClaimed
+                      ? "rgba(255,229,196,0.65)"
+                      : claiming
+                        ? "rgba(255,229,196,0.8)"
+                        : "rgba(11,8,33,1)",
+                  }}
+                >
+                  {current.eventClaimed
+                    ? "✓ 별빛을 받으셨습니다"
+                    : claiming
+                      ? "수령 중..."
+                      : "✨ 별빛 받기 ✨"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleRead}
+                  disabled={current.read || marking}
+                  className="rounded-full px-4 py-2 font-serif text-[11px] font-medium tracking-wider transition-all disabled:cursor-not-allowed"
+                  style={{
+                    background: current.read
+                      ? "rgba(26,15,61,0.5)"
+                      : "linear-gradient(135deg, #FFE5C4, #FFB5A7)",
+                    border: current.read
+                      ? "1px solid rgba(216,150,200,0.3)"
+                      : "none",
+                    boxShadow: current.read
+                      ? "none"
+                      : "0 0 12px rgba(255,181,167,0.5)",
+                    color: current.read
+                      ? "rgba(255,229,196,0.7)"
+                      : "rgba(11,8,33,1)",
+                  }}
+                >
+                  {current.read
+                    ? "읽음"
+                    : marking
+                      ? "처리 중..."
+                      : "읽었습니다"}
+                </button>
+              )}
 
               <button
                 type="button"
@@ -723,6 +1126,22 @@ function InboxModal({
                 다음 ›
               </button>
             </div>
+
+            {/* Claim error — inline, auto-clears after 3s */}
+            <AnimatePresence>
+              {claimErr && (
+                <motion.p
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.2 }}
+                  className="mt-3 text-center font-serif text-[11px] italic"
+                  style={{ color: "#E8A8B8" }}
+                >
+                  {claimErr}
+                </motion.p>
+              )}
+            </AnimatePresence>
           </div>
         )}
       </motion.div>

@@ -10,7 +10,13 @@ import {
 import { db } from "./firebase";
 import { handleEvent } from "./badgeCheck";
 
-export type PointType = "댓글" | "대댓글" | "방명록" | "사진" | "게시글";
+export type PointType =
+  | "댓글"
+  | "대댓글"
+  | "방명록"
+  | "사진"
+  | "게시글"
+  | "이벤트";
 
 export async function addPoints(
   nickname: string | null | undefined,
