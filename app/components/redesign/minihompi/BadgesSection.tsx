@@ -122,9 +122,16 @@ function BadgeItem({
   } | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
   const [mounted, setMounted] = useState(false);
+  const [canHover, setCanHover] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mq = window.matchMedia("(hover: hover) and (pointer: fine)");
+    setCanHover(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setCanHover(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
   }, []);
 
   const handleEnter = () => {
@@ -185,6 +192,7 @@ function BadgeItem({
       </span>
 
       {mounted &&
+        canHover &&
         hover &&
         tipPos &&
         createPortal(
