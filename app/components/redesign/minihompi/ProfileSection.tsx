@@ -680,20 +680,11 @@ function AvatarSystemSlot({ children }: { children: React.ReactNode }) {
       <FloatingParticle className="bottom-10 -left-4" size={5} color="#FFB5A7" delay={2} dur={3.8} />
 
       <div
-        className="relative flex w-[350px] max-w-full flex-col overflow-hidden rounded-2xl md:w-[500px]"
-        style={{
-          background:
-            "linear-gradient(180deg, rgba(26,15,61,0.45) 0%, rgba(61,46,107,0.28) 100%)",
-          border: "1px solid rgba(200, 168, 233, 0.22)",
-          backdropFilter: "blur(18px)",
-          WebkitBackdropFilter: "blur(18px)",
-          boxShadow:
-            "0 8px 32px rgba(11,8,33,0.4), inset 0 1px 0 rgba(255,229,196,0.05), inset 0 0 40px rgba(107,75,168,0.18)",
-        }}
+        className="relative flex w-[350px] max-w-full flex-col overflow-hidden rounded-2xl md:w-[500px] md:border md:border-[rgba(200,168,233,0.22)] md:bg-[linear-gradient(180deg,rgba(26,15,61,0.45)_0%,rgba(61,46,107,0.28)_100%)] md:shadow-[0_8px_32px_rgba(11,8,33,0.4),inset_0_1px_0_rgba(255,229,196,0.05),inset_0_0_40px_rgba(107,75,168,0.18)] md:backdrop-blur-[18px]"
       >
         <span
           aria-hidden
-          className="pointer-events-none absolute inset-0"
+          className="pointer-events-none absolute inset-0 hidden md:block"
           style={{
             background:
               "radial-gradient(ellipse at 50% 40%, rgba(216,150,200,0.14) 0%, transparent 58%), radial-gradient(ellipse at 30% 85%, rgba(107,75,168,0.2) 0%, transparent 62%)",
