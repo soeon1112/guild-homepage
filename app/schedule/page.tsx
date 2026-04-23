@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import BackLink from "@/app/components/BackLink";
 import { db } from "@/src/lib/firebase";
 import {
   addDoc,
@@ -156,10 +155,6 @@ export default function SchedulePage() {
 
   return (
     <div className="schedule-page">
-      <BackLink href="/" className="back-link">
-        ← 홈으로
-      </BackLink>
-
       <h1 className="schedule-title">일정</h1>
 
       <div className="schedule-panel">

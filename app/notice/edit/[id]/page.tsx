@@ -3,7 +3,6 @@
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import BackLink from "@/app/components/BackLink";
 import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import {
   ref,
@@ -164,7 +163,6 @@ export default function NoticeEditPage({
   if (notFound) {
     return (
       <div className="board-content">
-        <BackLink back className="back-link">← 목록으로</BackLink>
         <p className="board-loading">존재하지 않는 공지입니다.</p>
       </div>
     );
@@ -173,9 +171,6 @@ export default function NoticeEditPage({
   if (!verified) {
     return (
       <div className="board-content">
-        <BackLink back className="back-link">
-          ← 돌아가기
-        </BackLink>
         <h1 className="board-title">공지 수정</h1>
         <div className="notice-gate">
           <input
@@ -200,10 +195,6 @@ export default function NoticeEditPage({
 
   return (
     <div className="board-content">
-      <BackLink back className="back-link">
-        ← 돌아가기
-      </BackLink>
-
       <h1 className="board-title">공지 수정</h1>
 
       <div className="board-form">

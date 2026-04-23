@@ -2,7 +2,6 @@
 
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/components/AuthProvider";
 import { db, storage } from "@/src/lib/firebase";
 import {
@@ -38,6 +37,11 @@ import Avatar, {
   useAvatarData,
 } from "@/app/components/Avatar";
 import { handleEvent } from "@/src/lib/badgeCheck";
+import { ProfileSection as ProfileSectionV2 } from "@/app/components/redesign/minihompi/ProfileSection";
+import { BadgesSection } from "@/app/components/redesign/minihompi/BadgesSection";
+import { GuestbookSection as GuestbookSectionV2 } from "@/app/components/redesign/minihompi/GuestbookSection";
+import { AdventureLogSection } from "@/app/components/redesign/minihompi/AdventureLogSection";
+import { PhotosSection } from "@/app/components/redesign/minihompi/PhotosSection";
 
 const detailIds = new Set([
   "a", "1", "1-2", "2", "3", "4", "6", "7", "8", "9",
@@ -262,18 +266,9 @@ export default function MemberMiniHomePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const router = useRouter();
   const { nickname: loginNick } = useAuth();
   const [member, setMember] = useState<MemberDoc | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const handleBack = () => {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      router.back();
-    } else {
-      router.push("/");
-    }
-  };
 
   useEffect(() => {
     let cancelled = false;
@@ -301,15 +296,13 @@ export default function MemberMiniHomePage({
   }, [loginNick, member?.nickname]);
 
   return (
-    <div className="minihome">
-      <button type="button" className="back-link" onClick={handleBack}>
-        ← 돌아가기
-      </button>
-      {member?.bgmUrl && <BgmPlayer bgmUrl={member.bgmUrl} />}
+    <div className="minihome mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 pt-3 pb-6 sm:gap-7">
       {loading ? (
-        <p className="minihome-hint">로딩 중...</p>
+        <p className="py-8 text-center font-serif italic text-text-sub">
+          로딩 중...
+        </p>
       ) : (
-        <ProfileSection
+        <ProfileSectionV2
           id={id}
           member={member}
           loginNick={loginNick}
@@ -317,18 +310,18 @@ export default function MemberMiniHomePage({
           onChange={setMember}
         />
       )}
-      {member?.nickname && <BadgeCollection nickname={member.nickname} />}
-      <GuestbookSection
+      {member?.nickname && <BadgesSection nickname={member.nickname} />}
+      <GuestbookSectionV2
         id={id}
         loginNick={loginNick}
         memberNickname={member?.nickname ?? null}
       />
-      <AdventureSection
+      <AdventureLogSection
         id={id}
         isOwner={isOwner}
         memberNickname={member?.nickname ?? null}
       />
-      <PhotoSection
+      <PhotosSection
         id={id}
         isOwner={isOwner}
         loginNick={loginNick}

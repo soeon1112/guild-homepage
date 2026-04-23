@@ -1,14 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useAuth } from "./AuthProvider";
-import AttendanceButton from "./AttendanceButton";
-import MySpaceLink from "./MySpaceLink";
-import TitlePrefix from "./TitlePrefix";
 
 export default function LoginBar() {
-  const { nickname, ready, login, signup, logout } = useAuth();
+  const { nickname, ready, login, signup } = useAuth();
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [nick, setNick] = useState("");
   const [pw, setPw] = useState("");
@@ -57,27 +53,9 @@ export default function LoginBar() {
   }
 
   if (nickname) {
-    return (
-      <section className="loginbar loginbar-loggedin">
-        <span className="loginbar-welcome">
-          <TitlePrefix nickname={nickname} />
-          <strong>{nickname}</strong>님 환영합니다
-        </span>
-        <div className="loginbar-actions">
-          <AttendanceButton />
-          <MySpaceLink />
-          <Link href="/shop" className="loginbar-link-btn">
-            상점
-          </Link>
-          <Link href="/mypage" className="loginbar-link-btn">
-            MY
-          </Link>
-          <button className="loginbar-btn" onClick={logout}>
-            로그아웃
-          </button>
-        </div>
-      </section>
-    );
+    // Logged-in toolbar moved to the redesigned TopHeader.
+    // LoginBar now only renders the login/signup form for logged-out visitors.
+    return null;
   }
 
   if (mode === "signup") {

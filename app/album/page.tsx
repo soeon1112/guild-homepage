@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import BackLink from "@/app/components/BackLink";
 import { useAuth } from "@/app/components/AuthProvider";
 import { db, storage } from "@/src/lib/firebase";
 import {
@@ -308,8 +307,6 @@ export default function AlbumPage() {
 
   return (
     <div className="album-content">
-      <BackLink href="/" className="back-link">← 홈으로</BackLink>
-
       <div className="album-head">
         <h1 className="album-title">앨범</h1>
         <button className="minihome-btn minihome-btn-small" onClick={openUpload}>

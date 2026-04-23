@@ -3,7 +3,6 @@
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import BackLink from "@/app/components/BackLink";
 import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import {
   ref,
@@ -151,7 +150,6 @@ export default function BoardEditPage({
   if (authorNick === null) {
     return (
       <div className="board-content">
-        <BackLink back className="back-link">← 목록으로</BackLink>
         <p className="board-loading">존재하지 않는 게시글입니다.</p>
       </div>
     );
@@ -160,7 +158,6 @@ export default function BoardEditPage({
   if (!loginNick || loginNick !== authorNick) {
     return (
       <div className="board-content">
-        <BackLink back className="back-link">← 돌아가기</BackLink>
         <p className="login-required">작성자만 수정할 수 있습니다.</p>
       </div>
     );
@@ -168,10 +165,6 @@ export default function BoardEditPage({
 
   return (
     <div className="board-content">
-      <BackLink back className="back-link">
-        ← 돌아가기
-      </BackLink>
-
       <h1 className="board-title">글 수정</h1>
 
       <div className="board-form">

@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import BackLink from "@/app/components/BackLink";
 import {
   collection,
   doc,
@@ -120,9 +119,6 @@ export default function NoticeWritePage() {
   if (!verified) {
     return (
       <div className="board-content">
-        <BackLink href="/notice" className="back-link">
-          ← 목록으로
-        </BackLink>
         <h1 className="board-title">공지 작성</h1>
         <div className="notice-gate">
           <input
@@ -147,10 +143,6 @@ export default function NoticeWritePage() {
 
   return (
     <div className="board-content">
-      <BackLink href="/notice" className="back-link">
-        ← 목록으로
-      </BackLink>
-
       <h1 className="board-title">공지 작성</h1>
 
       <div className="board-form">

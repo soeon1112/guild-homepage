@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import BackLink from "@/app/components/BackLink";
 import {
   collection,
   doc,
@@ -123,9 +122,6 @@ export default function BoardWritePage() {
   if (!nickname) {
     return (
       <div className="board-content">
-        <BackLink back className="back-link">
-          ← 목록으로
-        </BackLink>
         <h1 className="board-title">글쓰기</h1>
         <p className="login-required">로그인이 필요합니다.</p>
       </div>
@@ -134,10 +130,6 @@ export default function BoardWritePage() {
 
   return (
     <div className="board-content">
-      <BackLink back className="back-link">
-        ← 목록으로
-      </BackLink>
-
       <h1 className="board-title">글쓰기</h1>
 
       <div className="board-form">

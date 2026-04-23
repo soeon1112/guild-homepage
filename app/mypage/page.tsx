@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import BackLink from "@/app/components/BackLink";
 import { useAuth } from "@/app/components/AuthProvider";
 import { db } from "@/src/lib/firebase";
 import { formatSmart } from "@/src/lib/formatSmart";
@@ -113,7 +112,6 @@ export default function MyPage() {
   if (!nickname) {
     return (
       <div className="mypage-content">
-        <BackLink href="/" className="back-link">← 홈으로</BackLink>
         <p className="login-required">로그인이 필요합니다.</p>
       </div>
     );
@@ -123,8 +121,6 @@ export default function MyPage() {
 
   return (
     <div className="mypage-content">
-      <BackLink href="/" className="back-link">← 홈으로</BackLink>
-
       <section className="mypage-card">
         <h1 className="mypage-nick">{nickname}</h1>
         <div className="mypage-points-wrap">

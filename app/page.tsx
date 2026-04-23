@@ -1,62 +1,27 @@
-import Link from "next/link";
-import Image from "next/image";
-import Guestbook from "./components/Guestbook";
-import LoginBar from "./components/LoginBar";
-import ActivityFeed from "./components/ActivityFeed";
-import Mailbox from "./components/Mailbox";
-
-const menuItems: { href: string; icon: string; label: string }[] = [
-  { href: "/notice", icon: "/images/guild-rules.png", label: "공지 게시판" },
-  { href: "/schedule", icon: "/images/schedule.png", label: "일정" },
-  { href: "/members", icon: "/images/members.png", label: "길드원" },
-  { href: "/combat", icon: "/images/combat-status.png", label: "투력 및 지옥 현황" },
-  { href: "/album", icon: "/images/album.png", label: "앨범" },
-  { href: "/board", icon: "/images/guild-memories.png", label: "길드 추억" },
-];
-
+// Main page — redesign (Step: global chrome moved to ChromeShell; page keeps only sections)
+import { TodaySky } from "./components/redesign/TodaySky";
+import { ShootingStarLetter } from "./components/redesign/ShootingStarLetter";
+import { NebulaWhispers } from "./components/redesign/NebulaWhispers";
+import { WhispersToStars } from "./components/redesign/WhispersToStars";
+import { StarOfDay } from "./components/redesign/StarOfDay";
 
 export default function Home() {
   return (
-    <>
-      <div className="main-content">
-        {/* Hero: logo + subtitle */}
-        <section className="hero">
-          <img
-            src="/images/guild-logo.png"
-            alt="새벽빛"
-            width={280}
-            height={280}
-            className="hero-logo"
-          />
-        </section>
+    <div className="main-content">
+      {/* Today's Sky — constellation + attendance check-in */}
+      <TodaySky />
 
-        {/* Login */}
-        <LoginBar />
+      {/* Shooting-star letter — compose & inbox */}
+      <ShootingStarLetter />
 
-        {/* Mailbox */}
-        <Mailbox />
+      {/* Nebula whispers — recent activity feed */}
+      <NebulaWhispers />
 
-        {/* Activity Feed */}
-        <ActivityFeed />
+      {/* Whispers to stars — home guestbook (floating cards) */}
+      <WhispersToStars />
 
-        {/* Guestbook */}
-        <Guestbook />
-
-        {/* Menu grid */}
-        <div className="menu-grid">
-          {menuItems.map((item) => (
-            <Link key={item.href} href={item.href} className="menu-item">
-              <Image
-                src={item.icon}
-                alt={item.label}
-                width={140}
-                height={140}
-                className="menu-icon"
-              />
-            </Link>
-          ))}
-        </div>
-      </div>
-    </>
+      {/* Star of the day — random member spotlight */}
+      <StarOfDay />
+    </div>
   );
 }

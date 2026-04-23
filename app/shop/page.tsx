@@ -10,7 +10,6 @@ import {
   serverTimestamp,
   setDoc,
 } from "firebase/firestore";
-import BackLink from "@/app/components/BackLink";
 import { useAuth } from "@/app/components/AuthProvider";
 import Avatar, {
   AvatarData,
@@ -368,9 +367,6 @@ export default function ShopPage() {
   if (!nickname) {
     return (
       <div className="shop-page">
-        <BackLink href="/" className="back-link">
-          ← 홈으로
-        </BackLink>
         <p className="login-required">로그인이 필요합니다.</p>
       </div>
     );
@@ -439,9 +435,6 @@ export default function ShopPage() {
 
   return (
     <div className="shop-page">
-      <BackLink href="/" className="back-link">
-        ← 홈으로
-      </BackLink>
       <div className="shop-container">
         <header className="shop-header">
           <h1 className="shop-title">상점</h1>
