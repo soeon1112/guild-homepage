@@ -358,7 +358,7 @@ function AdventureEntryRow({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
-              className="break-keep font-serif text-[13px] leading-relaxed text-text-primary"
+              className="wrap-anywhere font-serif text-[13px] leading-relaxed text-text-primary"
             >
               {entry.content}
             </motion.p>

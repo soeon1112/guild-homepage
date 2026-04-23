@@ -287,7 +287,7 @@ export function TodaySky() {
 
         {/* Center verse */}
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-8 text-center">
-          <p className="max-w-[160px] break-keep font-serif text-[13px] leading-relaxed text-text-primary text-glow-soft text-balance">
+          <p className="wrap-anywhere max-w-[160px] font-serif text-[13px] leading-relaxed text-text-primary text-glow-soft text-balance">
             &ldquo;{verse}&rdquo;
           </p>
           <span className="mt-2 font-serif text-[10px] tracking-[0.3em] text-text-sub uppercase">

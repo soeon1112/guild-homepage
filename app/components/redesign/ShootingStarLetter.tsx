@@ -667,7 +667,7 @@ function InboxModal({
 
             {/* Letter content */}
             <div className="nebula-scroll relative max-h-[40vh] overflow-y-auto rounded-xl border border-nebula-pink/20 bg-abyss/40 p-4 backdrop-blur-sm">
-              <p className="whitespace-pre-wrap font-serif text-[13px] leading-relaxed text-text-primary">
+              <p className="wrap-anywhere whitespace-pre-wrap font-serif text-[13px] leading-relaxed text-text-primary">
                 {current.content}
               </p>
             </div>

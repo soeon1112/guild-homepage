@@ -127,7 +127,7 @@ export function StarOfDay() {
                 {today.nickname}
               </h3>
               {today.statusMessage && (
-                <p className="mt-0.5 break-keep font-serif text-[12px] leading-snug text-text-sub text-pretty">
+                <p className="wrap-anywhere mt-0.5 font-serif text-[12px] leading-snug text-text-sub text-pretty">
                   &ldquo;{today.statusMessage}&rdquo;
                 </p>
               )}

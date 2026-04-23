@@ -127,7 +127,7 @@ export function MemberCard({
                 미등록된 새벽
               </span>
               <span
-                className="break-keep font-serif text-[11px] italic leading-relaxed text-text-sub/50"
+                className="wrap-anywhere font-serif text-[11px] italic leading-relaxed text-text-sub/50"
                 style={{
                   display: "-webkit-box",
                   WebkitLineClamp: 2,
@@ -229,7 +229,7 @@ export function MemberCard({
             </span>
 
             <span
-              className="break-keep font-serif text-[12px] italic leading-relaxed text-text-sub sm:text-[13px]"
+              className="wrap-anywhere font-serif text-[12px] italic leading-relaxed text-text-sub sm:text-[13px]"
               style={{
                 display: "-webkit-box",
                 WebkitLineClamp: 2,

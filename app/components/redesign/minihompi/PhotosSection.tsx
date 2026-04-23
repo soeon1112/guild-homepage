@@ -754,7 +754,7 @@ function PhotoViewerModal({
                 </div>
               </div>
             ) : (
-              <p className="min-w-0 flex-1 break-keep font-serif text-[13px] italic leading-relaxed text-text-primary">
+              <p className="wrap-anywhere min-w-0 flex-1 font-serif text-[13px] italic leading-relaxed text-text-primary">
                 {photo.caption || (
                   <span className="text-text-sub/60">설명 없음</span>
                 )}
@@ -1127,7 +1127,7 @@ function PhotoCommentItem({
   return (
     <div>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <p className="min-w-0 flex-1 break-keep font-serif text-[12px] leading-relaxed text-text-primary">
+        <p className="wrap-anywhere min-w-0 flex-1 font-serif text-[12px] leading-relaxed text-text-primary">
           <NicknameLink
             nickname={comment.nickname}
             className="font-medium text-stardust"
@@ -1179,7 +1179,7 @@ function PhotoCommentItem({
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <p className="min-w-0 flex-1 break-keep font-serif text-[11.5px] leading-relaxed text-text-primary">
+                  <p className="wrap-anywhere min-w-0 flex-1 font-serif text-[11.5px] leading-relaxed text-text-primary">
                     <NicknameLink
                       nickname={r.nickname}
                       className="font-medium text-stardust"

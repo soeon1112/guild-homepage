@@ -253,7 +253,7 @@ export function WhispersToStars() {
                     {time}
                   </span>
                 </div>
-                <p className="mt-0.5 break-keep font-serif text-[11px] leading-snug text-text-primary text-pretty">
+                <p className="wrap-anywhere mt-0.5 font-serif text-[11px] leading-snug text-text-primary text-pretty">
                   {entry.message}
                 </p>
               </motion.article>

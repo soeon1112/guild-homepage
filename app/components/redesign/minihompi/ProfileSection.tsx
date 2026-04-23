@@ -566,7 +566,7 @@ export function ProfileSection({
             </div>
 
             {member.statusMessage && (
-              <p className="mt-3 max-w-[320px] break-keep text-center font-serif text-[13px] italic leading-relaxed text-text-sub text-balance">
+              <p className="wrap-anywhere mt-3 max-w-[320px] text-center font-serif text-[13px] italic leading-relaxed text-text-sub text-balance">
                 “{member.statusMessage}”
               </p>
             )}

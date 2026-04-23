@@ -117,7 +117,7 @@ const MessageItem = memo(
         </div>
         {m.message && (
           <div
-            className="max-w-[82%] break-keep break-words rounded-2xl px-3 py-2 font-serif text-[12px] leading-relaxed backdrop-blur-sm"
+            className="wrap-anywhere max-w-[82%] rounded-2xl px-3 py-2 font-serif text-[12px] leading-relaxed backdrop-blur-sm"
             style={
               mine
                 ? {

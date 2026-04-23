@@ -356,7 +356,7 @@ function BadgeDetailModal({
           >
             {name}
           </h3>
-          <p className="break-keep font-serif text-[13px] italic text-text-sub">
+          <p className="wrap-anywhere font-serif text-[13px] italic text-text-sub">
             {desc}
           </p>
           {revealed && earnedAt && (
