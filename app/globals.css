@@ -3751,6 +3751,21 @@ select {
   line-height: 1.5;
 }
 
+.admin-users-report-warn {
+  background: rgba(217, 74, 74, 0.18);
+  border-color: rgba(217, 74, 74, 0.55);
+}
+
+.admin-users-errors {
+  margin-top: 0.6rem;
+  color: #ff9d9d;
+  font-size: 0.82rem;
+}
+
+.admin-users-errors ul {
+  color: inherit;
+}
+
 /* ── Badge collection ── */
 .badge-collection {
   background: rgba(0, 0, 0, 0.4);

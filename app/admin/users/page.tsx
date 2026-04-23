@@ -171,8 +171,16 @@ export default function AdminUsersPage() {
       </div>
 
       {report && (
-        <div className="admin-users-report">
-          <strong>{report.nick}</strong>(으)로 변경 완료
+        <div
+          className={
+            "admin-users-report" +
+            (report.r.errors.length > 0 || !report.r.oldDocDeleted
+              ? " admin-users-report-warn"
+              : "")
+          }
+        >
+          <strong>{report.nick}</strong>(으)로 변경
+          {report.r.oldDocDeleted ? " 완료" : " (기존 문서 미삭제)"}
           <ul>
             <li>방명록/흔적: {report.r.guestbookEntries}</li>
             <li>댓글: {report.r.comments}</li>
@@ -187,6 +195,16 @@ export default function AdminUsersPage() {
             <li>환전 요청: {report.r.exchangeRequests}</li>
             <li>편지: {report.r.letters}</li>
           </ul>
+          {report.r.errors.length > 0 && (
+            <div className="admin-users-errors">
+              <strong>실패한 단계:</strong>
+              <ul>
+                {report.r.errors.map((msg, i) => (
+                  <li key={i}>{msg}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
       {actionErr && <p className="loginbar-error">{actionErr}</p>}
