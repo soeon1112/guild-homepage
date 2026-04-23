@@ -271,9 +271,18 @@ export default function FloatingChat() {
     };
     list.addEventListener("scroll", onScroll, { passive: true });
 
-    requestAnimationFrame(() => {
-      messageInputRef.current?.focus();
-    });
+    // Auto-focus only on devices with a real pointer (desktop). On touch,
+    // popping the virtual keyboard on open shifts the viewport and makes the
+    // list scroll jump upward while the keyboard animates in.
+    const canAutoFocus =
+      typeof window !== "undefined" &&
+      !!window.matchMedia &&
+      window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+    if (canAutoFocus) {
+      requestAnimationFrame(() => {
+        messageInputRef.current?.focus({ preventScroll: true });
+      });
+    }
 
     return () => {
       cancelAnimationFrame(raf);
