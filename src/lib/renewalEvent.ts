@@ -29,7 +29,7 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { logActivity } from "./activity";
+import { deleteActivitiesByTargetPath, logActivity } from "./activity";
 
 export const RENEWAL_EVENT_ID = "renewal2026-04";
 export const RENEWAL_EVENT_TYPE = "renewal50";
@@ -245,11 +245,23 @@ export async function claimRenewalLetter(
     console.error("Failed to write pointHistory for renewal claim:", e);
   }
   try {
+    // Resolve the user's minihome slot so the activity row links back to
+    // their profile. Best-effort — falls back to empty link if no slot is
+    // mapped (unregistered user or lookup failure).
+    let link = "";
+    try {
+      const memberMatches = await getDocs(
+        query(collection(db, "members"), where("nickname", "==", nickname)),
+      );
+      if (!memberMatches.empty) {
+        link = `/members/${memberMatches.docs[0].id}`;
+      }
+    } catch {}
     await logActivity(
       "event",
       nickname,
-      `리뉴얼 기념 별똥별 편지 수령 (+${RENEWAL_EVENT_AMOUNT})`,
-      "",
+      `${nickname}님이 새벽의 이벤트로 ${RENEWAL_EVENT_AMOUNT}포인트를 수령했습니다 ✨`,
+      link,
       `events/${RENEWAL_EVENT_ID}/claims/${nickname}`,
     );
   } catch {}
@@ -465,6 +477,14 @@ export async function deleteTestRenewalLetters(
   if (claimSnap.exists() && claimSnap.data()?.isTest === true) {
     await deleteDoc(claimRef);
     claimDeleted = true;
+    // Purge the activity row tied to this test claim so the feed doesn't
+    // keep surfacing a phantom "수령했습니다" entry after the claim itself
+    // has been wiped.
+    try {
+      await deleteActivitiesByTargetPath(
+        `events/${RENEWAL_EVENT_ID}/claims/${trimmed}`,
+      );
+    } catch {}
   }
 
   return {
