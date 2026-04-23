@@ -235,40 +235,87 @@ export function ShootingStarLetter() {
                 </span>
               </button>
               <div className="relative">
-                {/* Gold pulse ring — only when an unclaimed renewal gift is
-                    waiting. Sits behind the button, hit-test off. */}
+                {/* Renewal gift signal — a layered glow + repeating particle
+                    emitter + the button self-animating. Removed on claim so
+                    the icon quietly returns to its default state. */}
                 {hasUnreadGift && (
                   <>
+                    {/* Background soft radial glow (brightness pulse) */}
+                    <motion.span
+                      aria-hidden
+                      className="pointer-events-none absolute -inset-6 rounded-full"
+                      style={{
+                        background:
+                          "radial-gradient(circle, rgba(255,229,196,0.55) 0%, rgba(255,181,167,0.35) 40%, rgba(216,150,200,0.15) 65%, transparent 85%)",
+                        filter: "blur(12px)",
+                      }}
+                      animate={{ opacity: [0.55, 1, 0.55], scale: [1, 1.15, 1] }}
+                      transition={{
+                        duration: 1.8,
+                        repeat: Number.POSITIVE_INFINITY,
+                        ease: "easeInOut",
+                      }}
+                    />
+                    {/* Expanding pulse rings */}
                     <span
                       aria-hidden
                       className="pointer-events-none absolute inset-0 rounded-full"
                       style={{
                         background:
-                          "radial-gradient(circle, rgba(255,229,196,0.55) 0%, rgba(255,181,167,0.35) 45%, transparent 75%)",
+                          "radial-gradient(circle, rgba(255,215,0,0.7) 0%, rgba(255,181,167,0.4) 45%, transparent 75%)",
                         animation:
                           "pulse-ring 1.6s cubic-bezier(0,0,0.2,1) infinite",
                       }}
                     />
                     <span
                       aria-hidden
-                      className="pointer-events-none absolute inset-0 rounded-full border"
+                      className="pointer-events-none absolute inset-0 rounded-full border-2"
                       style={{
-                        borderColor: "rgba(255,229,196,0.9)",
+                        borderColor: "rgba(255,229,196,1)",
                         animation:
-                          "pulse-ring 1.6s cubic-bezier(0,0,0.2,1) -0.5s infinite",
+                          "pulse-ring 1.6s cubic-bezier(0,0,0.2,1) -0.55s infinite",
                       }}
                     />
+                    {/* Repeating firework-style particle bursts */}
+                    <InboxBurstEmitter />
                   </>
                 )}
-                <button
+                <motion.button
                   type="button"
                   onClick={handleInbox}
                   className={
                     "group relative flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-[11px] font-serif tracking-wider backdrop-blur-sm transition-all " +
                     (hasUnreadGift
-                      ? "border border-peach-accent/70 bg-abyss/50 text-stardust hover:border-peach-accent"
+                      ? "border-2 border-peach-accent/90 bg-abyss/60 text-stardust hover:border-peach-accent"
                       : "border border-nebula-pink/30 bg-abyss/40 text-text-sub hover:border-nebula-pink/60 hover:text-stardust")
                   }
+                  style={
+                    hasUnreadGift
+                      ? {
+                          boxShadow:
+                            "0 0 12px rgba(255,229,196,0.75), 0 0 24px rgba(255,181,167,0.55), 0 0 48px rgba(216,150,200,0.35)",
+                        }
+                      : undefined
+                  }
+                  animate={
+                    hasUnreadGift
+                      ? {
+                          y: [0, -5, 0],
+                          rotate: [-3, 3, -3],
+                          scale: [1, 1.15, 1],
+                        }
+                      : undefined
+                  }
+                  transition={
+                    hasUnreadGift
+                      ? {
+                          duration: 2.2,
+                          repeat: Number.POSITIVE_INFINITY,
+                          ease: "easeInOut",
+                        }
+                      : undefined
+                  }
+                  whileHover={hasUnreadGift ? { scale: 1.22 } : undefined}
                   aria-label={
                     hasUnreadGift
                       ? "편지함 열기, 새벽의 선물이 도착했어요"
@@ -277,7 +324,17 @@ export function ShootingStarLetter() {
                         : "편지함 열기"
                   }
                 >
-                  <Inbox className="h-3 w-3" />
+                  <Inbox
+                    className={"h-3 w-3 " + (hasUnreadGift ? "text-[#FFE5C4]" : "")}
+                    style={
+                      hasUnreadGift
+                        ? {
+                            filter:
+                              "drop-shadow(0 0 6px rgba(255,229,196,1)) drop-shadow(0 0 12px rgba(255,215,0,0.8))",
+                          }
+                        : undefined
+                    }
+                  />
                   편지함
                   {unreadCount > 0 && (
                     <span
@@ -287,29 +344,7 @@ export function ShootingStarLetter() {
                       {unreadCount}
                     </span>
                   )}
-                  {/* Floating NEW ✨ badge — only for unclaimed gift */}
-                  {hasUnreadGift && (
-                    <motion.span
-                      aria-hidden
-                      className="pointer-events-none absolute -right-2 -top-2 rounded-full px-1.5 py-0.5 text-[8px] font-bold tracking-wider text-abyss-deep"
-                      style={{
-                        background:
-                          "linear-gradient(135deg, #FFE5C4, #FFB5A7, #D896C8)",
-                        boxShadow:
-                          "0 0 8px rgba(255,229,196,0.9), 0 0 16px rgba(255,181,167,0.6)",
-                        border: "1px solid rgba(255,255,255,0.7)",
-                      }}
-                      animate={{ y: [0, -2, 0] }}
-                      transition={{
-                        duration: 1.3,
-                        repeat: Number.POSITIVE_INFINITY,
-                        ease: "easeInOut",
-                      }}
-                    >
-                      NEW ✨
-                    </motion.span>
-                  )}
-                </button>
+                </motion.button>
               </div>
             </div>
           </div>
@@ -413,6 +448,110 @@ const BURST_PALETTE = [
   "#D896C8",
   "#FFFFFF",
 ];
+
+type InboxBurstParticle = {
+  id: number;
+  x: number;
+  y: number;
+  size: number;
+  color: string;
+  delay: number;
+  duration: number;
+};
+
+type InboxBurst = {
+  id: number;
+  particles: InboxBurstParticle[];
+};
+
+/**
+ * Firework-style particle emitter mounted behind the inbox button when an
+ * unclaimed renewal gift is waiting. Re-fires every 1.8s with 13 varied
+ * particles per volley. Auto-cleans finished volleys so the React tree
+ * stays lean.
+ */
+function InboxBurstEmitter() {
+  const [bursts, setBursts] = useState<InboxBurst[]>([]);
+
+  useEffect(() => {
+    let counter = 0;
+    let cancelled = false;
+
+    const spawn = () => {
+      if (cancelled) return;
+      const id = ++counter;
+      const particles: InboxBurstParticle[] = Array.from(
+        { length: 13 },
+        (_, i) => {
+          // Spread in full circle but bias slightly upward so the effect
+          // reads as a "burst" rather than a flat ring.
+          const angle =
+            (i / 13) * Math.PI * 2 + (Math.random() - 0.5) * 0.3;
+          const speed = 32 + Math.random() * 36;
+          return {
+            id: i,
+            x: Math.cos(angle) * speed,
+            y: Math.sin(angle) * speed - 10,
+            size: 2 + Math.random() * 3,
+            color: BURST_PALETTE[i % BURST_PALETTE.length],
+            delay: Math.random() * 0.12,
+            duration: 1.0 + Math.random() * 0.4,
+          };
+        },
+      );
+      setBursts((prev) => [...prev, { id, particles }]);
+      // Retire each volley ~1.5s after it spawns so the DOM doesn't grow.
+      window.setTimeout(() => {
+        if (cancelled) return;
+        setBursts((prev) => prev.filter((b) => b.id !== id));
+      }, 1500);
+    };
+
+    spawn();
+    const interval = window.setInterval(spawn, 1800);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-visible"
+    >
+      {bursts.map((b) =>
+        b.particles.map((p) => (
+          <motion.span
+            key={`${b.id}-${p.id}`}
+            className="absolute rounded-full"
+            style={{
+              width: p.size,
+              height: p.size,
+              background: p.color,
+              filter: `drop-shadow(0 0 ${p.size + 3}px ${p.color}) drop-shadow(0 0 ${
+                p.size + 6
+              }px ${p.color})`,
+            }}
+            initial={{ x: 0, y: 0, scale: 0, opacity: 0 }}
+            animate={{
+              x: p.x,
+              y: p.y,
+              scale: [0, 1.3, 0],
+              opacity: [0, 1, 0],
+            }}
+            transition={{
+              duration: p.duration,
+              delay: p.delay,
+              ease: "easeOut",
+              times: [0, 0.25, 1],
+            }}
+          />
+        )),
+      )}
+    </div>
+  );
+}
 
 /**
  * Expanding shock wave rendered at t=0 when the claim button is pressed.
