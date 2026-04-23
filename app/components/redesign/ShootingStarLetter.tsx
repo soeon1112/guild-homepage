@@ -1336,7 +1336,6 @@ function InboxModal({
   const safeIdx = Math.max(0, Math.min(idx, letters.length - 1));
   const current = letters[safeIdx];
   const isEvent = current?.eventType === RENEWAL_EVENT_TYPE;
-  const isUnclaimedEvent = isEvent && !current?.eventClaimed;
 
   const handleRead = async () => {
     if (!current || current.read || marking) return;
@@ -1471,31 +1470,6 @@ function InboxModal({
             </>
           )}
         </AnimatePresence>
-
-        {/* Unclaimed gift — floating NEW badge (bigger + brighter glow) */}
-        {isUnclaimedEvent && (
-          <motion.span
-            aria-hidden
-            className="pointer-events-none absolute -left-1 -top-1 z-10 rounded-full px-3 py-1.5 font-serif text-[12px] font-bold tracking-wider text-abyss-deep"
-            style={{
-              background: "linear-gradient(135deg, #FFF5E0, #FFD700, #FFB5A7, #D896C8)",
-              boxShadow:
-                "0 0 14px rgba(255,229,196,1), 0 0 28px rgba(255,181,167,0.9), 0 0 48px rgba(216,150,200,0.65)",
-              border: "2px solid rgba(255,255,255,0.85)",
-            }}
-            animate={{
-              y: [0, -3, 0],
-              scale: [1, 1.08, 1],
-            }}
-            transition={{
-              duration: 1.3,
-              repeat: Number.POSITIVE_INFINITY,
-              ease: "easeInOut",
-            }}
-          >
-            NEW ✨
-          </motion.span>
-        )}
 
         {/* Title */}
         <div className="relative px-6 pb-3 pt-9 text-center">
