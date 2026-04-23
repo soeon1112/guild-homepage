@@ -3,13 +3,17 @@
 import { useEffect, useState } from "react";
 import BackLink from "@/app/components/BackLink";
 import {
+  deleteTestRenewalLetters,
   getRenewalEventStatus,
   initRenewalEvent,
   RENEWAL_EVENT_AMOUNT,
   RENEWAL_EVENT_ID,
+  sendTestRenewalLetter,
   subscribeRenewalClaims,
   type RenewalEventStatus,
   type RenewalInitResult,
+  type TestDeleteResult,
+  type TestSendResult,
 } from "@/src/lib/renewalEvent";
 
 const ADMIN_PASSWORD = "dawnlight2024";
@@ -37,6 +41,13 @@ export default function AdminRenewalEventPage() {
   const [starting, setStarting] = useState(false);
   const [startResult, setStartResult] = useState<RenewalInitResult | null>(null);
   const [startErr, setStartErr] = useState("");
+
+  // Test mode state
+  const [testNick, setTestNick] = useState("");
+  const [testSending, setTestSending] = useState(false);
+  const [testDeleting, setTestDeleting] = useState(false);
+  const [testMsg, setTestMsg] = useState<string | null>(null);
+  const [testErr, setTestErr] = useState<string | null>(null);
 
   // Initial status load.
   useEffect(() => {
@@ -115,6 +126,57 @@ export default function AdminRenewalEventPage() {
     setStarting(false);
   };
 
+  const describeTestError = (e: unknown): string => {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg === "NICKNAME_REQUIRED") return "닉네임을 입력해 주세요";
+    if (msg === "USER_NOT_FOUND")
+      return "해당 닉네임의 계정을 찾을 수 없습니다";
+    return `실패: ${msg}`;
+  };
+
+  const handleTestSend = async () => {
+    if (testSending || testDeleting) return;
+    setTestMsg(null);
+    setTestErr(null);
+    setTestSending(true);
+    try {
+      const r: TestSendResult = await sendTestRenewalLetter(testNick);
+      setTestMsg(
+        r.alreadyExisted
+          ? `${r.nickname} 계정에 이미 테스트 편지가 있어요 (중복 발송하지 않음)`
+          : `${r.nickname} 계정에 테스트 편지를 보냈습니다 ✨`,
+      );
+    } catch (e) {
+      console.error(e);
+      setTestErr(describeTestError(e));
+    }
+    setTestSending(false);
+  };
+
+  const handleTestDelete = async () => {
+    if (testSending || testDeleting) return;
+    setTestMsg(null);
+    setTestErr(null);
+    const ok = confirm(
+      `${testNick.trim()} 계정의 테스트 편지와 테스트 수령 기록을 삭제할까요?\n` +
+        "\n" +
+        "(이미 지급된 포인트는 되돌리지 않습니다)",
+    );
+    if (!ok) return;
+    setTestDeleting(true);
+    try {
+      const r: TestDeleteResult = await deleteTestRenewalLetters(testNick);
+      setTestMsg(
+        `${r.nickname}: 테스트 편지 ${r.lettersDeleted}건 삭제` +
+          (r.claimDeleted ? " · 테스트 수령 기록도 삭제됨" : ""),
+      );
+    } catch (e) {
+      console.error(e);
+      setTestErr(describeTestError(e));
+    }
+    setTestDeleting(false);
+  };
+
   if (!verified) {
     return (
       <div className="admin-exchange">
@@ -167,16 +229,128 @@ export default function AdminRenewalEventPage() {
         중복 방지
       </p>
 
-      {/* Start button section */}
+      {/* Test mode — yellow dashed border, visually segregated from real
+          event actions. Hidden once the real event has started. */}
+      {!started && (
+        <section
+          style={{
+            margin: "1rem 0 1.25rem",
+            padding: "1rem 1.25rem",
+            borderRadius: 10,
+            border: "2px dashed rgba(240,200,60,0.65)",
+            background: "rgba(240,200,60,0.06)",
+          }}
+        >
+          <div
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              marginBottom: 4,
+              color: "#d4a60a",
+            }}
+          >
+            🧪 테스트 영역 — 실제 이벤트 X
+          </div>
+          <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 12 }}>
+            특정 계정 하나에만 편지를 보내서 UI 확인용. 실제 이벤트에는 영향
+            없습니다. 테스트 편지는 <code>isTest: true</code>로 구분되어 관리자
+            통계에서 제외됩니다.
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 8,
+              alignItems: "center",
+            }}
+          >
+            <input
+              type="text"
+              className="loginbar-input"
+              placeholder="닉네임 입력 (예: 언쏘)"
+              value={testNick}
+              onChange={(e) => setTestNick(e.target.value)}
+              disabled={testSending || testDeleting}
+              style={{ flex: "1 1 180px", minWidth: 160 }}
+            />
+            <button
+              className="minihome-btn"
+              onClick={handleTestSend}
+              disabled={testSending || testDeleting || !testNick.trim()}
+              style={{
+                padding: "0.5rem 0.9rem",
+                fontSize: 13,
+                fontWeight: 500,
+                background: testSending
+                  ? "rgba(240,200,60,0.2)"
+                  : "rgba(240,200,60,0.8)",
+                color: "#1a0f3d",
+                border: "1px solid rgba(240,200,60,0.9)",
+                borderRadius: 6,
+                cursor: testSending ? "wait" : "pointer",
+              }}
+            >
+              {testSending ? "발송 중..." : "지정 계정에 테스트 편지 발송"}
+            </button>
+            <button
+              className="minihome-btn"
+              onClick={handleTestDelete}
+              disabled={testSending || testDeleting || !testNick.trim()}
+              style={{
+                padding: "0.5rem 0.9rem",
+                fontSize: 13,
+                fontWeight: 500,
+                background: testDeleting
+                  ? "rgba(180,180,180,0.3)"
+                  : "transparent",
+                color: "#d4a60a",
+                border: "1px solid rgba(240,200,60,0.6)",
+                borderRadius: 6,
+                cursor: testDeleting ? "wait" : "pointer",
+              }}
+            >
+              {testDeleting ? "삭제 중..." : "테스트 편지 삭제"}
+            </button>
+          </div>
+
+          {testMsg && (
+            <p
+              style={{
+                margin: "10px 0 0",
+                fontSize: 12,
+                color: "#4cc38a",
+              }}
+            >
+              ✓ {testMsg}
+            </p>
+          )}
+          {testErr && (
+            <p
+              style={{
+                margin: "10px 0 0",
+                fontSize: 12,
+                color: "#e67b6b",
+              }}
+            >
+              {testErr}
+            </p>
+          )}
+        </section>
+      )}
+
+      {/* Start button section — real event trigger */}
       <section
         style={{
           margin: "1rem 0 1.5rem",
           padding: "1rem 1.25rem",
           borderRadius: 10,
-          border: "1px solid rgba(216,150,200,0.25)",
+          border: started
+            ? "1px solid rgba(80,200,120,0.35)"
+            : "2px solid rgba(230,123,107,0.7)",
           background: started
             ? "rgba(80,200,120,0.08)"
-            : "rgba(255,181,167,0.08)",
+            : "rgba(230,123,107,0.08)",
         }}
       >
         {started ? (
@@ -200,15 +374,17 @@ export default function AdminRenewalEventPage() {
             <div
               style={{
                 fontSize: 14,
-                fontWeight: 600,
+                fontWeight: 700,
                 marginBottom: 6,
+                color: "#e67b6b",
               }}
             >
-              리뉴얼 기념 이벤트 시작
+              ⚠ 실제 이벤트 시작 — 진짜 실행됩니다
             </div>
-            <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 12 }}>
+            <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 12 }}>
               모든 현재 길드원에게 별똥별 편지를 발송합니다. 한 번 시작하면
-              되돌릴 수 없습니다.
+              되돌릴 수 없습니다. 배포 전에는 위 <strong>🧪 테스트 영역</strong>
+              을 먼저 사용하세요.
             </div>
             <button
               className="minihome-btn"

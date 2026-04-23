@@ -15,6 +15,7 @@
 
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -128,6 +129,7 @@ export async function initRenewalEvent(): Promise<RenewalInitResult> {
           eventType: RENEWAL_EVENT_TYPE,
           eventId: RENEWAL_EVENT_ID,
           eventClaimed: false,
+          isTest: false,
           createdAt: serverTimestamp(),
           deliveredAt: serverTimestamp(),
         });
@@ -202,10 +204,15 @@ export async function claimRenewalLetter(
     if (claimSnap.exists()) {
       throw new Error("ALREADY_CLAIMED");
     }
+    const letterSnap = await tx.get(letterRef);
+    if (!letterSnap.exists()) {
+      throw new Error("LETTER_NOT_FOUND");
+    }
     const userSnap = await tx.get(userRef);
     if (!userSnap.exists()) {
       throw new Error("USER_NOT_FOUND");
     }
+    const isTestLetter = !!letterSnap.data()?.isTest;
     const currentPoints = (userSnap.data().points as number | undefined) ?? 0;
     const next = currentPoints + RENEWAL_EVENT_AMOUNT;
 
@@ -213,6 +220,7 @@ export async function claimRenewalLetter(
       claimedAt: serverTimestamp(),
       amount: RENEWAL_EVENT_AMOUNT,
       letterId,
+      isTest: isTestLetter,
     });
     tx.update(userRef, { points: next });
     tx.update(letterRef, {
@@ -249,7 +257,7 @@ export async function claimRenewalLetter(
   return { newPoints };
 }
 
-/** One-shot status read for the admin page. */
+/** One-shot status read for the admin page. Test claims are excluded. */
 export async function getRenewalEventStatus(): Promise<RenewalEventStatus> {
   const eventSnap = await getDoc(doc(db, "events", RENEWAL_EVENT_ID));
   if (!eventSnap.exists()) {
@@ -266,11 +274,14 @@ export async function getRenewalEventStatus(): Promise<RenewalEventStatus> {
   const claimsSnap = await getDocs(
     collection(db, "events", RENEWAL_EVENT_ID, "claims"),
   );
+  const realClaimCount = claimsSnap.docs.filter(
+    (d) => d.data()?.isTest !== true,
+  ).length;
   return {
     started: true,
     startedAt: data.startedAt ? data.startedAt.toDate() : null,
     eligibleCount: data.eligibleCount ?? 0,
-    claimedCount: claimsSnap.size,
+    claimedCount: realClaimCount,
     amount: data.amount ?? RENEWAL_EVENT_AMOUNT,
   };
 }
@@ -300,7 +311,8 @@ export function subscribeRenewalClaims(
     onUpdate({ eligible, claimed: claimedList, unclaimed });
   };
 
-  // One-shot eligible fetch from the letters collection.
+  // One-shot eligible fetch from the letters collection. Test letters
+  // (isTest === true) are excluded so admin stats only reflect the real roster.
   const lettersQ = query(
     collection(db, "letters"),
     where("eventId", "==", RENEWAL_EVENT_ID),
@@ -308,6 +320,7 @@ export function subscribeRenewalClaims(
   getDocs(lettersQ)
     .then((snap) => {
       eligible = snap.docs
+        .filter((d) => d.data()?.isTest !== true)
         .map((d) => (d.data().to as string | undefined) ?? "")
         .filter(Boolean);
       eligibleLoaded = true;
@@ -319,15 +332,145 @@ export function subscribeRenewalClaims(
       emit();
     });
 
-  // Live claim list.
+  // Live claim list — also filter out test claims.
   const unsub = onSnapshot(
     collection(db, "events", RENEWAL_EVENT_ID, "claims"),
     (snap) => {
-      claimedList = snap.docs.map((d) => d.id);
+      claimedList = snap.docs
+        .filter((d) => d.data()?.isTest !== true)
+        .map((d) => d.id);
       emit();
     },
     (e) => console.error("Failed to subscribe to renewal claims:", e),
   );
 
   return unsub;
+}
+
+// ─── Test mode (admin-only) ──────────────────────────────────────────────
+//
+// Lets the admin preview the full user flow on a specific account (their own
+// regular account, typically) before firing the real event. Test artifacts
+// are tagged `isTest: true` on both letters and claim records so the real
+// event never touches them and admin stats stay accurate.
+
+export type TestSendResult = {
+  ok: true;
+  nickname: string;
+  alreadyExisted: boolean;
+  letterId: string;
+};
+
+export type TestDeleteResult = {
+  ok: true;
+  nickname: string;
+  lettersDeleted: number;
+  claimDeleted: boolean;
+};
+
+/**
+ * Admin: send a single test renewal letter to `nickname`. The letter carries
+ * `isTest: true` so the real event start sees it as a separate artifact and
+ * admin stats filter it out. No-op if a test letter for this user already
+ * exists (dedup by `eventId + to + isTest`).
+ */
+export async function sendTestRenewalLetter(
+  nickname: string,
+): Promise<TestSendResult> {
+  const trimmed = nickname.trim();
+  if (!trimmed) throw new Error("NICKNAME_REQUIRED");
+
+  // Verify user exists. We don't want to send a test letter to a non-existent
+  // account — claim would fail later on USER_NOT_FOUND.
+  const userSnap = await getDoc(doc(db, "users", trimmed));
+  if (!userSnap.exists()) throw new Error("USER_NOT_FOUND");
+
+  // Dedup: if a test letter for this user already exists, reuse its id.
+  const existingQ = query(
+    collection(db, "letters"),
+    where("eventId", "==", RENEWAL_EVENT_ID),
+    where("to", "==", trimmed),
+    where("isTest", "==", true),
+  );
+  const existing = await getDocs(existingQ);
+  if (!existing.empty) {
+    return {
+      ok: true,
+      nickname: trimmed,
+      alreadyExisted: true,
+      letterId: existing.docs[0].id,
+    };
+  }
+
+  const letterRef = doc(collection(db, "letters"));
+  await setDoc(letterRef, {
+    from: RENEWAL_EVENT_SENDER,
+    to: trimmed,
+    content: RENEWAL_EVENT_CONTENT,
+    status: "approved",
+    read: false,
+    eventType: RENEWAL_EVENT_TYPE,
+    eventId: RENEWAL_EVENT_ID,
+    eventClaimed: false,
+    isTest: true,
+    createdAt: serverTimestamp(),
+    deliveredAt: serverTimestamp(),
+  });
+
+  return {
+    ok: true,
+    nickname: trimmed,
+    alreadyExisted: false,
+    letterId: letterRef.id,
+  };
+}
+
+/**
+ * Admin: delete the test renewal artifacts for a specific nickname. This
+ * removes every `isTest: true` letter with this user as recipient and the
+ * user's claim record IF that claim was also marked `isTest: true`.
+ *
+ * Points granted by claiming a test letter are NOT refunded — rolling back
+ * a point grant + pointHistory ledger safely would require another
+ * transaction, and since test mode is admin-only on their own account, the
+ * admin can mentally absorb the +50.
+ */
+export async function deleteTestRenewalLetters(
+  nickname: string,
+): Promise<TestDeleteResult> {
+  const trimmed = nickname.trim();
+  if (!trimmed) throw new Error("NICKNAME_REQUIRED");
+
+  // Delete test letters for this user.
+  const lettersQ = query(
+    collection(db, "letters"),
+    where("eventId", "==", RENEWAL_EVENT_ID),
+    where("to", "==", trimmed),
+    where("isTest", "==", true),
+  );
+  const letterSnap = await getDocs(lettersQ);
+  await Promise.all(letterSnap.docs.map((d) => deleteDoc(d.ref)));
+
+  // Delete the claim if-and-only-if it was a test claim. Never touch real
+  // claims even if they happen to exist for this user.
+  const claimRef = doc(
+    db,
+    "events",
+    RENEWAL_EVENT_ID,
+    "claims",
+    trimmed,
+  );
+  const claimSnap = await getDoc(claimRef);
+  let claimDeleted = false;
+  if (claimSnap.exists() && claimSnap.data()?.isTest === true) {
+    await deleteDoc(claimRef);
+    claimDeleted = true;
+  }
+
+  return {
+    ok: true,
+    nickname: trimmed,
+    lettersDeleted: letterSnap.size,
+    claimDeleted,
+  };
 }
