@@ -92,12 +92,6 @@ export default function NoticePage() {
           <p className="board-loading">공지가 없습니다.</p>
         ) : (
           <table className="board-table">
-            <thead>
-              <tr>
-                <th className="col-no">번호</th>
-                <th className="col-title">제목</th>
-              </tr>
-            </thead>
             <tbody>
               {items.map((n, i) => (
                 <tr key={n.id}>

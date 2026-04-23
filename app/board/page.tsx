@@ -121,14 +121,6 @@ export default function BoardPage() {
           <p className="board-loading">게시글이 없습니다.</p>
         ) : (
           <table className="board-table">
-            <thead>
-              <tr>
-                <th className="col-no">번호</th>
-                <th className="col-title">제목</th>
-                <th className="col-author">작성자</th>
-                <th className="col-date">날짜</th>
-              </tr>
-            </thead>
             <tbody>
               {posts.map((post, i) => (
                 <tr key={post.id}>
