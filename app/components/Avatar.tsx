@@ -62,6 +62,7 @@ export type AvatarData = {
   avatarClothes?: string;
   bodySelected?: boolean;
   points?: number;
+  mbti?: string;
 };
 
 function pctX(v: number) {
@@ -209,6 +210,7 @@ export function useAvatarData(
             typeof d.avatarClothes === "string" ? d.avatarClothes : "",
           bodySelected: d.bodySelected === true,
           points: typeof d.points === "number" ? d.points : 0,
+          mbti: typeof d.mbti === "string" ? d.mbti : "",
         },
       });
     });

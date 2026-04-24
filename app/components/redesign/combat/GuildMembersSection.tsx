@@ -57,7 +57,18 @@ const JOB_FILTERS = [
   "기사",
 ];
 
+function nicknameGroup(s: string): number {
+  const ch = s.trim().charCodeAt(0);
+  if ((ch >= 0x41 && ch <= 0x5a) || (ch >= 0x61 && ch <= 0x7a)) return 0;
+  if (ch >= 0xac00 && ch <= 0xd7a3) return 1;
+  return 2;
+}
+
 function nicknameCompare(a: string, b: string): number {
+  const ga = nicknameGroup(a);
+  const gb = nicknameGroup(b);
+  if (ga !== gb) return ga - gb;
+  if (ga === 0) return a.localeCompare(b, "en", { sensitivity: "base" });
   return a.localeCompare(b, "ko");
 }
 
@@ -392,10 +403,12 @@ function CharacterRow({
               {char.job}
             </span>
           </div>
-          <div className="flex items-center gap-2 sm:hidden">
+          <div className="flex items-center justify-between gap-2 sm:hidden">
             <PowerNumber value={char.combatPower || 0} small />
-            <AbyssInline floor={floor} progress={progress} />
-            <ChallengeDot challenge={char.challenge} />
+            <div className="flex items-center gap-2">
+              <AbyssInline floor={floor} progress={progress} />
+              <ChallengeDot challenge={char.challenge} />
+            </div>
           </div>
         </div>
 

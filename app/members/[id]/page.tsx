@@ -43,11 +43,6 @@ import { GuestbookSection as GuestbookSectionV2 } from "@/app/components/redesig
 import { AdventureLogSection } from "@/app/components/redesign/minihompi/AdventureLogSection";
 import { PhotosSection } from "@/app/components/redesign/minihompi/PhotosSection";
 
-const detailIds = new Set([
-  "a", "1", "1-2", "2", "3", "4", "6", "7", "8", "9",
-  "12", "13", "14", "14-1", "15", "16", "17", "17-1", "18", "19", "20", "21", "22",
-]);
-
 type MemberDoc = {
   nickname: string;
   statusMessage: string;
@@ -219,7 +214,6 @@ function ProfileSection({
   isOwner: boolean;
   onChange: (m: MemberDoc) => void;
 }) {
-  const hasDetail = detailIds.has(id);
   const [editMode, setEditMode] = useState(false);
   const [editNick, setEditNick] = useState(member?.nickname ?? "");
   const [editStatus, setEditStatus] = useState(member?.statusMessage ?? "");
@@ -434,11 +428,6 @@ function ProfileSection({
           ) : (
             <p className="login-required">로그인 후 프로필을 등록할 수 있습니다.</p>
           )}
-          {hasDetail && (
-            <Link className="minihome-btn" href={`/members/${id}/detail`}>
-              길드원 소개
-            </Link>
-          )}
         </div>
       </section>
     );
@@ -606,11 +595,6 @@ function ProfileSection({
               >
                 옷장
               </button>
-            )}
-            {hasDetail && (
-              <Link className="minihome-btn" href={`/members/${id}/detail`}>
-                길드원 소개
-              </Link>
             )}
           </>
         )}

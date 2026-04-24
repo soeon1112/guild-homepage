@@ -23,6 +23,7 @@ import Avatar, {
 import { logActivity } from "@/src/lib/activity";
 import { handleEvent } from "@/src/lib/badgeCheck";
 import { BgmPlayer } from "./BgmPlayer";
+import { KeywordsSection } from "./KeywordsSection";
 
 export type MemberDoc = {
   nickname: string;
@@ -65,10 +66,12 @@ function seeded(seed: number) {
   };
 }
 
-const DETAIL_IDS = new Set([
-  "a", "1", "1-2", "2", "3", "4", "6", "7", "8", "9",
-  "12", "13", "14", "14-1", "15", "16", "17", "17-1", "18", "19", "20", "21", "22",
-]);
+const MBTI_TYPES = [
+  "ISTJ", "ISFJ", "INFJ", "INTJ",
+  "ISTP", "ISFP", "INFP", "INTP",
+  "ESTP", "ESFP", "ENFP", "ENTP",
+  "ESTJ", "ESFJ", "ENFJ", "ENTJ",
+] as const;
 
 type Props = {
   id: string;
@@ -85,7 +88,6 @@ export function ProfileSection({
   isOwner,
   onChange,
 }: Props) {
-  const hasDetail = DETAIL_IDS.has(id);
   const avatarData = useAvatarData(member?.nickname ?? null);
 
   const [editMode, setEditMode] = useState(false);
@@ -93,6 +95,7 @@ export function ProfileSection({
   const [editBgmUrl, setEditBgmUrl] = useState(member?.bgmUrl ?? "");
   const [editMood, setEditMood] = useState(member?.mood ?? "");
   const [editBody, setEditBody] = useState<BodyType | "">("");
+  const [editMbti, setEditMbti] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [claiming, setClaiming] = useState(false);
@@ -118,6 +121,7 @@ export function ProfileSection({
     setEditBody(
       isBodyType(avatarData?.avatarBody) ? avatarData.avatarBody : "",
     );
+    setEditMbti(avatarData?.mbti ?? "");
     setEditMode(true);
   };
 
@@ -183,6 +187,25 @@ export function ProfileSection({
       };
       await updateDoc(doc(db, "members", id), updates);
       onChange({ ...member, ...updates });
+      const currentMbti = avatarData?.mbti ?? "";
+      const mbtiChanged = editMbti !== currentMbti;
+      if (mbtiChanged) {
+        await setDoc(
+          doc(db, "users", member.nickname),
+          { mbti: editMbti },
+          { merge: true },
+        );
+        if (editMbti) {
+          await logActivity(
+            "mbti",
+            member.nickname,
+            currentMbti
+              ? `${member.nickname}님의 MBTI가 변경되었습니다`
+              : `${member.nickname}님의 MBTI가 추가되었습니다`,
+            `/members/${id}`,
+          );
+        }
+      }
       if (bodyChanged) {
         const patch: Record<string, unknown> = { avatarBody: editBody };
         if (editBody !== "" && !bodyAlreadySelected) {
@@ -333,13 +356,6 @@ export function ProfileSection({
               <p className="font-serif text-[12px] italic text-text-sub">
                 로그인 후 프로필을 등록할 수 있습니다
               </p>
-            )}
-            {hasDetail && (
-              <CosmicButton
-                as="link"
-                href={`/members/${id}/detail`}
-                label="길드원 소개"
-              />
             )}
           </div>
         </div>
@@ -505,6 +521,29 @@ export function ProfileSection({
               </div>
             </div>
 
+            {/* MBTI */}
+            <div>
+              <label
+                htmlFor="mbti-select"
+                className="mb-1.5 block font-serif text-[10px] tracking-[0.3em] text-text-sub uppercase"
+              >
+                MBTI
+              </label>
+              <select
+                id="mbti-select"
+                value={editMbti}
+                onChange={(e) => setEditMbti(e.target.value)}
+                className="w-full rounded-full border border-nebula-pink/30 bg-abyss-deep/60 px-3 py-2 font-serif text-[12px] text-text-primary focus:border-peach-accent/60 focus:outline-none focus:ring-2 focus:ring-peach-accent/30"
+              >
+                <option value="">선택 안 함</option>
+                {MBTI_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Body */}
             <div>
               <label
@@ -570,6 +609,34 @@ export function ProfileSection({
                 “{member.statusMessage}”
               </p>
             )}
+
+            {avatarData?.mbti && (
+              <div
+                className="mt-3 inline-block rounded-full px-3 py-1 font-serif text-[12px] tracking-[0.3em]"
+                style={{
+                  background: "rgba(26, 15, 61, 0.5)",
+                  border: "1px solid transparent",
+                  backgroundImage:
+                    "linear-gradient(rgba(26,15,61,0.5), rgba(26,15,61,0.5)), linear-gradient(135deg, #FFB5A7, #D896C8, #6B4BA8)",
+                  backgroundOrigin: "border-box",
+                  backgroundClip: "padding-box, border-box",
+                  color: "#FFE5C4",
+                  boxShadow:
+                    "0 0 12px rgba(216,150,200,0.35), inset 0 0 8px rgba(255,229,196,0.08)",
+                  backdropFilter: "blur(10px)",
+                  WebkitBackdropFilter: "blur(10px)",
+                }}
+              >
+                {avatarData.mbti}
+              </div>
+            )}
+
+            <KeywordsSection
+              memberId={id}
+              targetNickname={member.nickname}
+              loginNick={loginNick}
+              isOwner={isOwner}
+            />
           </>
         )}
 
@@ -598,13 +665,6 @@ export function ProfileSection({
                 <CosmicButton
                   onClick={() => setShowWardrobe((v) => !v)}
                   label="옷장"
-                />
-              )}
-              {hasDetail && (
-                <CosmicButton
-                  as="link"
-                  href={`/members/${id}/detail`}
-                  label="길드원 소개"
                 />
               )}
             </>
