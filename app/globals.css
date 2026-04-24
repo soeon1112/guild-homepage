@@ -2657,6 +2657,12 @@ select {
   color: rgba(200, 168, 233, 0.55);
 }
 
+@media (max-width: 640px) {
+  .board-table .col-author {
+    display: none;
+  }
+}
+
 .board-post-link {
   color: #F4EFFF;
   text-decoration: none;
