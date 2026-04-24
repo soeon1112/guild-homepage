@@ -119,7 +119,7 @@ export function KeywordsSection({ memberId, targetNickname, loginNick, isOwner }
           <br />이 별에게 키워드를 선물해보세요 ✨
         </p>
       ) : (
-        <div className="flex flex-wrap justify-center gap-x-2 gap-y-3 sm:gap-y-2">
+        <div className="flex flex-wrap justify-center gap-x-1.5 gap-y-2 sm:gap-x-2 sm:gap-y-2">
           {keywords.map((k) => (
             <div
               key={k.id}
@@ -127,7 +127,7 @@ export function KeywordsSection({ memberId, targetNickname, loginNick, isOwner }
             >
               <div
                 title={`by ${k.authorNickname}`}
-                className="flex items-center gap-1 rounded-full border px-3 py-1.5 text-[12px] transition-all hover:scale-105 sm:text-[13px]"
+                className="flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] transition-all hover:scale-105 sm:px-2.5 sm:py-1 sm:text-[12px]"
                 style={{
                   background: "rgba(26, 15, 61, 0.5)",
                   borderColor: "rgba(216, 150, 200, 0.35)",
@@ -152,13 +152,13 @@ export function KeywordsSection({ memberId, targetNickname, loginNick, isOwner }
                     type="button"
                     onClick={() => handleDelete(k.id)}
                     aria-label="키워드 삭제"
-                    className="ml-1 flex h-4 w-4 items-center justify-center rounded-full text-[14px] leading-none text-text-sub/70 transition-all hover:bg-nebula-pink/20 hover:text-stardust"
+                    className="ml-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full text-[12px] leading-none text-text-sub/70 transition-all hover:bg-nebula-pink/20 hover:text-stardust sm:h-4 sm:w-4 sm:text-[13px]"
                   >
                     ×
                   </button>
                 )}
               </div>
-              <span className="mt-0.5 font-serif text-[10px] italic text-text-sub transition-opacity opacity-50 sm:opacity-0 sm:group-hover:opacity-70">
+              <span className="mt-0.5 font-serif text-[9px] italic text-text-sub transition-opacity opacity-50 sm:text-[10px] sm:opacity-0 sm:group-hover:opacity-70">
                 by {k.authorNickname}
               </span>
             </div>
