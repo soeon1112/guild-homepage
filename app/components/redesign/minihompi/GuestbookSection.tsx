@@ -173,7 +173,7 @@ export function GuestbookSection({
             aria-label="방명록 내용"
             maxLength={200}
             disabled={submitting}
-            className="flex-1 border-none bg-transparent px-3 py-1.5 font-serif text-[13px] text-text-primary placeholder:text-text-sub/70 focus:outline-none disabled:opacity-60"
+            className="min-w-0 flex-1 border-none bg-transparent px-2 py-1.5 font-serif text-[13px] text-text-primary placeholder:text-text-sub/70 focus:outline-none disabled:opacity-60 sm:px-3"
           />
           <CommentImageAttach
             file={image}
@@ -183,7 +183,7 @@ export function GuestbookSection({
           <button
             type="submit"
             disabled={submitting || (!msg.trim() && !image)}
-            className="flex-shrink-0 rounded-full px-4 py-1.5 font-serif text-[11px] font-medium tracking-wider text-abyss-deep transition-all duration-200 hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex-shrink-0 rounded-full px-3 py-1.5 font-serif text-[11px] font-medium tracking-wider text-abyss-deep transition-all duration-200 hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50 sm:px-4"
             style={{
               background: "linear-gradient(135deg, #FFE5C4, #FFB5A7)",
               boxShadow: "0 0 10px rgba(255,181,167,0.5)",
@@ -438,7 +438,7 @@ function GuestbookItem({
 
       {/* Replies */}
       {(replies.length > 0 || replyOpen) && (
-        <div className="mt-3 ml-5 flex flex-col gap-2">
+        <div className="mt-3 ml-3 flex flex-col gap-2 sm:ml-5">
           {replies.map((r) => (
             <div key={r.id} className="flex items-start gap-2">
               <span
@@ -489,7 +489,7 @@ function GuestbookItem({
                 style={{ overflow: "hidden" }}
               >
                 <div
-                  className="mt-1 flex items-center gap-2 rounded-full px-2 py-1.5"
+                  className="mt-1 flex w-full min-w-0 items-center gap-1.5 rounded-full px-1.5 py-1 sm:gap-2 sm:px-2 sm:py-1.5"
                   style={{
                     background: "rgba(11,8,33,0.45)",
                     border: "1px solid rgba(216,150,200,0.22)",
@@ -510,7 +510,7 @@ function GuestbookItem({
                     maxLength={200}
                     disabled={submitting}
                     autoFocus
-                    className="flex-1 border-none bg-transparent px-3 py-1 font-serif text-[12px] text-text-primary placeholder:text-text-sub/70 focus:outline-none disabled:opacity-60"
+                    className="min-w-0 flex-1 border-none bg-transparent px-2 py-1 font-serif text-[12px] text-text-primary placeholder:text-text-sub/70 focus:outline-none disabled:opacity-60 sm:px-3"
                   />
                   <CommentImageAttach
                     file={replyImage}
@@ -521,7 +521,7 @@ function GuestbookItem({
                     type="button"
                     onClick={handleReply}
                     disabled={submitting || (!msg.trim() && !replyImage)}
-                    className="flex-shrink-0 rounded-full px-3 py-1 font-serif text-[10px] font-medium tracking-wider text-abyss-deep transition-all duration-200 hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex-shrink-0 rounded-full px-2.5 py-1 font-serif text-[10px] font-medium tracking-wider text-abyss-deep transition-all duration-200 hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50 sm:px-3"
                     style={{
                       background: "linear-gradient(135deg, #FFE5C4, #FFB5A7)",
                       boxShadow: "0 0 10px rgba(255,181,167,0.5)",
