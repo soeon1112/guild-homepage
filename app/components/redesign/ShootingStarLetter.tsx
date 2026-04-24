@@ -1429,7 +1429,17 @@ function InboxModal({
               ? { scale: [1, 1.015, 1], opacity: 1, y: [0, -4, 0] }
               : { scale: 1, y: 0, opacity: 1 }
         }
-        exit={{ scale: 0.95, y: 20, opacity: 0 }}
+        // Pin exit to a finite transition. Otherwise the per-property
+        // `repeat: Infinity` set on `isEvent` mode below would be inherited
+        // by the exit values for `scale`/`y`, so AnimatePresence never sees
+        // the exit complete → the modal never unmounts, body overflow stays
+        // hidden, and the page locks up after closing once.
+        exit={{
+          scale: 0.95,
+          y: 20,
+          opacity: 0,
+          transition: { duration: 0.2, ease: "easeOut" },
+        }}
         transition={
           celebration
             ? {
