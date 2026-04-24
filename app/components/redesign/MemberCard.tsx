@@ -100,7 +100,7 @@ export function MemberCard({
           aria-label="빈 길드원 슬롯 — 프로필 등록하러 가기"
         >
           <div
-            className="relative flex items-center gap-4 rounded-2xl p-4 sm:p-5 transition-all duration-300 group-hover:-translate-y-0.5"
+            className="relative flex items-center gap-2.5 rounded-2xl p-3 transition-all duration-300 group-hover:-translate-y-0.5 sm:gap-4 sm:p-5"
             style={{
               minHeight: 104,
               background: "rgba(107, 75, 168, 0.03)",
@@ -109,7 +109,7 @@ export function MemberCard({
             }}
           >
             <div
-              className="relative flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full sm:h-16 sm:w-16"
+              className="relative flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full sm:h-16 sm:w-16"
               style={{
                 border: "1.5px dashed rgba(200, 168, 233, 0.35)",
                 background:
@@ -121,13 +121,13 @@ export function MemberCard({
 
             <div className="flex min-w-0 flex-1 flex-col gap-1.5">
               <span
-                className="truncate font-serif text-sm tracking-wide text-text-sub/60 italic"
+                className="truncate font-serif text-[13px] tracking-wide text-text-sub/60 italic sm:text-sm"
                 style={{ filter: "blur(0.4px)" }}
               >
                 미등록된 새벽
               </span>
               <span
-                className="wrap-anywhere font-serif text-[11px] italic leading-relaxed text-text-sub/50"
+                className="wrap-anywhere font-serif text-[10px] italic leading-relaxed text-text-sub/50 sm:text-[11px]"
                 style={{
                   display: "-webkit-box",
                   WebkitLineClamp: 2,
@@ -157,7 +157,7 @@ export function MemberCard({
         aria-label={`${nickname} 프로필 보기`}
       >
         <div
-          className="relative flex items-center gap-4 overflow-hidden rounded-2xl p-4 sm:p-5"
+          className="relative flex items-center gap-2.5 overflow-hidden rounded-2xl p-3 sm:gap-4 sm:p-5"
           style={{
             minHeight: 108,
             background: "rgba(107, 75, 168, 0.08)",
@@ -184,13 +184,15 @@ export function MemberCard({
             />
           ))}
 
-          <div className="relative flex-shrink-0">
-            <MemberAvatar
-              imageUrl={profileImage}
-              nickname={nickname}
-              size={64}
-              ring
-            />
+          <div className="relative h-11 w-11 flex-shrink-0 sm:h-16 sm:w-16">
+            <div className="origin-top-left scale-[0.6875] sm:scale-100">
+              <MemberAvatar
+                imageUrl={profileImage}
+                nickname={nickname}
+                size={64}
+                ring
+              />
+            </div>
 
             {recent && (
               <span
@@ -215,7 +217,7 @@ export function MemberCard({
 
           <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5">
             <span
-              className="truncate font-serif text-base font-medium tracking-wide sm:text-[17px]"
+              className="truncate font-serif text-[13px] font-medium tracking-wide sm:text-[17px]"
               style={{
                 backgroundImage:
                   "linear-gradient(135deg, #FFE5C4 0%, #D896C8 100%)",
@@ -229,7 +231,7 @@ export function MemberCard({
             </span>
 
             <span
-              className="wrap-anywhere font-serif text-[12px] italic leading-relaxed text-text-sub sm:text-[13px]"
+              className="wrap-anywhere font-serif text-[10.5px] italic leading-relaxed text-text-sub sm:text-[13px]"
               style={{
                 display: "-webkit-box",
                 WebkitLineClamp: 2,

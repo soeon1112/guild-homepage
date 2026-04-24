@@ -216,7 +216,7 @@ export default function MembersPage() {
             </h2>
             <span className="h-px flex-1 bg-gradient-to-r from-transparent via-nebula-pink/30 to-transparent" />
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             {filteredRegistered.map((m, i) => (
               <MemberCard key={m.id} member={m} index={i} />
             ))}
@@ -233,7 +233,7 @@ export default function MembersPage() {
             </h2>
             <span className="h-px flex-1 bg-gradient-to-r from-transparent via-text-sub/20 to-transparent" />
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             {filteredUnregistered.map((m, i) => (
               <MemberCard key={m.id} member={m} index={i} />
             ))}
