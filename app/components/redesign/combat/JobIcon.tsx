@@ -143,6 +143,16 @@ export function JobIcon({
           <path d="M19 5 L10 14 L10 17 L13 17 L22 8 Z" />
         </svg>
       );
+    case "궁수":
+      // regular short bow with small arrow (smaller/tighter than 장궁)
+      return (
+        <svg {...common}>
+          <path d="M9 7 C12 10 12 14 9 17" />
+          <path d="M9 7 L9 17" />
+          <path d="M10 12 L17 12" />
+          <path d="M15 10 L17 12 L15 14" />
+        </svg>
+      );
     case "장궁":
       return (
         <svg {...common}>
@@ -153,13 +163,13 @@ export function JobIcon({
         </svg>
       );
     case "석궁":
+      // crossbow — vertical bow pierced by horizontal wooden stock through its center
       return (
         <svg {...common}>
-          <path d="M4 10 Q12 4 20 10" />
-          <path d="M4 10 L20 10" />
-          <path d="M12 10 L12 18" />
-          <path d="M9 18 L15 18" />
-          <circle cx="12" cy="10" r="1" fill="currentColor" />
+          <path d="M6 4 C10 8 10 16 6 20" />
+          <path d="M6 4 L6 20" />
+          <path d="M3 12 L20 12" />
+          <path d="M18 10 L20 10 L20 14 L18 14 Z" />
         </svg>
       );
     case "사제":

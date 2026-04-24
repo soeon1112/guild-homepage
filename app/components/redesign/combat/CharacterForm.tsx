@@ -42,6 +42,7 @@ type RuneBuildDraft = {
 const JOBS = [
   "대검",
   "검술",
+  "궁수",
   "장궁",
   "석궁",
   "화법",
