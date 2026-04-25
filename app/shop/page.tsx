@@ -17,7 +17,7 @@ import Avatar, {
   useAvatarData,
 } from "@/app/components/Avatar";
 import { db } from "@/src/lib/firebase";
-import { avatarUrl } from "@/src/lib/avatarAssets";
+import { avatarUrl, partUrl } from "@/src/lib/avatarAssets";
 import { logActivity } from "@/src/lib/activity";
 import {
   BACK_WORDS,
@@ -124,6 +124,48 @@ const HAIR_GROUPS: { group: number; price: number; colors: number[] }[] = [
   { group: 1, price: HAIR_PRICE, colors: [1, 2, 3] },
 ];
 
+// Fashion items live at avatars/parts/<body>/<category>/<id>.png. Each
+// body silhouette ships its own variants of every garment, so the data
+// is keyed by both body and category. Categories the user can equip:
+// tops / bottoms / shoes / accessories — each saves to its own
+// avatarTop / avatarBottom / avatarShoes / avatarAccessories field.
+type FashionCategoryKey = "tops" | "bottoms" | "shoes" | "accessories";
+type FashionItem = { id: string; name: string; price: number };
+type FashionField =
+  | "avatarTop"
+  | "avatarBottom"
+  | "avatarShoes"
+  | "avatarAccessories";
+
+const FASHION_CATEGORY_TABS: { value: FashionCategoryKey; label: string }[] = [
+  { value: "tops", label: "상의" },
+  { value: "bottoms", label: "하의" },
+  { value: "shoes", label: "신발" },
+  { value: "accessories", label: "기타" },
+];
+
+const FASHION_FIELD: Record<FashionCategoryKey, FashionField> = {
+  tops: "avatarTop",
+  bottoms: "avatarBottom",
+  shoes: "avatarShoes",
+  accessories: "avatarAccessories",
+};
+
+const FASHION_ITEMS: Record<
+  FashionSubTab,
+  Record<FashionCategoryKey, FashionItem[]>
+> = {
+  adult_female: {
+    tops: [{ id: "tops1", name: "일반 교복", price: 50 }],
+    bottoms: [],
+    shoes: [{ id: "shoes1", name: "일반 교복 신발", price: 40 }],
+    accessories: [],
+  },
+  adult_male: { tops: [], bottoms: [], shoes: [], accessories: [] },
+  child_female: { tops: [], bottoms: [], shoes: [], accessories: [] },
+  child_male: { tops: [], bottoms: [], shoes: [], accessories: [] },
+};
+
 export default function ShopPage() {
   const { nickname, ready } = useAuth();
   const [mainTab, setMainTab] = useState<"title" | "avatar">("title");
@@ -139,16 +181,29 @@ export default function ShopPage() {
   const [avatarEyes, setAvatarEyes] = useState("");
   const [avatarCheeks, setAvatarCheeks] = useState("");
   const [avatarHair, setAvatarHair] = useState("");
+  const [avatarTop, setAvatarTop] = useState("");
+  const [avatarBottom, setAvatarBottom] = useState("");
+  const [avatarShoes, setAvatarShoes] = useState("");
+  const [avatarAccessories, setAvatarAccessories] = useState("");
+  const [fashionCatTab, setFashionCatTab] =
+    useState<FashionCategoryKey>("tops");
   const [statuses, setStatuses] = useState<Record<string, WordStatus>>({});
   const [busyWordId, setBusyWordId] = useState<string | null>(null);
   const [busyMouthId, setBusyMouthId] = useState<string | null>(null);
   const [busyEyesId, setBusyEyesId] = useState<string | null>(null);
   const [busyCheeksId, setBusyCheeksId] = useState<string | null>(null);
   const [busyHairId, setBusyHairId] = useState<string | null>(null);
+  const [busyFashionId, setBusyFashionId] = useState<string | null>(null);
   const [previewEyes, setPreviewEyes] = useState<string | null>(null);
   const [previewMouth, setPreviewMouth] = useState<string | null>(null);
   const [previewCheeks, setPreviewCheeks] = useState<string | null>(null);
   const [previewHair, setPreviewHair] = useState<string | null>(null);
+  const [previewTop, setPreviewTop] = useState<string | null>(null);
+  const [previewBottom, setPreviewBottom] = useState<string | null>(null);
+  const [previewShoes, setPreviewShoes] = useState<string | null>(null);
+  const [previewAccessories, setPreviewAccessories] = useState<string | null>(
+    null,
+  );
   const [message, setMessage] = useState<string | null>(null);
   const avatarData = useAvatarData(nickname);
   const monthKey = currentMonthKey();
@@ -170,6 +225,12 @@ export default function ShopPage() {
       setAvatarEyes((data?.avatarEyes as string | undefined) ?? "");
       setAvatarCheeks((data?.avatarCheeks as string | undefined) ?? "");
       setAvatarHair((data?.avatarHair as string | undefined) ?? "");
+      setAvatarTop((data?.avatarTop as string | undefined) ?? "");
+      setAvatarBottom((data?.avatarBottom as string | undefined) ?? "");
+      setAvatarShoes((data?.avatarShoes as string | undefined) ?? "");
+      setAvatarAccessories(
+        (data?.avatarAccessories as string | undefined) ?? "",
+      );
     });
     return () => unsub();
   }, [nickname]);
@@ -372,6 +433,50 @@ export default function ShopPage() {
     setBusyHairId(null);
   };
 
+  const handleBuyFashion = async (
+    cat: FashionCategoryKey,
+    currentValue: string,
+    setPreview: (id: string | null) => void,
+    item: FashionItem,
+  ) => {
+    if (!nickname) return;
+    if (!fashionTabMatchesUser) {
+      setMessage(`${fashionTabLabel} 캐릭터 전용입니다.`);
+      return;
+    }
+    if (currentValue === item.id) return;
+    if (points < item.price) {
+      setMessage("별빛이 부족합니다.");
+      return;
+    }
+    if (!confirm(`${item.name}을(를) ${item.price} 별빛에 구매하시겠습니까?`))
+      return;
+    setBusyFashionId(item.id);
+    setMessage(null);
+    try {
+      await setDoc(
+        doc(db, "users", nickname),
+        {
+          [FASHION_FIELD[cat]]: item.id,
+          points: increment(-item.price),
+        },
+        { merge: true },
+      );
+      await addDoc(collection(db, "users", nickname, "pointHistory"), {
+        type: "아바타",
+        points: -item.price,
+        description: `${item.name} 구매 (${item.id})`,
+        createdAt: serverTimestamp(),
+      });
+      setMessage(`구매 완료! ${item.name}을(를) 장착했습니다.`);
+      setPreview(null);
+    } catch (e) {
+      console.error(e);
+      setMessage("구매 실패. 잠시 후 다시 시도해주세요.");
+    }
+    setBusyFashionId(null);
+  };
+
   const handleBuyMouth = async (item: (typeof MOUTH_ITEMS)[number]) => {
     if (!nickname) return;
     if (avatarMouth === item.id) return;
@@ -429,6 +534,11 @@ export default function ShopPage() {
     : null;
   const hairTabMatchesUser =
     userHairGender !== null && hairSubTab === userHairGender;
+  const fashionTabMatchesUser =
+    isBodyType(avatarData?.avatarBody) &&
+    avatarData!.avatarBody === fashionSubTab;
+  const fashionTabLabel =
+    FASHION_SUB_TABS.find((t) => t.value === fashionSubTab)?.label ?? "";
   const resolvedPreviewCheeks =
     previewCheeks === null
       ? (avatarData?.avatarCheeks ?? "")
@@ -446,11 +556,50 @@ export default function ShopPage() {
             previewHair && hairTabMatchesUser
               ? previewHair
               : (avatarData.avatarHair ?? ""),
+          avatarTop:
+            previewTop && fashionTabMatchesUser
+              ? previewTop
+              : (avatarData.avatarTop ?? ""),
+          avatarBottom:
+            previewBottom && fashionTabMatchesUser
+              ? previewBottom
+              : (avatarData.avatarBottom ?? ""),
+          avatarShoes:
+            previewShoes && fashionTabMatchesUser
+              ? previewShoes
+              : (avatarData.avatarShoes ?? ""),
+          avatarAccessories:
+            previewAccessories && fashionTabMatchesUser
+              ? previewAccessories
+              : (avatarData.avatarAccessories ?? ""),
         }
       : null;
 
+  const fashionCatPreviewId =
+    fashionCatTab === "tops"
+      ? previewTop
+      : fashionCatTab === "bottoms"
+        ? previewBottom
+        : fashionCatTab === "shoes"
+          ? previewShoes
+          : previewAccessories;
+  const fashionCatItems =
+    FASHION_ITEMS[fashionSubTab][fashionCatTab] ?? [];
+
   const activePreview:
-    | { kind: "eyes" | "mouth" | "cheeks" | "hair"; id: string; price: number }
+    | {
+        kind:
+          | "eyes"
+          | "mouth"
+          | "cheeks"
+          | "hair"
+          | "tops"
+          | "bottoms"
+          | "shoes"
+          | "accessories";
+        id: string;
+        price: number;
+      }
     | null = (() => {
     if (avatarSubTab === "eyes" && previewEyes) {
       return { kind: "eyes", id: previewEyes, price: 35 };
@@ -468,6 +617,16 @@ export default function ShopPage() {
     if (avatarSubTab === "hair" && previewHair && hairTabMatchesUser) {
       return { kind: "hair", id: previewHair, price: HAIR_PRICE };
     }
+    if (
+      avatarSubTab === "fashion" &&
+      fashionTabMatchesUser &&
+      fashionCatPreviewId
+    ) {
+      const item = fashionCatItems.find((i) => i.id === fashionCatPreviewId);
+      if (item) {
+        return { kind: fashionCatTab, id: item.id, price: item.price };
+      }
+    }
     return null;
   })();
 
@@ -475,7 +634,12 @@ export default function ShopPage() {
     (activePreview?.kind === "eyes" && busyEyesId === activePreview.id) ||
     (activePreview?.kind === "mouth" && busyMouthId === activePreview.id) ||
     (activePreview?.kind === "cheeks" && busyCheeksId === activePreview.id) ||
-    (activePreview?.kind === "hair" && busyHairId === activePreview.id);
+    (activePreview?.kind === "hair" && busyHairId === activePreview.id) ||
+    ((activePreview?.kind === "tops" ||
+      activePreview?.kind === "bottoms" ||
+      activePreview?.kind === "shoes" ||
+      activePreview?.kind === "accessories") &&
+      busyFashionId === activePreview.id);
 
   const handleBuyPreview = async () => {
     if (!activePreview) return;
@@ -492,11 +656,34 @@ export default function ShopPage() {
         id: activePreview.id,
         price: activePreview.price,
       });
-    } else {
+    } else if (activePreview.kind === "hair") {
       await handleBuyHair({
         id: activePreview.id,
         price: activePreview.price,
       });
+    } else {
+      const cat: FashionCategoryKey = activePreview.kind;
+      const item = FASHION_ITEMS[fashionSubTab][cat].find(
+        (i) => i.id === activePreview.id,
+      );
+      if (!item) return;
+      const currentValue =
+        cat === "tops"
+          ? avatarTop
+          : cat === "bottoms"
+            ? avatarBottom
+            : cat === "shoes"
+              ? avatarShoes
+              : avatarAccessories;
+      const setPreview =
+        cat === "tops"
+          ? setPreviewTop
+          : cat === "bottoms"
+            ? setPreviewBottom
+            : cat === "shoes"
+              ? setPreviewShoes
+              : setPreviewAccessories;
+      await handleBuyFashion(cat, currentValue, setPreview, item);
     }
   };
 
@@ -551,7 +738,15 @@ export default function ShopPage() {
                       (activePreview.kind === "cheeks" &&
                         (avatarCheeks || "none") === activePreview.id) ||
                       (activePreview.kind === "hair" &&
-                        avatarHair === activePreview.id)
+                        avatarHair === activePreview.id) ||
+                      (activePreview.kind === "tops" &&
+                        avatarTop === activePreview.id) ||
+                      (activePreview.kind === "bottoms" &&
+                        avatarBottom === activePreview.id) ||
+                      (activePreview.kind === "shoes" &&
+                        avatarShoes === activePreview.id) ||
+                      (activePreview.kind === "accessories" &&
+                        avatarAccessories === activePreview.id)
                     }
                   >
                     {buyingPreview
@@ -569,7 +764,15 @@ export default function ShopPage() {
                         setPreviewMouth(null);
                       else if (activePreview.kind === "cheeks")
                         setPreviewCheeks(null);
-                      else setPreviewHair(null);
+                      else if (activePreview.kind === "hair")
+                        setPreviewHair(null);
+                      else if (activePreview.kind === "tops")
+                        setPreviewTop(null);
+                      else if (activePreview.kind === "bottoms")
+                        setPreviewBottom(null);
+                      else if (activePreview.kind === "shoes")
+                        setPreviewShoes(null);
+                      else setPreviewAccessories(null);
                     }}
                     disabled={buyingPreview}
                   >
@@ -623,21 +826,38 @@ export default function ShopPage() {
             )}
 
             {avatarSubTab === "fashion" && (
-              <div className="shop-tabs shop-subtabs">
-                {FASHION_SUB_TABS.map((t) => (
-                  <button
-                    key={t.value}
-                    type="button"
-                    className={
-                      "shop-tab" +
-                      (fashionSubTab === t.value ? " shop-tab-active" : "")
-                    }
-                    onClick={() => setFashionSubTab(t.value)}
-                  >
-                    {t.label}
-                  </button>
-                ))}
-              </div>
+              <>
+                <div className="shop-tabs shop-subtabs">
+                  {FASHION_SUB_TABS.map((t) => (
+                    <button
+                      key={t.value}
+                      type="button"
+                      className={
+                        "shop-tab" +
+                        (fashionSubTab === t.value ? " shop-tab-active" : "")
+                      }
+                      onClick={() => setFashionSubTab(t.value)}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="shop-tabs shop-subtabs">
+                  {FASHION_CATEGORY_TABS.map((t) => (
+                    <button
+                      key={t.value}
+                      type="button"
+                      className={
+                        "shop-tab" +
+                        (fashionCatTab === t.value ? " shop-tab-active" : "")
+                      }
+                      onClick={() => setFashionCatTab(t.value)}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </>
             )}
 
             {message && <p className="shop-message">{message}</p>}
@@ -913,6 +1133,84 @@ export default function ShopPage() {
                   );
                 })}
               </div>
+            ) : avatarSubTab === "fashion" ? (
+              !fashionTabMatchesUser ? (
+                <p className="shop-hair-locked">
+                  {fashionTabLabel} 캐릭터 전용입니다
+                </p>
+              ) : fashionCatItems.length === 0 ? (
+                <p className="avatar-shop-hint">아직 아이템이 없습니다.</p>
+              ) : (
+                <div className="shop-grid">
+                  {fashionCatItems.map((item) => {
+                    const currentValue =
+                      fashionCatTab === "tops"
+                        ? avatarTop
+                        : fashionCatTab === "bottoms"
+                          ? avatarBottom
+                          : fashionCatTab === "shoes"
+                            ? avatarShoes
+                            : avatarAccessories;
+                    const setPreview =
+                      fashionCatTab === "tops"
+                        ? setPreviewTop
+                        : fashionCatTab === "bottoms"
+                          ? setPreviewBottom
+                          : fashionCatTab === "shoes"
+                            ? setPreviewShoes
+                            : setPreviewAccessories;
+                    const equipped = currentValue === item.id;
+                    const previewed = fashionCatPreviewId === item.id;
+                    const cardClass = [
+                      "shop-card",
+                      "shop-card-clickable",
+                      equipped ? "shop-card-equipped" : "",
+                      previewed ? "shop-card-previewed" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ");
+                    const toggle = () => {
+                      if (equipped) return;
+                      setPreview(previewed ? null : item.id);
+                    };
+                    return (
+                      <div
+                        key={item.id}
+                        className={cardClass}
+                        role="button"
+                        tabIndex={equipped ? -1 : 0}
+                        onClick={toggle}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            toggle();
+                          }
+                        }}
+                      >
+                        <div className="shop-card-preview-wrap">
+                          <img
+                            src={partUrl(
+                              fashionSubTab,
+                              fashionCatTab,
+                              item.id,
+                            )}
+                            alt=""
+                            className="shop-card-preview"
+                            draggable={false}
+                          />
+                        </div>
+                        <div className="shop-card-word">{item.name}</div>
+                        <div className="shop-card-price">
+                          {item.price} 별빛
+                        </div>
+                        <div className="shop-card-status">
+                          {equipped ? "장착 중" : ""}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )
             ) : (
               <p className="avatar-shop-hint">준비 중입니다.</p>
             )}

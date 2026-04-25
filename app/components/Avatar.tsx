@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
-import { avatarUrl } from "@/src/lib/avatarAssets";
+import { avatarUrl, partUrl } from "@/src/lib/avatarAssets";
 
 export type BodyType =
   | "adult_female"
@@ -60,7 +60,10 @@ export type AvatarData = {
   avatarMouth?: string;
   avatarCheeks?: string;
   avatarHair?: string;
-  avatarClothes?: string;
+  avatarTop?: string;
+  avatarBottom?: string;
+  avatarShoes?: string;
+  avatarAccessories?: string;
   bodySelected?: boolean;
   points?: number;
   mbti?: string;
@@ -85,7 +88,10 @@ export default function Avatar({
   const body: BodyType = rawBody;
   const { eyes, mouth, cheeks } = FEATURE_COORDS[body];
   const hair = data?.avatarHair || "";
-  const clothes = data?.avatarClothes || "";
+  const top = data?.avatarTop || "";
+  const bottom = data?.avatarBottom || "";
+  const shoes = data?.avatarShoes || "";
+  const accessories = data?.avatarAccessories || "";
   const eyesName = data?.avatarEyes || "";
   const mouthName = data?.avatarMouth || "";
   const cheeksName = data?.avatarCheeks || "";
@@ -93,16 +99,28 @@ export default function Avatar({
   const agePrefix = body.startsWith("adult") ? "adult" : "child";
   const genderPrefix = body.endsWith("female") ? "female" : "male";
 
-  // Bald body when hair is equipped — the default bodies have hair
-  // baked in, so we swap to bald_<body> as the bottom layer and stack
-  // the hair PNG above it. Hair files are named
-  // `<gender>_hair<group>_<color>_<age>` (e.g. female_hair1_2_adult);
-  // avatarHair stores just the gender-agnostic `hair<group>_<color>`
-  // stem so the same value renders correctly on either gender.
-  const bodyId = hair ? `bald_${body}` : body;
+  // Base body has 4 variants depending on hair/clothes equipped:
+  //   case 1 (no hair, no clothes): default <body> — has stock hair + outfit
+  //   case 2 (hair, no clothes):    bald_<body>  — stock outfit, no hair
+  //   case 3 (no hair, clothes):    noclothes_<body> — stock hair, undies only
+  //   case 4 (hair + clothes):      undressed_<body> — bald + undies
+  // Fashion layers (top/bottom/shoes/accessories) and the hair layer
+  // are stacked on top in that order; face features (eyes/cheeks/mouth)
+  // sit on top of hair so a fringe doesn't cover them.
+  const hasClothes = !!(top || bottom || shoes || accessories);
+  const bodyId = hair
+    ? hasClothes
+      ? `undressed_${body}`
+      : `bald_${body}`
+    : hasClothes
+      ? `noclothes_${body}`
+      : body;
   const bodySrc = avatarUrl("bodies", bodyId);
-  const clothesSrc = clothes
-    ? `/images/avatar/clothes/${body}_${clothes}.png`
+  const topSrc = top ? partUrl(body, "tops", top) : "";
+  const bottomSrc = bottom ? partUrl(body, "bottoms", bottom) : "";
+  const shoesSrc = shoes ? partUrl(body, "shoes", shoes) : "";
+  const accessoriesSrc = accessories
+    ? partUrl(body, "accessories", accessories)
     : "";
   const hairSrc = hair
     ? avatarUrl("hair", `${genderPrefix}_${hair}_${agePrefix}`)
@@ -124,9 +142,41 @@ export default function Avatar({
           className="avatar-layer avatar-layer-full"
           draggable={false}
         />
-        {clothesSrc && (
+        {topSrc && (
           <img
-            src={clothesSrc}
+            src={topSrc}
+            alt=""
+            className="avatar-layer avatar-layer-full"
+            draggable={false}
+          />
+        )}
+        {bottomSrc && (
+          <img
+            src={bottomSrc}
+            alt=""
+            className="avatar-layer avatar-layer-full"
+            draggable={false}
+          />
+        )}
+        {shoesSrc && (
+          <img
+            src={shoesSrc}
+            alt=""
+            className="avatar-layer avatar-layer-full"
+            draggable={false}
+          />
+        )}
+        {accessoriesSrc && (
+          <img
+            src={accessoriesSrc}
+            alt=""
+            className="avatar-layer avatar-layer-full"
+            draggable={false}
+          />
+        )}
+        {hairSrc && (
+          <img
+            src={hairSrc}
             alt=""
             className="avatar-layer avatar-layer-full"
             draggable={false}
@@ -174,14 +224,6 @@ export default function Avatar({
             }}
           />
         )}
-        {hairSrc && (
-          <img
-            src={hairSrc}
-            alt=""
-            className="avatar-layer avatar-layer-full"
-            draggable={false}
-          />
-        )}
       </div>
     </div>
   );
@@ -212,8 +254,15 @@ export function useAvatarData(
           avatarCheeks:
             typeof d.avatarCheeks === "string" ? d.avatarCheeks : "",
           avatarHair: typeof d.avatarHair === "string" ? d.avatarHair : "",
-          avatarClothes:
-            typeof d.avatarClothes === "string" ? d.avatarClothes : "",
+          avatarTop: typeof d.avatarTop === "string" ? d.avatarTop : "",
+          avatarBottom:
+            typeof d.avatarBottom === "string" ? d.avatarBottom : "",
+          avatarShoes:
+            typeof d.avatarShoes === "string" ? d.avatarShoes : "",
+          avatarAccessories:
+            typeof d.avatarAccessories === "string"
+              ? d.avatarAccessories
+              : "",
           bodySelected: d.bodySelected === true,
           points: typeof d.points === "number" ? d.points : 0,
           mbti: typeof d.mbti === "string" ? d.mbti : "",
