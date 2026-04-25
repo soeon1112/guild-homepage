@@ -643,7 +643,7 @@ export default function ShopPage() {
             {message && <p className="shop-message">{message}</p>}
 
             {avatarSubTab === "eyes" ? (
-              <div className="shop-eye-groups">
+              <div className="shop-grid">
                 {EYE_GROUPS.map((grp) => {
                   const isMulti = grp.items.length > 1;
                   const itemFromGroup = (id: string) =>
@@ -673,101 +673,80 @@ export default function ShopPage() {
                       setPreviewEyes(previewed ? null : item.id);
                     };
                     return (
-                      <section key={grp.group} className="shop-eye-group">
-                        <h3 className="shop-eye-group-title">
-                          eye{grp.group}{" "}
-                          <span className="shop-eye-group-price">
-                            {grp.price} 별빛
-                          </span>
-                        </h3>
-                        <div className="shop-grid">
-                          <div
-                            className={cardClass}
-                            role="button"
-                            tabIndex={equipped ? -1 : 0}
-                            onClick={toggle}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
-                                toggle();
-                              }
-                            }}
-                          >
-                            <div className="shop-card-preview-wrap">
-                              <img
-                                src={item.src}
-                                alt=""
-                                className="shop-card-preview"
-                                draggable={false}
-                              />
-                            </div>
-                            <div className="shop-card-price">
-                              {grp.price} 별빛
-                            </div>
-                            <div className="shop-card-status">
-                              {equipped
-                                ? "장착 중"
-                                : previewed
-                                  ? "미리보기"
-                                  : ""}
-                            </div>
-                          </div>
+                      <div
+                        key={grp.group}
+                        className={cardClass}
+                        role="button"
+                        tabIndex={equipped ? -1 : 0}
+                        onClick={toggle}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            toggle();
+                          }
+                        }}
+                      >
+                        <div className="shop-card-preview-wrap">
+                          <img
+                            src={item.src}
+                            alt=""
+                            className="shop-card-preview"
+                            draggable={false}
+                          />
                         </div>
-                      </section>
+                        <div className="shop-card-price">
+                          {grp.price} 별빛
+                        </div>
+                        <div className="shop-card-status">
+                          {equipped
+                            ? "장착 중"
+                            : previewed
+                              ? "미리보기"
+                              : ""}
+                        </div>
+                      </div>
                     );
                   }
 
                   return (
-                    <section key={grp.group} className="shop-eye-group">
-                      <h3 className="shop-eye-group-title">
-                        eye{grp.group} 그룹{" "}
-                        <span className="shop-eye-group-price">
-                          {grp.price} 별빛
-                        </span>
-                      </h3>
-                      <div className="shop-grid">
-                        <div className="shop-card">
-                          <div className="shop-card-preview-wrap">
-                            <img
-                              src={displayedItem.src}
-                              alt=""
-                              className="shop-card-preview"
-                              draggable={false}
-                            />
-                          </div>
-                          <div className="shop-card-price">
-                            {grp.price} 별빛
-                          </div>
-                          <div className="shop-eye-colors">
-                            {grp.items.map((item, i) => {
-                              const equipped = avatarEyes === item.id;
-                              const previewed = previewEyes === item.id;
-                              const cls = [
-                                "shop-eye-color",
-                                equipped ? "shop-eye-color-equipped" : "",
-                                previewed ? "shop-eye-color-previewed" : "",
-                              ]
-                                .filter(Boolean)
-                                .join(" ");
-                              return (
-                                <button
-                                  key={item.id}
-                                  type="button"
-                                  className={cls}
-                                  onClick={() => {
-                                    if (equipped) return;
-                                    setPreviewEyes(previewed ? null : item.id);
-                                  }}
-                                  disabled={equipped}
-                                >
-                                  색상 {i + 1}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
+                    <div key={grp.group} className="shop-card">
+                      <div className="shop-card-preview-wrap">
+                        <img
+                          src={displayedItem.src}
+                          alt=""
+                          className="shop-card-preview"
+                          draggable={false}
+                        />
                       </div>
-                    </section>
+                      <div className="shop-card-price">{grp.price} 별빛</div>
+                      <div className="shop-eye-colors">
+                        {grp.items.map((item, i) => {
+                          const equipped = avatarEyes === item.id;
+                          const previewed = previewEyes === item.id;
+                          const cls = [
+                            "shop-eye-color",
+                            equipped ? "shop-eye-color-equipped" : "",
+                            previewed ? "shop-eye-color-previewed" : "",
+                          ]
+                            .filter(Boolean)
+                            .join(" ");
+                          return (
+                            <button
+                              key={item.id}
+                              type="button"
+                              className={cls}
+                              onClick={() => {
+                                if (equipped) return;
+                                setPreviewEyes(previewed ? null : item.id);
+                              }}
+                              disabled={equipped}
+                            >
+                              색상 {i + 1}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   );
                 })}
               </div>
