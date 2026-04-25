@@ -338,6 +338,11 @@ export default function ShopPage() {
 
   const handleBuyHair = async (item: { id: string; price: number }) => {
     if (!nickname) return;
+    if (!hairTabMatchesUser) {
+      const lbl = hairSubTab === "male" ? "남자" : "여자";
+      setMessage(`${lbl} 캐릭터 전용입니다.`);
+      return;
+    }
     if (avatarHair === item.id) return;
     if (points < item.price) {
       setMessage("별빛이 부족합니다.");
@@ -417,6 +422,13 @@ export default function ShopPage() {
   const previewText = formatTitlePrefix(frontTitle, backTitle);
 
   const hasBody = isBodyType(avatarData?.avatarBody);
+  const userHairGender: HairSubTab | null = isBodyType(avatarData?.avatarBody)
+    ? avatarData!.avatarBody!.endsWith("female")
+      ? "female"
+      : "male"
+    : null;
+  const hairTabMatchesUser =
+    userHairGender !== null && hairSubTab === userHairGender;
   const resolvedPreviewCheeks =
     previewCheeks === null
       ? (avatarData?.avatarCheeks ?? "")
@@ -430,7 +442,10 @@ export default function ShopPage() {
           avatarEyes: previewEyes ?? avatarData.avatarEyes ?? "",
           avatarMouth: previewMouth ?? avatarData.avatarMouth ?? "",
           avatarCheeks: resolvedPreviewCheeks,
-          avatarHair: previewHair ?? avatarData.avatarHair ?? "",
+          avatarHair:
+            previewHair && hairTabMatchesUser
+              ? previewHair
+              : (avatarData.avatarHair ?? ""),
         }
       : null;
 
@@ -450,7 +465,7 @@ export default function ShopPage() {
         price: previewCheeks === "none" ? 0 : CHEEK_PRICE,
       };
     }
-    if (avatarSubTab === "hair" && previewHair) {
+    if (avatarSubTab === "hair" && previewHair && hairTabMatchesUser) {
       return { kind: "hair", id: previewHair, price: HAIR_PRICE };
     }
     return null;
@@ -794,67 +809,77 @@ export default function ShopPage() {
               </div>
             ) : avatarSubTab === "hair" ? (
               <div className="shop-hair-groups">
-                {HAIR_GROUPS.map((grp) => (
-                  <section key={grp.group} className="shop-hair-group">
-                    <h3 className="shop-eye-group-title">
-                      hair{grp.group}{" "}
-                      <span className="shop-eye-group-price">
-                        {grp.price} 별빛
-                      </span>
-                    </h3>
-                    <div className="shop-hair-preview-wrap">
-                      <img
-                        src={avatarUrl(
-                          "hair",
-                          `${hairSubTab}_hair${grp.group}_preview`,
-                        )}
-                        alt=""
-                        className="shop-hair-preview"
-                        draggable={false}
-                      />
-                    </div>
-                    <div className="shop-hair-colors">
-                      {grp.colors.map((color) => {
-                        const id = `hair${grp.group}_${color}`;
-                        const equipped = avatarHair === id;
-                        const previewed = previewHair === id;
-                        const cls = [
-                          "shop-hair-color",
-                          equipped ? "shop-hair-color-equipped" : "",
-                          previewed ? "shop-hair-color-previewed" : "",
-                        ]
-                          .filter(Boolean)
-                          .join(" ");
-                        return (
-                          <button
-                            key={color}
-                            type="button"
-                            className={cls}
-                            onClick={() => {
-                              if (equipped) return;
-                              setPreviewHair(previewed ? null : id);
-                            }}
-                            disabled={equipped}
-                          >
-                            <span className="shop-hair-color-label">
-                              색상 {color}
-                            </span>
-                            {equipped && (
-                              <span className="shop-hair-color-status">
-                                장착 중
-                              </span>
-                            )}
-                            {previewed && !equipped && (
-                              <span className="shop-hair-color-status">
-                                미리보기
-                              </span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </section>
-                ))}
+                {HAIR_GROUPS.map((grp) => {
+                  const tabGenderLabel =
+                    hairSubTab === "male" ? "남자" : "여자";
+                  return (
+                    <section key={grp.group} className="shop-hair-group">
+                      <div className="shop-hair-preview-wrap">
+                        <img
+                          src={avatarUrl(
+                            "hair",
+                            `${hairSubTab}_hair${grp.group}_preview`,
+                          )}
+                          alt=""
+                          className="shop-hair-preview"
+                          draggable={false}
+                        />
+                      </div>
+                      <h3 className="shop-hair-group-title">
+                        hair{grp.group}
+                        <span className="shop-hair-group-price">
+                          {grp.price} 별빛
+                        </span>
+                      </h3>
+                      {!hairTabMatchesUser ? (
+                        <p className="shop-hair-locked">
+                          {tabGenderLabel} 캐릭터 전용입니다
+                        </p>
+                      ) : (
+                        <div className="shop-hair-colors">
+                          {grp.colors.map((color) => {
+                            const id = `hair${grp.group}_${color}`;
+                            const equipped = avatarHair === id;
+                            const previewed = previewHair === id;
+                            const cls = [
+                              "shop-hair-color",
+                              equipped ? "shop-hair-color-equipped" : "",
+                              previewed ? "shop-hair-color-previewed" : "",
+                            ]
+                              .filter(Boolean)
+                              .join(" ");
+                            return (
+                              <button
+                                key={color}
+                                type="button"
+                                className={cls}
+                                onClick={() => {
+                                  if (equipped) return;
+                                  setPreviewHair(previewed ? null : id);
+                                }}
+                                disabled={equipped}
+                              >
+                                <span className="shop-hair-color-label">
+                                  색상 {color}
+                                </span>
+                                {equipped && (
+                                  <span className="shop-hair-color-status">
+                                    장착 중
+                                  </span>
+                                )}
+                                {previewed && !equipped && (
+                                  <span className="shop-hair-color-status">
+                                    미리보기
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </section>
+                  );
+                })}
               </div>
             ) : (
               <p className="avatar-shop-hint">준비 중입니다.</p>

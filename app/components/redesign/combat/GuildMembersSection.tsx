@@ -302,6 +302,7 @@ function GroupBlock({
           </span>
           <NicknameLink
             nickname={group.representative}
+            hideTitle
             className="font-serif text-[15px] font-medium tracking-wide text-stardust"
           />
           <span className="font-mono text-[10px] tracking-wider text-text-sub">

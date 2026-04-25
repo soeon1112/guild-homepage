@@ -5431,41 +5431,78 @@ select {
 }
 
 .shop-hair-groups {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+  justify-items: center;
 }
 
 .shop-hair-group {
   background: rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 12px;
-  padding: 1rem;
+  padding: 0.75rem;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  max-width: 320px;
 }
 
 .shop-hair-preview-wrap {
   width: 100%;
+  max-width: 300px;
+  aspect-ratio: 1 / 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 218, 185, 0.1);
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 8px;
-  padding: 0.5rem;
+  overflow: hidden;
 }
 
 .shop-hair-preview {
-  max-width: 200px;
-  max-height: 280px;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: contain;
 }
 
+.shop-hair-group-title {
+  width: 100%;
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: #daa520;
+  font-family: 'Noto Serif KR', serif;
+  font-size: 0.95rem;
+}
+
+.shop-hair-group-price {
+  color: #d4af37;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.shop-hair-locked {
+  width: 100%;
+  margin: 0;
+  padding: 0.6rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: rgba(255, 181, 167, 0.85);
+  background: rgba(255, 181, 167, 0.08);
+  border: 1px solid rgba(255, 181, 167, 0.25);
+  border-radius: 8px;
+}
+
 .shop-hair-colors {
+  width: 100%;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 
 .shop-hair-color {
