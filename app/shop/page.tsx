@@ -1187,15 +1187,15 @@ export default function ShopPage() {
                           }
                         }}
                       >
-                        <div className="shop-card-preview-wrap">
+                        <div className="shop-fashion-preview-wrap">
                           <img
                             src={partUrl(
                               fashionSubTab,
                               fashionCatTab,
-                              item.id,
+                              `${item.id}_preview`,
                             )}
                             alt=""
-                            className="shop-card-preview"
+                            className="shop-fashion-preview"
                             draggable={false}
                           />
                         </div>
