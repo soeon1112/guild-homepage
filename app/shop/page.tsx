@@ -1118,11 +1118,7 @@ export default function ShopPage() {
                 })}
               </div>
             ) : avatarSubTab === "fashion" ? (
-              !fashionTabMatchesUser ? (
-                <p className="shop-hair-locked">
-                  {fashionTabLabel} 캐릭터 전용입니다
-                </p>
-              ) : fashionCatItems.length === 0 ? (
+              fashionCatItems.length === 0 ? (
                 <p className="avatar-shop-hint">아직 아이템이 없습니다.</p>
               ) : (
                 <div className="shop-grid">
@@ -1151,16 +1147,20 @@ export default function ShopPage() {
                       fashionCatTab,
                       item.id,
                     );
+                    const interactable =
+                      fashionTabMatchesUser && !equipped && !owned;
                     const cardClass = [
                       "shop-card",
-                      owned ? "" : "shop-card-clickable",
+                      interactable ? "shop-card-clickable" : "",
                       equipped ? "shop-card-equipped" : "",
-                      previewed ? "shop-card-previewed" : "",
+                      previewed && fashionTabMatchesUser
+                        ? "shop-card-previewed"
+                        : "",
                     ]
                       .filter(Boolean)
                       .join(" ");
                     const toggle = () => {
-                      if (equipped || owned) return;
+                      if (!interactable) return;
                       setPreview(previewed ? null : item.id);
                     };
                     return (
@@ -1168,7 +1168,7 @@ export default function ShopPage() {
                         key={item.id}
                         className={cardClass}
                         role="button"
-                        tabIndex={equipped ? -1 : 0}
+                        tabIndex={interactable ? 0 : -1}
                         onClick={toggle}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" || e.key === " ") {
@@ -1194,11 +1194,13 @@ export default function ShopPage() {
                           {item.price} 별빛
                         </div>
                         <div className="shop-card-status">
-                          {equipped
-                            ? "장착 중"
-                            : owned
-                              ? "보유중"
-                              : ""}
+                          {!fashionTabMatchesUser
+                            ? `${fashionTabLabel} 전용`
+                            : equipped
+                              ? "장착 중"
+                              : owned
+                                ? "보유중"
+                                : ""}
                         </div>
                       </div>
                     );
