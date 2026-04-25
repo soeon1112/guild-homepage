@@ -195,6 +195,10 @@ export default function FloatingChat() {
   const contentRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const messageInputRef = useRef<HTMLInputElement | null>(null);
+  // Sentinel div at the end of the message list — scrollIntoView target.
+  // Cheaper and more reliable on mobile than scrollTop=scrollHeight when the
+  // panel/keyboard are mid-animation, since the browser does the geometry math.
+  const endRef = useRef<HTMLDivElement | null>(null);
 
   // Debug helper — enable with `localStorage.setItem("chat:debug","1")` in
   // the console. Each pin attempt logs scrollTop/scrollHeight so we can see
@@ -270,20 +274,9 @@ export default function FloatingChat() {
 
   // Auto-pin the message list to the latest message.
   //
-  // Runs whenever the panel opens OR a new message arrives (messages.length
-  // changes) — this covers both Case A (open) and Case B (send/receive).
-  //
-  // Why `scrollTop = scrollHeight` and not `scrollIntoView`:
-  //   Direct container write is synchronous and unaffected by any inherited
-  //   `scroll-behavior: smooth`. scrollIntoView on mobile sometimes animates
-  //   and stops mid-way when the parent is mid-transform (framer-motion).
-  //
-  // Why double requestAnimationFrame:
-  //   React commits the DOM in one frame; the browser paints + settles
-  //   layout in the next. On mobile, measuring scrollHeight before paint can
-  //   return a stale/short value. Two RAFs guarantee we've seen a fresh
-  //   layout. A final ResizeObserver catches late image/video loads that
-  //   inflate scrollHeight after that.
+  // Runs whenever the panel opens OR messages change (new send/receive via
+  // onSnapshot). Double RAF lets layout settle after React commits; the
+  // ResizeObserver catches late image/video loads inflating scrollHeight.
   useEffect(() => {
     if (!open) return;
     const list = listRef.current;
@@ -291,9 +284,13 @@ export default function FloatingChat() {
     if (!list) return;
 
     const pin = (label: string) => {
-      const l = listRef.current;
-      if (!l) return;
-      l.scrollTop = l.scrollHeight;
+      const end = endRef.current;
+      if (end) {
+        end.scrollIntoView({ block: "end", behavior: "auto" });
+      } else {
+        const l = listRef.current;
+        if (l) l.scrollTop = l.scrollHeight;
+      }
       debugLog(label);
     };
 
@@ -327,6 +324,11 @@ export default function FloatingChat() {
         messageInputRef.current?.focus({ preventScroll: true });
       });
     }
+    // Note: this initial-open auto-focus is intentionally desktop-only. On
+    // mobile, popping the keyboard the moment the panel opens makes the
+    // viewport jump while framer-motion is still animating — instead the
+    // user taps the input themselves. Once focused, we keep the focus
+    // through send (see handleSend + the input's lack of disabled).
 
     return () => {
       cancelAnimationFrame(raf1);
@@ -341,14 +343,11 @@ export default function FloatingChat() {
   // this is the first frame where the panel's scale/opacity are final, which
   // is the most reliable frame if earlier pins were fighting the animation.
   const handlePanelAnimationComplete = () => {
-    const list = listRef.current;
-    if (!list || !open) return;
-    list.scrollTop = list.scrollHeight;
+    if (!open) return;
+    endRef.current?.scrollIntoView({ block: "end", behavior: "auto" });
     debugLog("animation-complete");
     requestAnimationFrame(() => {
-      const l = listRef.current;
-      if (!l) return;
-      l.scrollTop = l.scrollHeight;
+      endRef.current?.scrollIntoView({ block: "end", behavior: "auto" });
       debugLog("animation-complete+raf");
     });
   };
@@ -391,7 +390,9 @@ export default function FloatingChat() {
     setDraft("");
     setFile(null);
     setSending(true);
-    messageInputRef.current?.focus();
+    // Re-focus inside the user-gesture frame so iOS keeps the soft keyboard
+    // open. preventScroll avoids the document jumping on focus.
+    messageInputRef.current?.focus({ preventScroll: true });
 
     try {
       let imageUrl = "";
@@ -424,7 +425,7 @@ export default function FloatingChat() {
       setFile(pendingFile);
     }
     setSending(false);
-    messageInputRef.current?.focus();
+    messageInputRef.current?.focus({ preventScroll: true });
   };
 
   const openPanel = () => {
@@ -652,6 +653,7 @@ export default function FloatingChat() {
                     />
                   ))
                 )}
+                <div ref={endRef} aria-hidden />
               </div>
             </div>
 
@@ -734,12 +736,16 @@ export default function FloatingChat() {
                       }
                     }}
                     placeholder="메시지를 입력하세요"
-                    disabled={sending}
-                    className="min-w-0 flex-1 rounded-full border border-nebula-pink/30 bg-abyss/50 px-3 py-2 font-serif text-[12px] text-text-primary placeholder:text-text-sub/70 backdrop-blur-sm focus:border-peach-accent/60 focus:outline-none focus:ring-2 focus:ring-peach-accent/30 disabled:opacity-60"
+                    aria-busy={sending}
+                    className="min-w-0 flex-1 rounded-full border border-nebula-pink/30 bg-abyss/50 px-3 py-2 font-serif text-[12px] text-text-primary placeholder:text-text-sub/70 backdrop-blur-sm focus:border-peach-accent/60 focus:outline-none focus:ring-2 focus:ring-peach-accent/30"
                   />
 
                   <button
                     type="button"
+                    // preventDefault on pointer-down stops the button from
+                    // stealing focus (and thereby dismissing the mobile
+                    // keyboard) when the user taps Send.
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={handleSend}
                     disabled={sending || (!draft.trim() && !file)}
                     aria-label="메시지 전송"

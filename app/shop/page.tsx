@@ -17,6 +17,7 @@ import Avatar, {
   useAvatarData,
 } from "@/app/components/Avatar";
 import { db } from "@/src/lib/firebase";
+import { avatarUrl } from "@/src/lib/avatarAssets";
 import { logActivity } from "@/src/lib/activity";
 import {
   BACK_WORDS,
@@ -70,11 +71,8 @@ const MOUTH_ITEMS: { id: string; src: string; price: number }[] = Array.from(
   { length: 17 },
   (_, i) => {
     const n = i + 1;
-    return {
-      id: `mouth${n}`,
-      src: `/images/avatar/mouths/mouth${n}.png`,
-      price: 30,
-    };
+    const id = `mouth${n}`;
+    return { id, src: avatarUrl("mouths", id), price: 30 };
   },
 );
 
@@ -87,34 +85,33 @@ const EYE_GROUPS: {
   ...[1, 2, 3, 4, 5, 6, 7].map((group) => ({
     group,
     price: EYE_PRICE,
-    items: [1, 2, 3].map((v) => ({
-      id: `eye${group}_${v}`,
-      src: `/images/avatar/eyes/eye${group}_${v}.png`,
-    })),
+    items: [1, 2, 3].map((v) => {
+      const id = `eye${group}_${v}`;
+      return { id, src: avatarUrl("eyes", id) };
+    }),
   })),
   {
     group: 8,
     price: EYE_PRICE,
-    items: [{ id: "eye8", src: "/images/avatar/eyes/eye8.png" }],
+    items: [{ id: "eye8", src: avatarUrl("eyes", "eye8") }],
   },
   {
     group: 9,
     price: EYE_PRICE,
-    items: [1, 2, 3].map((v) => ({
-      id: `eye9_${v}`,
-      src: `/images/avatar/eyes/eye9_${v}.png`,
-    })),
+    items: [1, 2, 3].map((v) => {
+      const id = `eye9_${v}`;
+      return { id, src: avatarUrl("eyes", id) };
+    }),
   },
 ];
 
 const CHEEK_PRICE = 20;
 const CHEEK_ITEMS: { id: string; src: string; price: number }[] = [
   { id: "none", src: "", price: 0 },
-  ...[1, 2, 3].map((n) => ({
-    id: `cheek${n}`,
-    src: `/images/avatar/cheeks/cheek${n}.png`,
-    price: CHEEK_PRICE,
-  })),
+  ...[1, 2, 3].map((n) => {
+    const id = `cheek${n}`;
+    return { id, src: avatarUrl("cheeks", id), price: CHEEK_PRICE };
+  }),
 ];
 
 export default function ShopPage() {
@@ -422,7 +419,7 @@ export default function ShopPage() {
     } else if (activePreview.kind === "mouth") {
       await handleBuyMouth({
         id: activePreview.id,
-        src: `/images/avatar/mouths/${activePreview.id}.png`,
+        src: avatarUrl("mouths", activePreview.id),
         price: activePreview.price,
       });
     } else {

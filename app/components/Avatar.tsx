@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
+import { avatarUrl } from "@/src/lib/avatarAssets";
 
 export type BodyType =
   | "adult_female"
@@ -92,18 +93,19 @@ export default function Avatar({
   const agePrefix = body.startsWith("adult") ? "adult" : "child";
   const genderPrefix = body.endsWith("female") ? "female" : "male";
 
-  const bodySrc = `/images/avatar/bodies/${body}.png`;
+  // Hair/clothes remain on the local `/images/avatar` path for now —
+  // those folders aren't uploaded yet. Bodies/eyes/mouth/cheeks come
+  // from Firebase Storage so the homepage and app share assets.
+  const bodySrc = avatarUrl("bodies", body);
   const clothesSrc = clothes
     ? `/images/avatar/clothes/${body}_${clothes}.png`
     : "";
   const hairSrc = hair
     ? `/images/avatar/hair/${agePrefix}_${genderPrefix}_${hair}.png`
     : "";
-  const eyesSrc = eyesName ? `/images/avatar/eyes/${eyesName}.png` : "";
-  const mouthSrc = mouthName ? `/images/avatar/mouths/${mouthName}.png` : "";
-  const cheeksSrc = cheeksName
-    ? `/images/avatar/cheeks/${cheeksName}.png`
-    : "";
+  const eyesSrc = eyesName ? avatarUrl("eyes", eyesName) : "";
+  const mouthSrc = mouthName ? avatarUrl("mouths", mouthName) : "";
+  const cheeksSrc = cheeksName ? avatarUrl("cheeks", cheeksName) : "";
 
   const bodyClass = `avatar-${body}`;
   const classes =
