@@ -53,7 +53,12 @@ export const FASHION_ITEMS: Record<
     shoes: [{ id: "shoes1", name: "세일러 클래식 신발", price: 40 }],
     accessories: [],
   },
-  adult_male: { tops: [], bottoms: [], shoes: [], accessories: [] },
+  adult_male: {
+    tops: [{ id: "tops1", name: "클래식 스쿨룩", price: 50 }],
+    bottoms: [],
+    shoes: [{ id: "shoes1", name: "클래식 스쿨룩 신발", price: 40 }],
+    accessories: [],
+  },
   child_female: { tops: [], bottoms: [], shoes: [], accessories: [] },
   child_male: { tops: [], bottoms: [], shoes: [], accessories: [] },
 };

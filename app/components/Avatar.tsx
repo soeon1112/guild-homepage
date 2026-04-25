@@ -105,9 +105,10 @@ export default function Avatar({
   //   case 2 (hair, no clothes):    bald_<body>  — stock outfit, no hair
   //   case 3 (no hair, clothes):    noclothes_<body> — stock hair, undies only
   //   case 4 (hair + clothes):      undressed_<body> — bald + undies
-  // Render order: body → fashion (top/bottom/shoes/accessories) → face
+  // Render order: body → shoes → bottom → top → accessories → face
   // features (eyes/cheeks/mouth) → hair on top, so a fringe can cover
-  // the eyes/eyebrows.
+  // the eyes/eyebrows. Shoes go below bottoms so trousers cover the
+  // ankle, bottoms below tops so a shirt can hang over a waistband.
   const hasClothes = !!(top || bottom || shoes || accessories);
   const bodyId = hair
     ? hasClothes
@@ -143,9 +144,9 @@ export default function Avatar({
           className="avatar-layer avatar-layer-full"
           draggable={false}
         />
-        {topSrc && (
+        {shoesSrc && (
           <img
-            src={topSrc}
+            src={shoesSrc}
             alt=""
             className="avatar-layer avatar-layer-full"
             draggable={false}
@@ -159,9 +160,9 @@ export default function Avatar({
             draggable={false}
           />
         )}
-        {shoesSrc && (
+        {topSrc && (
           <img
-            src={shoesSrc}
+            src={topSrc}
             alt=""
             className="avatar-layer avatar-layer-full"
             draggable={false}
