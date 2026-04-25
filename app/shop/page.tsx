@@ -644,34 +644,44 @@ export default function ShopPage() {
 
             {avatarSubTab === "eyes" ? (
               <div className="shop-eye-groups">
-                {EYE_GROUPS.map((grp) => (
-                  <section key={grp.group} className="shop-eye-group">
-                    <h3 className="shop-eye-group-title">
-                      eye{grp.group}
-                      {grp.items.length > 1 ? " 그룹" : ""}{" "}
-                      <span className="shop-eye-group-price">
-                        {grp.price} 별빛
-                      </span>
-                    </h3>
-                    <div className="shop-grid">
-                      {grp.items.map((item) => {
-                        const equipped = avatarEyes === item.id;
-                        const previewed = previewEyes === item.id;
-                        const cardClass = [
-                          "shop-card",
-                          "shop-card-clickable",
-                          equipped ? "shop-card-equipped" : "",
-                          previewed ? "shop-card-previewed" : "",
-                        ]
-                          .filter(Boolean)
-                          .join(" ");
-                        const toggle = () => {
-                          if (equipped) return;
-                          setPreviewEyes(previewed ? null : item.id);
-                        };
-                        return (
+                {EYE_GROUPS.map((grp) => {
+                  const isMulti = grp.items.length > 1;
+                  const itemFromGroup = (id: string) =>
+                    grp.items.find((i) => i.id === id);
+                  // Card thumbnail follows current selection within the
+                  // group — preview wins over equipped, falls back to
+                  // color 1 so each group has a stable default.
+                  const displayedItem =
+                    (previewEyes ? itemFromGroup(previewEyes) : null) ??
+                    (avatarEyes ? itemFromGroup(avatarEyes) : null) ??
+                    grp.items[0];
+
+                  if (!isMulti) {
+                    const item = grp.items[0];
+                    const equipped = avatarEyes === item.id;
+                    const previewed = previewEyes === item.id;
+                    const cardClass = [
+                      "shop-card",
+                      "shop-card-clickable",
+                      equipped ? "shop-card-equipped" : "",
+                      previewed ? "shop-card-previewed" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ");
+                    const toggle = () => {
+                      if (equipped) return;
+                      setPreviewEyes(previewed ? null : item.id);
+                    };
+                    return (
+                      <section key={grp.group} className="shop-eye-group">
+                        <h3 className="shop-eye-group-title">
+                          eye{grp.group}{" "}
+                          <span className="shop-eye-group-price">
+                            {grp.price} 별빛
+                          </span>
+                        </h3>
+                        <div className="shop-grid">
                           <div
-                            key={item.id}
                             className={cardClass}
                             role="button"
                             tabIndex={equipped ? -1 : 0}
@@ -691,7 +701,9 @@ export default function ShopPage() {
                                 draggable={false}
                               />
                             </div>
-                            <div className="shop-card-price">{grp.price} 별빛</div>
+                            <div className="shop-card-price">
+                              {grp.price} 별빛
+                            </div>
                             <div className="shop-card-status">
                               {equipped
                                 ? "장착 중"
@@ -700,11 +712,64 @@ export default function ShopPage() {
                                   : ""}
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
-                  </section>
-                ))}
+                        </div>
+                      </section>
+                    );
+                  }
+
+                  return (
+                    <section key={grp.group} className="shop-eye-group">
+                      <h3 className="shop-eye-group-title">
+                        eye{grp.group} 그룹{" "}
+                        <span className="shop-eye-group-price">
+                          {grp.price} 별빛
+                        </span>
+                      </h3>
+                      <div className="shop-grid">
+                        <div className="shop-card">
+                          <div className="shop-card-preview-wrap">
+                            <img
+                              src={displayedItem.src}
+                              alt=""
+                              className="shop-card-preview"
+                              draggable={false}
+                            />
+                          </div>
+                          <div className="shop-card-price">
+                            {grp.price} 별빛
+                          </div>
+                          <div className="shop-eye-colors">
+                            {grp.items.map((item, i) => {
+                              const equipped = avatarEyes === item.id;
+                              const previewed = previewEyes === item.id;
+                              const cls = [
+                                "shop-eye-color",
+                                equipped ? "shop-eye-color-equipped" : "",
+                                previewed ? "shop-eye-color-previewed" : "",
+                              ]
+                                .filter(Boolean)
+                                .join(" ");
+                              return (
+                                <button
+                                  key={item.id}
+                                  type="button"
+                                  className={cls}
+                                  onClick={() => {
+                                    if (equipped) return;
+                                    setPreviewEyes(previewed ? null : item.id);
+                                  }}
+                                  disabled={equipped}
+                                >
+                                  색상 {i + 1}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    </section>
+                  );
+                })}
               </div>
             ) : avatarSubTab === "cheeks" ? (
               <div className="shop-grid">

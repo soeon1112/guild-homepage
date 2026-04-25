@@ -5335,6 +5335,48 @@ select {
   font-weight: 600;
 }
 
+.shop-eye-colors {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.3rem;
+}
+
+.shop-eye-color {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+  padding: 0.35rem 0.2rem;
+  font-family: inherit;
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.shop-eye-color:hover:not(:disabled) {
+  background: rgba(212, 175, 55, 0.12);
+  border-color: rgba(212, 175, 55, 0.45);
+}
+
+.shop-eye-color:disabled {
+  cursor: default;
+}
+
+.shop-eye-color-equipped {
+  border-color: #4a90d9;
+  box-shadow: 0 0 0 1px #4a90d9 inset;
+  background: rgba(74, 144, 217, 0.1);
+  color: #fff;
+}
+
+.shop-eye-color-previewed {
+  border-color: #daa520;
+  box-shadow: 0 0 0 1px #daa520 inset;
+  background: rgba(212, 175, 55, 0.12);
+  color: #fff;
+}
+
 .shop-avatar-preview {
   display: flex;
   flex-direction: column;
