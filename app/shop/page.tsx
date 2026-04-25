@@ -114,6 +114,16 @@ const CHEEK_ITEMS: { id: string; src: string; price: number }[] = [
   }),
 ];
 
+// Hair tab data. avatarHair stores the gender-agnostic stem
+// `hair<group>_<color>` (e.g. "hair1_2"); the Avatar component appends
+// the user's gender + age suffix at render time so the same value
+// works on any body. Each group ships a preview PNG per gender plus 3
+// color variants × 2 ages.
+const HAIR_PRICE = 50;
+const HAIR_GROUPS: { group: number; price: number; colors: number[] }[] = [
+  { group: 1, price: HAIR_PRICE, colors: [1, 2, 3] },
+];
+
 export default function ShopPage() {
   const { nickname, ready } = useAuth();
   const [mainTab, setMainTab] = useState<"title" | "avatar">("title");
@@ -128,14 +138,17 @@ export default function ShopPage() {
   const [avatarMouth, setAvatarMouth] = useState("");
   const [avatarEyes, setAvatarEyes] = useState("");
   const [avatarCheeks, setAvatarCheeks] = useState("");
+  const [avatarHair, setAvatarHair] = useState("");
   const [statuses, setStatuses] = useState<Record<string, WordStatus>>({});
   const [busyWordId, setBusyWordId] = useState<string | null>(null);
   const [busyMouthId, setBusyMouthId] = useState<string | null>(null);
   const [busyEyesId, setBusyEyesId] = useState<string | null>(null);
   const [busyCheeksId, setBusyCheeksId] = useState<string | null>(null);
+  const [busyHairId, setBusyHairId] = useState<string | null>(null);
   const [previewEyes, setPreviewEyes] = useState<string | null>(null);
   const [previewMouth, setPreviewMouth] = useState<string | null>(null);
   const [previewCheeks, setPreviewCheeks] = useState<string | null>(null);
+  const [previewHair, setPreviewHair] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const avatarData = useAvatarData(nickname);
   const monthKey = currentMonthKey();
@@ -156,6 +169,7 @@ export default function ShopPage() {
       setAvatarMouth((data?.avatarMouth as string | undefined) ?? "");
       setAvatarEyes((data?.avatarEyes as string | undefined) ?? "");
       setAvatarCheeks((data?.avatarCheeks as string | undefined) ?? "");
+      setAvatarHair((data?.avatarHair as string | undefined) ?? "");
     });
     return () => unsub();
   }, [nickname]);
@@ -322,6 +336,37 @@ export default function ShopPage() {
     setBusyCheeksId(null);
   };
 
+  const handleBuyHair = async (item: { id: string; price: number }) => {
+    if (!nickname) return;
+    if (avatarHair === item.id) return;
+    if (points < item.price) {
+      setMessage("별빛이 부족합니다.");
+      return;
+    }
+    if (!confirm(`이 헤어를 ${item.price} 별빛에 구매하시겠습니까?`)) return;
+    setBusyHairId(item.id);
+    setMessage(null);
+    try {
+      await setDoc(
+        doc(db, "users", nickname),
+        { avatarHair: item.id, points: increment(-item.price) },
+        { merge: true },
+      );
+      await addDoc(collection(db, "users", nickname, "pointHistory"), {
+        type: "아바타",
+        points: -item.price,
+        description: `헤어 변경 (${item.id})`,
+        createdAt: serverTimestamp(),
+      });
+      setMessage("구매 완료! 헤어가 변경되었습니다.");
+      setPreviewHair(null);
+    } catch (e) {
+      console.error(e);
+      setMessage("구매 실패. 잠시 후 다시 시도해주세요.");
+    }
+    setBusyHairId(null);
+  };
+
   const handleBuyMouth = async (item: (typeof MOUTH_ITEMS)[number]) => {
     if (!nickname) return;
     if (avatarMouth === item.id) return;
@@ -385,11 +430,12 @@ export default function ShopPage() {
           avatarEyes: previewEyes ?? avatarData.avatarEyes ?? "",
           avatarMouth: previewMouth ?? avatarData.avatarMouth ?? "",
           avatarCheeks: resolvedPreviewCheeks,
+          avatarHair: previewHair ?? avatarData.avatarHair ?? "",
         }
       : null;
 
   const activePreview:
-    | { kind: "eyes" | "mouth" | "cheeks"; id: string; price: number }
+    | { kind: "eyes" | "mouth" | "cheeks" | "hair"; id: string; price: number }
     | null = (() => {
     if (avatarSubTab === "eyes" && previewEyes) {
       return { kind: "eyes", id: previewEyes, price: 35 };
@@ -404,13 +450,17 @@ export default function ShopPage() {
         price: previewCheeks === "none" ? 0 : CHEEK_PRICE,
       };
     }
+    if (avatarSubTab === "hair" && previewHair) {
+      return { kind: "hair", id: previewHair, price: HAIR_PRICE };
+    }
     return null;
   })();
 
   const buyingPreview =
     (activePreview?.kind === "eyes" && busyEyesId === activePreview.id) ||
     (activePreview?.kind === "mouth" && busyMouthId === activePreview.id) ||
-    (activePreview?.kind === "cheeks" && busyCheeksId === activePreview.id);
+    (activePreview?.kind === "cheeks" && busyCheeksId === activePreview.id) ||
+    (activePreview?.kind === "hair" && busyHairId === activePreview.id);
 
   const handleBuyPreview = async () => {
     if (!activePreview) return;
@@ -422,8 +472,13 @@ export default function ShopPage() {
         src: avatarUrl("mouths", activePreview.id),
         price: activePreview.price,
       });
-    } else {
+    } else if (activePreview.kind === "cheeks") {
       await handleBuyCheeks({
+        id: activePreview.id,
+        price: activePreview.price,
+      });
+    } else {
+      await handleBuyHair({
         id: activePreview.id,
         price: activePreview.price,
       });
@@ -479,7 +534,9 @@ export default function ShopPage() {
                       (activePreview.kind === "mouth" &&
                         avatarMouth === activePreview.id) ||
                       (activePreview.kind === "cheeks" &&
-                        (avatarCheeks || "none") === activePreview.id)
+                        (avatarCheeks || "none") === activePreview.id) ||
+                      (activePreview.kind === "hair" &&
+                        avatarHair === activePreview.id)
                     }
                   >
                     {buyingPreview
@@ -495,7 +552,9 @@ export default function ShopPage() {
                       if (activePreview.kind === "eyes") setPreviewEyes(null);
                       else if (activePreview.kind === "mouth")
                         setPreviewMouth(null);
-                      else setPreviewCheeks(null);
+                      else if (activePreview.kind === "cheeks")
+                        setPreviewCheeks(null);
+                      else setPreviewHair(null);
                     }}
                     disabled={buyingPreview}
                   >
@@ -732,6 +791,70 @@ export default function ShopPage() {
                     </div>
                   );
                 })}
+              </div>
+            ) : avatarSubTab === "hair" ? (
+              <div className="shop-hair-groups">
+                {HAIR_GROUPS.map((grp) => (
+                  <section key={grp.group} className="shop-hair-group">
+                    <h3 className="shop-eye-group-title">
+                      hair{grp.group}{" "}
+                      <span className="shop-eye-group-price">
+                        {grp.price} 별빛
+                      </span>
+                    </h3>
+                    <div className="shop-hair-preview-wrap">
+                      <img
+                        src={avatarUrl(
+                          "hair",
+                          `${hairSubTab}_hair${grp.group}_preview`,
+                        )}
+                        alt=""
+                        className="shop-hair-preview"
+                        draggable={false}
+                      />
+                    </div>
+                    <div className="shop-hair-colors">
+                      {grp.colors.map((color) => {
+                        const id = `hair${grp.group}_${color}`;
+                        const equipped = avatarHair === id;
+                        const previewed = previewHair === id;
+                        const cls = [
+                          "shop-hair-color",
+                          equipped ? "shop-hair-color-equipped" : "",
+                          previewed ? "shop-hair-color-previewed" : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" ");
+                        return (
+                          <button
+                            key={color}
+                            type="button"
+                            className={cls}
+                            onClick={() => {
+                              if (equipped) return;
+                              setPreviewHair(previewed ? null : id);
+                            }}
+                            disabled={equipped}
+                          >
+                            <span className="shop-hair-color-label">
+                              색상 {color}
+                            </span>
+                            {equipped && (
+                              <span className="shop-hair-color-status">
+                                장착 중
+                              </span>
+                            )}
+                            {previewed && !equipped && (
+                              <span className="shop-hair-color-status">
+                                미리보기
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </section>
+                ))}
               </div>
             ) : (
               <p className="avatar-shop-hint">준비 중입니다.</p>

@@ -5,7 +5,7 @@
 const BUCKET = "dawnlight-guild.firebasestorage.app";
 const BASE = `https://storage.googleapis.com/${BUCKET}/avatars`;
 
-export type AvatarCategory = "bodies" | "eyes" | "mouths" | "cheeks";
+export type AvatarCategory = "bodies" | "eyes" | "mouths" | "cheeks" | "hair";
 
 export function avatarUrl(category: AvatarCategory, filename: string): string {
   return `${BASE}/${category}/${filename}.png`;

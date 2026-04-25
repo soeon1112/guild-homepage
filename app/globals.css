@@ -5430,6 +5430,90 @@ select {
   padding: 2rem 0;
 }
 
+.shop-hair-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.shop-hair-group {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.shop-hair-preview-wrap {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 218, 185, 0.1);
+  border-radius: 8px;
+  padding: 0.5rem;
+}
+
+.shop-hair-preview {
+  max-width: 200px;
+  max-height: 280px;
+  object-fit: contain;
+}
+
+.shop-hair-colors {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.shop-hair-color {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  padding: 0.6rem 0.4rem;
+  font-family: inherit;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.shop-hair-color:hover:not(:disabled) {
+  background: rgba(212, 175, 55, 0.12);
+  border-color: rgba(212, 175, 55, 0.45);
+}
+
+.shop-hair-color:disabled {
+  cursor: default;
+}
+
+.shop-hair-color-equipped {
+  border-color: #4a90d9;
+  box-shadow: 0 0 0 1px #4a90d9 inset;
+  background: rgba(74, 144, 217, 0.1);
+}
+
+.shop-hair-color-previewed {
+  border-color: #daa520;
+  box-shadow: 0 0 0 1px #daa520 inset;
+  background: rgba(212, 175, 55, 0.12);
+}
+
+.shop-hair-color-label {
+  font-weight: 600;
+}
+
+.shop-hair-color-status {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
 /* ════════════════════════════════════════════════════════ */
 /*  Redesign: cosmic animations & utilities                 */
 /*  Used by CosmicBackground, TopHeader, TodaySky, etc.     */

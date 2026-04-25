@@ -93,15 +93,19 @@ export default function Avatar({
   const agePrefix = body.startsWith("adult") ? "adult" : "child";
   const genderPrefix = body.endsWith("female") ? "female" : "male";
 
-  // Hair/clothes remain on the local `/images/avatar` path for now —
-  // those folders aren't uploaded yet. Bodies/eyes/mouth/cheeks come
-  // from Firebase Storage so the homepage and app share assets.
-  const bodySrc = avatarUrl("bodies", body);
+  // Bald body when hair is equipped — the default bodies have hair
+  // baked in, so we swap to bald_<body> as the bottom layer and stack
+  // the hair PNG above it. Hair files are named
+  // `<gender>_hair<group>_<color>_<age>` (e.g. female_hair1_2_adult);
+  // avatarHair stores just the gender-agnostic `hair<group>_<color>`
+  // stem so the same value renders correctly on either gender.
+  const bodyId = hair ? `bald_${body}` : body;
+  const bodySrc = avatarUrl("bodies", bodyId);
   const clothesSrc = clothes
     ? `/images/avatar/clothes/${body}_${clothes}.png`
     : "";
   const hairSrc = hair
-    ? `/images/avatar/hair/${agePrefix}_${genderPrefix}_${hair}.png`
+    ? avatarUrl("hair", `${genderPrefix}_${hair}_${agePrefix}`)
     : "";
   const eyesSrc = eyesName ? avatarUrl("eyes", eyesName) : "";
   const mouthSrc = mouthName ? avatarUrl("mouths", mouthName) : "";
