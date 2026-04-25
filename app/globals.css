@@ -5591,6 +5591,108 @@ select {
   color: rgba(255, 255, 255, 0.7);
 }
 
+/* ── Wardrobe (mini-home 옷장) ───────────────────────────── */
+
+.wardrobe {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  text-align: left;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.wardrobe-title {
+  margin: 0;
+  text-align: center;
+  color: #daa520;
+  font-family: 'Noto Serif KR', serif;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+}
+
+.wardrobe-section-title {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.85);
+  font-family: 'Noto Serif KR', serif;
+  font-size: 0.92rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.wardrobe-equipped-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.6rem;
+}
+
+@media (min-width: 640px) {
+  .wardrobe-equipped-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.wardrobe-equipped-item {
+  background: rgba(74, 144, 217, 0.08);
+  border: 1px solid #4a90d9;
+  border-radius: 10px;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  cursor: pointer;
+  outline: none;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.wardrobe-equipped-item:hover {
+  background: rgba(74, 144, 217, 0.15);
+}
+
+.wardrobe-equipped-thumb {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.wardrobe-equipped-thumb img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.wardrobe-equipped-name {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.9);
+  text-align: center;
+}
+
+.wardrobe-categories {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.wardrobe-category {
+  display: flex;
+  flex-direction: column;
+}
+
+.wardrobe-empty {
+  margin: 0;
+  padding: 0.6rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+  font-size: 0.82rem;
+  text-align: center;
+}
+
 .shop-fashion-preview-wrap {
   width: 100%;
   aspect-ratio: 3 / 4;

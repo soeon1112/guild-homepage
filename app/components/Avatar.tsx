@@ -64,6 +64,7 @@ export type AvatarData = {
   avatarBottom?: string;
   avatarShoes?: string;
   avatarAccessories?: string;
+  ownedFashion?: string[];
   bodySelected?: boolean;
   points?: number;
   mbti?: string;
@@ -263,6 +264,11 @@ export function useAvatarData(
             typeof d.avatarAccessories === "string"
               ? d.avatarAccessories
               : "",
+          ownedFashion: Array.isArray(d.ownedFashion)
+            ? (d.ownedFashion.filter(
+                (s: unknown) => typeof s === "string",
+              ) as string[])
+            : [],
           bodySelected: d.bodySelected === true,
           points: typeof d.points === "number" ? d.points : 0,
           mbti: typeof d.mbti === "string" ? d.mbti : "",

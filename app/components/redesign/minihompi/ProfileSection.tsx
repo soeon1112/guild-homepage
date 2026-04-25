@@ -23,6 +23,7 @@ import Avatar, {
 import { logActivity } from "@/src/lib/activity";
 import { handleEvent } from "@/src/lib/badgeCheck";
 import { BgmPlayer } from "./BgmPlayer";
+import Wardrobe from "./Wardrobe";
 import { KeywordsSection } from "./KeywordsSection";
 
 export type MemberDoc = {
@@ -671,23 +672,29 @@ export function ProfileSection({
           )}
         </div>
 
-        {isOwner && showWardrobe && !editMode && (
+        {isOwner && showWardrobe && !editMode && avatarData && (
           <div
-            className="mt-5 w-full max-w-sm rounded-xl p-4 text-center"
+            className="mt-5 w-full max-w-sm rounded-xl p-4"
             style={{
               background: "rgba(11,8,33,0.45)",
               border: "1px solid rgba(216,150,200,0.2)",
             }}
           >
-            <p className="font-serif text-[12px] italic text-text-sub">
-              아직 옷이 없습니다. 상점에서 구매해보세요!
-            </p>
-            <Link
-              href="/shop"
-              className="mt-2 inline-block font-serif text-[11px] tracking-wider text-peach-accent hover:text-stardust"
-            >
-              상점으로 →
-            </Link>
+            {(avatarData.ownedFashion?.length ?? 0) === 0 ? (
+              <div className="text-center">
+                <p className="font-serif text-[12px] italic text-text-sub">
+                  아직 옷이 없습니다. 상점에서 구매해보세요!
+                </p>
+                <Link
+                  href="/shop"
+                  className="mt-2 inline-block font-serif text-[11px] tracking-wider text-peach-accent hover:text-stardust"
+                >
+                  상점으로 →
+                </Link>
+              </div>
+            ) : (
+              <Wardrobe nickname={nickname} data={avatarData} />
+            )}
           </div>
         )}
 

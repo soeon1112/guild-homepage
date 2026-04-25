@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   addDoc,
+  arrayUnion,
   collection,
   doc,
   increment,
@@ -18,6 +19,17 @@ import Avatar, {
 } from "@/app/components/Avatar";
 import { db } from "@/src/lib/firebase";
 import { avatarUrl, partUrl } from "@/src/lib/avatarAssets";
+import {
+  FASHION_CATEGORY_TABS,
+  FASHION_FIELD,
+  FASHION_ITEMS,
+  FASHION_SUB_TABS,
+  type FashionCategoryKey,
+  type FashionItem,
+  type FashionSubTab,
+  isOwned,
+  ownedKey,
+} from "@/src/lib/fashion";
 import { logActivity } from "@/src/lib/activity";
 import {
   BACK_WORDS,
@@ -41,11 +53,6 @@ type WordStatus = {
 
 type AvatarSubTab = "eyes" | "cheeks" | "mouth" | "hair" | "fashion";
 type HairSubTab = "male" | "female";
-type FashionSubTab =
-  | "adult_male"
-  | "adult_female"
-  | "child_male"
-  | "child_female";
 
 const AVATAR_SUB_TABS: { value: AvatarSubTab; label: string }[] = [
   { value: "eyes", label: "눈" },
@@ -58,13 +65,6 @@ const AVATAR_SUB_TABS: { value: AvatarSubTab; label: string }[] = [
 const HAIR_SUB_TABS: { value: HairSubTab; label: string }[] = [
   { value: "male", label: "남" },
   { value: "female", label: "여" },
-];
-
-const FASHION_SUB_TABS: { value: FashionSubTab; label: string }[] = [
-  { value: "adult_male", label: "성인남" },
-  { value: "adult_female", label: "성인여" },
-  { value: "child_male", label: "어린이남" },
-  { value: "child_female", label: "어린이여" },
 ];
 
 const MOUTH_ITEMS: { id: string; src: string; price: number }[] = Array.from(
@@ -134,47 +134,6 @@ const HAIR_GROUPS: {
   },
 ];
 
-// Fashion items live at avatars/parts/<body>/<category>/<id>.png. Each
-// body silhouette ships its own variants of every garment, so the data
-// is keyed by both body and category. Categories the user can equip:
-// tops / bottoms / shoes / accessories — each saves to its own
-// avatarTop / avatarBottom / avatarShoes / avatarAccessories field.
-type FashionCategoryKey = "tops" | "bottoms" | "shoes" | "accessories";
-type FashionItem = { id: string; name: string; price: number };
-type FashionField =
-  | "avatarTop"
-  | "avatarBottom"
-  | "avatarShoes"
-  | "avatarAccessories";
-
-const FASHION_CATEGORY_TABS: { value: FashionCategoryKey; label: string }[] = [
-  { value: "tops", label: "상의" },
-  { value: "bottoms", label: "하의" },
-  { value: "shoes", label: "신발" },
-  { value: "accessories", label: "기타" },
-];
-
-const FASHION_FIELD: Record<FashionCategoryKey, FashionField> = {
-  tops: "avatarTop",
-  bottoms: "avatarBottom",
-  shoes: "avatarShoes",
-  accessories: "avatarAccessories",
-};
-
-const FASHION_ITEMS: Record<
-  FashionSubTab,
-  Record<FashionCategoryKey, FashionItem[]>
-> = {
-  adult_female: {
-    tops: [{ id: "tops1", name: "세일러 클래식 교복", price: 50 }],
-    bottoms: [],
-    shoes: [{ id: "shoes1", name: "세일러 클래식 신발", price: 40 }],
-    accessories: [],
-  },
-  adult_male: { tops: [], bottoms: [], shoes: [], accessories: [] },
-  child_female: { tops: [], bottoms: [], shoes: [], accessories: [] },
-  child_male: { tops: [], bottoms: [], shoes: [], accessories: [] },
-};
 
 export default function ShopPage() {
   const { nickname, ready } = useAuth();
@@ -195,6 +154,7 @@ export default function ShopPage() {
   const [avatarBottom, setAvatarBottom] = useState("");
   const [avatarShoes, setAvatarShoes] = useState("");
   const [avatarAccessories, setAvatarAccessories] = useState("");
+  const [ownedFashion, setOwnedFashion] = useState<string[]>([]);
   const [fashionCatTab, setFashionCatTab] =
     useState<FashionCategoryKey>("tops");
   const [statuses, setStatuses] = useState<Record<string, WordStatus>>({});
@@ -240,6 +200,12 @@ export default function ShopPage() {
       setAvatarShoes((data?.avatarShoes as string | undefined) ?? "");
       setAvatarAccessories(
         (data?.avatarAccessories as string | undefined) ?? "",
+      );
+      const owned = data?.ownedFashion;
+      setOwnedFashion(
+        Array.isArray(owned)
+          ? owned.filter((s): s is string => typeof s === "string")
+          : [],
       );
     });
     return () => unsub();
@@ -455,6 +421,10 @@ export default function ShopPage() {
       return;
     }
     if (currentValue === item.id) return;
+    if (isOwned(ownedFashion, fashionSubTab, cat, item.id)) {
+      setMessage("이미 보유한 아이템입니다. 옷장에서 착용하세요.");
+      return;
+    }
     if (points < item.price) {
       setMessage("별빛이 부족합니다.");
       return;
@@ -468,6 +438,7 @@ export default function ShopPage() {
         doc(db, "users", nickname),
         {
           [FASHION_FIELD[cat]]: item.id,
+          ownedFashion: arrayUnion(ownedKey(fashionSubTab, cat, item.id)),
           points: increment(-item.price),
         },
         { merge: true },
@@ -1174,16 +1145,22 @@ export default function ShopPage() {
                             : setPreviewAccessories;
                     const equipped = currentValue === item.id;
                     const previewed = fashionCatPreviewId === item.id;
+                    const owned = isOwned(
+                      ownedFashion,
+                      fashionSubTab,
+                      fashionCatTab,
+                      item.id,
+                    );
                     const cardClass = [
                       "shop-card",
-                      "shop-card-clickable",
+                      owned ? "" : "shop-card-clickable",
                       equipped ? "shop-card-equipped" : "",
                       previewed ? "shop-card-previewed" : "",
                     ]
                       .filter(Boolean)
                       .join(" ");
                     const toggle = () => {
-                      if (equipped) return;
+                      if (equipped || owned) return;
                       setPreview(previewed ? null : item.id);
                     };
                     return (
@@ -1217,7 +1194,11 @@ export default function ShopPage() {
                           {item.price} 별빛
                         </div>
                         <div className="shop-card-status">
-                          {equipped ? "장착 중" : ""}
+                          {equipped
+                            ? "장착 중"
+                            : owned
+                              ? "보유중"
+                              : ""}
                         </div>
                       </div>
                     );
