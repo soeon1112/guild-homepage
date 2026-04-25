@@ -120,8 +120,18 @@ const CHEEK_ITEMS: { id: string; src: string; price: number }[] = [
 // works on any body. Each group ships a preview PNG per gender plus 3
 // color variants × 2 ages.
 const HAIR_PRICE = 40;
-const HAIR_GROUPS: { group: number; price: number; colors: number[] }[] = [
-  { group: 1, price: HAIR_PRICE, colors: [1, 2, 3] },
+const HAIR_GROUPS: {
+  group: number;
+  price: number;
+  colors: number[];
+  names: Record<HairSubTab, string>;
+}[] = [
+  {
+    group: 1,
+    price: HAIR_PRICE,
+    colors: [1, 2, 3],
+    names: { male: "내추럴 쉐도우 컷", female: "시스루 웨이브 단발" },
+  },
 ];
 
 // Fashion items live at avatars/parts/<body>/<category>/<id>.png. Each
@@ -1084,6 +1094,9 @@ export default function ShopPage() {
                           className="shop-hair-preview"
                           draggable={false}
                         />
+                      </div>
+                      <div className="shop-hair-name">
+                        {grp.names[hairSubTab]}
                       </div>
                       <div className="shop-hair-group-price">
                         {grp.price} 별빛

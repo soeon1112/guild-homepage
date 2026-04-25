@@ -5510,6 +5510,14 @@ select {
   object-fit: contain;
 }
 
+.shop-hair-name {
+  width: 100%;
+  text-align: center;
+  color: #fff;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
 .shop-hair-group-price {
   width: 100%;
   text-align: center;
