@@ -156,9 +156,9 @@ const FASHION_ITEMS: Record<
   Record<FashionCategoryKey, FashionItem[]>
 > = {
   adult_female: {
-    tops: [{ id: "tops1", name: "일반 교복", price: 50 }],
+    tops: [{ id: "tops1", name: "세일러 클래식 교복", price: 50 }],
     bottoms: [],
-    shoes: [{ id: "shoes1", name: "일반 교복 신발", price: 40 }],
+    shoes: [{ id: "shoes1", name: "세일러 클래식 신발", price: 40 }],
     accessories: [],
   },
   adult_male: { tops: [], bottoms: [], shoes: [], accessories: [] },
