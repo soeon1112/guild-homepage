@@ -286,7 +286,7 @@ export default function FloatingChat() {
     const pin = (label: string) => {
       const end = endRef.current;
       if (end) {
-        end.scrollIntoView({ block: "end", behavior: "auto" });
+        end.scrollIntoView({ block: "end", behavior: "smooth" });
       } else {
         const l = listRef.current;
         if (l) l.scrollTop = l.scrollHeight;
@@ -337,7 +337,7 @@ export default function FloatingChat() {
       ro?.disconnect();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, messages.length]);
+  }, [open, messages]);
 
   // One extra pin after framer-motion's enter animation settles. On mobile
   // this is the first frame where the panel's scale/opacity are final, which
@@ -426,6 +426,7 @@ export default function FloatingChat() {
     }
     setSending(false);
     messageInputRef.current?.focus({ preventScroll: true });
+    endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
   };
 
   const openPanel = () => {
