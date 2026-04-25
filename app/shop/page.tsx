@@ -698,11 +698,7 @@ export default function ShopPage() {
                           {grp.price} 별빛
                         </div>
                         <div className="shop-card-status">
-                          {equipped
-                            ? "장착 중"
-                            : previewed
-                              ? "미리보기"
-                              : ""}
+                          {equipped ? "장착 중" : ""}
                         </div>
                       </div>
                     );
@@ -798,7 +794,7 @@ export default function ShopPage() {
                         {item.price === 0 ? "무료" : `${item.price} 별빛`}
                       </div>
                       <div className="shop-card-status">
-                        {equipped ? "장착 중" : previewed ? "미리보기" : ""}
+                        {equipped ? "장착 중" : ""}
                       </div>
                     </div>
                   );
@@ -845,7 +841,7 @@ export default function ShopPage() {
                       </div>
                       <div className="shop-card-price">{item.price} 별빛</div>
                       <div className="shop-card-status">
-                        {equipped ? "장착 중" : previewed ? "미리보기" : ""}
+                        {equipped ? "장착 중" : ""}
                       </div>
                     </div>
                   );
@@ -906,11 +902,6 @@ export default function ShopPage() {
                                 {equipped && (
                                   <span className="shop-hair-color-status">
                                     장착 중
-                                  </span>
-                                )}
-                                {previewed && !equipped && (
-                                  <span className="shop-hair-color-status">
-                                    미리보기
                                   </span>
                                 )}
                               </button>
