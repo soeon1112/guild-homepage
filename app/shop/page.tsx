@@ -119,7 +119,7 @@ const CHEEK_ITEMS: { id: string; src: string; price: number }[] = [
 // the user's gender + age suffix at render time so the same value
 // works on any body. Each group ships a preview PNG per gender plus 3
 // color variants × 2 ages.
-const HAIR_PRICE = 50;
+const HAIR_PRICE = 40;
 const HAIR_GROUPS: { group: number; price: number; colors: number[] }[] = [
   { group: 1, price: HAIR_PRICE, colors: [1, 2, 3] },
 ];
