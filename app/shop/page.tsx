@@ -869,12 +869,9 @@ export default function ShopPage() {
                           draggable={false}
                         />
                       </div>
-                      <h3 className="shop-hair-group-title">
-                        hair{grp.group}
-                        <span className="shop-hair-group-price">
-                          {grp.price} 별빛
-                        </span>
-                      </h3>
+                      <div className="shop-hair-group-price">
+                        {grp.price} 별빛
+                      </div>
                       {!hairTabMatchesUser ? (
                         <p className="shop-hair-locked">
                           {tabGenderLabel} 캐릭터 전용입니다
