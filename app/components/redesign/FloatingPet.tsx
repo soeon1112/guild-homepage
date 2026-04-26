@@ -1877,7 +1877,13 @@ function PlaygroundPanel({
       if (target.nickname === myNickname) return;
       setInteractBusy(true);
       try {
-        const res = await sendPlaygroundRequest(myNickname, myPetName, target.nickname, kind);
+        const res = await sendPlaygroundRequest(
+          myNickname,
+          myPetName,
+          target.nickname,
+          target.petName,
+          kind,
+        );
         if (!res.ok) {
           if (res.reason === "already_today") showPgToast("오늘은 이미 했어요.");
           else if (res.reason === "daily_cap") showPgToast("오늘 별빛 한도(30★)에 도달했어요.");
@@ -1893,6 +1899,7 @@ function PlaygroundPanel({
               from: myNickname,
               fromPetName: myPetName,
               to: target.nickname,
+              toPetName: target.petName,
               kind,
               status: "pending",
               createdAtMs: Date.now(),
@@ -1910,9 +1917,17 @@ function PlaygroundPanel({
     async (target: PlaygroundPet, treatItem: ItemId) => {
       if (interactBusy) return;
       if (target.nickname === myNickname) return;
+      const myPet = pets?.find((p) => p.nickname === myNickname);
+      const myPetName = myPet?.petName ?? myNickname;
       setInteractBusy(true);
       try {
-        const res = await playgroundTreat(myNickname, target.nickname, treatItem);
+        const res = await playgroundTreat(
+          myNickname,
+          myPetName,
+          target.nickname,
+          target.petName,
+          treatItem,
+        );
         if (!res.ok) {
           if (res.reason === "already_today") showPgToast("오늘은 이미 선물했어요.");
           else if (res.reason === "daily_cap") showPgToast("오늘 별빛 한도에 도달했어요.");
@@ -1927,7 +1942,7 @@ function PlaygroundPanel({
         setInteractBusy(false);
       }
     },
-    [interactBusy, myNickname, triggerAnimation, refreshLog, showPgToast],
+    [interactBusy, myNickname, pets, triggerAnimation, refreshLog, showPgToast],
   );
 
   // Incoming request subscription — pop the accept/reject UI.

@@ -772,10 +772,14 @@ export type PlaygroundInteractResult =
 
 // Unified interaction handler — kind is one of greet/play/treat. The
 // "treat" kind goes through `giftTreat` for the consumable + pet-status
-// effects, then layers the playground points on top.
+// effects, then layers the playground points on top. Pet names are
+// included so the MY-page history entries read naturally (e.g.
+// "놀이터 간식 선물 (상대: 언쏘의 별이)").
 export async function playgroundInteract(
   from: string,
+  fromPetName: string,
   to: string,
+  toPetName: string,
   kind: PlaygroundInteractionKind,
   treatItem?: ItemId,
 ): Promise<PlaygroundInteractResult> {
@@ -806,7 +810,7 @@ export async function playgroundInteract(
   }
 
   const reward = PLAYGROUND_REWARD_PER_INTERACTION;
-  const reasonText = `놀이터 ${KIND_LABEL[kind]} (+${reward})`;
+  const action = KIND_LABEL[kind];
   await setDoc(
     doc(db, "users", from),
     { points: increment(reward) },
@@ -820,13 +824,13 @@ export async function playgroundInteract(
   await addDoc(collection(db, "users", from, "pointHistory"), {
     type: "펫",
     points: reward,
-    description: reasonText,
+    description: `놀이터 ${action} (상대: ${to}의 ${toPetName || "펫"})`,
     createdAt: serverTimestamp(),
   });
   await addDoc(collection(db, "users", to, "pointHistory"), {
     type: "펫",
     points: reward,
-    description: `놀이터에서 ${KIND_LABEL[kind]} 받음 (+${reward})`,
+    description: `놀이터 ${action} (상대: ${from}의 ${fromPetName || "펫"})`,
     createdAt: serverTimestamp(),
   });
   await setDoc(
@@ -854,6 +858,7 @@ export type PlaygroundRequest = {
   from: string;
   fromPetName: string;
   to: string;
+  toPetName: string;
   kind: PlaygroundRequestKind;
   status: PlaygroundRequestStatus;
   createdAtMs: number;
@@ -869,6 +874,7 @@ export async function sendPlaygroundRequest(
   from: string,
   fromPetName: string,
   to: string,
+  toPetName: string,
   kind: PlaygroundRequestKind,
 ): Promise<SendPlaygroundRequestResult> {
   if (!from || !to) return { ok: false, reason: "no_target" };
@@ -888,6 +894,7 @@ export async function sendPlaygroundRequest(
     from,
     fromPetName,
     to,
+    toPetName,
     kind,
     status: "pending",
     createdAt: serverTimestamp(),
@@ -927,9 +934,12 @@ export async function respondPlaygroundRequest(
   }
   await updateDoc(reqRef, { status: "accepted", resolvedAt: serverTimestamp() });
 
+  // Descriptions include the OTHER party's nickname + pet name so the
+  // MY page entry reads naturally ("놀이터 인사 (상대: 언쏘의 별이)").
   const reward = PLAYGROUND_REWARD_PER_INTERACTION;
-  const reasonMine = `놀이터 ${KIND_LABEL[req.kind]} (+${reward})`;
-  const reasonOther = `놀이터에서 ${KIND_LABEL[req.kind]} 받음 (+${reward})`;
+  const action = KIND_LABEL[req.kind];
+  const reasonMine = `놀이터 ${action} (상대: ${req.from}의 ${req.fromPetName || "펫"})`;
+  const reasonOther = `놀이터 ${action} (상대: ${me}의 ${req.toPetName || "펫"})`;
   const today = playgroundLogDateKey();
   await Promise.all([
     setDoc(doc(db, "users", me), { points: increment(reward) }, { merge: true }),
@@ -970,10 +980,12 @@ export async function expirePlaygroundRequest(req: PlaygroundRequest): Promise<v
 
 export async function playgroundTreat(
   from: string,
+  fromPetName: string,
   to: string,
+  toPetName: string,
   treatItem: ItemId,
 ): Promise<PlaygroundInteractResult> {
-  return playgroundInteract(from, to, "treat", treatItem);
+  return playgroundInteract(from, fromPetName, to, toPetName, "treat", treatItem);
 }
 
 function snapToRequest(d: { id: string; data: () => unknown }): PlaygroundRequest {
@@ -981,6 +993,7 @@ function snapToRequest(d: { id: string; data: () => unknown }): PlaygroundReques
     from?: string;
     fromPetName?: string;
     to?: string;
+    toPetName?: string;
     kind?: PlaygroundRequestKind;
     status?: PlaygroundRequestStatus;
     createdAt?: { toMillis?: () => number };
@@ -990,6 +1003,7 @@ function snapToRequest(d: { id: string; data: () => unknown }): PlaygroundReques
     from: data.from ?? "",
     fromPetName: data.fromPetName ?? "",
     to: data.to ?? "",
+    toPetName: data.toPetName ?? "",
     kind: (data.kind as PlaygroundRequestKind) ?? "greet",
     status: (data.status as PlaygroundRequestStatus) ?? "pending",
     createdAtMs: data.createdAt?.toMillis?.() ?? Date.now(),
