@@ -739,7 +739,9 @@ function PetRoomInner({
                 />
               ))}
 
-              {/* Bathtub front (high zIndex — covers pet's lower body) */}
+              {/* Bathtub front — must be ABOVE pet (pet zIndex ~921 with
+                  posY=0.92), so use 1500 to guarantee it covers the
+                  pet's lower body. */}
               <div
                 aria-hidden
                 style={{
@@ -755,7 +757,7 @@ function PetRoomInner({
                   borderBottomLeftRadius: "50% 60%",
                   borderBottomRightRadius: "50% 60%",
                   pointerEvents: "none",
-                  zIndex: 800,
+                  zIndex: 1500,
                 }}
               />
 
@@ -782,7 +784,7 @@ function PetRoomInner({
                     background: "#FFFFFF",
                     border: "1px solid #C5D5E0",
                     pointerEvents: "none",
-                    zIndex: 801,
+                    zIndex: 1501,
                     animation: `foam-bob 1.4s ease-in-out infinite ${i * 0.2}s`,
                   }}
                 />

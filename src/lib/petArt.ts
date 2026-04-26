@@ -1961,7 +1961,10 @@ export const SCENES: Record<SceneId, Scene> = {
     durationMs: 6000,
     overlay: "bath",
     petAnim: "shake",
-    particle: "drop",
+    // sparkle (around pet) instead of drop (which fell from canvas top
+    // and looked unrelated to the shower). The bath overlay already
+    // shows water streams from the shower head.
+    particle: "sparkle",
     petAnchor: 0,
     petAnchorY: 0.92, // very front so pet sits inside the bathtub
   },
