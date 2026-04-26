@@ -16,6 +16,20 @@ import {
   where,
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
+
+// Pick the next free numeric slot id (1, 2, 3, ... 22, 23 ...). Avoids
+// Korean-keyed doc ids that trip URL normalization on some clients.
+async function pickFreeSlotId(): Promise<string> {
+  const snap = await getDocs(collection(db, "members"));
+  const used = new Set<string>();
+  snap.forEach((d) => used.add(d.id));
+  for (let i = 1; i < 10000; i++) {
+    const candidate = String(i);
+    if (!used.has(candidate)) return candidate;
+  }
+  // Pathological fallback — should never happen.
+  return `slot-${Date.now()}`;
+}
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { db, storage } from "@/src/lib/firebase";
 import Avatar, {
@@ -135,9 +149,8 @@ export function ProfileSection({
     if (!loginNick) return;
     setClaiming(true);
     try {
-      // Defensive: a members doc for this nickname might already exist
-      // under a legacy slot id. If so, route the user there instead of
-      // creating a duplicate at members/{slug}.
+      // If this nickname already has a members doc (any id), route to
+      // it rather than creating a duplicate.
       const existing = await getDocs(
         query(collection(db, "members"), where("nickname", "==", loginNick)),
       );
@@ -147,12 +160,16 @@ export function ProfileSection({
         if (hit.id !== id) router.replace(`/members/${hit.id}`);
         return;
       }
+      // Always assign an ASCII slot id, even when the URL slug is the
+      // user's nickname. Korean-keyed doc ids break getDoc-by-URL on
+      // some clients due to NFC/NFD normalization mismatches.
+      const slotId = await pickFreeSlotId();
       const created: MemberDoc = {
         nickname: loginNick,
         statusMessage: "",
         profileImage: "",
       };
-      await setDoc(doc(db, "members", id), {
+      await setDoc(doc(db, "members", slotId), {
         ...created,
         createdAt: serverTimestamp(),
       });
@@ -162,6 +179,7 @@ export function ProfileSection({
         nickname: loginNick,
         when: new Date(),
       });
+      if (slotId !== id) router.replace(`/members/${slotId}`);
     } catch (e) {
       console.error(e);
       alert("프로필 등록 실패");

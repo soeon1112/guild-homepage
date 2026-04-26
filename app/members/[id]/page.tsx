@@ -150,30 +150,39 @@ export default function MemberMiniHomePage({
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      // Fast path: direct getDoc by URL slug.
-      const direct = await getDoc(doc(db, "members", id));
-      if (cancelled) return;
-      if (direct.exists()) {
-        setMember(direct.data() as MemberDoc);
-        setResolvedId(id);
-        setLoading(false);
-        return;
+      // iOS / some browsers can hand us an NFD-normalized URL param
+      // even when the doc id is stored as NFC. Try both, plus a final
+      // nickname-field query, before declaring the slot empty.
+      const nfc = id.normalize("NFC");
+      const nfd = id.normalize("NFD");
+      for (const candidate of [id, nfc, nfd]) {
+        const snap = await getDoc(doc(db, "members", candidate));
+        if (cancelled) return;
+        if (snap.exists()) {
+          setMember(snap.data() as MemberDoc);
+          setResolvedId(candidate);
+          setLoading(false);
+          return;
+        }
       }
-      // Fallback: maybe `id` is a nickname and the doc is keyed by a
-      // legacy slot id (or vice versa). Query by the nickname field so
-      // either case resolves to the right doc.
-      const byNick = await getDocs(
-        query(collection(db, "members"), where("nickname", "==", id)),
-      );
-      if (cancelled) return;
-      if (!byNick.empty) {
-        const hit = byNick.docs[0];
-        setMember(hit.data() as MemberDoc);
-        setResolvedId(hit.id);
-      } else {
-        setMember(null);
-        setResolvedId(id);
+      // Fallback: `id` is a nickname (or near it) and the doc is
+      // keyed by a slot id. Query by nickname field, trying both
+      // normalization forms.
+      for (const candidate of [nfc, nfd]) {
+        const byNick = await getDocs(
+          query(collection(db, "members"), where("nickname", "==", candidate)),
+        );
+        if (cancelled) return;
+        if (!byNick.empty) {
+          const hit = byNick.docs[0];
+          setMember(hit.data() as MemberDoc);
+          setResolvedId(hit.id);
+          setLoading(false);
+          return;
+        }
       }
+      setMember(null);
+      setResolvedId(id);
       setLoading(false);
     })();
     return () => {
