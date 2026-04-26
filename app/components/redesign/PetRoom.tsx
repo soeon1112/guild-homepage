@@ -633,45 +633,103 @@ function PetRoomInner({
             </svg>
           ) : null}
           {SCENES[activeScene].overlay === "park" ? (
-            // Round sun + clouds + simple trees + grass blades.
-            <svg viewBox="0 0 320 200" width="100%" height="100%" preserveAspectRatio="none" style={{ display: "block" }}>
-              {/* Sun (real circle) with rays */}
-              <g>
-                {Array.from({ length: 8 }).map((_, i) => {
-                  const a = (i * Math.PI) / 4;
-                  const x1 = 264 + Math.cos(a) * 22;
-                  const y1 = 36 + Math.sin(a) * 22;
-                  const x2 = 264 + Math.cos(a) * 30;
-                  const y2 = 36 + Math.sin(a) * 30;
-                  return <line key={`ray-${i}`} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#FFE873" strokeWidth={3} strokeLinecap="round" />;
-                })}
-                <circle cx={264} cy={36} r={16} fill="#FFE873" stroke="#F2C84B" strokeWidth={1.5} />
-              </g>
-              {/* Clouds */}
-              <g fill="#FFFFFF" opacity={0.92}>
-                <ellipse cx={70} cy={32} rx={20} ry={8} />
-                <ellipse cx={80} cy={28} rx={14} ry={7} />
-                <ellipse cx={170} cy={48} rx={18} ry={7} />
-                <ellipse cx={180} cy={44} rx={12} ry={6} />
-              </g>
-              {/* Trees (simple — brown trunk + green canopy) */}
-              <g>
-                <rect x={36} y={88} width={6} height={24} fill="#5B3A1F" />
-                <circle cx={39} cy={84} r={14} fill="#4A9C40" />
-                <circle cx={32} cy={88} r={9} fill="#4A9C40" />
-                <circle cx={46} cy={88} r={9} fill="#4A9C40" />
-                <rect x={290} y={92} width={6} height={20} fill="#5B3A1F" />
-                <circle cx={293} cy={88} r={11} fill="#4A9C40" />
-                <circle cx={286} cy={92} r={7} fill="#4A9C40" />
-                <circle cx={300} cy={92} r={7} fill="#4A9C40" />
-              </g>
-              {/* Grass blades on the ground */}
-              {Array.from({ length: 24 }).map((_, i) => {
-                const x = (i * 14) + (i % 2 ? 3 : 0);
-                const baseY = 130 + (i % 4) * 12;
-                return <rect key={`g-${i}`} x={x} y={baseY} width={2} height={6} fill="#4A8E47" />;
+            <>
+              {/* Sun — HTML div so border-radius keeps it perfectly
+                  round regardless of SVG stretching. */}
+              <div
+                style={{
+                  position: "absolute",
+                  right: "12%",
+                  top: "12%",
+                  width: 32,
+                  height: 32,
+                  borderRadius: "50%",
+                  background: "#FFE873",
+                  border: "1.5px solid #F2C84B",
+                  pointerEvents: "none",
+                }}
+              />
+              {/* Sun rays — separate divs so each is exactly the same
+                  pixel length whether the room is wide or tall. */}
+              {Array.from({ length: 8 }).map((_, i) => {
+                const angle = (i * 360) / 8;
+                return (
+                  <div
+                    key={`ray-${i}`}
+                    style={{
+                      position: "absolute",
+                      right: "calc(12% + 16px)",
+                      top: "calc(12% + 16px)",
+                      width: 10,
+                      height: 3,
+                      background: "#FFE873",
+                      borderRadius: 2,
+                      transform: `translate(-50%, -50%) rotate(${angle}deg) translate(24px, 0)`,
+                      transformOrigin: "0 0",
+                      pointerEvents: "none",
+                    }}
+                  />
+                );
               })}
-            </svg>
+              {/* Clouds — pill-shaped HTML divs */}
+              {[
+                { left: "12%", top: "13%", w: 42, h: 14 },
+                { left: "16%", top: "10%", w: 28, h: 12 },
+                { left: "44%", top: "20%", w: 36, h: 12 },
+                { left: "47%", top: "17%", w: 24, h: 10 },
+              ].map((c, i) => (
+                <div
+                  key={`cloud-${i}`}
+                  style={{
+                    position: "absolute",
+                    left: c.left,
+                    top: c.top,
+                    width: c.w,
+                    height: c.h,
+                    borderRadius: c.h / 2,
+                    background: "#FFFFFF",
+                    opacity: 0.92,
+                    pointerEvents: "none",
+                  }}
+                />
+              ))}
+              {/* Trees — round canopy + rect trunk via HTML divs */}
+              {[
+                { left: "8%", top: "32%", canopy: 28, trunk: 6 },
+                { left: "88%", top: "36%", canopy: 24, trunk: 6 },
+              ].map((t, i) => (
+                <div
+                  key={`tree-${i}`}
+                  style={{ position: "absolute", left: t.left, top: t.top, pointerEvents: "none" }}
+                >
+                  <div
+                    style={{
+                      width: t.canopy,
+                      height: t.canopy,
+                      borderRadius: "50%",
+                      background: "#4A9C40",
+                      marginLeft: -(t.canopy - t.trunk) / 2,
+                    }}
+                  />
+                  <div
+                    style={{
+                      width: t.trunk,
+                      height: 22,
+                      background: "#5B3A1F",
+                      marginTop: -2,
+                    }}
+                  />
+                </div>
+              ))}
+              {/* Grass blades — small rects, fine to stretch */}
+              <svg viewBox="0 0 320 200" width="100%" height="100%" preserveAspectRatio="none" style={{ display: "block", position: "absolute", inset: 0, pointerEvents: "none" }}>
+                {Array.from({ length: 24 }).map((_, i) => {
+                  const x = (i * 14) + (i % 2 ? 3 : 0);
+                  const baseY = 132 + (i % 4) * 12;
+                  return <rect key={`g-${i}`} x={x} y={baseY} width={2} height={6} fill="#4A8E47" />;
+                })}
+              </svg>
+            </>
           ) : null}
           {SCENES[activeScene].overlay === "dark" ? (
             // No moon inside the room — just the dark overlay (per user).
