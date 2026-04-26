@@ -79,17 +79,29 @@ export const PET_TYPES: { id: PetType; label: string; emoji: string }[] = [
 //   4. 청소년   (20~35일)  stage = 15일
 //   5. 성체     (35일~)
 //
+// 레벨 = 성장 단계 (Lv.1=알, Lv.2=아기, Lv.3=어린이, Lv.4=청소년, Lv.5=성체).
+// 경험치바는 "다음 단계까지 남은 경험치"를 보여준다.
+//
 // `dayMin` are the minimums for "best-case, well-managed" growth.
 // They are NOT shortcut-able — the pet must wait the full calendar
-// time before each transition. `expMin` is calibrated so a pet that
-// gets regular daily interactions hits the exp target right around
-// the same time it hits dayMin (smooth advancement). A neglected pet
-// reaches dayMin first but has to wait extra days for exp to catch up.
+// time before each transition.
+//
+// `expMin` calibration (현실치 ~300 EXP/day, 8~10시간 접속 기준):
+//   각 상호작용 하루 이론 최대 — feed 120, play 120, wash 20, walk 120,
+//   pet 144, treat 60, sleep 15, train 120 → 합계 719/day.
+//   현실(쿨타임 70~80%만 활용) ≈ 300/day. 이를 최소 일수와 곱한 누적값:
+//     baby  : 3일  × 300 =   900
+//     child : 10일 × 300 =  3000
+//     teen  : 20일 × 300 =  6000
+//     adult : 35일 × 300 = 10500
+//   "잘 키우면" 최소 일수에 정확히 경험치도 차게 설계됨. 게으르면
+//   dayMin 먼저 도달 → 경험치 채워질 때까지 며칠 더 걸림.
 //
 // On top of that, `doInteraction` halves the exp gain if ANY current
 // status (hunger/happiness/clean) has decayed to 30% or below — so
 // poor management both delays interactions (cooldown) AND throttles
-// each one's reward.
+// each one's reward. 특별 케이크(유료, 1시간 EXP ×2)는 보너스 가속용
+// 이며 위 baseline에는 포함되지 않음.
 export type PetStage = "egg" | "baby" | "child" | "teen" | "adult";
 
 export const PET_STAGES: {
@@ -98,11 +110,11 @@ export const PET_STAGES: {
   dayMin: number;
   expMin: number;
 }[] = [
-  { id: "egg",   label: "알",     dayMin: 0,  expMin: 0    },
-  { id: "baby",  label: "아기",   dayMin: 3,  expMin: 200  },
-  { id: "child", label: "어린이", dayMin: 10, expMin: 700  },
-  { id: "teen",  label: "청소년", dayMin: 20, expMin: 1500 },
-  { id: "adult", label: "성체",   dayMin: 35, expMin: 2500 },
+  { id: "egg",   label: "알",     dayMin: 0,  expMin: 0     },
+  { id: "baby",  label: "아기",   dayMin: 3,  expMin: 900   },
+  { id: "child", label: "어린이", dayMin: 10, expMin: 3000  },
+  { id: "teen",  label: "청소년", dayMin: 20, expMin: 6000  },
+  { id: "adult", label: "성체",   dayMin: 35, expMin: 10500 },
 ];
 
 export function computeStage(createdAtMs: number, exp: number, nowMs: number): PetStage {
@@ -261,7 +273,7 @@ export const ITEMS: Item[] = [
   // consumables
   { id: "food",  category: "consumable", name: "일반 사료", price: 2,  desc: "포만감 +30%", consumeEffect: { hunger: 30 } },
   { id: "treat", category: "consumable", name: "고급 간식", price: 5,  desc: "포만감 +15%, 행복도 +10%", consumeEffect: { hunger: 15, happiness: 10 } },
-  { id: "cake",  category: "consumable", name: "특별 케이크", price: 10, desc: "경험치 2배 부스트 1시간", consumeEffect: { expBoostMs: HOUR, expBoostMult: 2 } },
+  { id: "cake",  category: "consumable", name: "특별 케이크", price: 20, desc: "경험치 2배 부스트 1시간", consumeEffect: { expBoostMs: HOUR, expBoostMult: 2 } },
   // accessories
   { id: "ribbon",   category: "accessory", name: "리본",   price: 15, desc: "패션 — 리본" },
   { id: "scarf",    category: "accessory", name: "스카프", price: 15, desc: "패션 — 스카프" },
