@@ -281,6 +281,12 @@ export const GIFTABLE_TREAT_IDS: ItemId[] = ["treat", "cake"];
 // Background ids consumed by the SVG renderer.
 export type BackgroundId = "none" | "bgForest" | "bgOcean" | "bgSpace";
 
+// User-placed furniture position. x ∈ [0,100] horizontal (% of room
+// width), y ∈ [0,100] depth on the floor (0 = back near wall, 100 =
+// front near viewer). Used for both placement and z-sorting against
+// the pet (greater y = drawn in front).
+export type FurnitureUserPosition = { x: number; y: number };
+
 // ── Firestore types ───────────────────────────────────────────
 export type PetDoc = {
   type: PetType;
@@ -299,6 +305,10 @@ export type PetDoc = {
   accessories: ItemId[];   // currently equipped
   furniture: ItemId[];     // currently placed
   background: BackgroundId;
+  // Per-furniture custom placement (set in 꾸미기 mode). When absent
+  // for a given item, the renderer falls back to FURNITURE_PLACEMENTS
+  // from petArt.ts.
+  furniturePositions?: Partial<Record<ItemId, FurnitureUserPosition>>;
   // Special effects.
   expBoostUntil?: Timestamp | null;
   expBoostMult?: number;
@@ -560,6 +570,22 @@ export async function setBackground(
   bg: BackgroundId,
 ): Promise<void> {
   await setDoc(petDocRef(nickname), { background: bg }, { merge: true });
+}
+
+// Save a single furniture's placed position. Both axes are clamped
+// to [0, 100] before write so we never persist out-of-bounds values.
+export async function setFurniturePosition(
+  nickname: string,
+  itemId: ItemId,
+  pos: FurnitureUserPosition,
+): Promise<void> {
+  const x = Math.max(0, Math.min(100, pos.x));
+  const y = Math.max(0, Math.min(100, pos.y));
+  await setDoc(
+    petDocRef(nickname),
+    { furniturePositions: { [itemId]: { x, y } } },
+    { merge: true },
+  );
 }
 
 export async function applyDye(nickname: string, hue: number): Promise<void> {

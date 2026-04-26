@@ -48,6 +48,7 @@ import {
   setAccessoryEquipped,
   setBackground,
   setFurniturePlaced,
+  setFurniturePosition,
   STATUS_LABELS,
   type BackgroundId,
   type InteractionId,
@@ -163,6 +164,17 @@ export default function FloatingPet() {
   const [reaction, setReaction] = useState<PetReaction>(null);
   const [activeScene, setActiveScene] = useState<SceneId | null>(null);
   const [boughtFlash, setBoughtFlash] = useState<string | null>(null);
+  const [placementMode, setPlacementMode] = useState(false);
+  const [selectedFurniture, setSelectedFurniture] = useState<ItemId | null>(null);
+
+  // Move a placed furniture to a new (x, y) and persist.
+  const handleMoveFurniture = useCallback(
+    async (id: ItemId, x: number, y: number) => {
+      if (!nickname) return;
+      await setFurniturePosition(nickname, id, { x, y });
+    },
+    [nickname],
+  );
 
   const visible = ready && canSeePets(nickname);
 
@@ -580,6 +592,11 @@ export default function FloatingPet() {
                   reaction={reaction}
                   activeScene={activeScene}
                   setActiveScene={setActiveScene}
+                  placementMode={placementMode}
+                  setPlacementMode={setPlacementMode}
+                  selectedFurniture={selectedFurniture}
+                  setSelectedFurniture={setSelectedFurniture}
+                  onMoveFurniture={handleMoveFurniture}
                 />
               ) : tab === "shop" ? (
                 <ShopPanel
@@ -738,6 +755,11 @@ function MainPanel({
   reaction,
   activeScene,
   setActiveScene,
+  placementMode,
+  setPlacementMode,
+  selectedFurniture,
+  setSelectedFurniture,
+  onMoveFurniture,
 }: {
   pet: PetDoc;
   stage: ReturnType<typeof computeStage>;
@@ -759,6 +781,11 @@ function MainPanel({
   reaction: PetReaction;
   activeScene: SceneId | null;
   setActiveScene: (s: SceneId | null) => void;
+  placementMode: boolean;
+  setPlacementMode: (v: boolean) => void;
+  selectedFurniture: ItemId | null;
+  setSelectedFurniture: (id: ItemId | null) => void;
+  onMoveFurniture: (id: ItemId, x: number, y: number) => void;
 }) {
   const stageLabel = PET_STAGES.find((s) => s.id === stage)?.label ?? "";
   return (
@@ -778,6 +805,7 @@ function MainPanel({
             stage={stage}
             accessories={pet.accessories ?? []}
             furniture={pet.furniture ?? []}
+            furniturePositions={pet.furniturePositions}
             background={pet.background ?? "none"}
             mood={mood}
             glow={!!pet.glow}
@@ -786,6 +814,10 @@ function MainPanel({
             height={280}
             activeScene={activeScene}
             onSceneEnd={() => setActiveScene(null)}
+            placementMode={placementMode}
+            selectedFurniture={selectedFurniture}
+            onSelectFurniture={setSelectedFurniture}
+            onMoveFurniture={onMoveFurniture}
           />
           {bubble ? (
             <div
@@ -913,16 +945,37 @@ function MainPanel({
         </div>
       </div>
 
-      {/* Release link — discreet bottom action */}
-      <div className="mt-2 flex justify-end">
+      {/* Release + 꾸미기 controls */}
+      <div className="mt-2 flex items-center justify-between">
+        <button
+          onClick={() => setPlacementMode(!placementMode)}
+          className="rounded-full px-3 py-1 font-serif text-[11px] font-medium transition-colors"
+          style={{
+            background: placementMode ? "#C68748" : "rgba(244,192,122,0.2)",
+            color: placementMode ? "#FFFFFF" : "#5B3A1F",
+            border: "1px solid #C68748",
+          }}
+        >
+          {placementMode ? "완료" : "꾸미기"}
+        </button>
         <button
           onClick={onRelease}
-          disabled={busy}
+          disabled={busy || placementMode}
           className="font-serif text-[10px] text-[#B07F5C] underline opacity-70 transition-opacity hover:opacity-100 disabled:opacity-30"
         >
           파양하기
         </button>
       </div>
+      {placementMode ? (
+        <div
+          className="rounded-lg px-3 py-2 font-serif text-[10px] text-[#5B3A1F]"
+          style={{ background: "rgba(244,192,122,0.18)", border: "1px solid #E0CFB8" }}
+        >
+          {selectedFurniture
+            ? "방 안의 원하는 위치를 탭해서 가구를 옮기세요."
+            : "옮기고 싶은 가구를 탭하면 선택됩니다."}
+        </div>
+      ) : null}
     </div>
   );
 }

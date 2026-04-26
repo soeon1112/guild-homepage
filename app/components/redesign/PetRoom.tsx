@@ -10,19 +10,13 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import {
   ACCESSORY_SPRITES,
   accessoryColor,
-  BACKGROUND_SPRITES,
-  backgroundColor,
   BLINK_OVERLAY,
   effectiveBehavior,
   EGG_SPRITE,
   FURNITURE_PLACEMENTS,
   ITEM_ICONS,
   pixelColor,
-  ROOM_FLOOR_COLOR,
-  ROOM_FLOOR_LINE,
-  ROOM_WALL_COLOR,
-  ROOM_WALL_DECOR,
-  ROOM_WALL_TRIM,
+  ROOM_THEMES,
   SCENE_SPRITES,
   SCENES,
   spriteFor,
@@ -34,6 +28,7 @@ import {
 import {
   PET_PALETTE,
   type BackgroundId,
+  type FurnitureUserPosition,
   type ItemId,
   type PetMood,
   type PetStage,
@@ -57,14 +52,20 @@ type Props = {
   stage: PetStage;
   accessories?: ItemId[];
   furniture?: ItemId[];
+  furniturePositions?: Partial<Record<ItemId, FurnitureUserPosition>>;
   background?: BackgroundId;
   mood?: PetMood;
   glow?: boolean;
   hue?: number;
   reaction?: PetReaction;
-  height?: number; // px tall; width fills container
+  height?: number;
   activeScene?: SceneId | null;
   onSceneEnd?: () => void;
+  // 꾸미기 mode wiring
+  placementMode?: boolean;
+  selectedFurniture?: ItemId | null;
+  onSelectFurniture?: (id: ItemId | null) => void;
+  onMoveFurniture?: (id: ItemId, x: number, y: number) => void;
 };
 
 function gridRects(
@@ -104,6 +105,7 @@ function PetRoomInner({
   stage,
   accessories = [],
   furniture = [],
+  furniturePositions = {},
   background = "none",
   mood = "happy",
   glow = false,
@@ -112,7 +114,12 @@ function PetRoomInner({
   height = 280,
   activeScene = null,
   onSceneEnd,
+  placementMode = false,
+  selectedFurniture = null,
+  onSelectFurniture,
+  onMoveFurniture,
 }: Props) {
+  const theme = ROOM_THEMES[background];
   const palette = PET_PALETTE[type];
   const sprite = stage === "egg" ? EGG_SPRITE : spriteFor(type, stage);
   const useFilter = hue !== 0 || glow;
@@ -124,17 +131,20 @@ function PetRoomInner({
   const H = height;
   const wallEnd = H * 0.62;
   const floorEnd = H;
-  const showOutdoor = background !== "none" && BACKGROUND_SPRITES[background];
+  const floorDepth = floorEnd - wallEnd;
 
   // Pet sizing — 70% of previous (140 → 98) so furniture has room.
   const petSize = Math.min(98, Math.max(68, Math.round(H * 0.35)));
-  const petBottom = 12;
   const isEgg = stage === "egg";
   const behavior = effectiveBehavior(type, stage);
 
   // ── State machine ──
   const [mode, setMode] = useState<Mode>("idle");
   const [posPct, setPosPct] = useState(0); // -1..1 within walking range
+  // Pet y depth in [0, 1] (0 = back wall, 1 = front of floor). Defaults
+  // to 0.65 (front-mid). Picked alongside posPct when walking so pet
+  // can naturally pass behind/in-front of furniture.
+  const [posY, setPosY] = useState(0.65);
   const [facing, setFacing] = useState<"left" | "right">("right");
   const [blink, setBlink] = useState(false);
   const [activeAction, setActiveAction] = useState<SpecialAction>("none");
@@ -213,12 +223,16 @@ function PetRoomInner({
             const newSign = -lastSign;
             const magnitude = 0.3 + Math.random() * 0.55; // 0.3..0.85
             const next = newSign * magnitude;
+            // Also pick a new depth y in [0.45, 0.85] so the pet
+            // wanders forward/backward and the z-sort animates.
+            const nextY = 0.45 + Math.random() * 0.4;
             const distance = Math.abs(next - posPct);
             const dur = Math.max(behavior.walkDurMin, distance * behavior.walkDurPerUnit);
             walkDurRef.current = dur;
             setFacing(next > posPct ? "right" : "left");
             setMode("walking");
             setPosPct(next);
+            setPosY(nextY);
             window.setTimeout(() => {
               if (!cancelled) setMode("idle");
             }, dur + 80);
@@ -330,9 +344,22 @@ function PetRoomInner({
   // Pet horizontal range: 18%..82% of container (leaves margin so the
   // sprite never crosses the edge).
   const petLeftPct = 50 + posPct * 32;
+  // Effective bottom px for pet (matches pet wrapper). Used by scene
+  // props/particles so they stay anchored to the pet.
+  const petBottom = (1 - posY) * floorDepth + 4;
 
   return (
     <div
+      onClick={(e) => {
+        if (!placementMode || !selectedFurniture) return;
+        const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+        const xPct = ((e.clientX - rect.left) / rect.width) * 100;
+        const cssY = ((e.clientY - rect.top) / rect.height) * H;
+        if (cssY < wallEnd) return; // ignore taps on the wall
+        const yPct = ((cssY - wallEnd) / floorDepth) * 100;
+        onMoveFurniture?.(selectedFurniture, xPct, Math.max(0, Math.min(100, yPct)));
+        onSelectFurniture?.(null);
+      }}
       style={{
         position: "relative",
         width: "100%",
@@ -340,6 +367,7 @@ function PetRoomInner({
         overflow: "hidden",
         borderRadius: 16,
         boxShadow: "inset 0 0 0 1px #E0CFB8, 0 4px 12px rgba(91,58,31,0.10)",
+        cursor: placementMode && selectedFurniture ? "crosshair" : "default",
       }}
     >
       <svg
@@ -349,118 +377,156 @@ function PetRoomInner({
         preserveAspectRatio="none"
         style={{ display: "block", position: "absolute", inset: 0 }}
       >
-        {/* Background */}
-        {showOutdoor ? (
-          gridRects(
-            BACKGROUND_SPRITES[background as Exclude<BackgroundId, "none">],
-            backgroundColor,
-            Math.max(W, H) / SPRITE_GRID,
-            0,
-            0,
-            "outdoor",
-          )
-        ) : (
-          <>
-            {/* Wall */}
-            <rect x={0} y={0} width={W} height={wallEnd} fill={ROOM_WALL_COLOR} />
-            {Array.from({ length: 8 }).map((_, i) => (
+        {/* Themed wall */}
+        <rect x={0} y={0} width={W} height={wallEnd} fill={theme.wall} />
+        {Array.from({ length: 8 }).map((_, i) => (
+          <rect
+            key={`stripe-${i}`}
+            x={(i + 0.5) * (W / 8) - 0.5}
+            y={0}
+            width={1}
+            height={wallEnd}
+            fill={theme.wallDecor}
+            opacity={0.3}
+          />
+        ))}
+        {/* Wall extras (e.g. star field for space theme) */}
+        {theme.wallExtras === "stars"
+          ? Array.from({ length: 14 }).map((_, i) => (
               <rect
-                key={`stripe-${i}`}
-                x={(i + 0.5) * (W / 8) - 0.5}
-                y={0}
-                width={1}
-                height={wallEnd}
-                fill={ROOM_WALL_DECOR}
-                opacity={0.3}
+                key={`star-${i}`}
+                x={((i * 53) % W) + 4}
+                y={((i * 27) % wallEnd) + 4}
+                width={2}
+                height={2}
+                fill="#FFE873"
+                opacity={0.9}
               />
-            ))}
-            {/* Window decoration on the wall */}
-            <g opacity={0.85}>
-              <rect x={W * 0.18} y={wallEnd * 0.25} width={36} height={26} fill="#9CC9E5" />
-              <rect x={W * 0.18} y={wallEnd * 0.25} width={36} height={26} fill="none" stroke="#7B5234" strokeWidth={2} />
-              <line x1={W * 0.18 + 18} y1={wallEnd * 0.25} x2={W * 0.18 + 18} y2={wallEnd * 0.25 + 26} stroke="#7B5234" strokeWidth={1} />
-              <line x1={W * 0.18} y1={wallEnd * 0.25 + 13} x2={W * 0.18 + 36} y2={wallEnd * 0.25 + 13} stroke="#7B5234" strokeWidth={1} />
-            </g>
-            {/* Picture frame on the wall */}
-            <g>
-              <rect x={W * 0.66} y={wallEnd * 0.28} width={28} height={20} fill="#FFFFFF" />
-              <rect x={W * 0.66} y={wallEnd * 0.28} width={28} height={20} fill="none" stroke="#7B5234" strokeWidth={2} />
-              <rect x={W * 0.66 + 4} y={wallEnd * 0.28 + 4} width={20} height={6} fill="#F2C84B" opacity={0.7} />
-              <rect x={W * 0.66 + 4} y={wallEnd * 0.28 + 12} width={12} height={4} fill="#F08FA9" opacity={0.7} />
-            </g>
-            {/* Wall trim (baseboard) */}
-            <rect x={0} y={wallEnd - 6} width={W} height={6} fill={ROOM_WALL_TRIM} />
-            <rect x={0} y={wallEnd - 8} width={W} height={2} fill={ROOM_FLOOR_LINE} opacity={0.5} />
+            ))
+          : null}
+        {/* Window — content depends on theme */}
+        <g>
+          <rect x={W * 0.18} y={wallEnd * 0.25} width={36} height={26} fill={theme.windowKind === "ocean" ? "#5BAEEA" : theme.windowKind === "forest" ? "#A8D08C" : theme.windowKind === "space" ? "#0E0B25" : "#9CC9E5"} />
+          {theme.windowKind === "house" ? (
+            <>
+              {/* sky + tiny cloud */}
+              <rect x={W * 0.18 + 4} y={wallEnd * 0.25 + 6} width={10} height={3} fill="#FFFFFF" opacity={0.8} />
+            </>
+          ) : theme.windowKind === "forest" ? (
+            <>
+              {/* tiny tree silhouette in window */}
+              <rect x={W * 0.18 + 17} y={wallEnd * 0.25 + 14} width={2} height={10} fill="#5B3A1F" />
+              <rect x={W * 0.18 + 13} y={wallEnd * 0.25 + 6} width={10} height={10} fill="#4A8E47" />
+            </>
+          ) : theme.windowKind === "ocean" ? (
+            <>
+              {/* horizon + sun */}
+              <rect x={W * 0.18} y={wallEnd * 0.25 + 14} width={36} height={12} fill="#3F86C0" />
+              <rect x={W * 0.18 + 24} y={wallEnd * 0.25 + 6} width={6} height={6} fill="#FFE873" />
+            </>
+          ) : (
+            <>
+              {/* stars */}
+              <rect x={W * 0.18 + 6} y={wallEnd * 0.25 + 6} width={2} height={2} fill="#FFE873" />
+              <rect x={W * 0.18 + 16} y={wallEnd * 0.25 + 12} width={2} height={2} fill="#FFE873" />
+              <rect x={W * 0.18 + 26} y={wallEnd * 0.25 + 8} width={2} height={2} fill="#FFFFFF" />
+            </>
+          )}
+          <rect x={W * 0.18} y={wallEnd * 0.25} width={36} height={26} fill="none" stroke="#7B5234" strokeWidth={2} />
+          <line x1={W * 0.18 + 18} y1={wallEnd * 0.25} x2={W * 0.18 + 18} y2={wallEnd * 0.25 + 26} stroke="#7B5234" strokeWidth={1} />
+          <line x1={W * 0.18} y1={wallEnd * 0.25 + 13} x2={W * 0.18 + 36} y2={wallEnd * 0.25 + 13} stroke="#7B5234" strokeWidth={1} />
+        </g>
+        {/* Picture frame */}
+        <g>
+          <rect x={W * 0.66} y={wallEnd * 0.28} width={28} height={20} fill="#FFFFFF" />
+          <rect x={W * 0.66} y={wallEnd * 0.28} width={28} height={20} fill="none" stroke="#7B5234" strokeWidth={2} />
+          <rect x={W * 0.66 + 4} y={wallEnd * 0.28 + 4} width={20} height={6} fill="#F2C84B" opacity={0.7} />
+          <rect x={W * 0.66 + 4} y={wallEnd * 0.28 + 12} width={12} height={4} fill="#F08FA9" opacity={0.7} />
+        </g>
+        {/* Baseboard */}
+        <rect x={0} y={wallEnd - 6} width={W} height={6} fill={theme.wallTrim} />
+        <rect x={0} y={wallEnd - 8} width={W} height={2} fill={theme.floorLine} opacity={0.5} />
 
-            {/* Floor */}
-            <rect x={0} y={wallEnd} width={W} height={floorEnd - wallEnd} fill={ROOM_FLOOR_COLOR} />
-            {/* Plank lines */}
-            {Array.from({ length: 4 }).map((_, i) => (
-              <rect
-                key={`plank-${i}`}
-                x={0}
-                y={wallEnd + (i + 1) * ((floorEnd - wallEnd) / 5)}
-                width={W}
-                height={1}
-                fill={ROOM_FLOOR_LINE}
-                opacity={0.42}
-              />
-            ))}
-            {/* Plank short joints */}
-            {Array.from({ length: 12 }).map((_, i) => {
-              const planks = 5;
-              const yi = (i % (planks - 1)) + 1;
-              const xi = Math.floor(i / (planks - 1)) + 1;
-              const y = wallEnd + yi * ((floorEnd - wallEnd) / planks);
-              const x = xi * (W / 5) + (yi % 2 ? 0 : W / 10);
-              return (
-                <rect
-                  key={`joint-${i}`}
-                  x={x}
-                  y={y - 7}
-                  width={1}
-                  height={7}
-                  fill={ROOM_FLOOR_LINE}
-                  opacity={0.36}
-                />
-              );
-            })}
-            {/* Floor shadow gradient — adds depth */}
-            <rect
-              x={0}
-              y={wallEnd}
-              width={W}
-              height={floorEnd - wallEnd}
-              fill="url(#floor-grad)"
-              opacity={0.18}
-            />
-            <defs>
-              <linearGradient id="floor-grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#000000" stopOpacity={0.35} />
-                <stop offset="100%" stopColor="#000000" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-          </>
-        )}
-
-        {/* Furniture */}
-        {!showOutdoor &&
-          furniture.map((id) => {
-            const placement = FURNITURE_PLACEMENTS[id];
-            const icon: ItemIconRender | undefined = ITEM_ICONS[id];
-            if (!placement || !icon) return null;
-            const sizePx = (placement.size / 100) * W;
-            const cols = Math.max(...icon.grid.map((r) => r.length));
-            const px = sizePx / cols;
-            const cx = (placement.x / 100) * W;
-            const cy = floorEnd - placement.y - sizePx - 4;
-            return (
-              <g key={`furn-${id}`} transform={`translate(${cx - sizePx / 2} ${cy})`}>
-                {gridRects(icon.grid, icon.resolve, px, 0, 0, `furn-${id}`)}
-              </g>
-            );
-          })}
+        {/* Floor */}
+        <rect x={0} y={wallEnd} width={W} height={floorEnd - wallEnd} fill={theme.floor} />
+        {Array.from({ length: 4 }).map((_, i) => (
+          <rect
+            key={`plank-${i}`}
+            x={0}
+            y={wallEnd + (i + 1) * ((floorEnd - wallEnd) / 5)}
+            width={W}
+            height={1}
+            fill={theme.floorLine}
+            opacity={0.42}
+          />
+        ))}
+        {Array.from({ length: 12 }).map((_, i) => {
+          const planks = 5;
+          const yi = (i % (planks - 1)) + 1;
+          const xi = Math.floor(i / (planks - 1)) + 1;
+          const y = wallEnd + yi * ((floorEnd - wallEnd) / planks);
+          const x = xi * (W / 5) + (yi % 2 ? 0 : W / 10);
+          return (
+            <rect key={`joint-${i}`} x={x} y={y - 7} width={1} height={7} fill={theme.floorLine} opacity={0.36} />
+          );
+        })}
+        <rect x={0} y={wallEnd} width={W} height={floorEnd - wallEnd} fill="url(#floor-grad)" opacity={0.18} />
+        <defs>
+          <linearGradient id="floor-grad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#000000" stopOpacity={0.35} />
+            <stop offset="100%" stopColor="#000000" stopOpacity={0} />
+          </linearGradient>
+        </defs>
       </svg>
+
+      {/* Furniture HTML overlays — each gets a z-index based on its
+          y position so the pet can pass in front of / behind it. */}
+      {!activeScene &&
+        furniture.map((id) => {
+          const placement = FURNITURE_PLACEMENTS[id];
+          const icon: ItemIconRender | undefined = ITEM_ICONS[id];
+          if (!placement || !icon) return null;
+          const userPos = furniturePositions?.[id];
+          const fx = userPos?.x ?? placement.x;
+          const fy = userPos?.y ?? placement.y;
+          const sizePx = (placement.size / 100) * W;
+          const cols = Math.max(...icon.grid.map((r) => r.length));
+          const px = sizePx / cols;
+          const leftPx = (fx / 100) * W - sizePx / 2;
+          // Floor area: [wallEnd .. floorEnd]. y=0 at wall, y=100 at viewer.
+          const floorDepth = floorEnd - wallEnd;
+          const bottomPx = (1 - fy / 100) * floorDepth + 2;
+          const isSelected = placementMode && selectedFurniture === id;
+          return (
+            <div
+              key={`furn-${id}`}
+              onClick={(e) => {
+                if (!placementMode) return;
+                e.stopPropagation();
+                onSelectFurniture?.(isSelected ? null : id);
+              }}
+              style={{
+                position: "absolute",
+                left: leftPx,
+                bottom: bottomPx,
+                width: sizePx,
+                height: sizePx,
+                zIndex: Math.round(fy * 10),
+                pointerEvents: placementMode ? "auto" : "none",
+                cursor: placementMode ? "pointer" : "default",
+                outline: isSelected ? "2px dashed #C68748" : "none",
+                outlineOffset: 2,
+                borderRadius: 4,
+                background: isSelected ? "rgba(244,192,122,0.25)" : "transparent",
+                transition: "left 200ms ease-out, bottom 200ms ease-out",
+              }}
+            >
+              <svg viewBox={`0 0 ${cols * px} ${icon.grid.length * px}`} width="100%" height="100%" style={{ display: "block" }}>
+                {gridRects(icon.grid, icon.resolve, px, 0, 0, `furn-${id}`)}
+              </svg>
+            </div>
+          );
+        })}
 
       {/* ── Scene overlays (bath/park/dark) — rendered BEFORE the pet
           so the pet stays visible on top of the new background. ── */}
@@ -544,19 +610,25 @@ function PetRoomInner({
         </div>
       ) : null}
 
-      {/* Pet — HTML overlay so we can freely transition position */}
+      {/* Pet — HTML overlay so we can freely transition position +
+          z-sort against furniture. Bottom + zIndex computed from posY
+          (0..1 = back..front). */}
       <div
         style={{
           position: "absolute",
           left: `${petLeftPct}%`,
-          bottom: petBottom,
+          bottom: (1 - posY) * floorDepth + 4,
           width: petSize,
           height: petSize,
           marginLeft: -petSize / 2,
           transform: `scaleX(${facing === "right" ? 1 : -1})`,
-          transition: walkDuration > 0 ? `left ${walkDuration}ms ease-in-out` : "none",
-          willChange: "transform, left",
-          zIndex: 2,
+          transition: walkDuration > 0
+            ? `left ${walkDuration}ms ease-in-out, bottom ${walkDuration}ms ease-in-out`
+            : "bottom 400ms ease-out",
+          willChange: "transform, left, bottom",
+          // Match scale used by furniture (fy 0..100 → z 0..1000) so a
+          // pet at y=0.7 sits just in front of furniture at y=70.
+          zIndex: Math.round(posY * 1000) + 1,
         }}
       >
         <div

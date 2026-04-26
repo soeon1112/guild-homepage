@@ -2006,15 +2006,70 @@ export const ITEM_ICONS: Record<ItemId, ItemIconRender> = {
 
 // ── Pet room (game-feel main view) ───────────────────────────
 // Default room is a cozy interior: wallpaper top-half, wood floor
-// bottom-half. Renderer draws this, then overlays placed furniture,
-// then the pet on top. When background = bgForest/bgOcean/bgSpace the
-// outdoor background takes over the full canvas instead.
+// bottom-half. Renderer draws this, then overlays placed furniture
+// (each at a custom x,y), then the pet on top. When `background` is
+// set to bgForest/bgOcean/bgSpace, the room is *themed* (different
+// wall/floor colors + window contents) but still keeps its layout —
+// it's no longer fully replaced by an outdoor sprite.
 
 export const ROOM_WALL_COLOR = "#F5DDC0";
 export const ROOM_WALL_TRIM = "#E8C9A0";
 export const ROOM_WALL_DECOR = "#D9B380";
 export const ROOM_FLOOR_COLOR = "#B98750";
 export const ROOM_FLOOR_LINE = "#8E5E33";
+
+export type RoomTheme = {
+  wall: string;
+  wallTrim: string;
+  wallDecor: string;
+  floor: string;
+  floorLine: string;
+  // What the window shows (rendered as a small SVG vignette inside the
+  // window frame on the back wall).
+  windowKind: "house" | "forest" | "ocean" | "space";
+  // Inserts behind the window/picture (e.g. star field on the wall
+  // for the space theme). null = nothing extra.
+  wallExtras: "none" | "stars";
+};
+
+export const ROOM_THEMES: Record<BackgroundId, RoomTheme> = {
+  none: {
+    wall: ROOM_WALL_COLOR,
+    wallTrim: ROOM_WALL_TRIM,
+    wallDecor: ROOM_WALL_DECOR,
+    floor: ROOM_FLOOR_COLOR,
+    floorLine: ROOM_FLOOR_LINE,
+    windowKind: "house",
+    wallExtras: "none",
+  },
+  bgForest: {
+    wall: "#C8DEB6",
+    wallTrim: "#9FB988",
+    wallDecor: "#82A06B",
+    floor: "#9E6B3C",
+    floorLine: "#6F4A28",
+    windowKind: "forest",
+    wallExtras: "none",
+  },
+  bgOcean: {
+    wall: "#BDDDF0",
+    wallTrim: "#92BFD8",
+    wallDecor: "#74A8C4",
+    floor: "#E8D2A4",
+    floorLine: "#B8A074",
+    windowKind: "ocean",
+    wallExtras: "none",
+  },
+  bgSpace: {
+    wall: "#3A2D5F",
+    wallTrim: "#5C4A88",
+    wallDecor: "#7A66A8",
+    floor: "#2A2342",
+    floorLine: "#191428",
+    windowKind: "space",
+    wallExtras: "stars",
+  },
+};
 
 // Placement grid is normalized 0..100 × 0..100. The renderer maps
 // these onto the room canvas. y measured from the floor line up.
@@ -2026,15 +2081,18 @@ export type FurniturePlacement = {
   size: number; // % of room width
 };
 
+// y now means depth in the floor area (0 = back near wall, 100 = front
+// near viewer). Z-sort against the pet uses this same axis. size is %
+// of room width.
 export const FURNITURE_PLACEMENTS: Partial<Record<ItemId, FurniturePlacement>> = {
-  cushion:     { x: 22, y: 0,  size: 22 },
-  bed:         { x: 78, y: 0,  size: 30 },
-  house:       { x: 50, y: 0,  size: 36 },
-  toyBall:     { x: 12, y: 0,  size: 14 },
-  toyYarn:     { x: 35, y: 0,  size: 14 },
-  toyBone:     { x: 90, y: 0,  size: 14 },
-  bowlBasic:   { x: 60, y: 0,  size: 16 },
-  bowlPremium: { x: 60, y: 0,  size: 16 }, // overrides bowlBasic
+  cushion:     { x: 22, y: 70, size: 22 },
+  bed:         { x: 78, y: 25, size: 30 },
+  house:       { x: 50, y: 18, size: 36 },
+  toyBall:     { x: 12, y: 75, size: 14 },
+  toyYarn:     { x: 35, y: 80, size: 14 },
+  toyBone:     { x: 90, y: 80, size: 14 },
+  bowlBasic:   { x: 60, y: 65, size: 16 },
+  bowlPremium: { x: 60, y: 65, size: 16 },
 };
 
 // ── Status icons (HUD) ───────────────────────────────────────
