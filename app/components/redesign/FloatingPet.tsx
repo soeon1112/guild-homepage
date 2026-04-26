@@ -82,7 +82,7 @@ import {
 } from "@/src/lib/pets";
 import { ItemIconSvg, PetSvg } from "./PetSvg";
 import { PetRoom, type PetReaction } from "./PetRoom";
-import { getOpenPanel, setOpenPanel, useOpenPanel } from "@/src/lib/uiBus";
+import { getOpenPanel, setOpenPanel } from "@/src/lib/uiBus";
 import {
   INTERACTION_ICONS,
   STATUS_ICONS,
@@ -174,8 +174,10 @@ export default function FloatingPet() {
   const [open, setOpen] = useState(false);
   // Mirror open state into the shared uiBus and hide the pet icon
   // whenever chat owns the screen.
-  const openPanel = useOpenPanel();
-  const hideForChat = openPanel === "chat";
+  // FAB icons stay visible always. When a panel opens, its higher
+  // z-index surface covers the icon visually, but the icon itself is
+  // never removed from the layout. On wide screens both panels may be
+  // open simultaneously since they live in opposite corners.
   useEffect(() => {
     if (open) setOpenPanel("pet");
     else if (getOpenPanel() === "pet") setOpenPanel(null);
@@ -541,7 +543,7 @@ export default function FloatingPet() {
         whileTap={{ scale: 0.92 }}
         transition={{ duration: 0.2 }}
         className="group fixed left-4 bottom-24 z-50 flex h-14 w-14 items-center justify-center rounded-full"
-        style={{ pointerEvents: open ? "none" : "auto", display: hideForChat ? "none" : "flex" }}
+        style={{ pointerEvents: open ? "none" : "auto" }}
       >
         <span
           className="pointer-events-none absolute inset-0 rounded-full"

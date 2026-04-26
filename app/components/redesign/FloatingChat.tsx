@@ -20,7 +20,7 @@ import NicknameLink from "@/app/components/NicknameLink";
 import { CommentImageView } from "@/app/components/CommentImage";
 import { formatSmart } from "@/src/lib/formatSmart";
 import { handleEvent } from "@/src/lib/badgeCheck";
-import { getOpenPanel, setOpenPanel, useOpenPanel } from "@/src/lib/uiBus";
+import { getOpenPanel, setOpenPanel } from "@/src/lib/uiBus";
 
 type ChatFileType = "image" | "gif" | "video";
 
@@ -178,8 +178,10 @@ export default function FloatingChat() {
   // Coordinate with the pet floating UI: when chat opens, the pet
   // icon hides; when pet opens, the chat icon hides. The shared
   // uiBus tracks which panel currently owns the screen.
-  const activeFloatingPanel = useOpenPanel();
-  const hideForPet = activeFloatingPanel === "pet";
+  // FAB icons stay visible always. When a panel opens, its higher
+  // z-index surface covers the icon visually, but the icon itself is
+  // never removed from the layout. On wide screens both panels may be
+  // open simultaneously since they live in opposite corners.
   useEffect(() => {
     if (open) setOpenPanel("chat");
     else if (getOpenPanel() === "chat") setOpenPanel(null);
@@ -478,10 +480,7 @@ export default function FloatingChat() {
                 }
               : { duration: 0.2 },
         }}
-        style={{
-          pointerEvents: open ? "none" : "auto",
-          display: hideForPet ? "none" : "flex",
-        }}
+        style={{ pointerEvents: open ? "none" : "auto" }}
         className="group fixed right-4 bottom-24 z-50 flex h-14 w-14 items-center justify-center rounded-full"
       >
         {/* Pulse ring — soft aura */}
