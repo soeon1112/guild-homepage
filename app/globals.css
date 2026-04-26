@@ -5708,6 +5708,36 @@ select {
   text-align: center;
 }
 
+/* Wardrobe item grid — denser than the shop's 2-col layout so users see
+   more of their collection at once. Roughly 75% of the shop card size:
+   3 columns on mobile (vs shop's 2), 5 columns on desktop (vs 4), tighter
+   gap, and the card-padding override below shrinks the inside. */
+.wardrobe-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+@media (min-width: 768px) {
+  .wardrobe-grid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.6rem;
+  }
+}
+.wardrobe-grid .shop-card {
+  padding: 0.55rem 0.45rem;
+  gap: 0.25rem;
+  border-radius: 10px;
+}
+.wardrobe-grid .shop-card-word {
+  font-size: 0.72rem;
+}
+.wardrobe-grid .shop-card-status {
+  font-size: 0.62rem;
+}
+.wardrobe-grid .shop-fashion-preview-wrap {
+  border-radius: 6px;
+}
+
 .shop-fashion-preview-wrap {
   width: 100%;
   aspect-ratio: 3 / 4;

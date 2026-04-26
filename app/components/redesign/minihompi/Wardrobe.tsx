@@ -136,7 +136,7 @@ export default function Wardrobe({
               {items.length === 0 ? (
                 <p className="wardrobe-empty">보유한 아이템이 없습니다</p>
               ) : (
-                <div className="shop-grid">
+                <div className="wardrobe-grid">
                   {items.map((entry) => {
                     // Items bought for the user's current body are wearable;
                     // anything else stays in the collection but is disabled.
