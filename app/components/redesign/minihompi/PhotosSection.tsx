@@ -676,7 +676,10 @@ function PhotoViewerModal({
         exit={{ scale: 0.95, y: 20, opacity: 0 }}
         transition={{ duration: 0.25, ease: "easeOut" }}
         onClick={(e) => e.stopPropagation()}
-        className="relative flex max-h-full w-full max-w-lg flex-col overflow-hidden rounded-2xl"
+        // No max-h or overflow on the card — the parent .modal-safe-frame
+        // owns scrolling. Photo + caption + comments scroll together as
+        // one block, no inner scroll regions.
+        className="relative my-4 flex w-full max-w-lg flex-col rounded-2xl"
         style={{
           background: "rgba(26, 15, 61, 0.95)",
           border: "1px solid rgba(216,150,200,0.3)",
@@ -717,8 +720,9 @@ function PhotoViewerModal({
           )}
         </div>
 
-        {/* Caption + comments (scrollable) */}
-        <div className="nebula-scroll flex min-h-0 flex-1 flex-col overflow-y-auto">
+        {/* Caption + comments — no inner scroll. The whole modal scrolls
+            as one block via the parent .modal-safe-frame. */}
+        <div className="flex flex-col">
           <div className="flex flex-wrap items-center gap-2 px-5 pb-3 pt-4">
             {editMode ? (
               <div className="flex w-full flex-col gap-2">
