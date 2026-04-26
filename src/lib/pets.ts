@@ -669,8 +669,15 @@ export async function setInPlayground(
   await setDoc(petDocRef(nickname), { inPlayground: value }, { merge: true });
 }
 
-// Snapshot of every pet currently in the playground (inPlayground=true).
-// Returns lightweight info needed by the playground view.
+// Top-level `playgroundPets/{nickname}` collection. Mirrors a subset of
+// the pet doc + adds synced position so all clients show pets in the
+// same place (and live-update entries / exits via onSnapshot, no need
+// to iterate users).
+//
+// Why a separate collection rather than collectionGroup query on
+// `pet` with `where inPlayground == true`: that would need a composite
+// index this project doesn't have. A flat collection keyed by nickname
+// is cheap to subscribe to and trivial to clean up.
 export type PlaygroundPet = {
   nickname: string;
   petName: string;
@@ -682,38 +689,95 @@ export type PlaygroundPet = {
   glow?: boolean;
   hue?: number;
   accessories: ItemId[];
+  posX: number; // 0–100 (% of field width)
+  posY: number; // 0–100 (% of field height)
 };
 
-export async function loadPlaygroundPets(): Promise<PlaygroundPet[]> {
-  const snap = await getDocs(collection(db, "users"));
-  const out: PlaygroundPet[] = [];
-  const now = Date.now();
-  for (const u of snap.docs) {
-    const nick = u.id;
-    const petSnap = await getDoc(doc(db, "users", nick, "pet", "current"));
-    if (!petSnap.exists()) continue;
-    const p = petSnap.data() as PetDoc;
-    if (!p.inPlayground) continue;
-    out.push({
-      nickname: nick,
-      petName: p.name,
-      petType: p.type,
-      petStage: computeStage(p.createdAt?.toMillis?.() ?? now, p.exp ?? 0, now),
-      exp: p.exp ?? 0,
-      happiness: p.happiness ?? 0,
-      petBodyColor: p.petBodyColor ?? null,
-      glow: !!p.glow,
-      hue: p.hue ?? 0,
-      accessories: p.accessories ?? [],
-    });
-  }
-  return out;
+const playgroundPetRef = (nickname: string) => doc(db, "playgroundPets", nickname);
+
+function randomFieldPosition(): { posX: number; posY: number } {
+  return {
+    posX: 8 + Math.random() * 84,
+    posY: 45 + Math.random() * 45,
+  };
 }
 
-// Count of pets currently in the playground (for the entry screen).
-export async function countPlaygroundPets(): Promise<number> {
-  const list = await loadPlaygroundPets();
-  return list.length;
+// Enter the playground. Writes a fresh `playgroundPets/{nick}` doc with
+// random initial position, and flips `inPlayground=true` on the pet doc
+// (kept for the auto-exit useEffect's legacy gate).
+export async function enterPlayground(
+  nickname: string,
+  pet: PetDoc,
+): Promise<void> {
+  const now = Date.now();
+  const stage = computeStage(pet.createdAt?.toMillis?.() ?? now, pet.exp ?? 0, now);
+  const { posX, posY } = randomFieldPosition();
+  await setDoc(playgroundPetRef(nickname), {
+    nickname,
+    petName: pet.name,
+    petType: pet.type,
+    petStage: stage,
+    exp: pet.exp ?? 0,
+    happiness: pet.happiness ?? 0,
+    petBodyColor: pet.petBodyColor ?? null,
+    glow: !!pet.glow,
+    hue: pet.hue ?? 0,
+    accessories: pet.accessories ?? [],
+    posX,
+    posY,
+    enteredAt: serverTimestamp(),
+    posUpdatedAt: serverTimestamp(),
+  });
+  await setDoc(petDocRef(nickname), { inPlayground: true }, { merge: true });
+}
+
+// Exit the playground. Deletes the playgroundPets doc + clears flag.
+export async function exitPlayground(nickname: string): Promise<void> {
+  await deleteDoc(playgroundPetRef(nickname)).catch(() => {});
+  await setDoc(petDocRef(nickname), { inPlayground: false }, { merge: true });
+}
+
+// Update only the position fields. Called periodically (~every 4 s)
+// while in the playground; merge-write keeps the rest of the doc intact.
+export async function updatePlaygroundPosition(
+  nickname: string,
+  posX: number,
+  posY: number,
+): Promise<void> {
+  await setDoc(
+    playgroundPetRef(nickname),
+    { posX, posY, posUpdatedAt: serverTimestamp() },
+    { merge: true },
+  );
+}
+
+// Realtime subscription — fires immediately with the current snapshot
+// and again whenever any pet enters / leaves / moves.
+export function subscribePlaygroundPets(
+  cb: (pets: PlaygroundPet[]) => void,
+): () => void {
+  return onSnapshot(collection(db, "playgroundPets"), (snap) => {
+    const list: PlaygroundPet[] = [];
+    for (const d of snap.docs) {
+      const data = d.data() as Partial<PlaygroundPet>;
+      if (!data.petType || !data.petName) continue;
+      list.push({
+        nickname: data.nickname ?? d.id,
+        petName: data.petName,
+        petType: data.petType as PetType,
+        petStage: (data.petStage as PetStage) ?? "egg",
+        exp: data.exp ?? 0,
+        happiness: data.happiness ?? 0,
+        petBodyColor: data.petBodyColor ?? null,
+        glow: !!data.glow,
+        hue: data.hue ?? 0,
+        accessories: (data.accessories as ItemId[]) ?? [],
+        posX: typeof data.posX === "number" ? data.posX : 50,
+        posY: typeof data.posY === "number" ? data.posY : 65,
+      });
+    }
+    cb(list);
+  });
 }
 
 // ── Playground social interactions ────────────────────────────

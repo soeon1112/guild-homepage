@@ -40,9 +40,10 @@ import {
   ITEMS,
   loadPet,
   loadPetItems,
+  enterPlayground,
+  exitPlayground,
   expirePlaygroundRequest,
   loadPlaygroundLogToday,
-  loadPlaygroundPets,
   PLAYGROUND_REQUEST_TIMEOUT_MS,
   playgroundTreat,
   respondPlaygroundRequest,
@@ -51,6 +52,7 @@ import {
   subscribeIncomingPlaygroundRequests,
   subscribeOutgoingPlaygroundRequests,
   subscribePlaygroundChat,
+  subscribePlaygroundPets,
   type PlaygroundChatMessage,
   type PlaygroundInteractionKind,
   type PlaygroundLog,
@@ -61,9 +63,9 @@ import {
   PET_TYPES,
   applyDyeColor,
   projectStatus,
-  setInPlayground,
   type PlaygroundPet,
   refreshDecaySnapshot,
+  updatePlaygroundPosition,
   releasePet,
   renamePet,
   setAccessoryEquipped,
@@ -234,7 +236,7 @@ export default function FloatingPet() {
     if (!nickname) return;
     if (open && tab === "playground") return;
     if (!pet?.inPlayground) return;
-    setInPlayground(nickname, false).catch(() => {});
+    exitPlayground(nickname).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, tab, nickname]);
 
@@ -785,10 +787,10 @@ export default function FloatingPet() {
                   busy={busy}
                   inventory={items.inventory}
                   onEnter={async () => {
-                    if (!nickname) return;
+                    if (!nickname || !pet) return;
                     setBusy(true);
                     try {
-                      await setInPlayground(nickname, true);
+                      await enterPlayground(nickname, pet);
                     } finally {
                       setBusy(false);
                     }
@@ -2039,21 +2041,43 @@ function PlaygroundPanel({
     }
   }, [incomingReq, myNickname]);
 
-  // Load pets — when entering, refresh; when on entry screen, also count.
+  // Realtime subscription to the playgroundPets collection. Live-updates
+  // when pets enter, leave, or move (their position write triggers an
+  // onSnapshot fire). One subscription = one listener cost regardless
+  // of pet count.
   useEffect(() => {
-    let cancelled = false;
     setLoading(true);
-    loadPlaygroundPets()
-      .then((list) => {
-        if (cancelled) return;
-        setPets(list);
-        setCount(list.length);
-      })
-      .finally(() => !cancelled && setLoading(false));
+    const unsub = subscribePlaygroundPets((list) => {
+      setPets(list);
+      setCount(list.length);
+      setLoading(false);
+    });
+    return () => unsub();
+  }, []);
+
+  // While my pet is in the playground, periodically write a new random
+  // anchor position so other clients see the pet wander. Owner-side only —
+  // other clients just read from the subscription. ~4s cadence keeps
+  // Firestore writes cheap (≈ 15/min per occupant).
+  useEffect(() => {
+    if (!myPetInPlayground || !myNickname) return;
+    let cancelled = false;
+    let curX = 8 + Math.random() * 84;
+    let curY = 45 + Math.random() * 45;
+    const tick = () => {
+      if (cancelled) return;
+      const nextX = Math.max(5, Math.min(95, curX + (Math.random() - 0.5) * 35));
+      const nextY = Math.max(42, Math.min(92, curY + (Math.random() - 0.5) * 25));
+      curX = nextX;
+      curY = nextY;
+      updatePlaygroundPosition(myNickname, nextX, nextY).catch(() => {});
+    };
+    const interval = setInterval(tick, 4000);
     return () => {
       cancelled = true;
+      clearInterval(interval);
     };
-  }, [myPetInPlayground]);
+  }, [myPetInPlayground, myNickname]);
 
   // Realtime chat subscription — only while we're in the playground.
   useEffect(() => {
@@ -2391,35 +2415,12 @@ function WanderingPet({
   interaction: WanderingInteraction | null;
   onTap: () => void;
 }) {
-  // Random per-pet starting position + speed/cadence so they don't
-  // all move in lockstep. Bounded inside the grass band [40%..90% top].
-  const initialRef = useRef({
-    x: 8 + Math.random() * 84,
-    y: 45 + Math.random() * 45,
-    period: 2800 + Math.random() * 3200,
-  });
-  const [pos, setPos] = useState({ x: initialRef.current.x, y: initialRef.current.y });
-
-  useEffect(() => {
-    let cancelled = false;
-    const tick = () => {
-      if (cancelled) return;
-      setPos((cur) => {
-        const dx = (Math.random() - 0.5) * 35;
-        const dy = (Math.random() - 0.5) * 25;
-        return {
-          x: Math.max(5, Math.min(95, cur.x + dx)),
-          y: Math.max(42, Math.min(92, cur.y + dy)),
-        };
-      });
-      setTimeout(tick, initialRef.current.period);
-    };
-    const t = setTimeout(tick, 800 + Math.random() * 1500);
-    return () => {
-      cancelled = true;
-      clearTimeout(t);
-    };
-  }, []);
+  // Position is owner-driven and synced via Firestore (the parent's
+  // updatePlaygroundPosition tick writes new anchors every ~4 s). Every
+  // client — including the owner — reads pet.posX/posY from the
+  // subscription so all viewers see the same scene. CSS transition on
+  // `left`/`top` smooths the anchor change so motion reads as a wander.
+  const pos = { x: pet.posX, y: pet.posY };
 
   // Chat bubble — show for 5 s on each new chatMessage. Keyed by id so
   // a fresh repeat from the same user re-shows the bubble.
@@ -2461,7 +2462,7 @@ function WanderingPet({
         left: `${pos.x}%`,
         top: `${pos.y}%`,
         transform: "translate(-50%, -100%)",
-        transition: `left ${initialRef.current.period - 400}ms ease-in-out, top ${initialRef.current.period - 400}ms ease-in-out`,
+        transition: "left 1400ms ease-in-out, top 1400ms ease-in-out",
         cursor: "pointer",
         zIndex: Math.round(pos.y * 10),
         display: "flex",
