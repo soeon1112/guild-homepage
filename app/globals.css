@@ -6558,3 +6558,19 @@ body.has-redesigned-header .bg-scene {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
+
+@keyframes butterfly-fly {
+  0%   { left: -8%; top: 18%; transform: translateY(0); }
+  25%  { top: 12%; transform: translateY(-4px); }
+  50%  { left: 50%; top: 22%; transform: translateY(0); }
+  75%  { top: 16%; transform: translateY(-4px); }
+  100% { left: 108%; top: 20%; transform: translateY(0); }
+}
+@keyframes butterfly-wings {
+  0%, 100% { transform: scaleX(1); }
+  50%      { transform: scaleX(0.6); }
+}
+@keyframes cloud-drift {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(8px); }
+}

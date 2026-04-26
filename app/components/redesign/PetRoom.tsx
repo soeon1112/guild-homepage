@@ -634,23 +634,21 @@ function PetRoomInner({
           ) : null}
           {SCENES[activeScene].overlay === "park" ? (
             <>
-              {/* Sun — HTML div so border-radius keeps it perfectly
-                  round regardless of SVG stretching. */}
+              {/* ── Sun (perfectly round HTML circle) ── */}
               <div
                 style={{
                   position: "absolute",
-                  right: "12%",
-                  top: "12%",
+                  right: "10%",
+                  top: "10%",
                   width: 32,
                   height: 32,
                   borderRadius: "50%",
                   background: "#FFE873",
                   border: "1.5px solid #F2C84B",
                   pointerEvents: "none",
+                  zIndex: 1,
                 }}
               />
-              {/* Sun rays — separate divs so each is exactly the same
-                  pixel length whether the room is wide or tall. */}
               {Array.from({ length: 8 }).map((_, i) => {
                 const angle = (i * 360) / 8;
                 return (
@@ -658,8 +656,8 @@ function PetRoomInner({
                     key={`ray-${i}`}
                     style={{
                       position: "absolute",
-                      right: "calc(12% + 16px)",
-                      top: "calc(12% + 16px)",
+                      right: "calc(10% + 16px)",
+                      top: "calc(10% + 16px)",
                       width: 10,
                       height: 3,
                       background: "#FFE873",
@@ -667,16 +665,18 @@ function PetRoomInner({
                       transform: `translate(-50%, -50%) rotate(${angle}deg) translate(24px, 0)`,
                       transformOrigin: "0 0",
                       pointerEvents: "none",
+                      zIndex: 1,
                     }}
                   />
                 );
               })}
-              {/* Clouds — pill-shaped HTML divs */}
+
+              {/* ── Clouds (4) ── */}
               {[
-                { left: "12%", top: "13%", w: 42, h: 14 },
-                { left: "16%", top: "10%", w: 28, h: 12 },
-                { left: "44%", top: "20%", w: 36, h: 12 },
-                { left: "47%", top: "17%", w: 24, h: 10 },
+                { left: "8%", top: "10%", w: 42, h: 14 },
+                { left: "12%", top: "7%", w: 28, h: 11 },
+                { left: "35%", top: "16%", w: 36, h: 12 },
+                { left: "62%", top: "26%", w: 30, h: 10 },
               ].map((c, i) => (
                 <div
                   key={`cloud-${i}`}
@@ -690,42 +690,181 @@ function PetRoomInner({
                     background: "#FFFFFF",
                     opacity: 0.92,
                     pointerEvents: "none",
+                    animation: `cloud-drift 6s ease-in-out infinite alternate ${i * 0.7}s`,
+                    zIndex: 2,
                   }}
                 />
               ))}
-              {/* Trees — round canopy + rect trunk via HTML divs */}
+
+              {/* ── Distant cottage (back-mid) ── */}
+              <div
+                style={{
+                  position: "absolute",
+                  left: "42%",
+                  top: "44%",
+                  width: 36,
+                  height: 30,
+                  pointerEvents: "none",
+                  zIndex: 3,
+                }}
+              >
+                <svg viewBox="0 0 36 30" width="100%" height="100%" style={{ display: "block" }}>
+                  {/* roof */}
+                  <polygon points="18,2 2,14 34,14" fill="#C0533B" stroke="#5B3A1F" strokeWidth="1" />
+                  {/* roof shadow line */}
+                  <polygon points="18,2 4,13 32,13" fill="#A03B25" opacity="0.5" />
+                  {/* wall */}
+                  <rect x="4" y="14" width="28" height="14" fill="#F2E0BA" stroke="#5B3A1F" strokeWidth="1" />
+                  {/* door */}
+                  <rect x="14" y="20" width="6" height="8" fill="#5B3A1F" />
+                  {/* doorknob */}
+                  <rect x="18" y="24" width="1" height="1" fill="#FFE873" />
+                  {/* window */}
+                  <rect x="22" y="17" width="7" height="6" fill="#9CC9E5" stroke="#5B3A1F" strokeWidth="0.6" />
+                  <line x1="25.5" y1="17" x2="25.5" y2="23" stroke="#5B3A1F" strokeWidth="0.5" />
+                  {/* chimney */}
+                  <rect x="24" y="6" width="3" height="6" fill="#5B3A1F" />
+                </svg>
+              </div>
+
+              {/* ── Trees (3 — big-left, small-mid, big-right) ── */}
               {[
-                { left: "8%", top: "32%", canopy: 28, trunk: 6 },
-                { left: "88%", top: "36%", canopy: 24, trunk: 6 },
+                { left: "4%", canopyTop: "30%", trunkTop: "44%", trunkLeft: "calc(4% + 14px)", canopy: 36 },
+                { left: "70%", canopyTop: "44%", trunkTop: "54%", trunkLeft: "calc(70% + 9px)", canopy: 22 },
+                { left: "84%", canopyTop: "36%", trunkTop: "48%", trunkLeft: "calc(84% + 12px)", canopy: 30 },
               ].map((t, i) => (
-                <div
-                  key={`tree-${i}`}
-                  style={{ position: "absolute", left: t.left, top: t.top, pointerEvents: "none" }}
-                >
+                <div key={`tree-${i}`} style={{ pointerEvents: "none" }}>
                   <div
                     style={{
+                      position: "absolute",
+                      left: t.left,
+                      top: t.canopyTop,
                       width: t.canopy,
                       height: t.canopy,
                       borderRadius: "50%",
                       background: "#4A9C40",
-                      marginLeft: -(t.canopy - t.trunk) / 2,
+                      border: "1.5px solid #2E6B26",
+                      zIndex: 4,
                     }}
                   />
                   <div
                     style={{
-                      width: t.trunk,
-                      height: 22,
+                      position: "absolute",
+                      left: t.trunkLeft,
+                      top: t.trunkTop,
+                      width: 6,
+                      height: 24,
                       background: "#5B3A1F",
-                      marginTop: -2,
+                      zIndex: 4,
                     }}
                   />
                 </div>
               ))}
-              {/* Grass blades — small rects, fine to stretch */}
-              <svg viewBox="0 0 320 200" width="100%" height="100%" preserveAspectRatio="none" style={{ display: "block", position: "absolute", inset: 0, pointerEvents: "none" }}>
-                {Array.from({ length: 24 }).map((_, i) => {
-                  const x = (i * 14) + (i % 2 ? 3 : 0);
-                  const baseY = 132 + (i % 4) * 12;
+
+              {/* ── Fence (along front-bottom) ── */}
+              <svg viewBox="0 0 320 60" width="100%" preserveAspectRatio="none" style={{ position: "absolute", left: 0, bottom: 22, height: 22, pointerEvents: "none", zIndex: 6 }}>
+                {/* horizontal rails */}
+                <rect x="0" y="6" width="320" height="2" fill="#FFFFFF" />
+                <rect x="0" y="14" width="320" height="2" fill="#FFFFFF" />
+                {/* vertical pickets */}
+                {Array.from({ length: 14 }).map((_, i) => (
+                  <rect key={`fence-${i}`} x={i * 24 + 4} y="0" width="3" height="22" fill="#FFFFFF" />
+                ))}
+              </svg>
+
+              {/* ── Park bench (front-left) ── */}
+              <div
+                style={{
+                  position: "absolute",
+                  left: "10%",
+                  top: "70%",
+                  width: 44,
+                  height: 22,
+                  pointerEvents: "none",
+                  zIndex: 7,
+                }}
+              >
+                <svg viewBox="0 0 44 22" width="100%" height="100%" style={{ display: "block" }}>
+                  {/* back top rail */}
+                  <rect x="2" y="0" width="40" height="3" fill="#8E5E33" stroke="#4A2C18" strokeWidth="0.5" />
+                  {/* back middle rail */}
+                  <rect x="2" y="5" width="40" height="2" fill="#8E5E33" />
+                  {/* seat */}
+                  <rect x="0" y="9" width="44" height="4" fill="#A07040" stroke="#4A2C18" strokeWidth="0.5" />
+                  {/* legs */}
+                  <rect x="3" y="13" width="3" height="9" fill="#5B3A1F" />
+                  <rect x="38" y="13" width="3" height="9" fill="#5B3A1F" />
+                  {/* back supports */}
+                  <rect x="6" y="0" width="2" height="10" fill="#5B3A1F" />
+                  <rect x="36" y="0" width="2" height="10" fill="#5B3A1F" />
+                </svg>
+              </div>
+
+              {/* ── Flowers scattered on grass ── */}
+              {[
+                { left: "22%", top: "82%", color: "#E76A6A" },
+                { left: "32%", top: "85%", color: "#FFE873" },
+                { left: "44%", top: "78%", color: "#F4A6BC" },
+                { left: "56%", top: "84%", color: "#E76A6A" },
+                { left: "64%", top: "80%", color: "#FFE873" },
+                { left: "74%", top: "85%", color: "#F4A6BC" },
+                { left: "82%", top: "82%", color: "#A878D0" },
+                { left: "28%", top: "92%", color: "#FFE873" },
+                { left: "50%", top: "92%", color: "#F4A6BC" },
+                { left: "72%", top: "92%", color: "#E76A6A" },
+              ].map((f, i) => (
+                <div
+                  key={`flower-${i}`}
+                  style={{
+                    position: "absolute",
+                    left: f.left,
+                    top: f.top,
+                    pointerEvents: "none",
+                    zIndex: 8,
+                  }}
+                >
+                  {/* stem */}
+                  <div style={{ width: 1, height: 6, background: "#3D8B3D", marginLeft: 3 }} />
+                  {/* petal cluster — center + 4 petals around */}
+                  <div style={{ position: "relative", width: 8, height: 8, marginTop: -8 }}>
+                    <div style={{ position: "absolute", left: 2, top: 0, width: 3, height: 3, borderRadius: "50%", background: f.color }} />
+                    <div style={{ position: "absolute", left: 0, top: 2, width: 3, height: 3, borderRadius: "50%", background: f.color }} />
+                    <div style={{ position: "absolute", left: 4, top: 2, width: 3, height: 3, borderRadius: "50%", background: f.color }} />
+                    <div style={{ position: "absolute", left: 2, top: 4, width: 3, height: 3, borderRadius: "50%", background: f.color }} />
+                    <div style={{ position: "absolute", left: 2, top: 2, width: 3, height: 3, borderRadius: "50%", background: "#FFE873" }} />
+                  </div>
+                </div>
+              ))}
+
+              {/* ── Butterfly — flies across sky ── */}
+              <div
+                style={{
+                  position: "absolute",
+                  left: "-8%",
+                  top: "20%",
+                  width: 16,
+                  height: 12,
+                  pointerEvents: "none",
+                  zIndex: 9,
+                  animation: "butterfly-fly 6s linear infinite",
+                }}
+              >
+                <div style={{ animation: "butterfly-wings 0.18s ease-in-out infinite" }}>
+                  <svg viewBox="0 0 16 12" width="16" height="12" style={{ display: "block" }}>
+                    <ellipse cx="5" cy="5" rx="3.5" ry="3" fill="#F4A6BC" stroke="#A03B5A" strokeWidth="0.4" />
+                    <ellipse cx="11" cy="5" rx="3.5" ry="3" fill="#F4A6BC" stroke="#A03B5A" strokeWidth="0.4" />
+                    <ellipse cx="5" cy="9" rx="2.5" ry="2" fill="#F4A6BC" stroke="#A03B5A" strokeWidth="0.4" />
+                    <ellipse cx="11" cy="9" rx="2.5" ry="2" fill="#F4A6BC" stroke="#A03B5A" strokeWidth="0.4" />
+                    <rect x="7.5" y="3" width="1" height="7" fill="#3A1F1F" />
+                  </svg>
+                </div>
+              </div>
+
+              {/* ── Grass blades — small rects on the ground ── */}
+              <svg viewBox="0 0 320 200" width="100%" height="100%" preserveAspectRatio="none" style={{ display: "block", position: "absolute", inset: 0, pointerEvents: "none", zIndex: 5 }}>
+                {Array.from({ length: 30 }).map((_, i) => {
+                  const x = (i * 11) + (i % 2 ? 2 : 0);
+                  const baseY = 130 + (i % 5) * 12;
                   return <rect key={`g-${i}`} x={x} y={baseY} width={2} height={6} fill="#4A8E47" />;
                 })}
               </svg>
