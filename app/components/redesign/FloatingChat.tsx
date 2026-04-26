@@ -481,7 +481,7 @@ export default function FloatingChat() {
               : { duration: 0.2 },
         }}
         style={{ pointerEvents: open ? "none" : "auto" }}
-        className="group fixed right-4 bottom-24 z-50 flex h-14 w-14 items-center justify-center rounded-full"
+        className="group fixed right-4 bottom-24 z-[100] flex h-14 w-14 items-center justify-center rounded-full"
       >
         {/* Pulse ring — soft aura */}
         <span
@@ -570,7 +570,7 @@ export default function FloatingChat() {
       <AnimatePresence>
         {open && (
           <motion.div
-            className="fixed right-4 bottom-24 z-50 flex flex-col overflow-hidden rounded-2xl"
+            className="fixed right-4 bottom-24 z-[200] flex flex-col overflow-hidden rounded-2xl"
             style={{
               width: "min(380px, calc(100vw - 2rem))",
               height: "min(500px, calc(100vh - 7rem))",
