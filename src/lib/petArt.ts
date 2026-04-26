@@ -1708,6 +1708,217 @@ const I_DYE: ItemIconRender = {
   resolve: colorMap({ B: "#5B3A1F", P: "#9D6BC0", w: "#FFFFFF", r: "#E76A6A", b: "#3D5DA8", g: "#3D8B3D", y: "#FFD56B" }),
 };
 
+// ── Scene-only props (cone, hand, butterfly, water drop, training ring) ──
+const S_HAND: ItemIconRender = {
+  grid: [
+    "............",
+    "...kkkk.....",
+    "..kkkkkk....",
+    "..kkkkkkk...",
+    "..kkkkkkk...",
+    "..kkkkkkk...",
+    "...kkkkk....",
+    "....kkk.....",
+    "....kkk.....",
+    "....kkk.....",
+    "............",
+    "............",
+  ],
+  resolve: colorMap({ k: "#E0B080" }),
+};
+
+const S_CONE: ItemIconRender = {
+  grid: [
+    "............",
+    "............",
+    "............",
+    ".....yy.....",
+    "....yyyy....",
+    "....wwww....",
+    "...yyyyyy...",
+    "...wwwwww...",
+    "..yyyyyyyy..",
+    "..kkkkkkkk..",
+    "..kkkkkkkk..",
+    "............",
+  ],
+  resolve: colorMap({ y: "#F08A4B", w: "#FFFFFF", k: "#3A3A3A" }),
+};
+
+const S_RING: ItemIconRender = {
+  grid: [
+    "............",
+    "............",
+    "....rrrr....",
+    "...r....r...",
+    "..r......r..",
+    "..r......r..",
+    "..r......r..",
+    "..r......r..",
+    "...r....r...",
+    "....rrrr....",
+    "............",
+    "............",
+  ],
+  resolve: colorMap({ r: "#E76A6A" }),
+};
+
+const S_BUTTERFLY: ItemIconRender = {
+  grid: [
+    "............",
+    "..pp....pp..",
+    ".pPPp..pPPp.",
+    ".pPPPpkpPPP.",
+    ".pPPPpkpPPP.",
+    "..pPPpkpPPp.",
+    "...ppkkpp...",
+    "............",
+    "............",
+    "............",
+    "............",
+    "............",
+  ],
+  resolve: colorMap({ p: "#F4A6BC", P: "#E0608A", k: "#3A1F1F" }),
+};
+
+const S_DROP: ItemIconRender = {
+  grid: [
+    "............",
+    ".....b......",
+    "....bbb.....",
+    "....bbb.....",
+    "...bbbbb....",
+    "...bwwwb....",
+    "..bbbbbbb...",
+    "..bbbbbbb...",
+    "...bbbbb....",
+    "............",
+    "............",
+    "............",
+  ],
+  resolve: colorMap({ b: "#5BAEEA", w: "#D6ECFA" }),
+};
+
+const S_LEAF: ItemIconRender = {
+  grid: [
+    "............",
+    ".......g....",
+    "......gg....",
+    ".....ggGg...",
+    "....ggGGg...",
+    "....gGGGg...",
+    "....gGGgg...",
+    "....gGgg....",
+    "....kg......",
+    "...k........",
+    "............",
+    "............",
+  ],
+  resolve: colorMap({ g: "#7BC472", G: "#4A9C40", k: "#5B3A1F" }),
+};
+
+export const SCENE_SPRITES = {
+  hand: S_HAND,
+  cone: S_CONE,
+  ring: S_RING,
+  butterfly: S_BUTTERFLY,
+  drop: S_DROP,
+  leaf: S_LEAF,
+};
+export type SceneSpriteId = keyof typeof SCENE_SPRITES;
+
+// ── Scene definitions (interaction → mini-cutscene) ──────────
+export type SceneId = "feed" | "play" | "wash" | "walk" | "pet" | "treat" | "sleep" | "train";
+
+export type SceneOverlay = "none" | "bath" | "park" | "dark";
+
+export type Scene = {
+  id: SceneId;
+  durationMs: number;
+  overlay: SceneOverlay;
+  // prop placed in the scene (relative to room canvas: x %, y from floor px, size %)
+  prop?: { sprite: "bowl" | "ball" | "treat" | "bed" | "cake" | SceneSpriteId; x: number; size: number; floorOffset?: number };
+  // pet animation override during the scene
+  petAnim: "eat" | "chase" | "shake" | "run" | "happy" | "sleep" | "jump";
+  // particle effect glyph
+  particle: "heart" | "star" | "drop" | "zzz" | "leaf" | "sparkle";
+  // pet's anchor position during scene (-1..1)
+  petAnchor?: number;
+  // hand prop floats above the pet
+  handAbovePet?: boolean;
+};
+
+export const SCENES: Record<SceneId, Scene> = {
+  feed: {
+    id: "feed",
+    durationMs: 2600,
+    overlay: "none",
+    prop: { sprite: "bowl", x: 50, size: 18, floorOffset: 0 },
+    petAnim: "eat",
+    particle: "heart",
+    petAnchor: 0,
+  },
+  play: {
+    id: "play",
+    durationMs: 3400,
+    overlay: "none",
+    prop: { sprite: "ball", x: 70, size: 14, floorOffset: 0 },
+    petAnim: "chase",
+    particle: "star",
+  },
+  wash: {
+    id: "wash",
+    durationMs: 3400,
+    overlay: "bath",
+    petAnim: "shake",
+    particle: "drop",
+    petAnchor: 0,
+  },
+  walk: {
+    id: "walk",
+    durationMs: 4400,
+    overlay: "park",
+    petAnim: "run",
+    particle: "leaf",
+  },
+  pet: {
+    id: "pet",
+    durationMs: 2600,
+    overlay: "none",
+    prop: { sprite: "hand", x: 50, size: 14, floorOffset: 0 },
+    petAnim: "happy",
+    particle: "heart",
+    petAnchor: 0,
+    handAbovePet: true,
+  },
+  treat: {
+    id: "treat",
+    durationMs: 2600,
+    overlay: "none",
+    prop: { sprite: "treat", x: 50, size: 14, floorOffset: 0 },
+    petAnim: "eat",
+    particle: "star",
+    petAnchor: 0,
+  },
+  sleep: {
+    id: "sleep",
+    durationMs: 3500,
+    overlay: "dark",
+    petAnim: "sleep",
+    particle: "zzz",
+    petAnchor: 0,
+  },
+  train: {
+    id: "train",
+    durationMs: 3400,
+    overlay: "none",
+    prop: { sprite: "cone", x: 50, size: 16, floorOffset: 0 },
+    petAnim: "jump",
+    particle: "sparkle",
+    petAnchor: -0.3,
+  },
+};
+
 export const ITEM_ICONS: Record<ItemId, ItemIconRender> = {
   food: I_FOOD,
   treat: I_TREAT,

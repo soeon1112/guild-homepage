@@ -6,7 +6,7 @@
 
 "use client";
 
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import {
   ACCESSORY_SPRITES,
   accessoryColor,
@@ -23,9 +23,12 @@ import {
   ROOM_WALL_COLOR,
   ROOM_WALL_DECOR,
   ROOM_WALL_TRIM,
+  SCENE_SPRITES,
+  SCENES,
   spriteFor,
   type ItemIconRender,
   type PixelGrid,
+  type SceneId,
   type SpecialAction,
 } from "@/src/lib/petArt";
 import {
@@ -47,7 +50,7 @@ export type PetReaction =
   | { kind: "play" }
   | null;
 
-type Mode = "idle" | "walking" | "sitting" | "special";
+type Mode = "idle" | "walking" | "sitting" | "special" | "scene";
 
 type Props = {
   type: PetType;
@@ -60,6 +63,8 @@ type Props = {
   hue?: number;
   reaction?: PetReaction;
   height?: number; // px tall; width fills container
+  activeScene?: SceneId | null;
+  onSceneEnd?: () => void;
 };
 
 function gridRects(
@@ -105,6 +110,8 @@ function PetRoomInner({
   hue = 0,
   reaction = null,
   height = 280,
+  activeScene = null,
+  onSceneEnd,
 }: Props) {
   const palette = PET_PALETTE[type];
   const sprite = stage === "egg" ? EGG_SPRITE : spriteFor(type, stage);
@@ -133,9 +140,29 @@ function PetRoomInner({
   const [activeAction, setActiveAction] = useState<SpecialAction>("none");
   const walkDurRef = useRef(0);
 
+  // ── Scene mode (interaction cutscene) ──
+  // When `activeScene` becomes non-null, suspend normal scheduling,
+  // snap pet to anchor, run scene animation for SCENES[id].durationMs,
+  // then call onSceneEnd so FloatingPet can clear it back to null.
+  useEffect(() => {
+    if (!activeScene) return;
+    const scene = SCENES[activeScene];
+    setMode("scene");
+    if (scene.petAnchor !== undefined) {
+      walkDurRef.current = 600;
+      setPosPct(scene.petAnchor);
+    }
+    const t = window.setTimeout(() => {
+      setMode("idle");
+      onSceneEnd?.();
+    }, scene.durationMs);
+    return () => window.clearTimeout(t);
+  }, [activeScene, onSceneEnd]);
+
   // Behaviour scheduler — every stage moves now. Position picker
   // alternates sides so the pet keeps crossing through center.
   useEffect(() => {
+    if (mode === "scene") return; // suspended during cutscenes
     let cancelled = false;
 
     const tick = () => {
@@ -265,8 +292,31 @@ function PetRoomInner({
     roll: "pet-action-roll",
   };
 
+  // Scene-mode pet animations (one per petAnim type)
+  const sceneAnimKeyframe: Record<NonNullable<typeof activeScene> extends infer S ? S extends SceneId ? string : never : never, string> = {
+    feed: "pet-scene-eat",
+    play: "pet-scene-chase",
+    wash: "pet-scene-shake",
+    walk: "pet-scene-run",
+    pet: "pet-scene-happy",
+    treat: "pet-scene-eat",
+    sleep: "pet-scene-sleep",
+    train: "pet-scene-jump",
+  } as any;
+
   let innerAnim: string;
-  if (mode === "special" && activeAction !== "none" && actionKeyframe[activeAction]) {
+  if (mode === "scene" && activeScene) {
+    const dur =
+      activeScene === "wash" ? "0.18s"
+      : activeScene === "play" ? "0.5s"
+      : activeScene === "sleep" ? "1.2s"
+      : "0.6s";
+    const keyf = sceneAnimKeyframe[activeScene];
+    innerAnim =
+      activeScene === "sleep"
+        ? `${keyf} ${dur} ease-out forwards`
+        : `${keyf} ${dur} ease-in-out infinite`;
+  } else if (mode === "special" && activeAction !== "none" && actionKeyframe[activeAction]) {
     innerAnim = `${actionKeyframe[activeAction]} 1.6s ease-in-out infinite`;
   } else if (mode === "walking" || (mode === "special" && activeAction === "dash")) {
     const dur = activeAction === "dash" ? behavior.swayDuration * 0.55 : behavior.swayDuration;
@@ -485,6 +535,81 @@ function PetRoomInner({
         </div>
       </div>
 
+      {/* ── Scene overlays (bath/park/dark) ── */}
+      {activeScene && SCENES[activeScene].overlay !== "none" ? (
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            inset: 0,
+            pointerEvents: "none",
+            background:
+              SCENES[activeScene].overlay === "bath"
+                ? "linear-gradient(180deg, #BDE5F4 0%, #BDE5F4 50%, #8BC8E0 50%, #8BC8E0 100%)"
+                : SCENES[activeScene].overlay === "park"
+                ? "linear-gradient(180deg, #B5E0FF 0%, #B5E0FF 55%, #76C172 55%, #5DAB5A 100%)"
+                : SCENES[activeScene].overlay === "dark"
+                ? "linear-gradient(180deg, rgba(20,15,55,0.55) 0%, rgba(10,8,35,0.7) 100%)"
+                : "transparent",
+            animation: "scene-fade-in 0.35s ease-out",
+          }}
+        >
+          {/* Bath tile pattern */}
+          {SCENES[activeScene].overlay === "bath" ? (
+            <svg viewBox="0 0 320 200" width="100%" height="100%" preserveAspectRatio="none" style={{ display: "block" }}>
+              {Array.from({ length: 8 }).map((_, i) => (
+                <line key={`bv-${i}`} x1={(i + 1) * 40} y1={0} x2={(i + 1) * 40} y2={200} stroke="#FFFFFF" strokeWidth={1} opacity={0.4} />
+              ))}
+              {Array.from({ length: 5 }).map((_, i) => (
+                <line key={`bh-${i}`} x1={0} y1={(i + 1) * 40} x2={320} y2={(i + 1) * 40} stroke="#FFFFFF" strokeWidth={1} opacity={0.4} />
+              ))}
+            </svg>
+          ) : null}
+          {/* Park grass texture */}
+          {SCENES[activeScene].overlay === "park" ? (
+            <svg viewBox="0 0 320 200" width="100%" height="100%" preserveAspectRatio="none" style={{ display: "block" }}>
+              {Array.from({ length: 18 }).map((_, i) => (
+                <rect key={`g-${i}`} x={i * 18 + (i % 2 ? 4 : 0)} y={130 + (i % 3) * 6} width={2} height={6} fill="#4A8E47" />
+              ))}
+              {/* Sun */}
+              <circle cx={260} cy={32} r={14} fill="#FFE873" opacity={0.85} />
+            </svg>
+          ) : null}
+          {/* Dark scene moon + stars */}
+          {SCENES[activeScene].overlay === "dark" ? (
+            <svg viewBox="0 0 320 200" width="100%" height="100%" preserveAspectRatio="none" style={{ display: "block" }}>
+              <circle cx={250} cy={36} r={14} fill="#FFE873" opacity={0.95} />
+              <circle cx={244} cy={32} r={11} fill="rgba(20,15,55,0.7)" />
+              {[
+                [40, 28], [80, 50], [120, 24], [200, 18], [180, 60], [60, 80], [100, 14], [220, 44],
+              ].map(([x, y], i) => (
+                <circle key={`s-${i}`} cx={x as number} cy={y as number} r={1.5} fill="#FFFFFF" opacity={0.85} />
+              ))}
+            </svg>
+          ) : null}
+        </div>
+      ) : null}
+
+      {/* ── Scene prop (bowl, ball, hand, cone, treat) ── */}
+      {activeScene && SCENES[activeScene].prop ? (
+        <ScenePropView
+          scene={SCENES[activeScene]}
+          petLeftPct={petLeftPct}
+          petBottom={petBottom}
+          petSize={petSize}
+        />
+      ) : null}
+
+      {/* ── Scene particles ── */}
+      {activeScene ? (
+        <SceneParticles
+          scene={SCENES[activeScene]}
+          petLeftPct={petLeftPct}
+          petBottom={petBottom}
+          petSize={petSize}
+        />
+      ) : null}
+
       {/* Reaction overlays — react absolute, anchored above the pet */}
       {reactionShown ? (
         <ReactionGlyph
@@ -495,6 +620,210 @@ function PetRoomInner({
         />
       ) : null}
     </div>
+  );
+}
+
+// ── Scene helpers ────────────────────────────────────────────
+
+function ScenePropView({
+  scene,
+  petLeftPct,
+  petBottom,
+  petSize,
+}: {
+  scene: typeof SCENES[SceneId];
+  petLeftPct: number;
+  petBottom: number;
+  petSize: number;
+}) {
+  const propId = scene.prop?.sprite;
+  if (!propId) return null;
+  const isItem = propId === "bowl" || propId === "ball" || propId === "treat" || propId === "bed" || propId === "cake";
+  const sprite = isItem
+    ? (ITEM_ICONS[propId === "bowl" ? "bowlBasic" : propId === "ball" ? "toyBall" : propId === "treat" ? "treat" : propId === "bed" ? "bed" : "cake"])
+    : SCENE_SPRITES[propId as keyof typeof SCENE_SPRITES];
+  if (!sprite) return null;
+
+  const grid = sprite.grid;
+  const cols = Math.max(...grid.map((r) => r.length));
+  const sizePx = (scene.prop!.size / 100) * 320; // logical width
+  const px = sizePx / cols;
+  const cells: React.ReactElement[] = [];
+  for (let r = 0; r < grid.length; r++) {
+    const row = grid[r] ?? "";
+    for (let c = 0; c < row.length; c++) {
+      const code = row[c]!;
+      const fill = sprite.resolve(code);
+      if (!fill) continue;
+      cells.push(
+        <rect key={`p-${r}-${c}`} x={c * px} y={r * px} width={px} height={px} fill={fill} shapeRendering="crispEdges" />,
+      );
+    }
+  }
+
+  // Hand sprite floats above pet — uses pet position
+  if (scene.handAbovePet) {
+    return (
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          left: `${petLeftPct}%`,
+          bottom: petBottom + petSize - 4,
+          width: sizePx * 0.5,
+          marginLeft: -(sizePx * 0.25),
+          animation: "scene-fade-in 0.3s ease-out, pet-bob 0.7s ease-in-out infinite 0.3s",
+          pointerEvents: "none",
+        }}
+      >
+        <svg viewBox={`0 0 ${cols * px} ${grid.length * px}`} width="100%" height="100%" style={{ display: "block" }}>
+          {cells}
+        </svg>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      aria-hidden
+      style={{
+        position: "absolute",
+        left: `${scene.prop!.x}%`,
+        bottom: petBottom + (scene.prop!.floorOffset ?? 0),
+        width: sizePx * 0.45,
+        marginLeft: -(sizePx * 0.225),
+        animation: "scene-fade-in 0.4s ease-out",
+        pointerEvents: "none",
+      }}
+    >
+      <svg viewBox={`0 0 ${cols * px} ${grid.length * px}`} width="100%" height="100%" style={{ display: "block" }}>
+        {cells}
+      </svg>
+    </div>
+  );
+}
+
+function SceneParticles({
+  scene,
+  petLeftPct,
+  petBottom,
+  petSize,
+}: {
+  scene: typeof SCENES[SceneId];
+  petLeftPct: number;
+  petBottom: number;
+  petSize: number;
+}) {
+  const baseTop = petBottom + petSize - 12;
+  const particles = useMemo(() => {
+    // Spawn 4-6 particles staggered through the scene duration.
+    const count = scene.particle === "drop" ? 7 : scene.particle === "zzz" ? 4 : 5;
+    return Array.from({ length: count }).map((_, i) => ({
+      delay: i * (scene.durationMs / (count * 1.4)),
+      offsetX: scene.particle === "drop" ? (Math.random() * 80 - 40) : 0,
+    }));
+  }, [scene]);
+
+  if (scene.particle === "drop") {
+    return (
+      <>
+        {particles.map((p, i) => (
+          <span
+            key={`d-${scene.id}-${i}`}
+            aria-hidden
+            style={{
+              position: "absolute",
+              left: `calc(${petLeftPct}% + ${p.offsetX}px)`,
+              top: 8,
+              color: "#5BAEEA",
+              fontSize: 16,
+              animation: `scene-particle-fall 1.2s ease-in ${p.delay}ms infinite`,
+              pointerEvents: "none",
+              textShadow: "0 1px 2px rgba(0,0,0,0.15)",
+            }}
+          >
+            💧
+          </span>
+        ))}
+      </>
+    );
+  }
+  if (scene.particle === "leaf") {
+    return (
+      <>
+        {particles.map((_, i) => (
+          <span
+            key={`l-${scene.id}-${i}`}
+            aria-hidden
+            style={{
+              position: "absolute",
+              left: `${10 + (i * 18) % 80}%`,
+              bottom: 30 + (i * 14) % 60,
+              color: "#5DAB5A",
+              fontSize: 14,
+              animation: `scene-particle-drift 2.4s ease-in-out ${i * 280}ms infinite`,
+              ["--drift-x" as any]: `${(i % 2 === 0 ? 1 : -1) * 30}px`,
+              ["--drift-r" as any]: `${i * 30}deg`,
+              pointerEvents: "none",
+            }}
+          >
+            🍃
+          </span>
+        ))}
+      </>
+    );
+  }
+  if (scene.particle === "zzz") {
+    return (
+      <>
+        {particles.map((_, i) => (
+          <span
+            key={`z-${scene.id}-${i}`}
+            aria-hidden
+            style={{
+              position: "absolute",
+              left: `calc(${petLeftPct}% + 22px)`,
+              bottom: baseTop + 4,
+              color: "#FFE873",
+              fontSize: 16,
+              fontWeight: 800,
+              animation: `scene-zzz-rise 1.4s ease-out ${i * 600}ms infinite`,
+              pointerEvents: "none",
+              textShadow: "0 1px 2px rgba(0,0,0,0.4)",
+            }}
+          >
+            z
+          </span>
+        ))}
+      </>
+    );
+  }
+
+  // heart / star / sparkle — floating up from pet
+  const symbol = scene.particle === "heart" ? "♥" : scene.particle === "star" ? "★" : "✦";
+  const color = scene.particle === "heart" ? "#F08FA9" : scene.particle === "star" ? "#F2C84B" : "#7AB7E4";
+  return (
+    <>
+      {particles.map((p, i) => (
+        <span
+          key={`p-${scene.id}-${i}`}
+          aria-hidden
+          style={{
+            position: "absolute",
+            left: `calc(${petLeftPct}% + ${(i % 2 === 0 ? 1 : -1) * 14}px)`,
+            bottom: baseTop,
+            color,
+            fontSize: 18,
+            fontWeight: 800,
+            animation: `scene-particle-up 1.4s ease-out ${p.delay}ms infinite`,
+            pointerEvents: "none",
+            textShadow: "0 1px 2px rgba(0,0,0,0.18)",
+          }}
+        >
+          {symbol}
+        </span>
+      ))}
+    </>
   );
 }
 

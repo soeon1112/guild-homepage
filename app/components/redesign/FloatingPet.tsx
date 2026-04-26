@@ -64,6 +64,7 @@ import {
   STATUS_ICONS,
   TAB_ICONS,
   type ItemIconRender,
+  type SceneId,
 } from "@/src/lib/petArt";
 
 type Tab = "main" | "shop" | "wardrobe" | "playground" | "visit" | "ranking";
@@ -160,6 +161,7 @@ export default function FloatingPet() {
   const [pendingName, setPendingName] = useState("");
   const [shopCategory, setShopCategory] = useState<ItemCategory>("consumable");
   const [reaction, setReaction] = useState<PetReaction>(null);
+  const [activeScene, setActiveScene] = useState<SceneId | null>(null);
   const [boughtFlash, setBoughtFlash] = useState<string | null>(null);
 
   const visible = ready && canSeePets(nickname);
@@ -294,19 +296,18 @@ export default function FloatingPet() {
         } else {
           const inter = INTERACTIONS.find((i) => i.id === id);
           showToast(`${inter?.label} 완료!`);
-          // Map interaction → pet reaction overlay.
-          const map: Record<InteractionId, PetReaction> = {
-            feed: { kind: "fed" },
-            play: { kind: "play" },
-            wash: { kind: "clean" },
-            walk: { kind: "play" },
-            pet: { kind: "happy" },
-            treat: { kind: "fed" },
-            sleep: { kind: "sleep" },
-            train: { kind: "happy" },
+          // Trigger the cinematic scene matching this interaction.
+          const sceneMap: Record<InteractionId, SceneId> = {
+            feed: "feed",
+            play: "play",
+            wash: "wash",
+            walk: "walk",
+            pet: "pet",
+            treat: "treat",
+            sleep: "sleep",
+            train: "train",
           };
-          setReaction(map[id]);
-          setTimeout(() => setReaction(null), 1500);
+          setActiveScene(sceneMap[id]);
         }
       } finally {
         setBusy(false);
@@ -577,6 +578,8 @@ export default function FloatingPet() {
                   onRename={handleRename}
                   onRelease={handleRelease}
                   reaction={reaction}
+                  activeScene={activeScene}
+                  setActiveScene={setActiveScene}
                 />
               ) : tab === "shop" ? (
                 <ShopPanel
@@ -733,6 +736,8 @@ function MainPanel({
   onRename,
   onRelease,
   reaction,
+  activeScene,
+  setActiveScene,
 }: {
   pet: PetDoc;
   stage: ReturnType<typeof computeStage>;
@@ -752,6 +757,8 @@ function MainPanel({
   onRename: () => void;
   onRelease: () => void;
   reaction: PetReaction;
+  activeScene: SceneId | null;
+  setActiveScene: (s: SceneId | null) => void;
 }) {
   const stageLabel = PET_STAGES.find((s) => s.id === stage)?.label ?? "";
   return (
@@ -777,6 +784,8 @@ function MainPanel({
             hue={pet.hue ?? 0}
             reaction={reaction}
             height={280}
+            activeScene={activeScene}
+            onSceneEnd={() => setActiveScene(null)}
           />
           {bubble ? (
             <div
