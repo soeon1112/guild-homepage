@@ -16,9 +16,9 @@ import { avatarUrl } from "@/src/lib/avatarAssets";
 // promo. Only the admin nickname sees the banner until QA passes; after that
 // the gate is removed by editing ADMIN_ONLY → false. Auto-hides after EVENT_END.
 
-const EVENT_END = new Date("2026-04-28T23:59:59+09:00");
+const EVENT_END = new Date("2026-04-30T23:59:59+09:00");
 const ADMIN_NICKS: readonly string[] = ["언쏘"];
-const ADMIN_ONLY = true;
+const ADMIN_ONLY = false;
 const STONE_URL =
   "https://storage.googleapis.com/dawnlight-guild.firebasestorage.app/events/ghkstod.png";
 
@@ -107,9 +107,9 @@ export function RebirthEvent() {
           <span className="rebirth-banner-eyebrow">REBIRTH STONE</span>
           <span className="rebirth-banner-title">환생석 이벤트</span>
           <span className="rebirth-banner-desc">
-            이벤트 기간 동안 환생비 없이 체형 변경하기
+            환생비 없이 체형 변경하기
           </span>
-          <span className="rebirth-banner-period">~4/28</span>
+          <span className="rebirth-banner-period">~4/30</span>
         </span>
         <span className="rebirth-banner-sparkles" aria-hidden>
           {Array.from({ length: 6 }).map((_, i) => (
