@@ -22,6 +22,7 @@ import { db } from "@/src/lib/firebase";
 import { useAuth } from "@/app/components/AuthProvider";
 import {
   buyItem,
+  canDebugPet,
   canSeePets,
   computeBubble,
   computeMood,
@@ -729,6 +730,7 @@ export default function FloatingPet() {
                   setDebugType={setDebugType}
                   debugPicker={debugPicker}
                   setDebugPicker={setDebugPicker}
+                  isDebugAdmin={canDebugPet(nickname)}
                 />
               ) : tab === "shop" ? (
                 <ShopPanel
@@ -929,6 +931,7 @@ function MainPanel({
   setDebugType,
   debugPicker,
   setDebugPicker,
+  isDebugAdmin,
 }: {
   pet: PetDoc;
   stage: ReturnType<typeof computeStage>;
@@ -965,6 +968,7 @@ function MainPanel({
   setDebugType: (t: PetType | null) => void;
   debugPicker: "stage" | "type" | null;
   setDebugPicker: (p: "stage" | "type" | null) => void;
+  isDebugAdmin: boolean;
 }) {
   const stageLabel = PET_STAGES.find((s) => s.id === stage)?.label ?? "";
   return (
@@ -1246,7 +1250,11 @@ function MainPanel({
         ) : null}
       </div>
 
-      {/* ── Admin debug controls (visual override only, never persisted) ── */}
+      {/* ── Admin debug controls (visual override only, never persisted) ──
+          Hidden for non-admins now that the pet system is publicly
+          available; the stage/type force-overrides remain useful for
+          content authoring and screenshot review. */}
+      {isDebugAdmin ? (
       <div
         className="rounded-lg p-2"
         style={{ background: "rgba(120,180,200,0.12)", border: "1px dashed #60A5FA" }}
@@ -1334,6 +1342,7 @@ function MainPanel({
           </div>
         ) : null}
       </div>
+      ) : null}
 
       {/* Release + 꾸미기 controls */}
       <div className="mt-2 flex items-center justify-between">

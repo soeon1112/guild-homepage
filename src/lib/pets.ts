@@ -23,14 +23,23 @@ import {
 import { db } from "./firebase";
 
 // ── Admin gate ────────────────────────────────────────────────
-// While the system is in soft-launch, only this nickname sees any pet
-// UI. Flip to `null` (or remove the gate) when ready for full release.
-export const PET_ADMIN_NICKNAME = "언쏘";
+// Pet system was soft-launched gated to this nickname; full release
+// flipped `PET_ADMIN_NICKNAME` to `null` so every signed-in member
+// can see the pet UI. The debug controls (성장 단계 / 펫 종류 강제 변경)
+// stay limited to `PET_DEBUG_ADMIN_NICKNAME` so they don't bleed into
+// regular gameplay.
+export const PET_ADMIN_NICKNAME: string | null = null;
+export const PET_DEBUG_ADMIN_NICKNAME = "언쏘";
 
 export function canSeePets(nickname: string | null | undefined): boolean {
   if (!nickname) return false;
   if (PET_ADMIN_NICKNAME === null) return true;
   return nickname === PET_ADMIN_NICKNAME;
+}
+
+export function canDebugPet(nickname: string | null | undefined): boolean {
+  if (!nickname) return false;
+  return nickname === PET_DEBUG_ADMIN_NICKNAME;
 }
 
 // ── Pet types ─────────────────────────────────────────────────
