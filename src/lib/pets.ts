@@ -129,6 +129,11 @@ export function computeStage(createdAtMs: number, exp: number, nowMs: number): P
 }
 
 // Progress 0..1 toward the next stage (for UI bar). Returns 1 at adult.
+//
+// Purely EXP-based so that percent / gauge / "got/span XP" 표기가 모두
+// 일치한다. 실제 단계 advance는 `computeStage`에서 days ≥ dayMin AND
+// exp ≥ expMin 둘 다 충족해야 하므로, EXP 바가 100%여도 dayMin 미만
+// 이면 단계는 안 올라간다(이건 의도된 동작).
 export function computeStageProgress(
   createdAtMs: number,
   exp: number,
@@ -139,15 +144,9 @@ export function computeStageProgress(
   if (idx === PET_STAGES.length - 1) return 1;
   const cur = PET_STAGES[idx];
   const next = PET_STAGES[idx + 1];
-  const days = (nowMs - createdAtMs) / (1000 * 60 * 60 * 24);
-  const dayProg = next.dayMin > cur.dayMin
-    ? (days - cur.dayMin) / (next.dayMin - cur.dayMin)
-    : 1;
-  const expProg = next.expMin > cur.expMin
-    ? (exp - cur.expMin) / (next.expMin - cur.expMin)
-    : 1;
-  // Both axes contribute; the slower one gates progress visually.
-  return Math.max(0, Math.min(1, Math.min(dayProg, expProg)));
+  if (next.expMin <= cur.expMin) return 1;
+  const expProg = (exp - cur.expMin) / (next.expMin - cur.expMin);
+  return Math.max(0, Math.min(1, expProg));
 }
 
 // ── Decay rates ───────────────────────────────────────────────
