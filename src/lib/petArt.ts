@@ -1708,59 +1708,112 @@ const I_DYE: ItemIconRender = {
   resolve: colorMap({ B: "#5B3A1F", P: "#9D6BC0", w: "#FFFFFF", r: "#E76A6A", b: "#3D5DA8", g: "#3D8B3D", y: "#FFD56B" }),
 };
 
-// ── Scene-only props (cone, hand, butterfly, water drop, training ring) ──
+// ── Scene-only props (clearer/bigger than the shop icons) ──
+// Drawn at higher density so they read at small sizes inside the room.
+
+// 식기 — 갈색 그릇 + 사료 알갱이가 보이게
+const S_BOWL: ItemIconRender = {
+  grid: [
+    "..............",
+    "..............",
+    ".....BBBB.....",
+    "....BoookBB...",
+    "...BoOoOoooB..",
+    "..BoooOooOoooB",
+    "..BkkkkkkkkkkB",
+    ".BBBBBBBBBBBBB",
+    ".BkkkkkkkkkkkB",
+    ".BkkkkkkkkkkkB",
+    "..BBBBBBBBBBB.",
+    "...BBBBBBBBB..",
+    "..............",
+    "..............",
+  ],
+  resolve: colorMap({ B: "#5B3A1F", k: "#9C6A40", o: "#E0A060", O: "#A87038" }),
+};
+
+// 빨간 공 + 흰 무늬
+const S_BALL: ItemIconRender = {
+  grid: [
+    "..............",
+    "..............",
+    "....rrrrrr....",
+    "...rrwwwwrr...",
+    "..rrwwbbwwrr..",
+    "..rwwbbbbwwr..",
+    "..rwwbbbbwwr..",
+    "..rrwwbbwwrr..",
+    "...rrwwwwrr...",
+    "....rrrrrr....",
+    "..............",
+    "..............",
+    "..............",
+    "..............",
+  ],
+  resolve: colorMap({ r: "#E04545", w: "#FFFFFF", b: "#3D5DA8" }),
+};
+
+// 큰 쿠키 — 갈색 + 초콜릿칩
+const S_COOKIE: ItemIconRender = {
+  grid: [
+    "..............",
+    "..............",
+    "....cccccc....",
+    "...ccCcccCc...",
+    "..ccccccccccc.",
+    "..cCccccccCcc.",
+    "..ccccCcccccc.",
+    "..ccCcccccCcc.",
+    "..cccccccCccc.",
+    "...ccccccccc..",
+    "....cccccc....",
+    "..............",
+    "..............",
+    "..............",
+  ],
+  resolve: colorMap({ c: "#C58E5A", C: "#5B3A1F" }),
+};
+
+// 손 — 위에서 펫 머리 쓰다듬는 모양
 const S_HAND: ItemIconRender = {
   grid: [
-    "............",
-    "...kkkk.....",
-    "..kkkkkk....",
-    "..kkkkkkk...",
-    "..kkkkkkk...",
-    "..kkkkkkk...",
-    "...kkkkk....",
-    "....kkk.....",
-    "....kkk.....",
-    "....kkk.....",
-    "............",
-    "............",
+    "..............",
+    "....hhhh......",
+    "...hkkkkh.....",
+    "..hkkkkkkh....",
+    "..hkkkkkkh....",
+    "..hkkkkkkh....",
+    "..hkkkkkkh....",
+    "...hkkkkh.....",
+    "....kkkk......",
+    "....kkkk......",
+    "....kkkk......",
+    "..............",
+    "..............",
+    "..............",
   ],
-  resolve: colorMap({ k: "#E0B080" }),
+  resolve: colorMap({ h: "#A87850", k: "#E0B080" }),
 };
 
-const S_CONE: ItemIconRender = {
+// 허들 — 빨/흰 줄무늬 막대 + 검은 다리
+const S_HURDLE: ItemIconRender = {
   grid: [
-    "............",
-    "............",
-    "............",
-    ".....yy.....",
-    "....yyyy....",
-    "....wwww....",
-    "...yyyyyy...",
-    "...wwwwww...",
-    "..yyyyyyyy..",
-    "..kkkkkkkk..",
-    "..kkkkkkkk..",
-    "............",
+    "..............",
+    "..............",
+    "..............",
+    "..............",
+    ".rrrrrrrrrrrr.",
+    ".wwwwwwwwwwww.",
+    ".rrrrrrrrrrrr.",
+    ".k..........k.",
+    ".k..........k.",
+    ".k..........k.",
+    "kkk........kkk",
+    "..............",
+    "..............",
+    "..............",
   ],
-  resolve: colorMap({ y: "#F08A4B", w: "#FFFFFF", k: "#3A3A3A" }),
-};
-
-const S_RING: ItemIconRender = {
-  grid: [
-    "............",
-    "............",
-    "....rrrr....",
-    "...r....r...",
-    "..r......r..",
-    "..r......r..",
-    "..r......r..",
-    "..r......r..",
-    "...r....r...",
-    "....rrrr....",
-    "............",
-    "............",
-  ],
-  resolve: colorMap({ r: "#E76A6A" }),
+  resolve: colorMap({ r: "#E04545", w: "#FFFFFF", k: "#2A2A2A" }),
 };
 
 const S_BUTTERFLY: ItemIconRender = {
@@ -1819,8 +1872,10 @@ const S_LEAF: ItemIconRender = {
 
 export const SCENE_SPRITES = {
   hand: S_HAND,
-  cone: S_CONE,
-  ring: S_RING,
+  bowl: S_BOWL,
+  ball: S_BALL,
+  cookie: S_COOKIE,
+  hurdle: S_HURDLE,
   butterfly: S_BUTTERFLY,
   drop: S_DROP,
   leaf: S_LEAF,
@@ -1836,13 +1891,11 @@ export type Scene = {
   id: SceneId;
   durationMs: number;
   overlay: SceneOverlay;
-  // prop placed in the scene (relative to room canvas: x %, y from floor px, size %)
-  prop?: { sprite: "bowl" | "ball" | "treat" | "bed" | "cake" | SceneSpriteId; x: number; size: number; floorOffset?: number };
-  // pet animation override during the scene
+  // prop placed in the scene. `size` is now a fraction of pet size
+  // (0.4 = 40% of the pet sprite width). Renderer scales accordingly.
+  prop?: { sprite: SceneSpriteId; x: number; size: number; floorOffset?: number };
   petAnim: "eat" | "chase" | "shake" | "run" | "happy" | "sleep" | "jump";
-  // particle effect glyph
   particle: "heart" | "star" | "drop" | "zzz" | "leaf" | "sparkle";
-  // pet's anchor position during scene (-1..1)
   petAnchor?: number;
   // hand prop floats above the pet
   handAbovePet?: boolean;
@@ -1851,18 +1904,20 @@ export type Scene = {
 export const SCENES: Record<SceneId, Scene> = {
   feed: {
     id: "feed",
-    durationMs: 2600,
+    durationMs: 2800,
     overlay: "none",
-    prop: { sprite: "bowl", x: 50, size: 18, floorOffset: 0 },
+    // Bowl in front of pet on the floor — slightly to the right so pet
+    // can lean over it. Prop sized at ~70% of pet so it's clearly visible.
+    prop: { sprite: "bowl", x: 62, size: 0.7, floorOffset: 0 },
     petAnim: "eat",
     particle: "heart",
-    petAnchor: 0,
+    petAnchor: -0.1,
   },
   play: {
     id: "play",
-    durationMs: 3400,
+    durationMs: 3600,
     overlay: "none",
-    prop: { sprite: "ball", x: 70, size: 14, floorOffset: 0 },
+    prop: { sprite: "ball", x: 70, size: 0.45, floorOffset: 0 },
     petAnim: "chase",
     particle: "star",
   },
@@ -1885,7 +1940,7 @@ export const SCENES: Record<SceneId, Scene> = {
     id: "pet",
     durationMs: 2600,
     overlay: "none",
-    prop: { sprite: "hand", x: 50, size: 14, floorOffset: 0 },
+    prop: { sprite: "hand", x: 50, size: 0.55, floorOffset: 0 },
     petAnim: "happy",
     particle: "heart",
     petAnchor: 0,
@@ -1893,12 +1948,12 @@ export const SCENES: Record<SceneId, Scene> = {
   },
   treat: {
     id: "treat",
-    durationMs: 2600,
+    durationMs: 2800,
     overlay: "none",
-    prop: { sprite: "treat", x: 50, size: 14, floorOffset: 0 },
+    prop: { sprite: "cookie", x: 62, size: 0.5, floorOffset: 0 },
     petAnim: "eat",
     particle: "star",
-    petAnchor: 0,
+    petAnchor: -0.1,
   },
   sleep: {
     id: "sleep",
@@ -1912,10 +1967,10 @@ export const SCENES: Record<SceneId, Scene> = {
     id: "train",
     durationMs: 3400,
     overlay: "none",
-    prop: { sprite: "cone", x: 50, size: 16, floorOffset: 0 },
+    prop: { sprite: "hurdle", x: 60, size: 0.6, floorOffset: 0 },
     petAnim: "jump",
     particle: "sparkle",
-    petAnchor: -0.3,
+    petAnchor: -0.15,
   },
 };
 

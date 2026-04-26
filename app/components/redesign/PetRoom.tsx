@@ -462,6 +462,88 @@ function PetRoomInner({
           })}
       </svg>
 
+      {/* ── Scene overlays (bath/park/dark) — rendered BEFORE the pet
+          so the pet stays visible on top of the new background. ── */}
+      {activeScene && SCENES[activeScene].overlay !== "none" ? (
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            inset: 0,
+            pointerEvents: "none",
+            background:
+              SCENES[activeScene].overlay === "bath"
+                ? "linear-gradient(180deg, #BDE5F4 0%, #BDE5F4 50%, #8BC8E0 50%, #8BC8E0 100%)"
+                : SCENES[activeScene].overlay === "park"
+                ? "linear-gradient(180deg, #8FC9F0 0%, #8FC9F0 60%, #76C172 60%, #5DAB5A 100%)"
+                : SCENES[activeScene].overlay === "dark"
+                ? "linear-gradient(180deg, rgba(20,15,55,0.55) 0%, rgba(10,8,35,0.7) 100%)"
+                : "transparent",
+            animation: "scene-fade-in 0.35s ease-out",
+          }}
+        >
+          {SCENES[activeScene].overlay === "bath" ? (
+            // Simple white-on-blue tile pattern.
+            <svg viewBox="0 0 320 200" width="100%" height="100%" preserveAspectRatio="none" style={{ display: "block" }}>
+              {Array.from({ length: 9 }).map((_, i) => (
+                <line key={`bv-${i}`} x1={(i + 1) * 32} y1={0} x2={(i + 1) * 32} y2={200} stroke="#FFFFFF" strokeWidth={1.5} opacity={0.55} />
+              ))}
+              {Array.from({ length: 6 }).map((_, i) => (
+                <line key={`bh-${i}`} x1={0} y1={(i + 1) * 28} x2={320} y2={(i + 1) * 28} stroke="#FFFFFF" strokeWidth={1.5} opacity={0.55} />
+              ))}
+              {/* shower head silhouette */}
+              <rect x={150} y={4} width={20} height={6} fill="#7C9DB4" />
+              <rect x={154} y={10} width={12} height={3} fill="#7C9DB4" />
+            </svg>
+          ) : null}
+          {SCENES[activeScene].overlay === "park" ? (
+            // Round sun + clouds + simple trees + grass blades.
+            <svg viewBox="0 0 320 200" width="100%" height="100%" preserveAspectRatio="none" style={{ display: "block" }}>
+              {/* Sun (real circle) with rays */}
+              <g>
+                {Array.from({ length: 8 }).map((_, i) => {
+                  const a = (i * Math.PI) / 4;
+                  const x1 = 264 + Math.cos(a) * 22;
+                  const y1 = 36 + Math.sin(a) * 22;
+                  const x2 = 264 + Math.cos(a) * 30;
+                  const y2 = 36 + Math.sin(a) * 30;
+                  return <line key={`ray-${i}`} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#FFE873" strokeWidth={3} strokeLinecap="round" />;
+                })}
+                <circle cx={264} cy={36} r={16} fill="#FFE873" stroke="#F2C84B" strokeWidth={1.5} />
+              </g>
+              {/* Clouds */}
+              <g fill="#FFFFFF" opacity={0.92}>
+                <ellipse cx={70} cy={32} rx={20} ry={8} />
+                <ellipse cx={80} cy={28} rx={14} ry={7} />
+                <ellipse cx={170} cy={48} rx={18} ry={7} />
+                <ellipse cx={180} cy={44} rx={12} ry={6} />
+              </g>
+              {/* Trees (simple — brown trunk + green canopy) */}
+              <g>
+                <rect x={36} y={88} width={6} height={24} fill="#5B3A1F" />
+                <circle cx={39} cy={84} r={14} fill="#4A9C40" />
+                <circle cx={32} cy={88} r={9} fill="#4A9C40" />
+                <circle cx={46} cy={88} r={9} fill="#4A9C40" />
+                <rect x={290} y={92} width={6} height={20} fill="#5B3A1F" />
+                <circle cx={293} cy={88} r={11} fill="#4A9C40" />
+                <circle cx={286} cy={92} r={7} fill="#4A9C40" />
+                <circle cx={300} cy={92} r={7} fill="#4A9C40" />
+              </g>
+              {/* Grass blades on the ground */}
+              {Array.from({ length: 24 }).map((_, i) => {
+                const x = (i * 14) + (i % 2 ? 3 : 0);
+                const baseY = 130 + (i % 4) * 12;
+                return <rect key={`g-${i}`} x={x} y={baseY} width={2} height={6} fill="#4A8E47" />;
+              })}
+            </svg>
+          ) : null}
+          {SCENES[activeScene].overlay === "dark" ? (
+            // No moon inside the room — just the dark overlay (per user).
+            null
+          ) : null}
+        </div>
+      ) : null}
+
       {/* Pet — HTML overlay so we can freely transition position */}
       <div
         style={{
@@ -474,6 +556,7 @@ function PetRoomInner({
           transform: `scaleX(${facing === "right" ? 1 : -1})`,
           transition: walkDuration > 0 ? `left ${walkDuration}ms ease-in-out` : "none",
           willChange: "transform, left",
+          zIndex: 2,
         }}
       >
         <div
@@ -535,62 +618,7 @@ function PetRoomInner({
         </div>
       </div>
 
-      {/* ── Scene overlays (bath/park/dark) ── */}
-      {activeScene && SCENES[activeScene].overlay !== "none" ? (
-        <div
-          aria-hidden
-          style={{
-            position: "absolute",
-            inset: 0,
-            pointerEvents: "none",
-            background:
-              SCENES[activeScene].overlay === "bath"
-                ? "linear-gradient(180deg, #BDE5F4 0%, #BDE5F4 50%, #8BC8E0 50%, #8BC8E0 100%)"
-                : SCENES[activeScene].overlay === "park"
-                ? "linear-gradient(180deg, #B5E0FF 0%, #B5E0FF 55%, #76C172 55%, #5DAB5A 100%)"
-                : SCENES[activeScene].overlay === "dark"
-                ? "linear-gradient(180deg, rgba(20,15,55,0.55) 0%, rgba(10,8,35,0.7) 100%)"
-                : "transparent",
-            animation: "scene-fade-in 0.35s ease-out",
-          }}
-        >
-          {/* Bath tile pattern */}
-          {SCENES[activeScene].overlay === "bath" ? (
-            <svg viewBox="0 0 320 200" width="100%" height="100%" preserveAspectRatio="none" style={{ display: "block" }}>
-              {Array.from({ length: 8 }).map((_, i) => (
-                <line key={`bv-${i}`} x1={(i + 1) * 40} y1={0} x2={(i + 1) * 40} y2={200} stroke="#FFFFFF" strokeWidth={1} opacity={0.4} />
-              ))}
-              {Array.from({ length: 5 }).map((_, i) => (
-                <line key={`bh-${i}`} x1={0} y1={(i + 1) * 40} x2={320} y2={(i + 1) * 40} stroke="#FFFFFF" strokeWidth={1} opacity={0.4} />
-              ))}
-            </svg>
-          ) : null}
-          {/* Park grass texture */}
-          {SCENES[activeScene].overlay === "park" ? (
-            <svg viewBox="0 0 320 200" width="100%" height="100%" preserveAspectRatio="none" style={{ display: "block" }}>
-              {Array.from({ length: 18 }).map((_, i) => (
-                <rect key={`g-${i}`} x={i * 18 + (i % 2 ? 4 : 0)} y={130 + (i % 3) * 6} width={2} height={6} fill="#4A8E47" />
-              ))}
-              {/* Sun */}
-              <circle cx={260} cy={32} r={14} fill="#FFE873" opacity={0.85} />
-            </svg>
-          ) : null}
-          {/* Dark scene moon + stars */}
-          {SCENES[activeScene].overlay === "dark" ? (
-            <svg viewBox="0 0 320 200" width="100%" height="100%" preserveAspectRatio="none" style={{ display: "block" }}>
-              <circle cx={250} cy={36} r={14} fill="#FFE873" opacity={0.95} />
-              <circle cx={244} cy={32} r={11} fill="rgba(20,15,55,0.7)" />
-              {[
-                [40, 28], [80, 50], [120, 24], [200, 18], [180, 60], [60, 80], [100, 14], [220, 44],
-              ].map(([x, y], i) => (
-                <circle key={`s-${i}`} cx={x as number} cy={y as number} r={1.5} fill="#FFFFFF" opacity={0.85} />
-              ))}
-            </svg>
-          ) : null}
-        </div>
-      ) : null}
-
-      {/* ── Scene prop (bowl, ball, hand, cone, treat) ── */}
+      {/* ── Scene prop (bowl, ball, hand, cookie, hurdle) ── */}
       {activeScene && SCENES[activeScene].prop ? (
         <ScenePropView
           scene={SCENES[activeScene]}
@@ -638,15 +666,13 @@ function ScenePropView({
 }) {
   const propId = scene.prop?.sprite;
   if (!propId) return null;
-  const isItem = propId === "bowl" || propId === "ball" || propId === "treat" || propId === "bed" || propId === "cake";
-  const sprite = isItem
-    ? (ITEM_ICONS[propId === "bowl" ? "bowlBasic" : propId === "ball" ? "toyBall" : propId === "treat" ? "treat" : propId === "bed" ? "bed" : "cake"])
-    : SCENE_SPRITES[propId as keyof typeof SCENE_SPRITES];
+  const sprite = SCENE_SPRITES[propId];
   if (!sprite) return null;
 
   const grid = sprite.grid;
   const cols = Math.max(...grid.map((r) => r.length));
-  const sizePx = (scene.prop!.size / 100) * 320; // logical width
+  // size is now a fraction of pet size (0..1).
+  const sizePx = scene.prop!.size * petSize;
   const px = sizePx / cols;
   const cells: React.ReactElement[] = [];
   for (let r = 0; r < grid.length; r++) {
@@ -669,11 +695,13 @@ function ScenePropView({
         style={{
           position: "absolute",
           left: `${petLeftPct}%`,
-          bottom: petBottom + petSize - 4,
-          width: sizePx * 0.5,
-          marginLeft: -(sizePx * 0.25),
+          bottom: petBottom + petSize - 8,
+          width: sizePx,
+          height: sizePx,
+          marginLeft: -sizePx / 2,
           animation: "scene-fade-in 0.3s ease-out, pet-bob 0.7s ease-in-out infinite 0.3s",
           pointerEvents: "none",
+          zIndex: 3,
         }}
       >
         <svg viewBox={`0 0 ${cols * px} ${grid.length * px}`} width="100%" height="100%" style={{ display: "block" }}>
@@ -683,6 +711,9 @@ function ScenePropView({
     );
   }
 
+  // Ball during play scene — bouncing animation
+  const isPlayBall = scene.id === "play" && propId === "ball";
+
   return (
     <div
       aria-hidden
@@ -690,10 +721,14 @@ function ScenePropView({
         position: "absolute",
         left: `${scene.prop!.x}%`,
         bottom: petBottom + (scene.prop!.floorOffset ?? 0),
-        width: sizePx * 0.45,
-        marginLeft: -(sizePx * 0.225),
-        animation: "scene-fade-in 0.4s ease-out",
+        width: sizePx,
+        height: sizePx,
+        marginLeft: -sizePx / 2,
+        animation: isPlayBall
+          ? "scene-fade-in 0.3s ease-out, scene-ball-bounce 1.4s ease-in-out infinite"
+          : "scene-fade-in 0.4s ease-out",
         pointerEvents: "none",
+        zIndex: 3,
       }}
     >
       <svg viewBox={`0 0 ${cols * px} ${grid.length * px}`} width="100%" height="100%" style={{ display: "block" }}>
