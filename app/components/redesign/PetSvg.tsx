@@ -7,7 +7,7 @@
 
 "use client";
 
-import { memo, type ReactElement } from "react";
+import { memo, useEffect, useState, type ReactElement } from "react";
 import {
   ACCESSORY_SPRITES,
   accessoryColor,
@@ -16,6 +16,9 @@ import {
   EGG_SPRITE,
   ITEM_ICONS,
   pixelColor,
+  SPARKLE_FRAMES,
+  sparkleColor,
+  spriteCols,
   spriteFor,
   type AccessoryGrid,
   type BackgroundGrid,
@@ -31,7 +34,8 @@ import {
   type PetType,
 } from "@/src/lib/pets";
 
-const CANVAS = 16; // logical pixel grid size (matches petArt sprites)
+const ACCESSORY_CANVAS = 16; // overlay sprites are still 16×16
+const SPARKLE_INTERVAL_MS = 420;
 
 type PetSvgProps = {
   type: PetType;
@@ -89,13 +93,30 @@ function PetSvgInner({
   // Body-only dye: replace primary while keeping secondary/accent/etc.
   const palette = bodyColor ? { ...basePalette, primary: bodyColor } : basePalette;
   const sprite = stage === "egg" ? EGG_SPRITE : spriteFor(type, stage);
-  const px = size / CANVAS;
+  // Adult sprites are drawn at 32×32 — body cell pixel-size is derived
+  // from the grid so the body fits the same display rect at any res.
+  const bodyPx = size / spriteCols(sprite);
+  const overlayPx = size / ACCESSORY_CANVAS;
+  const sparklePx = size / spriteCols(SPARKLE_FRAMES[0]!);
 
   // Egg uses primary tint via the palette resolver too.
   const petResolve = (code: string) => pixelColor(code, palette);
 
   const filterId = `pet-filter-${type}-${stage}-${hue}`;
   const useFilter = hue !== 0 || glow;
+
+  // Adult-only twinkle: tiny sparkle in different corners cycling.
+  // Each instance starts at a random frame so multiple pets desync.
+  const [sparkleFrame, setSparkleFrame] = useState(() =>
+    Math.floor(Math.random() * SPARKLE_FRAMES.length),
+  );
+  useEffect(() => {
+    if (stage !== "adult") return;
+    const id = setInterval(() => {
+      setSparkleFrame((f) => (f + 1) % SPARKLE_FRAMES.length);
+    }, SPARKLE_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [stage]);
 
   return (
     <svg
@@ -130,12 +151,12 @@ function PetSvgInner({
 
       {/* Background layer (always drawn first) */}
       {background !== "none" && BACKGROUND_SPRITES[background]
-        ? renderGrid(BACKGROUND_SPRITES[background], backgroundColor, px, "bg")
+        ? renderGrid(BACKGROUND_SPRITES[background], backgroundColor, overlayPx, "bg")
         : null}
 
       {/* Pet sprite */}
       <g filter={useFilter ? `url(#${filterId})` : undefined}>
-        {renderGrid(sprite, petResolve, px, "pet")}
+        {renderGrid(sprite, petResolve, bodyPx, "pet")}
       </g>
 
       {/* Accessories on top — order: scarf, necklace, bell, cape, wings,
@@ -146,7 +167,7 @@ function PetSvgInner({
           const grid = ACCESSORY_SPRITES[id];
           if (!grid) return null;
           return (
-            <g key={id}>{renderGrid(grid, accessoryColor, px, `acc-${id}`)}</g>
+            <g key={id}>{renderGrid(grid, accessoryColor, overlayPx, `acc-${id}`)}</g>
           );
         })}
 
@@ -173,9 +194,14 @@ function PetSvgInner({
               "................",
             ],
             (c) => (c === "B" ? "#1A1A1A" : null),
-            px,
+            overlayPx,
             "sad",
           )
+        : null}
+
+      {/* Adult-only sparkle decoration */}
+      {stage === "adult" && SPARKLE_FRAMES[sparkleFrame]
+        ? renderGrid(SPARKLE_FRAMES[sparkleFrame]!, sparkleColor, sparklePx, "spk")
         : null}
     </svg>
   );

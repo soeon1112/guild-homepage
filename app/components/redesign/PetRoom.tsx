@@ -10,7 +10,7 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import {
   ACCESSORY_SPRITES,
   accessoryColor,
-  BLINK_OVERLAY,
+  blinkOverlayFor,
   effectiveBehavior,
   EGG_SPRITE,
   FURNITURE_PLACEMENTS,
@@ -19,6 +19,9 @@ import {
   ROOM_THEMES,
   SCENE_SPRITES,
   SCENES,
+  SPARKLE_FRAMES,
+  sparkleColor,
+  spriteCols,
   spriteFor,
   type ItemIconRender,
   type PixelGrid,
@@ -80,8 +83,7 @@ function gridRects(
   const out: React.ReactElement[] = [];
   for (let r = 0; r < grid.length; r++) {
     const row = grid[r] ?? "";
-    const limit = Math.min(row.length, SPRITE_GRID);
-    for (let c = 0; c < limit; c++) {
+    for (let c = 0; c < row.length; c++) {
       const code = row[c]!;
       const fill = resolve(code);
       if (!fill) continue;
@@ -125,6 +127,14 @@ function PetRoomInner({
   const basePalette = PET_PALETTE[type];
   const palette = bodyColor ? { ...basePalette, primary: bodyColor } : basePalette;
   const sprite = stage === "egg" ? EGG_SPRITE : spriteFor(type, stage);
+  // viewBox is fixed at SPRITE_GRID×SPRITE_GRID logical units; body sprites
+  // come in 16- or 32-column variants. For 32-col adult sprites the body
+  // fits the same display rect at pixelSize 0.5 (twice the resolution).
+  const bodyPx = SPRITE_GRID / spriteCols(sprite);
+  const blinkGrid = blinkOverlayFor(sprite);
+  const blinkPx = SPRITE_GRID / spriteCols(blinkGrid);
+  const sparkleGrid = SPARKLE_FRAMES[0]!;
+  const sparklePx = SPRITE_GRID / spriteCols(sparkleGrid);
   const useFilter = hue !== 0 || glow;
 
   // Logical viewBox for the room SVG. Pet is rendered as an HTML div
@@ -152,6 +162,18 @@ function PetRoomInner({
   const [facing, setFacing] = useState<"left" | "right">("right");
   const [blink, setBlink] = useState(false);
   const [activeAction, setActiveAction] = useState<SpecialAction>("none");
+  // Adult-only twinkle: cycle SPARKLE_FRAMES so a small star occasionally
+  // appears in different corners around the pet.
+  const [sparkleFrame, setSparkleFrame] = useState(() =>
+    Math.floor(Math.random() * SPARKLE_FRAMES.length),
+  );
+  useEffect(() => {
+    if (stage !== "adult") return;
+    const id = setInterval(() => {
+      setSparkleFrame((f) => (f + 1) % SPARKLE_FRAMES.length);
+    }, 420);
+    return () => clearInterval(id);
+  }, [stage]);
   const walkDurRef = useRef(0);
 
   // ── Long-press drag for furniture (placement mode) ──
@@ -1010,10 +1032,10 @@ function PetRoomInner({
               </defs>
             ) : null}
             <g filter={useFilter ? `url(#pf-${type}-${stage}-${hue}-${glow ? 1 : 0})` : undefined}>
-              {gridRects(sprite, (c) => pixelColor(c, palette), 1, 0, 0, "pet-body")}
+              {gridRects(sprite, (c) => pixelColor(c, palette), bodyPx, 0, 0, "pet-body")}
               {/* Blink overlay — paints over the eye band with primary color */}
               {blink && !isEgg
-                ? gridRects(BLINK_OVERLAY, (c) => pixelColor(c, palette), 1, 0, 0, "blink")
+                ? gridRects(blinkGrid, (c) => pixelColor(c, palette), blinkPx, 0, 0, "blink")
                 : null}
             </g>
             {/* Accessories */}
@@ -1033,6 +1055,10 @@ function PetRoomInner({
                 <rect x={8} y={12} width={1} height={1} fill="#1A1A1A" />
               </g>
             ) : null}
+            {/* Adult-only sparkle decoration */}
+            {stage === "adult" && SPARKLE_FRAMES[sparkleFrame]
+              ? gridRects(SPARKLE_FRAMES[sparkleFrame]!, sparkleColor, sparklePx, 0, 0, "spk")
+              : null}
           </svg>
         </div>
       </div>
