@@ -503,16 +503,20 @@ export async function doInteraction(
     clean: clamp(projected.clean + (inter.effects.clean ?? 0)),
   };
 
-  // Apply exp-boost multiplier if active.
-  let gain = inter.effects.expGain;
-  // Penalty: if any current status (PROJECTED, before this action's
-  // boost is applied) has decayed to 30% or less, exp gain is halved.
-  // Encourages keeping the pet healthy as a prerequisite for growth.
-  if (projected.hunger <= 30 || projected.happiness <= 30 || projected.clean <= 30) {
-    gain = Math.max(1, Math.floor(gain / 2));
+  // Compute exp gain. 0 EXP 상호작용(현재는 없음, 미래 안전망)에서는
+  // 페널티/부스터 모두 미적용 — 부스터 횟수도 차감 안 됨.
+  const baseExp = inter.effects.expGain;
+  let gain = baseExp;
+  if (baseExp > 0) {
+    // Penalty: if any current status (PROJECTED, before this action's
+    // boost is applied) has decayed to 30% or less, exp gain is halved.
+    // Encourages keeping the pet healthy as a prerequisite for growth.
+    if (projected.hunger <= 30 || projected.happiness <= 30 || projected.clean <= 30) {
+      gain = Math.max(1, Math.floor(gain / 2));
+    }
   }
   const boostRemaining = pet.expBoostRemaining ?? 0;
-  const usedBoost = boostRemaining > 0;
+  const usedBoost = baseExp > 0 && boostRemaining > 0;
   if (usedBoost) {
     gain = gain * 2;
   }
