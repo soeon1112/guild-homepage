@@ -61,6 +61,7 @@ import {
   type ItemId,
   type PetDoc,
   type PetItemsDoc,
+  type PetStage,
   type PetType,
 } from "@/src/lib/pets";
 import { ItemIconSvg, PetSvg } from "./PetSvg";
@@ -181,6 +182,10 @@ export default function FloatingPet() {
   const [placementMode, setPlacementMode] = useState(false);
   const [selectedFurniture, setSelectedFurniture] = useState<ItemId | null>(null);
   const [dyePicker, setDyePicker] = useState<{ open: boolean; preview: string | null }>({ open: false, preview: null });
+  // ── Admin-only debug overrides (visual only, never persisted) ──
+  const [debugStage, setDebugStage] = useState<PetStage | null>(null);
+  const [debugType, setDebugType] = useState<PetType | null>(null);
+  const [debugPicker, setDebugPicker] = useState<"stage" | "type" | null>(null);
 
   // Move a placed furniture to a new (x, y) and persist.
   const handleMoveFurniture = useCallback(
@@ -636,6 +641,12 @@ export default function FloatingPet() {
                   dyePicker={dyePicker}
                   setDyePicker={setDyePicker}
                   onApplyDye={handleApplyDye}
+                  debugStage={debugStage}
+                  setDebugStage={setDebugStage}
+                  debugType={debugType}
+                  setDebugType={setDebugType}
+                  debugPicker={debugPicker}
+                  setDebugPicker={setDebugPicker}
                 />
               ) : tab === "shop" ? (
                 <ShopPanel
@@ -826,6 +837,12 @@ function MainPanel({
   dyePicker,
   setDyePicker,
   onApplyDye,
+  debugStage,
+  setDebugStage,
+  debugType,
+  setDebugType,
+  debugPicker,
+  setDebugPicker,
 }: {
   pet: PetDoc;
   stage: ReturnType<typeof computeStage>;
@@ -855,6 +872,12 @@ function MainPanel({
   dyePicker: { open: boolean; preview: string | null };
   setDyePicker: (s: { open: boolean; preview: string | null }) => void;
   onApplyDye: (color: string | null) => void;
+  debugStage: PetStage | null;
+  setDebugStage: (s: PetStage | null) => void;
+  debugType: PetType | null;
+  setDebugType: (t: PetType | null) => void;
+  debugPicker: "stage" | "type" | null;
+  setDebugPicker: (p: "stage" | "type" | null) => void;
 }) {
   const stageLabel = PET_STAGES.find((s) => s.id === stage)?.label ?? "";
   return (
@@ -870,8 +893,8 @@ function MainPanel({
       >
         <div className="relative">
           <PetRoom
-            type={pet.type}
-            stage={stage}
+            type={debugType ?? pet.type}
+            stage={debugStage ?? stage}
             accessories={pet.accessories ?? []}
             furniture={pet.furniture ?? []}
             furniturePositions={pet.furniturePositions}
@@ -1093,6 +1116,95 @@ function MainPanel({
                 적용
               </button>
             </div>
+          </div>
+        ) : null}
+      </div>
+
+      {/* ── Admin debug controls (visual override only, never persisted) ── */}
+      <div
+        className="rounded-lg p-2"
+        style={{ background: "rgba(120,180,200,0.12)", border: "1px dashed #7AAEE0" }}
+      >
+        <div className="flex items-center justify-between">
+          <span className="font-serif text-[10px] text-[#3D5DA8]">🛠 디버그 (관리자)</span>
+          {debugStage || debugType ? (
+            <button
+              onClick={() => {
+                setDebugStage(null);
+                setDebugType(null);
+                setDebugPicker(null);
+              }}
+              className="rounded-full px-2 py-0.5 font-serif text-[10px] text-white"
+              style={{ background: "#3D5DA8" }}
+            >
+              원래대로
+            </button>
+          ) : null}
+        </div>
+        <div className="mt-1 flex flex-wrap gap-1.5">
+          <button
+            onClick={() => setDebugPicker(debugPicker === "stage" ? null : "stage")}
+            className="rounded-md px-2 py-1 font-serif text-[10px]"
+            style={{
+              background: debugPicker === "stage" ? "rgba(122,174,224,0.5)" : "rgba(255,255,255,0.7)",
+              border: "1px solid #7AAEE0",
+              color: "#3D5DA8",
+            }}
+          >
+            성장 단계 테스트{debugStage ? ` · ${PET_STAGES.find((s) => s.id === debugStage)?.label}` : ""}
+          </button>
+          <button
+            onClick={() => setDebugPicker(debugPicker === "type" ? null : "type")}
+            className="rounded-md px-2 py-1 font-serif text-[10px]"
+            style={{
+              background: debugPicker === "type" ? "rgba(122,174,224,0.5)" : "rgba(255,255,255,0.7)",
+              border: "1px solid #7AAEE0",
+              color: "#3D5DA8",
+            }}
+          >
+            펫 종류 테스트{debugType ? ` · ${PET_TYPES.find((t) => t.id === debugType)?.label}` : ""}
+          </button>
+        </div>
+        {debugPicker === "stage" ? (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {PET_STAGES.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => {
+                  setDebugStage(s.id);
+                  setDebugPicker(null);
+                }}
+                className="rounded-md px-2 py-1 font-serif text-[10px]"
+                style={{
+                  background: debugStage === s.id ? "#3D5DA8" : "rgba(255,255,255,0.85)",
+                  color: debugStage === s.id ? "white" : "#3D5DA8",
+                  border: "1px solid #7AAEE0",
+                }}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {debugPicker === "type" ? (
+          <div className="mt-2 grid grid-cols-3 gap-1">
+            {PET_TYPES.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => {
+                  setDebugType(t.id);
+                  setDebugPicker(null);
+                }}
+                className="rounded-md px-2 py-1 font-serif text-[10px]"
+                style={{
+                  background: debugType === t.id ? "#3D5DA8" : "rgba(255,255,255,0.85)",
+                  color: debugType === t.id ? "white" : "#3D5DA8",
+                  border: "1px solid #7AAEE0",
+                }}
+              >
+                {t.label}
+              </button>
+            ))}
           </div>
         ) : null}
       </div>
