@@ -155,18 +155,17 @@ function PetSvgInner({
         : null}
 
       {/* Behind-pet accessories (cape + wings drape behind the body so the
-          pet itself stays in front). Hidden at egg stage — no body to drape on. */}
-      {stage !== "egg"
-        ? (["cape", "wings"] as ItemId[])
-            .filter((id) => accessories.includes(id))
-            .map((id) => {
-              const grid = ACCESSORY_SPRITES[id];
-              if (!grid) return null;
-              return (
-                <g key={id}>{renderGrid(grid, accessoryColor, overlayPx, `acc-${id}`)}</g>
-              );
-            })
-        : null}
+          pet itself stays in front). Always render — equipping is the
+          user's choice; we don't gate by stage. */}
+      {(["cape", "wings"] as ItemId[])
+        .filter((id) => accessories.includes(id))
+        .map((id) => {
+          const grid = ACCESSORY_SPRITES[id];
+          if (!grid) return null;
+          return (
+            <g key={id}>{renderGrid(grid, accessoryColor, overlayPx, `acc-${id}`)}</g>
+          );
+        })}
 
       {/* Pet sprite */}
       <g filter={useFilter ? `url(#${filterId})` : undefined}>
@@ -174,18 +173,16 @@ function PetSvgInner({
       </g>
 
       {/* Front-pet accessories — head/neck items (scarf, necklace, bell,
-          ribbon, hat, crown, glasses). Hidden at egg stage. */}
-      {stage !== "egg"
-        ? (["scarf", "necklace", "bell", "ribbon", "hat", "crown", "glasses"] as ItemId[])
-            .filter((id) => accessories.includes(id))
-            .map((id) => {
-              const grid = ACCESSORY_SPRITES[id];
-              if (!grid) return null;
-              return (
-                <g key={id}>{renderGrid(grid, accessoryColor, overlayPx, `acc-${id}`)}</g>
-              );
-            })
-        : null}
+          ribbon, hat, crown, glasses). */}
+      {(["scarf", "necklace", "bell", "ribbon", "hat", "crown", "glasses"] as ItemId[])
+        .filter((id) => accessories.includes(id))
+        .map((id) => {
+          const grid = ACCESSORY_SPRITES[id];
+          if (!grid) return null;
+          return (
+            <g key={id}>{renderGrid(grid, accessoryColor, overlayPx, `acc-${id}`)}</g>
+          );
+        })}
 
       {/* Sad mouth overlay if mood is sad */}
       {mood === "sad"
