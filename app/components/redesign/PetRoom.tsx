@@ -1,11 +1,8 @@
-// PetRoom — game-feel "펫 방" stage. Renders walls + floor (or
-// purchased outdoor background), placed furniture, and the animated
-// pet sprite walking across the room. Also exposes a brief "react"
-// animation triggered after an interaction (bounce + heart particles
-// for happy ones, zZ for sleep, sparkle for clean, etc).
-//
-// Mirrored in dawnlight-app/src/components/PetRoom.tsx using
-// react-native-reanimated for the animations.
+// PetRoom — game-feel "펫 방". Walls + wood floor + furniture + a
+// state-machine-driven pet that idles, walks to random spots (5–10s
+// cadence), occasionally sits, blinks every 2–3s, and faces its
+// movement direction. Mirrored in dawnlight-app/src/components/PetRoom.tsx
+// using react-native-reanimated.
 
 "use client";
 
@@ -15,6 +12,7 @@ import {
   accessoryColor,
   BACKGROUND_SPRITES,
   backgroundColor,
+  BLINK_OVERLAY,
   EGG_SPRITE,
   FURNITURE_PLACEMENTS,
   ITEM_ICONS,
@@ -46,6 +44,8 @@ export type PetReaction =
   | { kind: "sleep" }
   | { kind: "play" }
   | null;
+
+type Mode = "idle" | "walking" | "sitting";
 
 type Props = {
   type: PetType;
@@ -102,40 +102,134 @@ function PetRoomInner({
   glow = false,
   hue = 0,
   reaction = null,
-  height = 200,
+  height = 280,
 }: Props) {
   const palette = PET_PALETTE[type];
   const sprite = stage === "egg" ? EGG_SPRITE : spriteFor(type, stage);
-  const wallH = 0.55; // wall top portion
-
-  // Stable layout in viewBox coords. We fix the canvas at 320×200
-  // logical units and let the parent <svg> scale via width=100%.
-  const W = 320;
-  const H = 200;
-  const wallEnd = H * wallH;
-  const floorEnd = H;
-
-  const showOutdoor = background !== "none" && BACKGROUND_SPRITES[background];
-
-  // Pet drawn at logical 64×64 (4× the 16-px sprite). Walks within
-  // [PET_MIN_X, PET_MAX_X]. CSS animation handles the actual motion.
-  const petSize = 64;
-  const petY = floorEnd - petSize - 6; // sit on floor with a 6px tuck
-
-  const filterId = `pet-room-filter-${hue}-${glow ? 1 : 0}`;
   const useFilter = hue !== 0 || glow;
 
-  // Reaction state + effect overlays
-  const reactionKey = useReactionKey(reaction);
+  // Logical viewBox for the room SVG. Pet is rendered as an HTML div
+  // overlaid via percentage positioning so it can be freely repositioned
+  // via CSS transitions (we don't pin it to viewBox coords).
+  const W = 320;
+  const H = height;
+  const wallEnd = H * 0.62;
+  const floorEnd = H;
+  const showOutdoor = background !== "none" && BACKGROUND_SPRITES[background];
+
+  // Pet sizing — bigger to satisfy the user's "1.5–2x larger" request.
+  // Foot baseline sits 18px above the container bottom.
+  const petSize = Math.min(140, Math.max(96, Math.round(H * 0.5)));
+  const petBottom = 12;
+  const isEgg = stage === "egg";
+
+  // ── State machine ──
+  const [mode, setMode] = useState<Mode>("idle");
+  const [posPct, setPosPct] = useState(0); // -1..1 within walking range
+  const [facing, setFacing] = useState<"left" | "right">("right");
+  const [blink, setBlink] = useState(false);
+  const walkDurRef = useRef(0);
+
+  // Eggs don't move — keep them dead-center.
+  const movable = !isEgg;
+
+  // Behaviour scheduler.
+  useEffect(() => {
+    if (!movable) return;
+    let cancelled = false;
+
+    const tick = () => {
+      if (cancelled) return;
+      // Roll for next behaviour after a base wait of 5–10s while idle.
+      const delay =
+        mode === "idle" ? 5000 + Math.random() * 5000 : 0;
+      const t = window.setTimeout(() => {
+        if (cancelled) return;
+        const r = Math.random();
+        if (r < 0.15) {
+          // Sit and rest 3–5s.
+          setMode("sitting");
+          window.setTimeout(() => {
+            if (!cancelled) setMode("idle");
+          }, 3000 + Math.random() * 2000);
+        } else {
+          // Walk to a new random position (-0.85..0.85).
+          const next = (Math.random() * 2 - 1) * 0.85;
+          const distance = Math.abs(next - posPct);
+          const dur = Math.max(1200, distance * 1800);
+          walkDurRef.current = dur;
+          setFacing(next > posPct ? "right" : "left");
+          setMode("walking");
+          setPosPct(next);
+          window.setTimeout(() => {
+            if (!cancelled) setMode("idle");
+          }, dur + 80);
+        }
+      }, delay);
+      return () => window.clearTimeout(t);
+    };
+
+    const cleanup = tick();
+    return () => {
+      cancelled = true;
+      cleanup?.();
+    };
+  }, [mode, posPct, movable]);
+
+  // Blink scheduler — independent of behaviour.
+  useEffect(() => {
+    let cancelled = false;
+    const schedule = () => {
+      const wait = 1800 + Math.random() * 1800;
+      window.setTimeout(() => {
+        if (cancelled) return;
+        setBlink(true);
+        window.setTimeout(() => {
+          if (cancelled) return;
+          setBlink(false);
+          schedule();
+        }, 130);
+      }, wait);
+    };
+    schedule();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Reaction overlay (heart/sparkle/zZ) — replays per event.
+  const [reactionShown, setReactionShown] = useState<{ kind: NonNullable<PetReaction>["kind"]; id: number } | null>(null);
+  const reactionIdRef = useRef(0);
+  useEffect(() => {
+    if (!reaction) return;
+    reactionIdRef.current += 1;
+    setReactionShown({ kind: reaction.kind, id: reactionIdRef.current });
+    const t = window.setTimeout(() => setReactionShown(null), 1500);
+    return () => window.clearTimeout(t);
+  }, [reaction]);
+
+  // CSS transition timing for `left` matches the planned walk duration.
+  const walkDuration = mode === "walking" ? walkDurRef.current : 0;
+
+  const innerAnim =
+    mode === "walking"
+      ? "pet-walk-sway 0.45s ease-in-out infinite"
+      : mode === "sitting"
+      ? "pet-sit 1.2s ease-in-out infinite"
+      : "pet-bob 1.6s ease-in-out infinite";
+
+  // Pet horizontal range: 18%..82% of container (leaves margin so the
+  // sprite never crosses the edge).
+  const petLeftPct = 50 + posPct * 32;
 
   return (
     <div
       style={{
         position: "relative",
         width: "100%",
-        height: `${height}px`,
+        height: H,
         overflow: "hidden",
-        borderRadius: 12,
+        borderRadius: 16,
         boxShadow: "inset 0 0 0 1px #E0CFB8, 0 4px 12px rgba(91,58,31,0.10)",
       }}
     >
@@ -146,26 +240,8 @@ function PetRoomInner({
         preserveAspectRatio="none"
         style={{ display: "block", position: "absolute", inset: 0 }}
       >
-        {useFilter ? (
-          <defs>
-            <filter id={filterId} x="-20%" y="-20%" width="140%" height="140%">
-              {hue !== 0 && <feColorMatrix type="hueRotate" values={String(hue)} />}
-              {glow && (
-                <>
-                  <feGaussianBlur stdDeviation="1.5" result="blur" />
-                  <feMerge>
-                    <feMergeNode in="blur" />
-                    <feMergeNode in="SourceGraphic" />
-                  </feMerge>
-                </>
-              )}
-            </filter>
-          </defs>
-        ) : null}
-
-        {/* Background — outdoor scene OR room walls/floor */}
+        {/* Background */}
         {showOutdoor ? (
-          // Stretch the 16×16 outdoor sprite over the entire canvas.
           gridRects(
             BACKGROUND_SPRITES[background as Exclude<BackgroundId, "none">],
             backgroundColor,
@@ -178,25 +254,38 @@ function PetRoomInner({
           <>
             {/* Wall */}
             <rect x={0} y={0} width={W} height={wallEnd} fill={ROOM_WALL_COLOR} />
-            {/* Wall vertical decoration stripes */}
             {Array.from({ length: 8 }).map((_, i) => (
               <rect
-                key={`wall-stripe-${i}`}
+                key={`stripe-${i}`}
                 x={(i + 0.5) * (W / 8) - 0.5}
                 y={0}
                 width={1}
                 height={wallEnd}
                 fill={ROOM_WALL_DECOR}
-                opacity={0.35}
+                opacity={0.3}
               />
             ))}
-            {/* Wall trim (baseboard top) */}
-            <rect x={0} y={wallEnd - 4} width={W} height={4} fill={ROOM_WALL_TRIM} />
-            <rect x={0} y={wallEnd - 6} width={W} height={2} fill={ROOM_FLOOR_LINE} opacity={0.45} />
+            {/* Window decoration on the wall */}
+            <g opacity={0.85}>
+              <rect x={W * 0.18} y={wallEnd * 0.25} width={36} height={26} fill="#9CC9E5" />
+              <rect x={W * 0.18} y={wallEnd * 0.25} width={36} height={26} fill="none" stroke="#7B5234" strokeWidth={2} />
+              <line x1={W * 0.18 + 18} y1={wallEnd * 0.25} x2={W * 0.18 + 18} y2={wallEnd * 0.25 + 26} stroke="#7B5234" strokeWidth={1} />
+              <line x1={W * 0.18} y1={wallEnd * 0.25 + 13} x2={W * 0.18 + 36} y2={wallEnd * 0.25 + 13} stroke="#7B5234" strokeWidth={1} />
+            </g>
+            {/* Picture frame on the wall */}
+            <g>
+              <rect x={W * 0.66} y={wallEnd * 0.28} width={28} height={20} fill="#FFFFFF" />
+              <rect x={W * 0.66} y={wallEnd * 0.28} width={28} height={20} fill="none" stroke="#7B5234" strokeWidth={2} />
+              <rect x={W * 0.66 + 4} y={wallEnd * 0.28 + 4} width={20} height={6} fill="#F2C84B" opacity={0.7} />
+              <rect x={W * 0.66 + 4} y={wallEnd * 0.28 + 12} width={12} height={4} fill="#F08FA9" opacity={0.7} />
+            </g>
+            {/* Wall trim (baseboard) */}
+            <rect x={0} y={wallEnd - 6} width={W} height={6} fill={ROOM_WALL_TRIM} />
+            <rect x={0} y={wallEnd - 8} width={W} height={2} fill={ROOM_FLOOR_LINE} opacity={0.5} />
 
             {/* Floor */}
             <rect x={0} y={wallEnd} width={W} height={floorEnd - wallEnd} fill={ROOM_FLOOR_COLOR} />
-            {/* Floor planks */}
+            {/* Plank lines */}
             {Array.from({ length: 4 }).map((_, i) => (
               <rect
                 key={`plank-${i}`}
@@ -205,13 +294,47 @@ function PetRoomInner({
                 width={W}
                 height={1}
                 fill={ROOM_FLOOR_LINE}
-                opacity={0.38}
+                opacity={0.42}
               />
             ))}
+            {/* Plank short joints */}
+            {Array.from({ length: 12 }).map((_, i) => {
+              const planks = 5;
+              const yi = (i % (planks - 1)) + 1;
+              const xi = Math.floor(i / (planks - 1)) + 1;
+              const y = wallEnd + yi * ((floorEnd - wallEnd) / planks);
+              const x = xi * (W / 5) + (yi % 2 ? 0 : W / 10);
+              return (
+                <rect
+                  key={`joint-${i}`}
+                  x={x}
+                  y={y - 7}
+                  width={1}
+                  height={7}
+                  fill={ROOM_FLOOR_LINE}
+                  opacity={0.36}
+                />
+              );
+            })}
+            {/* Floor shadow gradient — adds depth */}
+            <rect
+              x={0}
+              y={wallEnd}
+              width={W}
+              height={floorEnd - wallEnd}
+              fill="url(#floor-grad)"
+              opacity={0.18}
+            />
+            <defs>
+              <linearGradient id="floor-grad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#000000" stopOpacity={0.35} />
+                <stop offset="100%" stopColor="#000000" stopOpacity={0} />
+              </linearGradient>
+            </defs>
           </>
         )}
 
-        {/* Furniture (only in room mode — outdoors hides them) */}
+        {/* Furniture */}
         {!showOutdoor &&
           furniture.map((id) => {
             const placement = FURNITURE_PLACEMENTS[id];
@@ -221,7 +344,7 @@ function PetRoomInner({
             const cols = Math.max(...icon.grid.map((r) => r.length));
             const px = sizePx / cols;
             const cx = (placement.x / 100) * W;
-            const cy = floorEnd - placement.y - sizePx;
+            const cy = floorEnd - placement.y - sizePx - 4;
             return (
               <g key={`furn-${id}`} transform={`translate(${cx - sizePx / 2} ${cy})`}>
                 {gridRects(icon.grid, icon.resolve, px, 0, 0, `furn-${id}`)}
@@ -230,32 +353,26 @@ function PetRoomInner({
           })}
       </svg>
 
-      {/* Pet sprite — separate <div> so CSS animations can apply.
-          The pet itself is in a wrapper that translates left↔right;
-          inside, a bobbing wrapper handles the idle bounce. */}
+      {/* Pet — HTML overlay so we can freely transition position */}
       <div
         style={{
           position: "absolute",
-          left: "50%",
-          top: petY,
+          left: `${petLeftPct}%`,
+          bottom: petBottom,
           width: petSize,
           height: petSize,
           marginLeft: -petSize / 2,
-          animation:
-            reactionKey?.kind === "play"
-              ? "pet-react-bounce 0.7s ease-out 1"
-              : "pet-walk 9s ease-in-out infinite",
-          willChange: "transform",
+          transform: `scaleX(${facing === "right" ? 1 : -1})`,
+          transition: walkDuration > 0 ? `left ${walkDuration}ms ease-in-out` : "none",
+          willChange: "transform, left",
         }}
       >
         <div
           style={{
             width: "100%",
             height: "100%",
-            animation:
-              reactionKey?.kind === "fed"
-                ? "pet-react-bounce 0.7s ease-out 1"
-                : "pet-bob 1.6s ease-in-out infinite",
+            animation: innerAnim,
+            transformOrigin: "50% 90%",
           }}
         >
           <svg
@@ -263,15 +380,15 @@ function PetRoomInner({
             width="100%"
             height="100%"
             shapeRendering="crispEdges"
-            style={{ display: "block", overflow: "visible" }}
+            style={{ display: "block" }}
           >
             {useFilter ? (
               <defs>
-                <filter id={`pf-${hue}-${glow ? 1 : 0}`} x="-20%" y="-20%" width="140%" height="140%">
+                <filter id={`pf-${type}-${stage}-${hue}-${glow ? 1 : 0}`} x="-20%" y="-20%" width="140%" height="140%">
                   {hue !== 0 && <feColorMatrix type="hueRotate" values={String(hue)} />}
                   {glow && (
                     <>
-                      <feGaussianBlur stdDeviation="0.5" result="b" />
+                      <feGaussianBlur stdDeviation="0.4" result="b" />
                       <feMerge>
                         <feMergeNode in="b" />
                         <feMergeNode in="SourceGraphic" />
@@ -281,8 +398,12 @@ function PetRoomInner({
                 </filter>
               </defs>
             ) : null}
-            <g filter={useFilter ? `url(#pf-${hue}-${glow ? 1 : 0})` : undefined}>
+            <g filter={useFilter ? `url(#pf-${type}-${stage}-${hue}-${glow ? 1 : 0})` : undefined}>
               {gridRects(sprite, (c) => pixelColor(c, palette), 1, 0, 0, "pet-body")}
+              {/* Blink overlay — paints over the eye band with primary color */}
+              {blink && !isEgg
+                ? gridRects(BLINK_OVERLAY, (c) => pixelColor(c, palette), 1, 0, 0, "blink")
+                : null}
             </g>
             {/* Accessories */}
             {(["cape", "wings", "scarf", "necklace", "bell", "ribbon", "hat", "crown", "glasses"] as ItemId[])
@@ -294,86 +415,67 @@ function PetRoomInner({
               })}
             {mood === "sad" ? (
               <g>
-                <rect x={5} y={10} width={1} height={1} fill="#1A1A1A" />
-                <rect x={6} y={10} width={1} height={1} fill="#1A1A1A" />
-                <rect x={7} y={10} width={1} height={1} fill="#1A1A1A" />
-                <rect x={4} y={11} width={1} height={1} fill="#1A1A1A" />
-                <rect x={8} y={11} width={1} height={1} fill="#1A1A1A" />
+                <rect x={5} y={11} width={1} height={1} fill="#1A1A1A" />
+                <rect x={6} y={11} width={1} height={1} fill="#1A1A1A" />
+                <rect x={7} y={11} width={1} height={1} fill="#1A1A1A" />
+                <rect x={4} y={12} width={1} height={1} fill="#1A1A1A" />
+                <rect x={8} y={12} width={1} height={1} fill="#1A1A1A" />
               </g>
             ) : null}
           </svg>
         </div>
       </div>
 
-      {/* Reaction overlays — heart, sparkle, zzz */}
-      {reactionKey?.kind === "happy" || reactionKey?.kind === "fed" ? (
-        <div
-          key={`heart-${reactionKey.id}`}
-          style={{
-            position: "absolute",
-            left: "50%",
-            top: petY - 8,
-            pointerEvents: "none",
-            animation: "pet-heart-rise 1.2s ease-out forwards",
-            color: "#F08FA9",
-            fontSize: 18,
-          }}
-          aria-hidden
-        >
-          ♥
-        </div>
-      ) : null}
-      {reactionKey?.kind === "clean" ? (
-        <div
-          key={`spark-${reactionKey.id}`}
-          style={{
-            position: "absolute",
-            left: "50%",
-            top: petY - 8,
-            pointerEvents: "none",
-            animation: "pet-shop-sparkle 1.1s ease-out forwards",
-            color: "#5BAEEA",
-            fontSize: 16,
-          }}
-          aria-hidden
-        >
-          ✦
-        </div>
-      ) : null}
-      {reactionKey?.kind === "sleep" ? (
-        <div
-          key={`zzz-${reactionKey.id}`}
-          style={{
-            position: "absolute",
-            left: "calc(50% + 16px)",
-            top: petY - 4,
-            pointerEvents: "none",
-            animation: "pet-zzz-float 1.6s ease-out forwards",
-            color: "#7E61D2",
-            fontSize: 14,
-            fontWeight: 700,
-          }}
-          aria-hidden
-        >
-          z
-        </div>
+      {/* Reaction overlays — react absolute, anchored above the pet */}
+      {reactionShown ? (
+        <ReactionGlyph
+          key={`r-${reactionShown.id}`}
+          kind={reactionShown.kind}
+          leftPct={petLeftPct}
+          bottom={petBottom + petSize - 8}
+        />
       ) : null}
     </div>
   );
 }
 
-// Keys reactions so React replays the CSS animation on each new event.
-function useReactionKey(reaction: PetReaction): (PetReaction & { id: number }) | null {
-  const idRef = useRef(0);
-  const [state, setState] = useState<(PetReaction & { id: number }) | null>(null);
-  useEffect(() => {
-    if (!reaction) return;
-    idRef.current += 1;
-    setState({ ...reaction, id: idRef.current } as any);
-    const t = setTimeout(() => setState(null), 1600);
-    return () => clearTimeout(t);
-  }, [reaction]);
-  return state;
+function ReactionGlyph({
+  kind,
+  leftPct,
+  bottom,
+}: {
+  kind: NonNullable<PetReaction>["kind"];
+  leftPct: number;
+  bottom: number;
+}) {
+  const symbol =
+    kind === "sleep" ? "z"
+      : kind === "clean" ? "✦"
+      : kind === "play" ? "★"
+      : "♥";
+  const color =
+    kind === "sleep" ? "#7E61D2"
+      : kind === "clean" ? "#5BAEEA"
+      : kind === "play" ? "#F2C84B"
+      : "#F08FA9";
+  return (
+    <span
+      aria-hidden
+      style={{
+        position: "absolute",
+        left: `${leftPct}%`,
+        bottom,
+        pointerEvents: "none",
+        animation: "pet-heart-rise 1.4s ease-out forwards",
+        color,
+        fontSize: 22,
+        fontWeight: 800,
+        textShadow: "0 1px 2px rgba(0,0,0,0.18)",
+      }}
+    >
+      {symbol}
+    </span>
+  );
 }
 
 export const PetRoom = memo(PetRoomInner);

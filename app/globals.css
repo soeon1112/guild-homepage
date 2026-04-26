@@ -6402,3 +6402,13 @@ body.has-redesigned-header .bg-scene {
   20%  { opacity: 1; }
   100% { opacity: 0; transform: translate(8px, -28px) scale(1.1); }
 }
+@keyframes pet-walk-sway {
+  0%, 100% { transform: rotate(-3deg) translateY(0); }
+  25%      { transform: rotate(0deg) translateY(-2px); }
+  50%      { transform: rotate(3deg) translateY(0); }
+  75%      { transform: rotate(0deg) translateY(-2px); }
+}
+@keyframes pet-sit {
+  0%, 100% { transform: translateY(2px) scaleY(0.96); }
+  50%      { transform: translateY(2px) scaleY(0.94); }
+}

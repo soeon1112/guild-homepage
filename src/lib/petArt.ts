@@ -763,6 +763,28 @@ export function spriteFor(type: PetType, stage: PetStage): PixelGrid {
   return PET_SPRITES[type][stage];
 }
 
+// Blink overlay — paints over the typical eye row with the pet's
+// primary color so it looks like the eyes are closed for a frame.
+// Positions chosen to land on the eye band of every adult sprite.
+export const BLINK_OVERLAY: PixelGrid = [
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "...111....111...",
+  "...111....111...",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+];
+
 // ── Mood overlay ─────────────────────────────────────────────
 // When sad, paint a downturned mouth + tear over the existing sprite.
 // 16×16, only mouth/tear pixels — rest transparent.

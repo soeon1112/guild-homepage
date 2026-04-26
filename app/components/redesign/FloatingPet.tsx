@@ -756,32 +756,40 @@ function MainPanel({
   const stageLabel = PET_STAGES.find((s) => s.id === stage)?.label ?? "";
   return (
     <div className="flex flex-col gap-3">
-      {/* ── Pet room (animated stage) ── */}
-      <div className="relative">
-        <PetRoom
-          type={pet.type}
-          stage={stage}
-          accessories={pet.accessories ?? []}
-          furniture={pet.furniture ?? []}
-          background={pet.background ?? "none"}
-          mood={mood}
-          glow={!!pet.glow}
-          hue={pet.hue ?? 0}
-          reaction={reaction}
-          height={184}
-        />
-        {bubble ? (
-          <div
-            className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-white/95 px-2 py-0.5 font-serif text-[10px] text-[#5B3A1F]"
-            style={{ border: "1px solid #E0CFB8", boxShadow: "0 2px 6px rgba(0,0,0,0.1)" }}
-          >
-            {bubble.message}
+      {/* ── Pet room (animated stage) — sticky so it stays in view as
+          the rest of the panel scrolls ── */}
+      <div
+        className="sticky top-0 z-10 -mx-4 px-4 pt-1 pb-2"
+        style={{
+          background:
+            "linear-gradient(180deg, #FFFAF0 92%, rgba(255,250,240,0.85) 100%)",
+        }}
+      >
+        <div className="relative">
+          <PetRoom
+            type={pet.type}
+            stage={stage}
+            accessories={pet.accessories ?? []}
+            furniture={pet.furniture ?? []}
+            background={pet.background ?? "none"}
+            mood={mood}
+            glow={!!pet.glow}
+            hue={pet.hue ?? 0}
+            reaction={reaction}
+            height={280}
+          />
+          {bubble ? (
+            <div
+              className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-white/95 px-2 py-0.5 font-serif text-[10px] text-[#5B3A1F]"
+              style={{ border: "1px solid #E0CFB8", boxShadow: "0 2px 6px rgba(0,0,0,0.1)" }}
+            >
+              {bubble.message}
+            </div>
+          ) : null}
+          <div className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-white/85 px-2 py-1 backdrop-blur-sm" style={{ border: "1px solid #E0CFB8" }}>
+            <span className="font-serif text-[11px] font-medium text-[#3A2818]">{pet.name}</span>
+            <span className="rounded-full bg-[#FFE5C4] px-1.5 font-serif text-[9px] text-[#5B3A1F]">{stageLabel}</span>
           </div>
-        ) : null}
-        {/* Name + stage + xp pill row */}
-        <div className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-white/85 px-2 py-1 backdrop-blur-sm" style={{ border: "1px solid #E0CFB8" }}>
-          <span className="font-serif text-[11px] font-medium text-[#3A2818]">{pet.name}</span>
-          <span className="rounded-full bg-[#FFE5C4] px-1.5 font-serif text-[9px] text-[#5B3A1F]">{stageLabel}</span>
         </div>
       </div>
 
