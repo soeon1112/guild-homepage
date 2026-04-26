@@ -513,7 +513,7 @@ export default function FloatingPet() {
   const handleRename = useCallback(async () => {
     if (!nickname || !pendingName.trim()) return;
     if (!isOwned(items.inventory, "nameTag")) {
-      showToast("이름표가 없어요. 상점에서 구매하세요.");
+      showToast("이름표가 없어요.\n상점에서 구매하세요.");
       return;
     }
     setBusy(true);
@@ -804,12 +804,15 @@ export default function FloatingPet() {
             {/* Toast */}
             {toast ? (
               <div
-                className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-full px-3 py-1 font-serif text-[11px] font-semibold"
+                className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-2xl px-3 py-1 text-center font-serif text-[11px] font-semibold leading-snug"
                 style={{
                   // Was rgba(26,15,61,0.5) — dark navy text on dark grey
                   // bg → invisible. Stardust reads cleanly here.
+                  // whiteSpace:pre-line so explicit "\n" in the message
+                  // breaks at sentence boundaries instead of mid-word.
                   background: "rgba(31,41,55,0.92)",
                   color: "#FFE5C4",
+                  whiteSpace: "pre-line",
                   boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
                 }}
               >
