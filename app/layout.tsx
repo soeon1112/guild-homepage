@@ -3,6 +3,7 @@ import { Geist } from "next/font/google";
 import ScrollRestorer from "./components/ScrollRestorer";
 import { AuthProvider } from "./components/AuthProvider";
 import FloatingChat from "./components/redesign/FloatingChat";
+import FloatingPet from "./components/redesign/FloatingPet";
 import { ChromeShell } from "./components/redesign/ChromeShell";
 import BadgeToast from "./components/BadgeToast";
 import "./globals.css";
@@ -48,6 +49,7 @@ export default function RootLayout({
           <ScrollRestorer />
           <ChromeShell>{children}</ChromeShell>
           <FloatingChat />
+          <FloatingPet />
           <BadgeToast />
         </AuthProvider>
       </body>

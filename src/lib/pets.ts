@@ -1,0 +1,656 @@
+// Pet system — shared data + logic. Mirrored verbatim in
+// dawnlight-app/src/lib/pets.ts (keep in sync; see
+// memory/feedback_auto_dual_deploy.md).
+//
+// Theme-independent palette: every color used here is a literal hex
+// chosen to read on both light and dark backgrounds. Do not pull from
+// the cosmic theme tokens — pet UI is intentionally portable.
+
+import {
+  addDoc,
+  arrayRemove,
+  arrayUnion,
+  collection,
+  doc,
+  getDoc,
+  increment,
+  serverTimestamp,
+  setDoc,
+  Timestamp,
+} from "firebase/firestore";
+import { db } from "./firebase";
+
+// ── Admin gate ────────────────────────────────────────────────
+// While the system is in soft-launch, only this nickname sees any pet
+// UI. Flip to `null` (or remove the gate) when ready for full release.
+export const PET_ADMIN_NICKNAME = "언쏘";
+
+export function canSeePets(nickname: string | null | undefined): boolean {
+  if (!nickname) return false;
+  if (PET_ADMIN_NICKNAME === null) return true;
+  return nickname === PET_ADMIN_NICKNAME;
+}
+
+// ── Pet types ─────────────────────────────────────────────────
+export type PetType =
+  | "cat"
+  | "dog"
+  | "rabbit"
+  | "fox"
+  | "hamster"
+  | "owl"
+  | "bear"
+  | "wolf"
+  | "panda";
+
+export const PET_TYPES: { id: PetType; label: string; emoji: string }[] = [
+  { id: "cat", label: "고양이", emoji: "고양이" },
+  { id: "dog", label: "강아지", emoji: "강아지" },
+  { id: "rabbit", label: "토끼", emoji: "토끼" },
+  { id: "fox", label: "여우", emoji: "여우" },
+  { id: "hamster", label: "햄스터", emoji: "햄스터" },
+  { id: "owl", label: "올빼미", emoji: "올빼미" },
+  { id: "bear", label: "곰", emoji: "곰" },
+  { id: "wolf", label: "늑대", emoji: "늑대" },
+  { id: "panda", label: "판다", emoji: "판다" },
+];
+
+// ── Growth stages ─────────────────────────────────────────────
+// User-set thresholds (days since createdAt OR exp threshold met):
+//   1. egg        0~3일      / exp 0
+//   2. baby       3~10일     / exp 50
+//   3. child      10~20일    / exp 200
+//   4. teen       20~35일    / exp 500
+//   5. adult      35일~      / exp 1000
+//
+// Stage advances when EITHER (days >= dayMin AND exp >= expMin) OR
+// (exp >= expFastTrack — meaning the pet was loved enough to skip
+// some calendar time, but never below dayMin/2). The minimum month-to-
+// adult constraint is enforced by the dayMin floor.
+export type PetStage = "egg" | "baby" | "child" | "teen" | "adult";
+
+export const PET_STAGES: {
+  id: PetStage;
+  label: string;
+  dayMin: number;
+  expMin: number;
+  expFastTrack: number;
+}[] = [
+  { id: "egg",   label: "알",       dayMin: 0,  expMin: 0,    expFastTrack: 0 },
+  { id: "baby",  label: "아기",     dayMin: 3,  expMin: 50,   expFastTrack: 100 },
+  { id: "child", label: "어린이",   dayMin: 10, expMin: 200,  expFastTrack: 350 },
+  { id: "teen",  label: "청소년",   dayMin: 20, expMin: 500,  expFastTrack: 800 },
+  { id: "adult", label: "성체",     dayMin: 35, expMin: 1000, expFastTrack: 1500 },
+];
+
+export function computeStage(createdAtMs: number, exp: number, nowMs: number): PetStage {
+  const days = Math.max(0, (nowMs - createdAtMs) / (1000 * 60 * 60 * 24));
+  // Walk from highest to lowest, return first that qualifies.
+  for (let i = PET_STAGES.length - 1; i >= 0; i--) {
+    const s = PET_STAGES[i];
+    const normalAdvance = days >= s.dayMin && exp >= s.expMin;
+    // Fast track: half the days are required if you have *lots* of exp.
+    const fastAdvance = days >= s.dayMin / 2 && exp >= s.expFastTrack;
+    if (normalAdvance || fastAdvance) return s.id;
+  }
+  return "egg";
+}
+
+// Progress 0..1 toward the next stage (for UI bar). Returns 1 at adult.
+export function computeStageProgress(
+  createdAtMs: number,
+  exp: number,
+  nowMs: number,
+): number {
+  const stage = computeStage(createdAtMs, exp, nowMs);
+  const idx = PET_STAGES.findIndex((s) => s.id === stage);
+  if (idx === PET_STAGES.length - 1) return 1;
+  const cur = PET_STAGES[idx];
+  const next = PET_STAGES[idx + 1];
+  const days = (nowMs - createdAtMs) / (1000 * 60 * 60 * 24);
+  const dayProg = next.dayMin > cur.dayMin
+    ? (days - cur.dayMin) / (next.dayMin - cur.dayMin)
+    : 1;
+  const expProg = next.expMin > cur.expMin
+    ? (exp - cur.expMin) / (next.expMin - cur.expMin)
+    : 1;
+  // Both axes contribute; the slower one gates progress visually.
+  return Math.max(0, Math.min(1, Math.min(dayProg, expProg)));
+}
+
+// ── Decay rates ───────────────────────────────────────────────
+// Per spec: hunger -10% per 3h, happiness -10% per 6h, clean -10% per 12h.
+// Stored as percent-points lost per millisecond. Status is bounded to [0, 100].
+const DECAY_PER_MS = {
+  hunger: 10 / (3 * 60 * 60 * 1000),
+  happiness: 10 / (6 * 60 * 60 * 1000),
+  clean: 10 / (12 * 60 * 60 * 1000),
+};
+
+export type PetStatus = "hunger" | "happiness" | "clean";
+export const STATUS_LABELS: Record<PetStatus, string> = {
+  hunger: "포만감",
+  happiness: "행복",
+  clean: "청결",
+};
+
+// Compute live status values from the last-decay snapshot.
+// Pet docs store the decaying values + a `lastDecayAt` timestamp;
+// callers project forward from there.
+export function projectStatus(
+  base: { hunger: number; happiness: number; clean: number },
+  baseAtMs: number,
+  nowMs: number,
+): { hunger: number; happiness: number; clean: number } {
+  const dt = Math.max(0, nowMs - baseAtMs);
+  return {
+    hunger: clamp(base.hunger - DECAY_PER_MS.hunger * dt),
+    happiness: clamp(base.happiness - DECAY_PER_MS.happiness * dt),
+    clean: clamp(base.clean - DECAY_PER_MS.clean * dt),
+  };
+}
+
+function clamp(n: number): number {
+  if (Number.isNaN(n)) return 0;
+  return Math.max(0, Math.min(100, n));
+}
+
+// ── Mood ──────────────────────────────────────────────────────
+// "sad" face when ANY status is at 0; "happy" otherwise. Bubble alerts
+// whenever any status drops below 30 (lowest first).
+export type PetMood = "happy" | "sad";
+
+export function computeMood(s: { hunger: number; happiness: number; clean: number }): PetMood {
+  if (s.hunger <= 0 || s.happiness <= 0 || s.clean <= 0) return "sad";
+  return "happy";
+}
+
+export type PetBubble = {
+  status: PetStatus;
+  message: string;
+} | null;
+
+export function computeBubble(s: { hunger: number; happiness: number; clean: number }): PetBubble {
+  const entries: { status: PetStatus; value: number; message: string }[] = [
+    { status: "hunger", value: s.hunger, message: "배고파요..." },
+    { status: "happiness", value: s.happiness, message: "놀아줘요..." },
+    { status: "clean", value: s.clean, message: "씻겨줘요..." },
+  ];
+  const low = entries.filter((e) => e.value <= 30).sort((a, b) => a.value - b.value);
+  if (!low.length) return null;
+  return { status: low[0].status, message: low[0].message };
+}
+
+// ── Interactions ──────────────────────────────────────────────
+export type InteractionId =
+  | "feed"
+  | "play"
+  | "wash"
+  | "walk"
+  | "pet"
+  | "treat"
+  | "sleep"
+  | "train";
+
+export type Interaction = {
+  id: InteractionId;
+  label: string;
+  cooldownMs: number;
+  effects: { hunger?: number; happiness?: number; clean?: number; expGain: number };
+  consumesItem?: ItemId;
+};
+
+const HOUR = 60 * 60 * 1000;
+
+export const INTERACTIONS: Interaction[] = [
+  { id: "feed",  label: "밥주기",    cooldownMs: 1 * HOUR,        effects: { hunger: 30, expGain: 5 } },
+  { id: "play",  label: "놀아주기",  cooldownMs: 2 * HOUR,        effects: { happiness: 20, expGain: 10 } },
+  { id: "wash",  label: "씻기기",    cooldownMs: 6 * HOUR,        effects: { clean: 50, expGain: 5 } },
+  { id: "walk",  label: "산책",      cooldownMs: 3 * HOUR,        effects: { happiness: 15, expGain: 15 } },
+  { id: "pet",   label: "쓰다듬기",  cooldownMs: 0.5 * HOUR,      effects: { happiness: 10, expGain: 3 } },
+  { id: "treat", label: "간식주기",  cooldownMs: 2 * HOUR,        effects: { hunger: 15, happiness: 10, expGain: 5 }, consumesItem: "treat" },
+  { id: "sleep", label: "잠재우기",  cooldownMs: 8 * HOUR,        effects: { hunger: 5, happiness: 5, clean: 5, expGain: 5 } },
+  { id: "train", label: "훈련",      cooldownMs: 4 * HOUR,        effects: { expGain: 20 } },
+];
+
+// ── Items ─────────────────────────────────────────────────────
+export type ItemCategory = "consumable" | "accessory" | "furniture" | "special";
+
+export type ItemId =
+  // consumables
+  | "food" | "treat" | "cake"
+  // accessories
+  | "ribbon" | "scarf" | "hat" | "glasses" | "necklace" | "bell" | "crown" | "cape" | "wings"
+  // furniture
+  | "cushion" | "bed" | "house" | "toyBall" | "toyYarn" | "toyBone" | "bowlBasic" | "bowlPremium" | "bgForest" | "bgOcean" | "bgSpace"
+  // special
+  | "nameTag" | "sparkle" | "dye";
+
+export type Item = {
+  id: ItemId;
+  category: ItemCategory;
+  name: string;
+  price: number;
+  desc: string;
+  // For consumables this is the immediate effect when used directly
+  // (cake doesn't decay status — applies an exp boost flag).
+  consumeEffect?: { hunger?: number; happiness?: number; expBoostMs?: number; expBoostMult?: number };
+};
+
+export const ITEMS: Item[] = [
+  // consumables
+  { id: "food",  category: "consumable", name: "일반 사료", price: 2,  desc: "배고픔 +30%", consumeEffect: { hunger: 30 } },
+  { id: "treat", category: "consumable", name: "고급 간식", price: 5,  desc: "배고픔 +15%, 행복도 +10%", consumeEffect: { hunger: 15, happiness: 10 } },
+  { id: "cake",  category: "consumable", name: "특별 케이크", price: 10, desc: "경험치 2배 부스트 1시간", consumeEffect: { expBoostMs: HOUR, expBoostMult: 2 } },
+  // accessories
+  { id: "ribbon",   category: "accessory", name: "리본",   price: 15, desc: "패션 — 리본" },
+  { id: "scarf",    category: "accessory", name: "스카프", price: 15, desc: "패션 — 스카프" },
+  { id: "hat",      category: "accessory", name: "모자",   price: 20, desc: "패션 — 모자" },
+  { id: "glasses",  category: "accessory", name: "안경",   price: 20, desc: "패션 — 안경" },
+  { id: "necklace", category: "accessory", name: "목걸이", price: 25, desc: "패션 — 목걸이" },
+  { id: "bell",     category: "accessory", name: "방울",   price: 15, desc: "패션 — 방울" },
+  { id: "crown",    category: "accessory", name: "왕관",   price: 50, desc: "패션 — 왕관" },
+  { id: "cape",     category: "accessory", name: "망토",   price: 30, desc: "패션 — 망토" },
+  { id: "wings",    category: "accessory", name: "날개",   price: 40, desc: "패션 — 날개" },
+  // furniture
+  { id: "cushion",      category: "furniture", name: "쿠션",          price: 10, desc: "공간 꾸미기" },
+  { id: "bed",          category: "furniture", name: "침대",          price: 20, desc: "공간 꾸미기" },
+  { id: "house",        category: "furniture", name: "집",            price: 30, desc: "공간 꾸미기" },
+  { id: "toyBall",      category: "furniture", name: "장난감 (공)",   price: 8,  desc: "공간 꾸미기" },
+  { id: "toyYarn",      category: "furniture", name: "장난감 (실타래)", price: 8, desc: "공간 꾸미기" },
+  { id: "toyBone",      category: "furniture", name: "장난감 (뼈다귀)", price: 8, desc: "공간 꾸미기" },
+  { id: "bowlBasic",    category: "furniture", name: "밥그릇 (일반)", price: 5,  desc: "공간 꾸미기" },
+  { id: "bowlPremium",  category: "furniture", name: "밥그릇 (고급)", price: 15, desc: "공간 꾸미기" },
+  { id: "bgForest",     category: "furniture", name: "배경 (숲)",     price: 20, desc: "배경 변경" },
+  { id: "bgOcean",      category: "furniture", name: "배경 (바다)",   price: 20, desc: "배경 변경" },
+  { id: "bgSpace",      category: "furniture", name: "배경 (우주)",   price: 30, desc: "배경 변경" },
+  // special
+  { id: "nameTag", category: "special", name: "이름표",       price: 10, desc: "펫 이름 변경" },
+  { id: "sparkle", category: "special", name: "반짝이 효과", price: 25, desc: "펫 주변 글로우 이펙트" },
+  { id: "dye",     category: "special", name: "펫 염색약",   price: 30, desc: "펫 색상 변경" },
+];
+
+export function findItem(id: ItemId): Item | undefined {
+  return ITEMS.find((i) => i.id === id);
+}
+
+// Items that count as "treats" for gifting to other guild members.
+export const GIFTABLE_TREAT_IDS: ItemId[] = ["treat", "cake"];
+
+// Background ids consumed by the SVG renderer.
+export type BackgroundId = "none" | "bgForest" | "bgOcean" | "bgSpace";
+
+// ── Firestore types ───────────────────────────────────────────
+export type PetDoc = {
+  type: PetType;
+  name: string;
+  // Decay-snapshot values + the time they were recorded. Live status
+  // = projectStatus(snapshot, lastDecayAt, now).
+  hunger: number;
+  happiness: number;
+  clean: number;
+  exp: number;
+  createdAt: Timestamp;
+  lastDecayAt: Timestamp;
+  // Per-interaction last-use timestamps for cooldown calc.
+  cooldowns: Partial<Record<InteractionId, Timestamp>>;
+  // Wardrobe state.
+  accessories: ItemId[];   // currently equipped
+  furniture: ItemId[];     // currently placed
+  background: BackgroundId;
+  // Special effects.
+  expBoostUntil?: Timestamp | null;
+  expBoostMult?: number;
+  glow?: boolean;          // sparkle item ever applied
+  hue?: number;            // dye item: 0..360 hue rotation
+};
+
+export type PetItemsDoc = {
+  // Inventory: count per item id. Only consumables really need counts;
+  // accessories/furniture are "owned or not" (presence with count >= 1).
+  inventory: Partial<Record<ItemId, number>>;
+};
+
+// ── Firestore helpers ────────────────────────────────────────
+const petDocRef = (nickname: string) => doc(db, "users", nickname, "pet", "current");
+const itemsDocRef = (nickname: string) => doc(db, "users", nickname, "pet", "items");
+
+export async function loadPet(nickname: string): Promise<PetDoc | null> {
+  const snap = await getDoc(petDocRef(nickname));
+  if (!snap.exists()) return null;
+  return snap.data() as PetDoc;
+}
+
+export async function loadPetItems(nickname: string): Promise<PetItemsDoc> {
+  const snap = await getDoc(itemsDocRef(nickname));
+  if (!snap.exists()) return { inventory: {} };
+  return snap.data() as PetItemsDoc;
+}
+
+export async function createPet(
+  nickname: string,
+  type: PetType,
+  name: string,
+): Promise<void> {
+  const now = Timestamp.now();
+  const initial: PetDoc = {
+    type,
+    name: name.trim() || PET_TYPES.find((p) => p.id === type)?.label || "내 펫",
+    hunger: 100,
+    happiness: 100,
+    clean: 100,
+    exp: 0,
+    createdAt: now,
+    lastDecayAt: now,
+    cooldowns: {},
+    accessories: [],
+    furniture: [],
+    background: "none",
+  };
+  await setDoc(petDocRef(nickname), initial);
+  // Seed inventory with one starter food so brand-new owners can feed once.
+  await setDoc(itemsDocRef(nickname), { inventory: { food: 3 } } as PetItemsDoc, { merge: true });
+}
+
+export async function renamePet(nickname: string, newName: string): Promise<void> {
+  await setDoc(petDocRef(nickname), { name: newName.trim() }, { merge: true });
+}
+
+// Persist a fresh decay snapshot. Call this opportunistically whenever
+// the user opens the pet UI so the stored values track reality.
+export async function refreshDecaySnapshot(nickname: string, pet: PetDoc): Promise<PetDoc> {
+  const now = Date.now();
+  const baseAt = pet.lastDecayAt?.toMillis?.() ?? now;
+  const projected = projectStatus(
+    { hunger: pet.hunger, happiness: pet.happiness, clean: pet.clean },
+    baseAt,
+    now,
+  );
+  // Only write if any value drifted by >= 1 percent — avoids needless writes.
+  const drift =
+    Math.abs(projected.hunger - pet.hunger) +
+    Math.abs(projected.happiness - pet.happiness) +
+    Math.abs(projected.clean - pet.clean);
+  if (drift < 1) return pet;
+  const ts = Timestamp.fromMillis(now);
+  await setDoc(
+    petDocRef(nickname),
+    {
+      hunger: projected.hunger,
+      happiness: projected.happiness,
+      clean: projected.clean,
+      lastDecayAt: ts,
+    },
+    { merge: true },
+  );
+  return { ...pet, ...projected, lastDecayAt: ts };
+}
+
+export type DoInteractionResult =
+  | { ok: true }
+  | { ok: false; reason: "cooldown" | "no_item" | "no_pet" };
+
+export async function doInteraction(
+  nickname: string,
+  pet: PetDoc,
+  id: InteractionId,
+): Promise<DoInteractionResult> {
+  const inter = INTERACTIONS.find((i) => i.id === id);
+  if (!inter) return { ok: false, reason: "no_pet" };
+
+  const now = Date.now();
+  const last = pet.cooldowns?.[id]?.toMillis?.() ?? 0;
+  if (now - last < inter.cooldownMs) return { ok: false, reason: "cooldown" };
+
+  // Item-consuming interactions (treat) need inventory.
+  if (inter.consumesItem) {
+    const items = await loadPetItems(nickname);
+    const have = items.inventory?.[inter.consumesItem] ?? 0;
+    if (have < 1) return { ok: false, reason: "no_item" };
+    await setDoc(
+      itemsDocRef(nickname),
+      { inventory: { [inter.consumesItem]: have - 1 } } as Partial<PetItemsDoc>,
+      { merge: true },
+    );
+  }
+
+  // Project current status forward, then apply effect.
+  const baseAt = pet.lastDecayAt?.toMillis?.() ?? now;
+  const projected = projectStatus(
+    { hunger: pet.hunger, happiness: pet.happiness, clean: pet.clean },
+    baseAt,
+    now,
+  );
+  const next = {
+    hunger: clamp(projected.hunger + (inter.effects.hunger ?? 0)),
+    happiness: clamp(projected.happiness + (inter.effects.happiness ?? 0)),
+    clean: clamp(projected.clean + (inter.effects.clean ?? 0)),
+  };
+
+  // Apply exp-boost multiplier if active.
+  let gain = inter.effects.expGain;
+  const boostUntil = pet.expBoostUntil?.toMillis?.() ?? 0;
+  if (boostUntil > now && pet.expBoostMult && pet.expBoostMult > 1) {
+    gain = Math.round(gain * pet.expBoostMult);
+  }
+
+  await setDoc(
+    petDocRef(nickname),
+    {
+      ...next,
+      lastDecayAt: Timestamp.fromMillis(now),
+      exp: increment(gain),
+      cooldowns: { ...(pet.cooldowns ?? {}), [id]: Timestamp.fromMillis(now) },
+    },
+    { merge: true },
+  );
+  return { ok: true };
+}
+
+// Use a consumable directly from inventory (food / cake). Treat is
+// applied via the `treat` interaction so it's gated by cooldown too.
+export async function consumeItem(
+  nickname: string,
+  pet: PetDoc,
+  itemId: ItemId,
+): Promise<{ ok: boolean; reason?: string }> {
+  const item = findItem(itemId);
+  if (!item || item.category !== "consumable") return { ok: false, reason: "not_consumable" };
+  const items = await loadPetItems(nickname);
+  const have = items.inventory?.[itemId] ?? 0;
+  if (have < 1) return { ok: false, reason: "no_item" };
+
+  const now = Date.now();
+  const baseAt = pet.lastDecayAt?.toMillis?.() ?? now;
+  const projected = projectStatus(
+    { hunger: pet.hunger, happiness: pet.happiness, clean: pet.clean },
+    baseAt,
+    now,
+  );
+  const fx = item.consumeEffect ?? {};
+  const next = {
+    hunger: clamp(projected.hunger + (fx.hunger ?? 0)),
+    happiness: clamp(projected.happiness + (fx.happiness ?? 0)),
+    clean: projected.clean,
+  };
+  const patch: Partial<PetDoc> = {
+    ...next,
+    lastDecayAt: Timestamp.fromMillis(now),
+  };
+  if (fx.expBoostMs && fx.expBoostMult) {
+    patch.expBoostUntil = Timestamp.fromMillis(now + fx.expBoostMs);
+    patch.expBoostMult = fx.expBoostMult;
+  }
+  await setDoc(petDocRef(nickname), patch, { merge: true });
+  await setDoc(
+    itemsDocRef(nickname),
+    { inventory: { [itemId]: have - 1 } } as Partial<PetItemsDoc>,
+    { merge: true },
+  );
+  return { ok: true };
+}
+
+// Pay points and grant an item. Accessories/furniture/special items
+// are unique — buying twice still increments count but UI treats >=1 as "owned".
+export async function buyItem(
+  nickname: string,
+  itemId: ItemId,
+  currentPoints: number,
+): Promise<{ ok: boolean; reason?: string }> {
+  const item = findItem(itemId);
+  if (!item) return { ok: false, reason: "no_item" };
+  if (currentPoints < item.price) return { ok: false, reason: "no_points" };
+
+  // Deduct points + increment inventory + log to pointHistory (mirrors
+  // the existing avatar/title shop behavior).
+  await setDoc(
+    doc(db, "users", nickname),
+    { points: increment(-item.price) },
+    { merge: true },
+  );
+  await setDoc(
+    itemsDocRef(nickname),
+    { inventory: { [itemId]: increment(1) } } as unknown as Partial<PetItemsDoc>,
+    { merge: true },
+  );
+  await addDoc(collection(db, "users", nickname, "pointHistory"), {
+    type: "펫",
+    points: -item.price,
+    description: `펫 상점 — ${item.name} 구매`,
+    createdAt: serverTimestamp(),
+  });
+  return { ok: true };
+}
+
+// Equip / unequip an accessory or place / remove a furniture item.
+export async function setAccessoryEquipped(
+  nickname: string,
+  itemId: ItemId,
+  equipped: boolean,
+): Promise<void> {
+  await setDoc(
+    petDocRef(nickname),
+    { accessories: equipped ? arrayUnion(itemId) : arrayRemove(itemId) },
+    { merge: true },
+  );
+}
+
+export async function setFurniturePlaced(
+  nickname: string,
+  itemId: ItemId,
+  placed: boolean,
+): Promise<void> {
+  await setDoc(
+    petDocRef(nickname),
+    { furniture: placed ? arrayUnion(itemId) : arrayRemove(itemId) },
+    { merge: true },
+  );
+}
+
+export async function setBackground(
+  nickname: string,
+  bg: BackgroundId,
+): Promise<void> {
+  await setDoc(petDocRef(nickname), { background: bg }, { merge: true });
+}
+
+export async function applyDye(nickname: string, hue: number): Promise<void> {
+  await setDoc(petDocRef(nickname), { hue }, { merge: true });
+}
+
+export async function applySparkle(nickname: string): Promise<void> {
+  await setDoc(petDocRef(nickname), { glow: true }, { merge: true });
+}
+
+// Send a treat from `from` to `to`'s pet. Consumes one of `from`'s
+// treat items and adds +happiness / +hunger to `to`'s pet directly.
+export async function giftTreat(
+  from: string,
+  to: string,
+  itemId: ItemId,
+): Promise<{ ok: boolean; reason?: string }> {
+  if (!GIFTABLE_TREAT_IDS.includes(itemId)) return { ok: false, reason: "not_giftable" };
+  const myItems = await loadPetItems(from);
+  const have = myItems.inventory?.[itemId] ?? 0;
+  if (have < 1) return { ok: false, reason: "no_item" };
+  const target = await loadPet(to);
+  if (!target) return { ok: false, reason: "no_target_pet" };
+  // Apply effect to target pet using consume logic, then deduct from
+  // sender's inventory.
+  const item = findItem(itemId)!;
+  const now = Date.now();
+  const baseAt = target.lastDecayAt?.toMillis?.() ?? now;
+  const projected = projectStatus(
+    { hunger: target.hunger, happiness: target.happiness, clean: target.clean },
+    baseAt,
+    now,
+  );
+  const fx = item.consumeEffect ?? {};
+  const next = {
+    hunger: clamp(projected.hunger + (fx.hunger ?? 0)),
+    happiness: clamp(projected.happiness + (fx.happiness ?? 0) + 5), // +5 bonus from being gifted
+    clean: projected.clean,
+  };
+  await setDoc(
+    petDocRef(to),
+    { ...next, lastDecayAt: Timestamp.fromMillis(now) },
+    { merge: true },
+  );
+  await setDoc(
+    itemsDocRef(from),
+    { inventory: { [itemId]: have - 1 } } as Partial<PetItemsDoc>,
+    { merge: true },
+  );
+  // Log a gift activity into the recipient's notification queue (read
+  // by the pet push trigger).
+  await addDoc(collection(db, "users", to, "petGifts"), {
+    from,
+    itemId,
+    createdAt: serverTimestamp(),
+  });
+  return { ok: true };
+}
+
+// ── UI helpers ────────────────────────────────────────────────
+export function cooldownRemainingMs(
+  pet: PetDoc | null | undefined,
+  id: InteractionId,
+  nowMs: number,
+): number {
+  if (!pet) return 0;
+  const inter = INTERACTIONS.find((i) => i.id === id);
+  if (!inter) return 0;
+  const last = pet.cooldowns?.[id]?.toMillis?.() ?? 0;
+  return Math.max(0, inter.cooldownMs - (nowMs - last));
+}
+
+export function formatDuration(ms: number): string {
+  if (ms <= 0) return "지금";
+  const totalSec = Math.ceil(ms / 1000);
+  if (totalSec < 60) return `${totalSec}초`;
+  const min = Math.floor(totalSec / 60);
+  if (min < 60) return `${min}분`;
+  const hr = Math.floor(min / 60);
+  const rm = min % 60;
+  if (rm === 0) return `${hr}시간`;
+  return `${hr}시간 ${rm}분`;
+}
+
+// Inventory helper: is this collectible owned (>=1) by the current user?
+export function isOwned(inv: PetItemsDoc["inventory"] | undefined, id: ItemId): boolean {
+  return (inv?.[id] ?? 0) >= 1;
+}
+
+// Pet base color palette — used by both the SVG renderer and a few UI
+// accent strokes. Hex literals only (no theme tokens).
+export const PET_PALETTE: Record<PetType, { primary: string; secondary: string; accent: string }> = {
+  cat:     { primary: "#F4C07A", secondary: "#FFE3B0", accent: "#5B3A1F" },
+  dog:     { primary: "#D9A37B", secondary: "#F2D2AB", accent: "#4A2C18" },
+  rabbit:  { primary: "#F2EFE6", secondary: "#FFFFFF", accent: "#E89BB0" },
+  fox:     { primary: "#E07A3C", secondary: "#FFD6AF", accent: "#3A1B0A" },
+  hamster: { primary: "#E2A968", secondary: "#FFE8C8", accent: "#523019" },
+  owl:     { primary: "#8C7A6B", secondary: "#D8C9B6", accent: "#2A1F17" },
+  bear:    { primary: "#7A5236", secondary: "#B58A65", accent: "#2D1A0E" },
+  wolf:    { primary: "#7E8895", secondary: "#BCC5D1", accent: "#1F2630" },
+  panda:   { primary: "#FFFFFF", secondary: "#E6E6E6", accent: "#1A1A1A" },
+};
