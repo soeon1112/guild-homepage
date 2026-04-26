@@ -1555,40 +1555,47 @@ const A_CROWN: AccessoryGrid = [
   "................",
 ];
 
+// Cape — drawn BEHIND the pet sprite (see render order in PetRoom/PetSvg).
+// Fills nearly the entire 16×16 canvas (~1.8× the previous version) so
+// the drape is clearly visible past both shoulders and below the feet.
 const A_CAPE: AccessoryGrid = [
   "................",
   "................",
   "................",
   "................",
-  "................",
-  "................",
-  "................",
-  ".....PP..PP.....",
+  "...PPPPPPPPPP...",
   "..PPPPPPPPPPPP..",
+  ".PPPPPPPPPPPPPP.",
+  "PPPPPPPPPPPPPPPP",
+  "PPPPwPPPPPPwPPPP",
+  "PPPPPPPPPPPPPPPP",
+  "PPPPPPPPPPPPPPPP",
+  ".PPPPPPPPPPPPPP.",
+  ".PPPPPPPPPPPPPP.",
   "..PPPPPPPPPPPP..",
-  "..PPPPPPPPPPPP..",
-  "..PPwPPPPPPwPP..",
-  "..PPPPPPPPPPPP..",
-  "..PPPPPPPPPPPP..",
-  "..PPP......PPP..",
-  "..PP........PP..",
+  "...PPPP..PPPP...",
+  "....PP....PP....",
 ];
 
+// Wings — drawn BEHIND the pet sprite. Massive spread that nearly fills
+// the canvas top-to-bottom (~1.8× the previous version). Outer feather
+// tips touch cols 0 / 15 so the silhouette reads as a full wingspread
+// even at smaller render sizes.
 const A_WINGS: AccessoryGrid = [
   "................",
   "................",
   "................",
-  "................",
-  "................",
-  "................",
-  "................",
+  "w..............w",
   "ww............ww",
+  "www..........www",
   "wwww........wwww",
+  "wwwww......wwwww",
   "wwwwww....wwwwww",
-  "wwwwwww..wwwwwww",
-  "wwwwww....wwwwww",
+  "wwwww......wwwww",
   "wwww........wwww",
+  "www..........www",
   "ww............ww",
+  ".w............w.",
   "................",
   "................",
 ];

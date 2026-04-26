@@ -154,22 +154,38 @@ function PetSvgInner({
         ? renderGrid(BACKGROUND_SPRITES[background], backgroundColor, overlayPx, "bg")
         : null}
 
+      {/* Behind-pet accessories (cape + wings drape behind the body so the
+          pet itself stays in front). Hidden at egg stage — no body to drape on. */}
+      {stage !== "egg"
+        ? (["cape", "wings"] as ItemId[])
+            .filter((id) => accessories.includes(id))
+            .map((id) => {
+              const grid = ACCESSORY_SPRITES[id];
+              if (!grid) return null;
+              return (
+                <g key={id}>{renderGrid(grid, accessoryColor, overlayPx, `acc-${id}`)}</g>
+              );
+            })
+        : null}
+
       {/* Pet sprite */}
       <g filter={useFilter ? `url(#${filterId})` : undefined}>
         {renderGrid(sprite, petResolve, bodyPx, "pet")}
       </g>
 
-      {/* Accessories on top — order: scarf, necklace, bell, cape, wings,
-          ribbon, hat, crown, glasses (head-most last) */}
-      {(["cape", "wings", "scarf", "necklace", "bell", "ribbon", "hat", "crown", "glasses"] as ItemId[])
-        .filter((id) => accessories.includes(id))
-        .map((id) => {
-          const grid = ACCESSORY_SPRITES[id];
-          if (!grid) return null;
-          return (
-            <g key={id}>{renderGrid(grid, accessoryColor, overlayPx, `acc-${id}`)}</g>
-          );
-        })}
+      {/* Front-pet accessories — head/neck items (scarf, necklace, bell,
+          ribbon, hat, crown, glasses). Hidden at egg stage. */}
+      {stage !== "egg"
+        ? (["scarf", "necklace", "bell", "ribbon", "hat", "crown", "glasses"] as ItemId[])
+            .filter((id) => accessories.includes(id))
+            .map((id) => {
+              const grid = ACCESSORY_SPRITES[id];
+              if (!grid) return null;
+              return (
+                <g key={id}>{renderGrid(grid, accessoryColor, overlayPx, `acc-${id}`)}</g>
+              );
+            })
+        : null}
 
       {/* Sad mouth overlay if mood is sad */}
       {mood === "sad"

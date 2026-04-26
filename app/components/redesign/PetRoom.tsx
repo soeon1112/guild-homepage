@@ -1031,6 +1031,16 @@ function PetRoomInner({
                 </filter>
               </defs>
             ) : null}
+            {/* Behind-pet accessories (cape + wings) — hidden at egg stage. */}
+            {!isEgg
+              ? (["cape", "wings"] as ItemId[])
+                  .filter((id) => accessories.includes(id))
+                  .map((id) => {
+                    const grid = ACCESSORY_SPRITES[id];
+                    if (!grid) return null;
+                    return <g key={id}>{gridRects(grid, accessoryColor, 1, 0, 0, `acc-${id}`)}</g>;
+                  })
+              : null}
             <g filter={useFilter ? `url(#pf-${type}-${stage}-${hue}-${glow ? 1 : 0})` : undefined}>
               {gridRects(sprite, (c) => pixelColor(c, palette), bodyPx, 0, 0, "pet-body")}
               {/* Blink overlay — paints over the eye band with primary color */}
@@ -1038,14 +1048,16 @@ function PetRoomInner({
                 ? gridRects(blinkGrid, (c) => pixelColor(c, palette), blinkPx, 0, 0, "blink")
                 : null}
             </g>
-            {/* Accessories */}
-            {(["cape", "wings", "scarf", "necklace", "bell", "ribbon", "hat", "crown", "glasses"] as ItemId[])
-              .filter((id) => accessories.includes(id))
-              .map((id) => {
-                const grid = ACCESSORY_SPRITES[id];
-                if (!grid) return null;
-                return <g key={id}>{gridRects(grid, accessoryColor, 1, 0, 0, `acc-${id}`)}</g>;
-              })}
+            {/* Front-pet accessories (head/neck) — hidden at egg stage. */}
+            {!isEgg
+              ? (["scarf", "necklace", "bell", "ribbon", "hat", "crown", "glasses"] as ItemId[])
+                  .filter((id) => accessories.includes(id))
+                  .map((id) => {
+                    const grid = ACCESSORY_SPRITES[id];
+                    if (!grid) return null;
+                    return <g key={id}>{gridRects(grid, accessoryColor, 1, 0, 0, `acc-${id}`)}</g>;
+                  })
+              : null}
             {mood === "sad" ? (
               <g>
                 <rect x={5} y={11} width={1} height={1} fill="#1A1A1A" />
