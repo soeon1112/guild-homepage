@@ -838,7 +838,9 @@ function AdoptionPanel({
               border: type === p.id ? "1.5px solid #d896c8" : "1px solid rgba(216,150,200,0.25)",
             }}
           >
-            <PetSvg type={p.id} stage="adult" size={48} />
+            {/* Show egg preview instead of adult so the player gets the
+                growth payoff later — every pet starts as an egg anyway. */}
+            <PetSvg type={p.id} stage="egg" size={48} />
             <span className="mt-1 font-serif text-[10px] text-[#f4efff]">{p.label}</span>
           </button>
         ))}
