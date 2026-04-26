@@ -7,6 +7,7 @@ import { db, storage } from "@/src/lib/firebase";
 import {
   doc,
   getDoc,
+  getDocs,
   setDoc,
   updateDoc,
   deleteDoc,
@@ -14,6 +15,7 @@ import {
   addDoc,
   increment,
   query,
+  where,
   orderBy,
   onSnapshot,
   serverTimestamp,
@@ -138,14 +140,40 @@ export default function MemberMiniHomePage({
   const { id } = use(params);
   const { nickname: loginNick } = useAuth();
   const [member, setMember] = useState<MemberDoc | null>(null);
+  // Resolved members doc id (= URL slug for slot-keyed legacy docs, or
+  // the matched doc id when the URL slug is a nickname but the actual
+  // doc lives under a different id). All writes target this resolved
+  // id so we never create a duplicate.
+  const [resolvedId, setResolvedId] = useState<string>(id);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const snap = await getDoc(doc(db, "members", id));
+      // Fast path: direct getDoc by URL slug.
+      const direct = await getDoc(doc(db, "members", id));
       if (cancelled) return;
-      setMember(snap.exists() ? (snap.data() as MemberDoc) : null);
+      if (direct.exists()) {
+        setMember(direct.data() as MemberDoc);
+        setResolvedId(id);
+        setLoading(false);
+        return;
+      }
+      // Fallback: maybe `id` is a nickname and the doc is keyed by a
+      // legacy slot id (or vice versa). Query by the nickname field so
+      // either case resolves to the right doc.
+      const byNick = await getDocs(
+        query(collection(db, "members"), where("nickname", "==", id)),
+      );
+      if (cancelled) return;
+      if (!byNick.empty) {
+        const hit = byNick.docs[0];
+        setMember(hit.data() as MemberDoc);
+        setResolvedId(hit.id);
+      } else {
+        setMember(null);
+        setResolvedId(id);
+      }
       setLoading(false);
     })();
     return () => {
@@ -173,7 +201,7 @@ export default function MemberMiniHomePage({
         </p>
       ) : (
         <ProfileSectionV2
-          id={id}
+          id={resolvedId}
           member={member}
           loginNick={loginNick}
           isOwner={isOwner}
@@ -182,17 +210,17 @@ export default function MemberMiniHomePage({
       )}
       {member?.nickname && <BadgesSection nickname={member.nickname} />}
       <GuestbookSectionV2
-        id={id}
+        id={resolvedId}
         loginNick={loginNick}
         memberNickname={member?.nickname ?? null}
       />
       <AdventureLogSection
-        id={id}
+        id={resolvedId}
         isOwner={isOwner}
         memberNickname={member?.nickname ?? null}
       />
       <PhotosSection
-        id={id}
+        id={resolvedId}
         isOwner={isOwner}
         loginNick={loginNick}
         memberNickname={member?.nickname ?? null}

@@ -7,11 +7,15 @@ import {
   addDoc,
   collection,
   doc,
+  getDocs,
   increment,
+  query,
   serverTimestamp,
   setDoc,
   updateDoc,
+  where,
 } from "firebase/firestore";
+import { useRouter } from "next/navigation";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { db, storage } from "@/src/lib/firebase";
 import Avatar, {
@@ -90,6 +94,7 @@ export function ProfileSection({
   onChange,
 }: Props) {
   const avatarData = useAvatarData(member?.nickname ?? null);
+  const router = useRouter();
 
   const [editMode, setEditMode] = useState(false);
   const [editStatus, setEditStatus] = useState(member?.statusMessage ?? "");
@@ -130,6 +135,18 @@ export function ProfileSection({
     if (!loginNick) return;
     setClaiming(true);
     try {
+      // Defensive: a members doc for this nickname might already exist
+      // under a legacy slot id. If so, route the user there instead of
+      // creating a duplicate at members/{slug}.
+      const existing = await getDocs(
+        query(collection(db, "members"), where("nickname", "==", loginNick)),
+      );
+      if (!existing.empty) {
+        const hit = existing.docs[0];
+        onChange(hit.data() as MemberDoc);
+        if (hit.id !== id) router.replace(`/members/${hit.id}`);
+        return;
+      }
       const created: MemberDoc = {
         nickname: loginNick,
         statusMessage: "",
