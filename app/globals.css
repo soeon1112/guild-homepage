@@ -5985,14 +5985,25 @@ body.has-redesigned-header .bg-scene {
      no scroll at all because of overflow-y: auto below). */
   align-items: safe center;
   justify-content: center;
-  /* Bottom padding leaves room for the fixed BottomNav (h-9 button + py-2
-     + pt-2 + pb-3 ≈ 72px) plus iOS home-indicator safe area, so a tall
-     modal can be scrolled all the way to the close button without it
-     sliding under the nav. */
-  padding: 1rem 1rem calc(6rem + env(safe-area-inset-bottom)) 1rem;
+  /* Top padding clears the sticky TopHeader (h-[56px] + safe-area-inset-top)
+     so the modal start isn't hidden behind it. Bottom padding leaves room
+     for the fixed BottomNav (h-9 button + py-2 + pt-2 + pb-3 ≈ 72px) plus
+     iOS home-indicator safe area, so a tall modal scrolls all the way to
+     the close button without it sliding under the nav. */
+  padding:
+    calc(56px + 1rem + env(safe-area-inset-top))
+    1rem
+    calc(6rem + env(safe-area-inset-bottom))
+    1rem;
   background: rgba(2, 0, 16, 0.78);
   backdrop-filter: blur(6px);
+  /* Lock to vertical scroll — `overflow-x: hidden` blocks any sideways
+     scrollbar from a centered child wider than padding, and `touch-action:
+     pan-y` tells mobile browsers to ignore horizontal pan gestures so the
+     modal doesn't drift sideways when the user swipes. */
+  overflow-x: hidden;
   overflow-y: auto;
+  touch-action: pan-y;
   animation: rebirth-fade-in 0.25s ease;
 }
 .rebirth-modal {
