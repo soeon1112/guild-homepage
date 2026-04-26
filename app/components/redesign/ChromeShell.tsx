@@ -62,7 +62,14 @@ export function ChromeShell({ children }: { children: React.ReactNode }) {
       <CosmicBackground />
       <TopHeader />
       <Breadcrumb />
-      <main className="relative z-10 flex-1 pb-28">{children}</main>
+      {/* Bottom padding clears the floating BottomNav on every page in one
+          spot. 8rem (128px) covers the nav (~72–80px) plus comfortable
+          buffer; env(safe-area-inset-bottom) tacks on the iOS home indicator
+          so the last page item never sits under the nav even on the tallest
+          iPhones. */}
+      <main className="relative z-10 flex-1 pb-[calc(8rem+env(safe-area-inset-bottom))]">
+        {children}
+      </main>
       <BottomNav />
     </>
   );
