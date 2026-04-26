@@ -1,5 +1,6 @@
 // Main page — redesign (Step: global chrome moved to ChromeShell; page keeps only sections)
 import { TodaySky } from "./components/redesign/TodaySky";
+import { RebirthEvent } from "./components/redesign/RebirthEvent";
 import { ShootingStarLetter } from "./components/redesign/ShootingStarLetter";
 import { NebulaWhispers } from "./components/redesign/NebulaWhispers";
 import { WhispersToStars } from "./components/redesign/WhispersToStars";
@@ -10,6 +11,9 @@ export default function Home() {
     <div className="main-content">
       {/* Today's Sky — constellation + attendance check-in */}
       <TodaySky />
+
+      {/* Limited-time event banner — admin-gated until QA passes */}
+      <RebirthEvent />
 
       {/* Shooting-star letter — compose & inbox */}
       <ShootingStarLetter />
