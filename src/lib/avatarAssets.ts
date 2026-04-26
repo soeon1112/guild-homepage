@@ -5,10 +5,12 @@
 const BUCKET = "dawnlight-guild.firebasestorage.app";
 const BASE = `https://storage.googleapis.com/${BUCKET}/avatars`;
 
-// Bump when avatar PNGs are re-uploaded so browsers fetch the new copies
-// instead of serving the previous response from cache (Firebase Storage
-// sends Cache-Control: max-age=3600 by default).
-export const AVATAR_VERSION = "202604261307";
+// Build-time timestamp injected by next.config.ts (`Date.now()` at the
+// moment Vercel runs `next build`). Used as a `?v=` cache-bust suffix
+// so re-uploaded PNGs are fetched fresh on each deploy without manual
+// version bumps. Falls back to "0" only if the env var is missing
+// (shouldn't happen — Next.js inlines NEXT_PUBLIC_* at build time).
+export const AVATAR_VERSION = process.env.NEXT_PUBLIC_AVATAR_VERSION ?? "0";
 
 export type AvatarCategory =
   | "bodies"
