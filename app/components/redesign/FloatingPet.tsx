@@ -826,7 +826,7 @@ function AdoptionPanel({
       <div className="text-center">
         <div className="font-serif text-[14px] font-medium">펫을 입양해보세요!</div>
         <div className="mt-1 font-serif text-[11px] text-[#9b8fb8]">
-          종류를 골라 시작하세요. 모두 무료에요.
+          종류를 골라 시작하세요. 모두 무료예요.
         </div>
       </div>
       <div className="grid grid-cols-3 gap-2">

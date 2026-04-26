@@ -253,8 +253,8 @@ export type Item = {
 
 export const ITEMS: Item[] = [
   // consumables
-  { id: "food",  category: "consumable", name: "일반 사료", price: 2,  desc: "배고픔 +30%", consumeEffect: { hunger: 30 } },
-  { id: "treat", category: "consumable", name: "고급 간식", price: 5,  desc: "배고픔 +15%, 행복도 +10%", consumeEffect: { hunger: 15, happiness: 10 } },
+  { id: "food",  category: "consumable", name: "일반 사료", price: 2,  desc: "포만감 +30%", consumeEffect: { hunger: 30 } },
+  { id: "treat", category: "consumable", name: "고급 간식", price: 5,  desc: "포만감 +15%, 행복도 +10%", consumeEffect: { hunger: 15, happiness: 10 } },
   { id: "cake",  category: "consumable", name: "특별 케이크", price: 10, desc: "경험치 2배 부스트 1시간", consumeEffect: { expBoostMs: HOUR, expBoostMult: 2 } },
   // accessories
   { id: "ribbon",   category: "accessory", name: "리본",   price: 15, desc: "패션 — 리본" },
