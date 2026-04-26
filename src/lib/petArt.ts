@@ -768,42 +768,116 @@ export type StageBehavior = {
   idleBouncy?: boolean;
 };
 
+// ── Per-species personality ──────────────────────────────────
+// Multipliers applied on top of STAGE_BEHAVIOR + a stage-scaled
+// "special action" chance. Trait expression starts at 0 in egg
+// (everyone bounces the same) and grows to 1.0 by adult.
+export type SpecialAction =
+  | "none"
+  | "groom"   // cat: paw lick / head tilt
+  | "jump"    // dog: little vertical jump
+  | "sniff"   // rabbit: gentle scale pulse (nose twitch)
+  | "dash"    // fox: short fast walk
+  | "puff"    // hamster: cheek puff (scale up briefly)
+  | "flap"    // owl: wing flap (scaleX pulse + tiny lift)
+  | "howl"    // wolf: tilt back + hold
+  | "roll";   // panda: full rotate
+
+export type PetTrait = {
+  walkSpeedMul: number;   // multiplies walkDurPerUnit (lower = faster walks)
+  walkChanceMul: number;  // multiplies walkChance
+  sitChanceMul: number;   // multiplies sitChance
+  swayAmpMul: number;     // multiplies swayAmplitude
+  bobAmpMul: number;      // multiplies bobAmplitude
+  hopOnWalk?: boolean;    // rabbit: vertical hop instead of sway during walking
+  specialAction: SpecialAction;
+  specialChance: number;  // 0..1 per behaviour roll (scaled by stage expression)
+};
+
+export const PET_TRAITS: Record<PetType, PetTrait> = {
+  cat:     { walkSpeedMul: 1.0,  walkChanceMul: 0.95, sitChanceMul: 1.2, swayAmpMul: 0.8, bobAmpMul: 0.9, specialAction: "groom", specialChance: 0.16 },
+  dog:     { walkSpeedMul: 0.7,  walkChanceMul: 1.1,  sitChanceMul: 0.5, swayAmpMul: 1.3, bobAmpMul: 1.4, specialAction: "jump",  specialChance: 0.20 },
+  rabbit:  { walkSpeedMul: 0.9,  walkChanceMul: 1.0,  sitChanceMul: 1.0, swayAmpMul: 0.4, bobAmpMul: 0.5, hopOnWalk: true, specialAction: "sniff", specialChance: 0.16 },
+  fox:     { walkSpeedMul: 0.9,  walkChanceMul: 1.0,  sitChanceMul: 0.7, swayAmpMul: 0.85, bobAmpMul: 0.9, specialAction: "dash", specialChance: 0.16 },
+  hamster: { walkSpeedMul: 0.6,  walkChanceMul: 1.3,  sitChanceMul: 0.7, swayAmpMul: 1.0, bobAmpMul: 1.0, specialAction: "puff",  specialChance: 0.18 },
+  owl:     { walkSpeedMul: 1.3,  walkChanceMul: 0.6,  sitChanceMul: 1.5, swayAmpMul: 0.6, bobAmpMul: 0.7, specialAction: "flap",  specialChance: 0.20 },
+  bear:    { walkSpeedMul: 1.4,  walkChanceMul: 0.85, sitChanceMul: 1.4, swayAmpMul: 1.1, bobAmpMul: 1.0, specialAction: "none",  specialChance: 0 },
+  wolf:    { walkSpeedMul: 1.0,  walkChanceMul: 0.95, sitChanceMul: 0.7, swayAmpMul: 0.9, bobAmpMul: 0.9, specialAction: "howl",  specialChance: 0.12 },
+  panda:   { walkSpeedMul: 1.3,  walkChanceMul: 0.85, sitChanceMul: 1.3, swayAmpMul: 1.0, bobAmpMul: 1.0, specialAction: "roll",  specialChance: 0.14 },
+};
+
+// How strongly the species trait shows up at each growth stage.
+// 0 = no trait (everybody bounces the same). 1 = full personality.
+export const STAGE_TRAIT_EXPRESSION: Record<PetStage, number> = {
+  egg:   0,
+  baby:  0.25,
+  child: 0.6,
+  teen:  0.85,
+  adult: 1.0,
+};
+
+// Helper: derive effective behavior for a pet/stage. Multiplies trait
+// modifiers by the expression factor so growth feels gradual.
+export function effectiveBehavior(type: PetType, stage: PetStage): StageBehavior & {
+  hopOnWalk: boolean;
+  specialAction: SpecialAction;
+  specialChance: number;
+} {
+  const base = STAGE_BEHAVIOR[stage];
+  const trait = PET_TRAITS[type];
+  const e = STAGE_TRAIT_EXPRESSION[stage];
+  const lerp = (a: number, b: number) => a + (b - a) * e;
+  return {
+    ...base,
+    walkDurPerUnit: base.walkDurPerUnit * lerp(1, trait.walkSpeedMul),
+    walkDurMin: base.walkDurMin * lerp(1, trait.walkSpeedMul),
+    walkChance: Math.min(0.95, base.walkChance * lerp(1, trait.walkChanceMul)),
+    sitChance: Math.min(0.6, base.sitChance * lerp(1, trait.sitChanceMul)),
+    swayAmplitude: base.swayAmplitude * lerp(1, trait.swayAmpMul),
+    bobAmplitude: base.bobAmplitude * lerp(1, trait.bobAmpMul),
+    hopOnWalk: !!trait.hopOnWalk && e >= 0.6, // only kicks in from child stage
+    specialAction: e >= 0.25 ? trait.specialAction : "none",
+    specialChance: trait.specialChance * e,
+  };
+}
+
 export const STAGE_BEHAVIOR: Record<PetStage, StageBehavior> = {
   egg: {
-    idleWaitMin: 2500, idleWaitMax: 4500,
-    walkDurPerUnit: 2400, walkDurMin: 1800,
-    sitChance: 0, walkChance: 0.9,
-    bobAmplitude: 6, bobDuration: 600,
-    swayAmplitude: 14, swayDuration: 380,
-    idleBouncy: true,
+    // Eggs walk more, bounce less in place — user said the in-place
+    // bounce was too much. Slow side-to-side roll dominates.
+    idleWaitMin: 1200, idleWaitMax: 2400,
+    walkDurPerUnit: 2600, walkDurMin: 2000,
+    sitChance: 0, walkChance: 0.95,
+    bobAmplitude: 3, bobDuration: 700,
+    swayAmplitude: 14, swayDuration: 420,
   },
   baby: {
-    idleWaitMin: 3500, idleWaitMax: 6000,
-    walkDurPerUnit: 2200, walkDurMin: 1600,
-    sitChance: 0.05, walkChance: 0.85,
+    idleWaitMin: 1800, idleWaitMax: 3500,
+    walkDurPerUnit: 2400, walkDurMin: 1800,
+    sitChance: 0.04, walkChance: 0.9,
     bobAmplitude: 3, bobDuration: 900,
     swayAmplitude: 6, swayDuration: 600,
   },
   child: {
-    idleWaitMin: 3000, idleWaitMax: 6000,
-    walkDurPerUnit: 1700, walkDurMin: 1200,
-    sitChance: 0.1, walkChance: 0.85,
+    idleWaitMin: 1600, idleWaitMax: 3200,
+    walkDurPerUnit: 2000, walkDurMin: 1400,
+    sitChance: 0.05, walkChance: 0.92,
     bobAmplitude: 3, bobDuration: 800,
-    swayAmplitude: 4, swayDuration: 420,
+    swayAmplitude: 4, swayDuration: 460,
   },
   teen: {
-    idleWaitMin: 2500, idleWaitMax: 5000,
-    walkDurPerUnit: 1100, walkDurMin: 800,
-    sitChance: 0.05, walkChance: 0.9,
+    idleWaitMin: 1400, idleWaitMax: 2800,
+    walkDurPerUnit: 1700, walkDurMin: 1200,
+    sitChance: 0.04, walkChance: 0.94,
     bobAmplitude: 4, bobDuration: 700,
-    swayAmplitude: 5, swayDuration: 280,
+    swayAmplitude: 5, swayDuration: 320,
   },
   adult: {
-    idleWaitMin: 4000, idleWaitMax: 8000,
-    walkDurPerUnit: 1700, walkDurMin: 1200,
-    sitChance: 0.2, walkChance: 0.75,
+    idleWaitMin: 2000, idleWaitMax: 3800,
+    walkDurPerUnit: 2100, walkDurMin: 1500,
+    sitChance: 0.08, walkChance: 0.88,
     bobAmplitude: 3, bobDuration: 800,
-    swayAmplitude: 3, swayDuration: 420,
+    swayAmplitude: 3, swayDuration: 460,
   },
 };
 

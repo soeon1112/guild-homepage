@@ -13,6 +13,7 @@ import {
   BACKGROUND_SPRITES,
   backgroundColor,
   BLINK_OVERLAY,
+  effectiveBehavior,
   EGG_SPRITE,
   FURNITURE_PLACEMENTS,
   ITEM_ICONS,
@@ -23,9 +24,9 @@ import {
   ROOM_WALL_DECOR,
   ROOM_WALL_TRIM,
   spriteFor,
-  STAGE_BEHAVIOR,
   type ItemIconRender,
   type PixelGrid,
+  type SpecialAction,
 } from "@/src/lib/petArt";
 import {
   PET_PALETTE,
@@ -46,7 +47,7 @@ export type PetReaction =
   | { kind: "play" }
   | null;
 
-type Mode = "idle" | "walking" | "sitting";
+type Mode = "idle" | "walking" | "sitting" | "special";
 
 type Props = {
   type: PetType;
@@ -122,16 +123,18 @@ function PetRoomInner({
   const petSize = Math.min(98, Math.max(68, Math.round(H * 0.35)));
   const petBottom = 12;
   const isEgg = stage === "egg";
-  const behavior = STAGE_BEHAVIOR[stage];
+  const behavior = effectiveBehavior(type, stage);
 
   // ── State machine ──
   const [mode, setMode] = useState<Mode>("idle");
   const [posPct, setPosPct] = useState(0); // -1..1 within walking range
   const [facing, setFacing] = useState<"left" | "right">("right");
   const [blink, setBlink] = useState(false);
+  const [activeAction, setActiveAction] = useState<SpecialAction>("none");
   const walkDurRef = useRef(0);
 
-  // Behaviour scheduler — every stage moves now (egg rolls!).
+  // Behaviour scheduler — every stage moves now. Position picker
+  // alternates sides so the pet keeps crossing through center.
   useEffect(() => {
     let cancelled = false;
 
@@ -144,24 +147,56 @@ function PetRoomInner({
       const t = window.setTimeout(() => {
         if (cancelled) return;
         const r = Math.random();
-        if (r < behavior.sitChance) {
-          setMode("sitting");
-          window.setTimeout(() => {
-            if (!cancelled) setMode("idle");
-          }, 3000 + Math.random() * 2000);
-        } else if (r < behavior.sitChance + behavior.walkChance) {
-          const next = (Math.random() * 2 - 1) * 0.85;
-          const distance = Math.abs(next - posPct);
-          const dur = Math.max(behavior.walkDurMin, distance * behavior.walkDurPerUnit);
-          walkDurRef.current = dur;
-          setFacing(next > posPct ? "right" : "left");
-          setMode("walking");
-          setPosPct(next);
-          window.setTimeout(() => {
-            if (!cancelled) setMode("idle");
-          }, dur + 80);
+        // Special action first (rolled before sit/walk to give it priority)
+        if (r < behavior.specialChance && behavior.specialAction !== "none") {
+          setActiveAction(behavior.specialAction);
+          setMode("special");
+          // dash is implemented as a fast walk, not a hold-pose
+          if (behavior.specialAction === "dash") {
+            const lastSign = posPct > 0.05 ? 1 : posPct < -0.05 ? -1 : (Math.random() < 0.5 ? 1 : -1);
+            const next = -lastSign * (0.5 + Math.random() * 0.35);
+            const dur = Math.max(500, Math.abs(next - posPct) * 700); // fast
+            walkDurRef.current = dur;
+            setFacing(next > posPct ? "right" : "left");
+            setPosPct(next);
+            window.setTimeout(() => {
+              if (!cancelled) {
+                setActiveAction("none");
+                setMode("idle");
+              }
+            }, dur + 80);
+          } else {
+            window.setTimeout(() => {
+              if (!cancelled) {
+                setActiveAction("none");
+                setMode("idle");
+              }
+            }, 1700);
+          }
+        } else {
+          const r2 = (r - behavior.specialChance) / Math.max(0.0001, 1 - behavior.specialChance);
+          if (r2 < behavior.sitChance) {
+            setMode("sitting");
+            window.setTimeout(() => {
+              if (!cancelled) setMode("idle");
+            }, 3000 + Math.random() * 2000);
+          } else if (r2 < behavior.sitChance + behavior.walkChance) {
+            // Pick opposite side from current — cross through center.
+            const lastSign = posPct > 0.05 ? 1 : posPct < -0.05 ? -1 : (Math.random() < 0.5 ? 1 : -1);
+            const newSign = -lastSign;
+            const magnitude = 0.3 + Math.random() * 0.55; // 0.3..0.85
+            const next = newSign * magnitude;
+            const distance = Math.abs(next - posPct);
+            const dur = Math.max(behavior.walkDurMin, distance * behavior.walkDurPerUnit);
+            walkDurRef.current = dur;
+            setFacing(next > posPct ? "right" : "left");
+            setMode("walking");
+            setPosPct(next);
+            window.setTimeout(() => {
+              if (!cancelled) setMode("idle");
+            }, dur + 80);
+          }
         }
-        // else: stay idle (re-runs scheduler via effect dependency on mode/posPct)
       }, delay);
       return () => window.clearTimeout(t);
     };
@@ -206,22 +241,41 @@ function PetRoomInner({
   }, [reaction]);
 
   // CSS transition timing for `left` matches the planned walk duration.
-  const walkDuration = mode === "walking" ? walkDurRef.current : 0;
+  const walkDuration = mode === "walking" || (mode === "special" && activeAction === "dash") ? walkDurRef.current : 0;
 
-  // Stage-specific animation selection
-  const swayKeyframe =
-    stage === "egg" ? "pet-roll-sway"
+  // Walk animation pick. Rabbit hops once trait expression unlocks it.
+  let swayKeyframe = stage === "egg" ? "pet-roll-sway"
     : stage === "baby" ? "pet-waddle-sway"
     : stage === "teen" ? "pet-walk-sway-active"
     : "pet-walk-sway";
-  const idleKeyframe = behavior.idleBouncy ? "pet-bob-egg" : "pet-bob";
+  if (behavior.hopOnWalk) swayKeyframe = "pet-hop-walk";
 
-  const innerAnim =
-    mode === "walking"
-      ? `${swayKeyframe} ${behavior.swayDuration}ms ease-in-out infinite`
-      : mode === "sitting"
-      ? "pet-sit 1.2s ease-in-out infinite"
-      : `${idleKeyframe} ${behavior.bobDuration}ms ease-in-out infinite`;
+  const idleKeyframe = "pet-bob";
+
+  // Special action keyframes
+  const actionKeyframe: Record<SpecialAction, string | null> = {
+    none: null,
+    groom: "pet-action-groom",
+    jump: "pet-action-jump",
+    sniff: "pet-action-sniff",
+    dash: null, // dash uses walk anim
+    puff: "pet-action-puff",
+    flap: "pet-action-flap",
+    howl: "pet-action-howl",
+    roll: "pet-action-roll",
+  };
+
+  let innerAnim: string;
+  if (mode === "special" && activeAction !== "none" && actionKeyframe[activeAction]) {
+    innerAnim = `${actionKeyframe[activeAction]} 1.6s ease-in-out infinite`;
+  } else if (mode === "walking" || (mode === "special" && activeAction === "dash")) {
+    const dur = activeAction === "dash" ? behavior.swayDuration * 0.55 : behavior.swayDuration;
+    innerAnim = `${swayKeyframe} ${dur}ms ease-in-out infinite`;
+  } else if (mode === "sitting") {
+    innerAnim = "pet-sit 1.2s ease-in-out infinite";
+  } else {
+    innerAnim = `${idleKeyframe} ${behavior.bobDuration}ms ease-in-out infinite`;
+  }
 
   // Pet horizontal range: 18%..82% of container (leaves margin so the
   // sprite never crosses the edge).
