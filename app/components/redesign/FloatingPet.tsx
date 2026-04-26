@@ -10,7 +10,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   collection,
   doc,
@@ -102,7 +102,9 @@ type MemberInfo = {
   happiness?: number;
 };
 
-function PetButtonIcon({ size = 22 }: { size?: number }) {
+// Memoized — `size` rarely changes; skips re-render on the FAB's
+// 1-second clock tick.
+const PetButtonIcon = memo(function PetButtonIcon({ size = 22 }: { size?: number }) {
   // Tiny pixel pet face — neutral cream, theme-independent.
   return (
     <svg
@@ -151,7 +153,7 @@ function PetButtonIcon({ size = 22 }: { size?: number }) {
       )}
     </svg>
   );
-}
+});
 
 const TAB_LABELS: Record<Tab, string> = {
   main: "내 펫",
@@ -1399,7 +1401,10 @@ function MainPanel({
 
 // ── Reusable bits ────────────────────────────────────────────
 
-function PixelIconView({ icon, size = 20, dim = false }: { icon: ItemIconRender; size?: number; dim?: boolean }) {
+// Memoized — `icon` references are module-level constants from petArt
+// (STATUS_ICONS, INTERACTION_ICONS, ITEM_ICONS), `size`/`dim` literals.
+// Skips re-render on the parent's 1s clock tick.
+const PixelIconView = memo(function PixelIconView({ icon, size = 20, dim = false }: { icon: ItemIconRender; size?: number; dim?: boolean }) {
   const grid = icon.grid;
   const cols = Math.max(...grid.map((r) => r.length));
   const px = size / cols;
@@ -1421,7 +1426,7 @@ function PixelIconView({ icon, size = 20, dim = false }: { icon: ItemIconRender;
       )}
     </svg>
   );
-}
+});
 
 // Circular donut gauge — replaces the old horizontal HudBar so all 4
 // stats fit on a single row above the interaction grid (less scrolling
@@ -1432,7 +1437,10 @@ const GAUGE_STROKE = 5;
 const GAUGE_CIRC = 2 * Math.PI * GAUGE_RADIUS;
 const GAUGE_SIZE = 56;
 
-function CircleGauge({
+// Memoized — props change only when the underlying stat moves; the
+// parent's 1s clock tick that produces the same projected value won't
+// re-render any of the four gauges.
+const CircleGauge = memo(function CircleGauge({
   icon,
   label,
   value,
@@ -1502,9 +1510,12 @@ function CircleGauge({
       ) : null}
     </div>
   );
-}
+});
 
-function InteractButton({
+// Memoized — only re-renders when cooldownLabel/disabled actually
+// change; idle interactions (parent's 1s tick with same cooldown text)
+// skip the button entirely.
+const InteractButton = memo(function InteractButton({
   icon,
   label,
   cooldownLabel,
@@ -1560,7 +1571,7 @@ function InteractButton({
       ) : null}
     </button>
   );
-}
+});
 
 // Rarity tier coloring — drives the shop card border so a glance hints at
 // item value. Common (consumables) = grey; Rare (accessories/furniture)
