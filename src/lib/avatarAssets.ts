@@ -5,6 +5,11 @@
 const BUCKET = "dawnlight-guild.firebasestorage.app";
 const BASE = `https://storage.googleapis.com/${BUCKET}/avatars`;
 
+// Bump when avatar PNGs are re-uploaded so browsers fetch the new copies
+// instead of serving the previous response from cache (Firebase Storage
+// sends Cache-Control: max-age=3600 by default).
+export const AVATAR_VERSION = "20260426";
+
 export type AvatarCategory =
   | "bodies"
   | "eyes"
@@ -14,7 +19,7 @@ export type AvatarCategory =
   | "parts";
 
 export function avatarUrl(category: AvatarCategory, filename: string): string {
-  return `${BASE}/${category}/${filename}.png`;
+  return `${BASE}/${category}/${filename}.png?v=${AVATAR_VERSION}`;
 }
 
 // Fashion parts live at avatars/parts/<body>/<category>/<id>.png — one
