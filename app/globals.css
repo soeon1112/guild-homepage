@@ -6083,8 +6083,10 @@ body.has-redesigned-header .bg-scene {
   justify-content: center;
   padding-left: 1rem;
   padding-right: 1rem;
-  background: rgba(2, 0, 16, 0.78);
-  backdrop-filter: blur(6px);
+  /* Transparent backdrop — page behind the modal stays visible. The
+     modal box itself keeps an opaque dark background so its content
+     reads cleanly; only the area outside the modal is see-through. */
+  background: transparent;
   /* Lock to vertical scroll — `overflow-x: hidden` blocks any sideways
      scrollbar from a centered child wider than padding, and `touch-action:
      pan-y` tells mobile browsers to ignore horizontal pan gestures so the
