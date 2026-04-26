@@ -58,17 +58,23 @@ export const PET_TYPES: { id: PetType; label: string; emoji: string }[] = [
 ];
 
 // ── Growth stages ─────────────────────────────────────────────
-// User-set thresholds (days since createdAt OR exp threshold met):
-//   1. egg        0~3일      / exp 0
-//   2. baby       3~10일     / exp 50
-//   3. child      10~20일    / exp 200
-//   4. teen       20~35일    / exp 500
-//   5. adult      35일~      / exp 1000
+//   1. 알       (0~3일)
+//   2. 아기     (3~10일)   stage = 7일
+//   3. 어린이   (10~20일)  stage = 10일
+//   4. 청소년   (20~35일)  stage = 15일
+//   5. 성체     (35일~)
 //
-// Stage advances when EITHER (days >= dayMin AND exp >= expMin) OR
-// (exp >= expFastTrack — meaning the pet was loved enough to skip
-// some calendar time, but never below dayMin/2). The minimum month-to-
-// adult constraint is enforced by the dayMin floor.
+// `dayMin` are the minimums for "best-case, well-managed" growth.
+// They are NOT shortcut-able — the pet must wait the full calendar
+// time before each transition. `expMin` is calibrated so a pet that
+// gets regular daily interactions hits the exp target right around
+// the same time it hits dayMin (smooth advancement). A neglected pet
+// reaches dayMin first but has to wait extra days for exp to catch up.
+//
+// On top of that, `doInteraction` halves the exp gain if ANY current
+// status (hunger/happiness/clean) has decayed to 30% or below — so
+// poor management both delays interactions (cooldown) AND throttles
+// each one's reward.
 export type PetStage = "egg" | "baby" | "child" | "teen" | "adult";
 
 export const PET_STAGES: {
@@ -76,24 +82,21 @@ export const PET_STAGES: {
   label: string;
   dayMin: number;
   expMin: number;
-  expFastTrack: number;
 }[] = [
-  { id: "egg",   label: "알",       dayMin: 0,  expMin: 0,    expFastTrack: 0 },
-  { id: "baby",  label: "아기",     dayMin: 3,  expMin: 50,   expFastTrack: 100 },
-  { id: "child", label: "어린이",   dayMin: 10, expMin: 200,  expFastTrack: 350 },
-  { id: "teen",  label: "청소년",   dayMin: 20, expMin: 500,  expFastTrack: 800 },
-  { id: "adult", label: "성체",     dayMin: 35, expMin: 1000, expFastTrack: 1500 },
+  { id: "egg",   label: "알",     dayMin: 0,  expMin: 0    },
+  { id: "baby",  label: "아기",   dayMin: 3,  expMin: 200  },
+  { id: "child", label: "어린이", dayMin: 10, expMin: 700  },
+  { id: "teen",  label: "청소년", dayMin: 20, expMin: 1500 },
+  { id: "adult", label: "성체",   dayMin: 35, expMin: 2500 },
 ];
 
 export function computeStage(createdAtMs: number, exp: number, nowMs: number): PetStage {
   const days = Math.max(0, (nowMs - createdAtMs) / (1000 * 60 * 60 * 24));
-  // Walk from highest to lowest, return first that qualifies.
+  // Walk from highest to lowest. Both day AND exp must be met — no
+  // exp fast-track that lets a player skip calendar time.
   for (let i = PET_STAGES.length - 1; i >= 0; i--) {
     const s = PET_STAGES[i];
-    const normalAdvance = days >= s.dayMin && exp >= s.expMin;
-    // Fast track: half the days are required if you have *lots* of exp.
-    const fastAdvance = days >= s.dayMin / 2 && exp >= s.expFastTrack;
-    if (normalAdvance || fastAdvance) return s.id;
+    if (days >= s.dayMin && exp >= s.expMin) return s.id;
   }
   return "egg";
 }
@@ -475,6 +478,12 @@ export async function doInteraction(
 
   // Apply exp-boost multiplier if active.
   let gain = inter.effects.expGain;
+  // Penalty: if any current status (PROJECTED, before this action's
+  // boost is applied) has decayed to 30% or less, exp gain is halved.
+  // Encourages keeping the pet healthy as a prerequisite for growth.
+  if (projected.hunger <= 30 || projected.happiness <= 30 || projected.clean <= 30) {
+    gain = Math.max(1, Math.floor(gain / 2));
+  }
   const boostUntil = pet.expBoostUntil?.toMillis?.() ?? 0;
   if (boostUntil > now && pet.expBoostMult && pet.expBoostMult > 1) {
     gain = Math.round(gain * pet.expBoostMult);
