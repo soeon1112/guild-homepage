@@ -39,26 +39,30 @@
   --radius: 0.75rem;
 
   /* ── Layout chrome offsets ──
-     Used by every fixed/full-screen modal so its content never overlaps
-     the sticky TopHeader (h-[56px]) or the floating BottomNav (~80px high
-     above the iOS home indicator). All values include the platform safe
-     areas so a modal looks correct on the tallest iPhones too.
-       --modal-pad-top    = 56px + safe-area-top + 0.5rem breathing room
-       --modal-pad-bottom = 7rem (covers nav ~80px + ~32px buffer) +
-                            safe-area-bottom (home indicator). */
+     Every fixed/full-screen modal slots between the sticky TopHeader
+     (h-[56px]) and the floating BottomNav (~80px paint area above the iOS
+     home indicator). The backdrop itself is inset so the chrome bars stay
+     visible and tappable while a modal is open — clicking on TopHeader
+     or BottomNav navigates instead of being swallowed by the backdrop.
+       --modal-top-offset    = TopHeader bottom edge (56px + safe-area-top)
+       --modal-bottom-offset = BottomNav top edge (5.5rem ≈ 88px covers
+                               the nav body + safe-area-bottom for the
+                               iOS home indicator). */
   --top-header-height: 56px;
-  --modal-pad-top: calc(56px + env(safe-area-inset-top) + 0.5rem);
-  --modal-pad-bottom: calc(7rem + env(safe-area-inset-bottom));
+  --modal-top-offset: calc(56px + env(safe-area-inset-top));
+  --modal-bottom-offset: calc(5.5rem + env(safe-area-inset-bottom));
 }
 
-/* Reusable modal frame: positions a fixed full-screen overlay so its
-   centred content stays between the TopHeader and the BottomNav. Apply on
-   any `position: fixed; inset: 0` overlay (use alongside Tailwind's
-   `flex items-center justify-center` if centring is desired). The
-   horizontal padding mirrors `p-4`. */
+/* Reusable modal frame: a fixed overlay that fills only the area BETWEEN
+   TopHeader and BottomNav. Combine with Tailwind's `fixed inset-0` —
+   this rule's `top`/`bottom` override the inset-0 zeros (custom CSS
+   beats utility-layer Tailwind in cascade order). Add
+   `flex items-center justify-center` if you want the inner card centred. */
 .modal-safe-frame {
-  padding-top: var(--modal-pad-top);
-  padding-bottom: var(--modal-pad-bottom);
+  top: var(--modal-top-offset);
+  right: 0;
+  bottom: var(--modal-bottom-offset);
+  left: 0;
   padding-left: 1rem;
   padding-right: 1rem;
 }
@@ -2162,7 +2166,13 @@ select {
 /* ── Modal ── */
 .minihome-modal {
   position: fixed;
-  inset: 0;
+  /* Inset between TopHeader and BottomNav so the chrome stays visible
+     and tappable while the modal is open. The backdrop only dims the
+     middle of the screen — same pattern as .modal-safe-frame. */
+  top: var(--modal-top-offset);
+  right: 0;
+  bottom: var(--modal-bottom-offset);
+  left: 0;
   z-index: 100;
   background: rgba(11, 8, 33, 0.75);
   backdrop-filter: blur(8px);
@@ -2170,11 +2180,6 @@ select {
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Top + bottom padding keeps the centred modal between the sticky
-     TopHeader and the floating BottomNav, so the close button and last
-     row stay tappable even when the modal is taller than the viewport. */
-  padding-top: var(--modal-pad-top);
-  padding-bottom: var(--modal-pad-bottom);
   padding-left: 1rem;
   padding-right: 1rem;
   /* Tall photo viewer modals can exceed the safe centre area; allow the
@@ -3535,16 +3540,16 @@ select {
 
 .comment-image-lightbox {
   position: fixed;
-  inset: 0;
+  /* Inset between TopHeader and BottomNav, matching .minihome-modal. */
+  top: var(--modal-top-offset);
+  right: 0;
+  bottom: var(--modal-bottom-offset);
+  left: 0;
   z-index: 200;
   background: rgba(0, 0, 0, 0.9);
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Keep the image inside the safe modal area so the close button isn't
-     hidden under the BottomNav on small phones. */
-  padding-top: var(--modal-pad-top);
-  padding-bottom: var(--modal-pad-bottom);
   padding-left: 1rem;
   padding-right: 1rem;
 }
@@ -6047,7 +6052,13 @@ body.has-redesigned-header .bg-scene {
 /* ── Modal — backdrop + stage container ── */
 .rebirth-backdrop {
   position: fixed;
-  inset: 0;
+  /* Inset between TopHeader and BottomNav so the chrome stays visible
+     while the rebirth event modal is open — same pattern as
+     .minihome-modal / .modal-safe-frame. */
+  top: var(--modal-top-offset);
+  right: 0;
+  bottom: var(--modal-bottom-offset);
+  left: 0;
   z-index: 200;
   display: flex;
   align-items: center;
@@ -6058,14 +6069,6 @@ body.has-redesigned-header .bg-scene {
      no scroll at all because of overflow-y: auto below). */
   align-items: safe center;
   justify-content: center;
-  /* Top padding clears the sticky TopHeader (h-[56px] + safe-area-inset-top)
-     so the modal start isn't hidden behind it. Bottom padding leaves room
-     for the fixed BottomNav (~80px paint area) plus iOS home-indicator
-     safe area, so a tall modal scrolls all the way to the close button
-     without it sliding under the nav. Values come from the shared
-     --modal-pad-* tokens defined at the top of this file. */
-  padding-top: var(--modal-pad-top);
-  padding-bottom: var(--modal-pad-bottom);
   padding-left: 1rem;
   padding-right: 1rem;
   background: rgba(2, 0, 16, 0.78);
