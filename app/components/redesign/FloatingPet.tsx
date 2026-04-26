@@ -117,13 +117,13 @@ function PetButtonIcon({ size = 22 }: { size?: number }) {
         row.split("").map((code, c) => {
           const fill =
             code === "1"
-              ? "#EEEAFF"
+              ? "rgba(255,229,196,0.16)"
               : code === "2"
               ? "#FFB5A7"
               : code === "3"
-              ? "#1F2937"
+              ? "#f4efff"
               : code === "w"
-              ? "#FFFFFF"
+              ? "#0b0821"
               : code === "B"
               ? "#1A1A1A"
               : code === "p"
@@ -529,10 +529,10 @@ export default function FloatingPet() {
           className="relative flex h-12 w-12 items-center justify-center rounded-full transition-transform group-hover:scale-105"
           style={{
             background: pet
-              ? "radial-gradient(circle at 30% 30%, #FFF1D4 0%, #F4C07A 60%, #7D6FE8 100%)"
-              : "radial-gradient(circle at 30% 30%, #E8E5DE 0%, #D1D5DB 60%, #8E8B85 100%)",
+              ? "radial-gradient(circle at 30% 30%, #FFF1D4 0%, #F4C07A 60%, #d896c8 100%)"
+              : "radial-gradient(circle at 30% 30%, #E8E5DE 0%, rgba(216,150,200,0.18) 60%, #8E8B85 100%)",
             boxShadow: pet
-              ? "0 8px 20px rgba(196,140,80,0.45), inset 0 1px 2px rgba(255,255,255,0.4)"
+              ? "0 8px 20px rgba(196,140,80,0.45), inset 0 1px 2px rgba(26,15,61,0.30)"
               : "0 4px 12px rgba(0,0,0,0.2), inset 0 1px 2px rgba(255,255,255,0.3)",
             filter: pet ? "none" : "grayscale(0.6)",
           }}
@@ -543,8 +543,8 @@ export default function FloatingPet() {
         {/* Status bubble */}
         {pet && bubble && !open ? (
           <span
-            className="pointer-events-none absolute -top-7 left-12 whitespace-nowrap rounded-full bg-white/95 px-2 py-1 text-[10px] font-medium text-[#1F2937] shadow-lg"
-            style={{ border: "1px solid #E5E7EB" }}
+            className="pointer-events-none absolute -top-7 left-12 whitespace-nowrap rounded-full bg-abyss-deep/85 px-2 py-1 text-[10px] font-medium text-[#f4efff] shadow-lg"
+            style={{ border: "1px solid rgba(216,150,200,0.25)" }}
           >
             {bubble.message}
           </span>
@@ -560,39 +560,40 @@ export default function FloatingPet() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.96 }}
             transition={{ duration: 0.18 }}
-            className="fixed left-4 bottom-24 z-50 flex max-h-[calc(100vh-160px)] w-[340px] flex-col overflow-hidden rounded-2xl shadow-2xl"
+            className="fixed left-4 bottom-24 z-50 flex max-h-[calc(100vh-160px)] w-[340px] flex-col overflow-hidden rounded-2xl border border-nebula-pink/30 backdrop-blur-md"
             style={{
-              background: "linear-gradient(180deg, #FFFFFF 0%, #FAFBFF 100%)",
-              border: "1px solid #E5E7EB",
+              background: "linear-gradient(180deg, rgba(26,15,61,0.94) 0%, rgba(11,8,33,0.94) 100%)",
+              boxShadow:
+                "0 24px 60px rgba(11,8,33,0.7), 0 0 40px rgba(107,75,168,0.30), inset 0 1px 0 rgba(255,229,196,0.06)",
             }}
           >
             {/* Game-style HUD header — pet identity left, currency + close right */}
             <div
               className="flex items-center justify-between gap-2 px-3 py-2"
               style={{
-                background: "linear-gradient(180deg, rgba(167,139,250,0.22), rgba(167,139,250,0.12))",
-                borderBottom: "1px solid #E5E7EB",
+                background: "linear-gradient(180deg, rgba(61,46,107,0.55), rgba(26,15,61,0.40))",
+                borderBottom: "1px solid rgba(216,150,200,0.30)",
               }}
             >
-              <div className="flex min-w-0 items-center gap-2 text-[#1F2937]">
+              <div className="flex min-w-0 items-center gap-2 text-stardust">
                 {pet ? (
                   <>
-                    <span className="truncate font-serif text-[14px] font-bold">
+                    <span className="truncate font-serif text-[14px] font-bold tracking-wide">
                       {pet.name}
                     </span>
                     <span
-                      className="shrink-0 rounded-md px-1.5 py-0.5 font-serif text-[10px] font-bold tracking-wider text-[#FFFFFF]"
+                      className="shrink-0 rounded-md px-1.5 py-0.5 font-serif text-[10px] font-bold tracking-wider text-stardust"
                       style={{
-                        background: "#7D6FE8",
-                        border: "1px solid #5B4FCC",
-                        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)",
+                        background: "#6b4ba8",
+                        border: "1px solid rgba(216,150,200,0.50)",
+                        boxShadow: "0 0 8px rgba(255,229,196,0.45), inset 0 1px 0 rgba(255,229,196,0.18)",
                       }}
                     >
                       Lv.{PET_STAGES.findIndex((s) => s.id === stage) + 1}
                     </span>
                     <span
-                      className="shrink-0 rounded-md px-1.5 py-0.5 font-serif text-[10px] font-semibold text-[#1F2937]"
-                      style={{ background: "rgba(255,255,255,0.85)", border: "1px solid #E5E7EB" }}
+                      className="shrink-0 rounded-md px-1.5 py-0.5 font-serif text-[10px] font-semibold text-stardust"
+                      style={{ background: "rgba(26,15,61,0.70)", border: "1px solid rgba(216,150,200,0.35)" }}
                     >
                       {PET_STAGES.find((s) => s.id === stage)?.label ?? ""}
                     </span>
@@ -623,8 +624,8 @@ export default function FloatingPet() {
                 </div>
                 <button
                   onClick={() => setOpen(false)}
-                  className="flex h-[22px] w-[22px] items-center justify-center rounded-full text-[#1F2937] transition-opacity hover:opacity-70"
-                  style={{ background: "rgba(255,255,255,0.7)", border: "1px solid #E5E7EB" }}
+                  className="flex h-[22px] w-[22px] items-center justify-center rounded-full text-[#f4efff] transition-opacity hover:opacity-70"
+                  style={{ background: "rgba(26,15,61,0.45)", border: "1px solid rgba(216,150,200,0.25)" }}
                   aria-label="닫기"
                 >
                   <X size={14} />
@@ -632,11 +633,13 @@ export default function FloatingPet() {
               </div>
             </div>
 
-            {/* Tabs (only when pet exists) — icon + label */}
+            {/* Tabs (only when pet exists) — game-style tab bar mirroring
+                the homepage BottomNav with a stardust radial glow under the
+                active tab. */}
             {pet ? (
               <div
-                className="flex shrink-0 justify-around px-1 py-1"
-                style={{ borderBottom: "1px solid #E5E7EB", background: "#F8FAFC" }}
+                className="flex shrink-0 justify-around px-1 py-1.5"
+                style={{ borderBottom: "1px solid rgba(216,150,200,0.30)", background: "rgba(11,8,33,0.85)" }}
               >
                 {(Object.keys(TAB_LABELS) as Tab[]).map((t) => {
                   const isActive = tab === t;
@@ -648,29 +651,37 @@ export default function FloatingPet() {
                         setTab(t);
                         setVisiting(null);
                       }}
-                      className="flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-1 transition-all"
-                      style={{
-                        background: isActive ? "rgba(167,139,250,0.12)" : "transparent",
-                      }}
+                      className="group relative flex flex-1 flex-col items-center gap-0.5 py-1"
                     >
                       <span
-                        className="flex h-[30px] w-[30px] items-center justify-center rounded-lg transition-all"
-                        style={{
-                          background: isActive ? "#F1F5F9" : "transparent",
-                          border: isActive ? "1px solid #A78BFA" : "1px solid transparent",
-                        }}
+                        className={`flex h-9 w-9 items-center justify-center rounded-full transition-all duration-300 ${
+                          isActive ? "text-stardust" : "text-text-sub group-hover:text-nebula-pink"
+                        }`}
+                        style={
+                          isActive
+                            ? {
+                                background:
+                                  "radial-gradient(circle, rgba(255,229,196,0.30) 0%, rgba(216,150,200,0.14) 60%, transparent 100%)",
+                                filter: "drop-shadow(0 0 8px rgba(255,229,196,0.6))",
+                              }
+                            : undefined
+                        }
                       >
                         <PixelIconView icon={icon} size={22} dim={!isActive} />
                       </span>
                       <span
-                        className="font-serif text-[10px] transition-colors"
-                        style={{
-                          color: isActive ? "#1F2937" : "#9CA3AF",
-                          fontWeight: isActive ? 600 : 500,
-                        }}
+                        className={`font-serif text-[9px] tracking-wider transition-colors ${
+                          isActive ? "text-stardust" : "text-text-sub"
+                        }`}
                       >
                         {TAB_LABELS[t]}
                       </span>
+                      {isActive ? (
+                        <span
+                          className="absolute -top-1 h-1 w-1 rounded-full bg-stardust"
+                          style={{ boxShadow: "0 0 6px #FFE5C4" }}
+                        />
+                      ) : null}
                     </button>
                   );
                 })}
@@ -678,7 +689,7 @@ export default function FloatingPet() {
             ) : null}
 
             {/* Body */}
-            <div className="flex-1 overflow-y-auto px-4 py-4 text-[#111827]">
+            <div className="flex-1 overflow-y-auto px-4 py-4 text-[#f4efff]">
               {!pet ? (
                 <AdoptionPanel onAdopt={handleAdopt} disabled={busy} />
               ) : tab === "main" ? (
@@ -783,7 +794,7 @@ export default function FloatingPet() {
                 className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-full px-3 py-1 font-serif text-[11px]"
                 style={{
                   background: "rgba(31,41,55,0.92)",
-                  color: "#FAFBFF",
+                  color: "rgba(26,15,61,0.5)",
                   boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
                 }}
               >
@@ -812,7 +823,7 @@ function AdoptionPanel({
     <div className="flex flex-col gap-3">
       <div className="text-center">
         <div className="font-serif text-[14px] font-medium">펫을 입양해보세요!</div>
-        <div className="mt-1 font-serif text-[11px] text-[#6B7280]">
+        <div className="mt-1 font-serif text-[11px] text-[#9b8fb8]">
           종류를 골라 시작하세요. 모두 무료에요.
         </div>
       </div>
@@ -823,29 +834,29 @@ function AdoptionPanel({
             onClick={() => setType(p.id)}
             className="flex flex-col items-center rounded-xl px-2 py-2 transition-colors"
             style={{
-              background: type === p.id ? "rgba(167,139,250,0.30)" : "rgba(255,255,255,0.5)",
-              border: type === p.id ? "1.5px solid #7D6FE8" : "1px solid #E5E7EB",
+              background: type === p.id ? "rgba(216,150,200,0.30)" : "rgba(26,15,61,0.35)",
+              border: type === p.id ? "1.5px solid #d896c8" : "1px solid rgba(216,150,200,0.25)",
             }}
           >
             <PetSvg type={p.id} stage="adult" size={48} />
-            <span className="mt-1 font-serif text-[10px] text-[#1F2937]">{p.label}</span>
+            <span className="mt-1 font-serif text-[10px] text-[#f4efff]">{p.label}</span>
           </button>
         ))}
       </div>
       {type ? (
-        <div className="flex flex-col gap-2 rounded-xl bg-white/60 p-3">
-          <label className="font-serif text-[11px] text-[#1F2937]">이름 (선택)</label>
+        <div className="flex flex-col gap-2 rounded-xl bg-abyss-deep/40 p-3">
+          <label className="font-serif text-[11px] text-[#f4efff]">이름 (선택)</label>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="비워두면 종 이름 사용"
-            className="rounded-lg border border-[#E5E7EB] bg-white px-2 py-1.5 font-serif text-[12px] outline-none focus:border-[#7D6FE8]"
+            className="rounded-lg border border-[rgba(216,150,200,0.25)] bg-abyss-deep/80 px-2 py-1.5 font-serif text-[12px] outline-none focus:border-[#d896c8]"
           />
           <button
             disabled={disabled}
             onClick={() => onAdopt(type, name)}
             className="rounded-lg px-3 py-2 font-serif text-[12px] font-medium text-white transition-opacity disabled:opacity-50"
-            style={{ background: "#7D6FE8" }}
+            style={{ background: "#d896c8" }}
           >
             입양하기
           </button>
@@ -866,11 +877,11 @@ function StatusBar({
 }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <div className="flex items-center justify-between font-serif text-[10px] text-[#1F2937]">
+      <div className="flex items-center justify-between font-serif text-[10px] text-[#f4efff]">
         <span>{label}</span>
         <span>{Math.round(value)}%</span>
       </div>
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-[rgba(216,150,200,0.25)]">
         <div
           className="h-full rounded-full transition-all"
           style={{ width: `${Math.max(0, Math.min(100, value))}%`, background: color }}
@@ -983,33 +994,43 @@ function MainPanel({
           />
           {bubble ? (
             <div
-              className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-white/95 px-2 py-0.5 font-serif text-[10px] text-[#1F2937]"
-              style={{ border: "1px solid #E5E7EB", boxShadow: "0 2px 6px rgba(0,0,0,0.1)" }}
+              className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-abyss-deep/85 px-2 py-0.5 font-serif text-[10px] text-[#f4efff]"
+              style={{ border: "1px solid rgba(216,150,200,0.25)", boxShadow: "0 2px 6px rgba(0,0,0,0.1)" }}
             >
               {bubble.message}
             </div>
           ) : null}
-          <div className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-white/85 px-2 py-1 backdrop-blur-sm" style={{ border: "1px solid #E5E7EB" }}>
-            <span className="font-serif text-[11px] font-medium text-[#111827]">{pet.name}</span>
-            <span className="rounded-full bg-[#EEEAFF] px-1.5 font-serif text-[9px] text-[#1F2937]">{stageLabel}</span>
+          <div
+            className="absolute left-2 top-2 flex items-center gap-1 rounded-full px-2 py-1 backdrop-blur-sm"
+            style={{ background: "rgba(26,15,61,0.85)", border: "1px solid rgba(216,150,200,0.45)" }}
+          >
+            <span className="font-serif text-[11px] font-semibold text-stardust">{pet.name}</span>
+            <span
+              className="rounded-full px-1.5 font-serif text-[9px] font-semibold text-stardust"
+              style={{ background: "rgba(216,150,200,0.25)" }}
+            >
+              {stageLabel}
+            </span>
           </div>
-          {/* Level-up celebration banner — sits over the room for ~2.8s */}
+          {/* Level-up celebration banner — cosmic stardust burst over the
+              pet room for ~2.8s. */}
           {levelUpBanner ? (
             <div
               className="pointer-events-none absolute left-0 right-0 top-[30%] flex items-center justify-center gap-2 py-2 font-serif"
               style={{
-                background: "rgba(255,243,205,0.95)",
-                borderTop: "2px solid #A78BFA",
-                borderBottom: "2px solid #A78BFA",
-                boxShadow: "0 0 18px rgba(242,200,75,0.55)",
+                background:
+                  "linear-gradient(180deg, rgba(11,8,33,0.92), rgba(61,46,107,0.92))",
+                borderTop: "2px solid rgba(216,150,200,0.55)",
+                borderBottom: "2px solid rgba(216,150,200,0.55)",
+                boxShadow: "0 0 24px rgba(216,150,200,0.55), 0 0 48px rgba(255,229,196,0.35)",
                 animation: "pet-levelup 2.8s ease-out forwards",
               }}
             >
               <span style={{ fontSize: 18 }}>✨</span>
-              <span className="font-bold tracking-widest" style={{ color: "#92400E", fontSize: 16 }}>
+              <span className="font-bold tracking-widest text-stardust" style={{ fontSize: 16 }}>
                 LEVEL UP!
               </span>
-              <span className="font-semibold" style={{ color: "#1F2937", fontSize: 11 }}>
+              <span className="font-semibold text-stardust" style={{ fontSize: 11 }}>
                 {levelUpBanner} 단계
               </span>
               <span style={{ fontSize: 18 }}>✨</span>
@@ -1025,20 +1046,20 @@ function MainPanel({
             value={pendingName}
             onChange={(e) => setPendingName(e.target.value)}
             placeholder="새 이름"
-            className="flex-1 rounded-lg border border-[#E5E7EB] bg-white px-2 py-1 font-serif text-[12px] outline-none focus:border-[#7D6FE8]"
+            className="flex-1 rounded-lg border border-[rgba(216,150,200,0.25)] bg-abyss-deep/80 px-2 py-1 font-serif text-[12px] outline-none focus:border-[#d896c8]"
           />
           <button
             onClick={onRename}
             disabled={busy}
             className="rounded-lg px-2 py-1 font-serif text-[11px] font-medium text-white"
-            style={{ background: "#7D6FE8" }}
+            style={{ background: "#d896c8" }}
           >
             변경
           </button>
           <button
             onClick={() => setRenaming(false)}
-            className="rounded-lg px-2 py-1 font-serif text-[11px] text-[#1F2937]"
-            style={{ border: "1px solid #E5E7EB" }}
+            className="rounded-lg px-2 py-1 font-serif text-[11px] text-[#f4efff]"
+            style={{ border: "1px solid rgba(216,150,200,0.25)" }}
           >
             취소
           </button>
@@ -1072,8 +1093,8 @@ function MainPanel({
           icon={STATUS_ICONS.exp}
           label={`경험치 · Lv.${PET_STAGES.findIndex((s) => s.id === stage) + 1}`}
           value={Math.round(stageProgress * 100)}
-          colorFrom="#DDD6FE"
-          colorTo="#A78BFA"
+          colorFrom="#FFE5C4"
+          colorTo="#FFB5A7"
           subLabel={
             stage === "adult"
               ? "최고 레벨 달성! ★"
@@ -1119,7 +1140,7 @@ function MainPanel({
 
       {/* Quick consumables */}
       <div>
-        <div className="mb-1 font-serif text-[11px] text-[#1F2937]">간단 사용</div>
+        <div className="mb-1 font-serif text-[11px] text-[#f4efff]">간단 사용</div>
         <div className="flex flex-wrap gap-1.5">
           {(["food", "treat", "cake"] as ItemId[]).map((id) => {
             const count = inventory?.[id] ?? 0;
@@ -1129,10 +1150,10 @@ function MainPanel({
                 onClick={() => onConsume(id)}
                 disabled={count < 1 || busy}
                 className="flex items-center gap-1 rounded-lg px-2 py-1 font-serif text-[10px] disabled:opacity-40"
-                style={{ background: "rgba(255,255,255,0.7)", border: "1px solid #E5E7EB" }}
+                style={{ background: "rgba(26,15,61,0.45)", border: "1px solid rgba(216,150,200,0.25)" }}
               >
                 <ItemIconSvg id={id} size={20} />
-                <span className="text-[#1F2937]">
+                <span className="text-[#f4efff]">
                   {findItem(id)?.name} ×{count}
                 </span>
               </button>
@@ -1143,26 +1164,26 @@ function MainPanel({
 
       {/* Special items — dye + reset */}
       <div>
-        <div className="mb-1 font-serif text-[11px] text-[#1F2937]">특수 아이템</div>
+        <div className="mb-1 font-serif text-[11px] text-[#f4efff]">특수 아이템</div>
         <div className="flex flex-wrap items-center gap-1.5">
           <button
             onClick={() => setDyePicker({ open: !dyePicker.open, preview: null })}
             disabled={busy || (inventory?.dye ?? 0) < 1}
             className="flex items-center gap-1 rounded-lg px-2 py-1 font-serif text-[10px] disabled:opacity-40"
             style={{
-              background: dyePicker.open ? "rgba(167,139,250,0.32)" : "rgba(255,255,255,0.7)",
-              border: "1px solid #E5E7EB",
+              background: dyePicker.open ? "rgba(216,150,200,0.32)" : "rgba(26,15,61,0.45)",
+              border: "1px solid rgba(216,150,200,0.25)",
             }}
           >
             <ItemIconSvg id="dye" size={20} />
-            <span className="text-[#1F2937]">염색약 ×{inventory?.dye ?? 0}</span>
+            <span className="text-[#f4efff]">염색약 ×{inventory?.dye ?? 0}</span>
           </button>
           {pet.petBodyColor ? (
             <button
               onClick={() => onApplyDye(null)}
               disabled={busy}
               className="rounded-lg px-2 py-1 font-serif text-[10px] disabled:opacity-40"
-              style={{ background: "rgba(255,255,255,0.7)", border: "1px solid #E5E7EB", color: "#1F2937" }}
+              style={{ background: "rgba(26,15,61,0.45)", border: "1px solid rgba(216,150,200,0.25)", color: "#f4efff" }}
             >
               기본색으로 (무료)
             </button>
@@ -1171,9 +1192,9 @@ function MainPanel({
         {dyePicker.open ? (
           <div
             className="mt-2 rounded-lg p-2"
-            style={{ background: "rgba(167,139,250,0.12)", border: "1px solid #E5E7EB" }}
+            style={{ background: "rgba(255,229,196,0.12)", border: "1px solid rgba(216,150,200,0.25)" }}
           >
-            <div className="mb-1 font-serif text-[10px] text-[#1F2937]">
+            <div className="mb-1 font-serif text-[10px] text-[#f4efff]">
               색상을 선택하세요. 미리보기 후 적용됩니다.
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
@@ -1192,8 +1213,8 @@ function MainPanel({
                       borderRadius: 12,
                       background: c.color
                         ? c.color
-                        : "linear-gradient(135deg, #EEEAFF 50%, #B98750 50%)",
-                      border: selected ? "2px solid #1F2937" : "1px solid #7D6FE8",
+                        : "linear-gradient(135deg, rgba(255,229,196,0.16) 50%, #B98750 50%)",
+                      border: selected ? "2px solid #f4efff" : "1px solid #d896c8",
                       boxShadow: selected ? "0 0 6px rgba(0,0,0,0.25)" : "none",
                       cursor: "pointer",
                     }}
@@ -1205,8 +1226,8 @@ function MainPanel({
             <div className="mt-2 flex items-center justify-end gap-2">
               <button
                 onClick={() => setDyePicker({ open: false, preview: null })}
-                className="rounded-md px-2 py-1 font-serif text-[10px] text-[#1F2937]"
-                style={{ border: "1px solid #E5E7EB", background: "white" }}
+                className="rounded-md px-2 py-1 font-serif text-[10px] text-[#f4efff]"
+                style={{ border: "1px solid rgba(216,150,200,0.25)", background: "white" }}
               >
                 취소
               </button>
@@ -1214,7 +1235,7 @@ function MainPanel({
                 onClick={() => onApplyDye(dyePicker.preview)}
                 disabled={busy || dyePicker.preview === undefined}
                 className="rounded-md px-3 py-1 font-serif text-[10px] text-white disabled:opacity-40"
-                style={{ background: "#7D6FE8" }}
+                style={{ background: "#d896c8" }}
               >
                 적용
               </button>
@@ -1249,7 +1270,7 @@ function MainPanel({
             onClick={() => setDebugPicker(debugPicker === "stage" ? null : "stage")}
             className="rounded-md px-2 py-1 font-serif text-[10px]"
             style={{
-              background: debugPicker === "stage" ? "rgba(96,165,250,0.5)" : "rgba(255,255,255,0.7)",
+              background: debugPicker === "stage" ? "rgba(96,165,250,0.5)" : "rgba(26,15,61,0.45)",
               border: "1px solid #60A5FA",
               color: "#3730A3",
             }}
@@ -1260,7 +1281,7 @@ function MainPanel({
             onClick={() => setDebugPicker(debugPicker === "type" ? null : "type")}
             className="rounded-md px-2 py-1 font-serif text-[10px]"
             style={{
-              background: debugPicker === "type" ? "rgba(96,165,250,0.5)" : "rgba(255,255,255,0.7)",
+              background: debugPicker === "type" ? "rgba(96,165,250,0.5)" : "rgba(26,15,61,0.45)",
               border: "1px solid #60A5FA",
               color: "#3730A3",
             }}
@@ -1279,7 +1300,7 @@ function MainPanel({
                 }}
                 className="rounded-md px-2 py-1 font-serif text-[10px]"
                 style={{
-                  background: debugStage === s.id ? "#3730A3" : "rgba(255,255,255,0.85)",
+                  background: debugStage === s.id ? "#3730A3" : "rgba(26,15,61,0.55)",
                   color: debugStage === s.id ? "white" : "#3730A3",
                   border: "1px solid #60A5FA",
                 }}
@@ -1300,7 +1321,7 @@ function MainPanel({
                 }}
                 className="rounded-md px-2 py-1 font-serif text-[10px]"
                 style={{
-                  background: debugType === t.id ? "#3730A3" : "rgba(255,255,255,0.85)",
+                  background: debugType === t.id ? "#3730A3" : "rgba(26,15,61,0.55)",
                   color: debugType === t.id ? "white" : "#3730A3",
                   border: "1px solid #60A5FA",
                 }}
@@ -1318,9 +1339,9 @@ function MainPanel({
           onClick={() => setPlacementMode(!placementMode)}
           className="rounded-full px-3 py-1 font-serif text-[11px] font-medium transition-colors"
           style={{
-            background: placementMode ? "#7D6FE8" : "rgba(167,139,250,0.15)",
-            color: placementMode ? "#FFFFFF" : "#1F2937",
-            border: "1px solid #7D6FE8",
+            background: placementMode ? "#d896c8" : "rgba(216,150,200,0.15)",
+            color: placementMode ? "#0b0821" : "#f4efff",
+            border: "1px solid #d896c8",
           }}
         >
           {placementMode ? "완료" : "꾸미기"}
@@ -1328,15 +1349,15 @@ function MainPanel({
         <button
           onClick={onRelease}
           disabled={busy || placementMode}
-          className="font-serif text-[10px] text-[#7D6FE8] underline opacity-70 transition-opacity hover:opacity-100 disabled:opacity-30"
+          className="font-serif text-[10px] text-[#d896c8] underline opacity-70 transition-opacity hover:opacity-100 disabled:opacity-30"
         >
           파양하기
         </button>
       </div>
       {placementMode ? (
         <div
-          className="rounded-lg px-3 py-2 font-serif text-[10px] text-[#1F2937]"
-          style={{ background: "rgba(167,139,250,0.12)", border: "1px solid #E5E7EB" }}
+          className="rounded-lg px-3 py-2 font-serif text-[10px] text-[#f4efff]"
+          style={{ background: "rgba(255,229,196,0.12)", border: "1px solid rgba(216,150,200,0.25)" }}
         >
           가구를 길게 누른 채 드래그해서 원하는 위치로 옮기세요. 바닥 영역 안에서만 배치됩니다.
         </div>
@@ -1397,23 +1418,23 @@ function HudBar({
     <div className="flex items-center gap-2">
       <span
         className="flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-full"
-        style={{ background: "rgba(255,255,255,0.85)", border: "1px solid #E5E7EB" }}
+        style={{ background: "rgba(26,15,61,0.55)", border: "1px solid rgba(216,150,200,0.25)" }}
       >
         <PixelIconView icon={icon} size={20} />
       </span>
       <div className="flex-1">
-        <div className="flex items-center justify-between font-serif text-[10px] text-[#1F2937]">
+        <div className="flex items-center justify-between font-serif text-[10px] text-[#f4efff]">
           <span>{label}</span>
-          <span style={{ color: danger ? "#C2271C" : undefined, fontWeight: danger ? 700 : undefined }}>
+          <span style={{ color: danger ? "#FFB5A7" : undefined, fontWeight: danger ? 700 : undefined }}>
             {Math.round(v)}%
           </span>
         </div>
         <div
           className="relative mt-0.5 h-2.5 w-full overflow-hidden rounded-full"
           style={{
-            background: "#E5E7EB",
-            boxShadow: "inset 0 1px 2px rgba(31,41,55,0.25)",
-            border: "1px solid #D1D5DB",
+            background: "rgba(11,8,33,0.65)",
+            boxShadow: "inset 0 1px 3px rgba(0,0,0,0.5)",
+            border: "1px solid rgba(216,150,200,0.30)",
           }}
         >
           <div
@@ -1433,7 +1454,7 @@ function HudBar({
           ) : null}
         </div>
         {subLabel ? (
-          <div className="mt-0.5 font-serif text-[9px] text-[#6B7280]">{subLabel}</div>
+          <div className="mt-0.5 font-serif text-[9px] text-[#9b8fb8]">{subLabel}</div>
         ) : null}
       </div>
     </div>
@@ -1461,32 +1482,35 @@ function InteractButton({
       disabled={disabled}
       className="group relative flex flex-col items-center gap-1 overflow-hidden rounded-xl px-1 py-2 font-serif transition-transform active:scale-90 disabled:active:scale-100"
       style={{
+        // Nebula-deep holo button — gradient + nebula-pink border + cosmic glow.
         background: disabled
-          ? "rgba(220,210,195,0.7)"
-          : "linear-gradient(180deg, #FFFFFF, #EEEAFF)",
-        border: ready ? "1.5px solid #A78BFA" : "1.5px solid #E5E7EB",
+          ? "rgba(26,15,61,0.45)"
+          : "linear-gradient(180deg, rgba(61,46,107,0.65), rgba(11,8,33,0.65))",
+        border: ready ? "1.5px solid rgba(216,150,200,0.55)" : "1.5px solid rgba(216,150,200,0.20)",
         boxShadow: disabled
-          ? "inset 0 1px 0 rgba(255,255,255,0.4)"
-          : "0 2px 0 rgba(31,41,55,0.18), inset 0 1px 0 rgba(255,255,255,0.6), 0 0 6px rgba(242,200,75,0.25)",
-        opacity: disabled && !onCooldown ? 0.5 : 1,
+          ? "inset 0 1px 0 rgba(255,229,196,0.04)"
+          : "0 2px 0 rgba(11,8,33,0.5), inset 0 1px 0 rgba(255,229,196,0.10), 0 0 10px rgba(216,150,200,0.32)",
+        opacity: disabled && !onCooldown ? 0.55 : 1,
         cursor: disabled ? "not-allowed" : "pointer",
       }}
     >
       <span
         className="flex h-9 w-9 items-center justify-center rounded-lg"
-        style={{ background: "rgba(255,255,255,0.85)" }}
+        style={{
+          background: "rgba(11,8,33,0.85)",
+          border: "1px solid rgba(255,229,196,0.18)",
+        }}
       >
         <PixelIconView icon={icon} size={28} dim={disabled} />
       </span>
-      <span className="text-[10px] font-medium text-[#1F2937]" style={{ opacity: disabled ? 0.55 : 1 }}>
+      <span className="text-[10px] font-medium text-stardust" style={{ opacity: disabled ? 0.55 : 1 }}>
         {label}
       </span>
-      {/* Cooldown veil — dark scrim with the remaining time front-and-center,
-          like a typical mobile-game ability button. */}
+      {/* Cooldown veil — dark scrim with the remaining time front-and-center. */}
       {onCooldown ? (
         <span
-          className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-xl text-[11px] font-bold text-[#FAFBFF]"
-          style={{ background: "rgba(20,12,4,0.55)" }}
+          className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-xl text-[12px] font-bold text-stardust"
+          style={{ background: "rgba(11,8,33,0.78)" }}
         >
           {cooldownLabel}
         </span>
@@ -1510,7 +1534,7 @@ function itemRarity(id: string, category: ItemCategory): Rarity {
   return "rare";
 }
 const RARITY_COLOR: Record<Rarity, { border: string; tint: string; label: string }> = {
-  common: { border: "#9CA3AF", tint: "rgba(156,163,175,0.08)",  label: "일반" },
+  common: { border: "#9b8fb8", tint: "rgba(156,163,175,0.08)",  label: "일반" },
   rare:   { border: "#60A5FA", tint: "rgba(96,165,250,0.10)",   label: "고급" },
   epic:   { border: "#FBBF24", tint: "rgba(251,191,36,0.14)",   label: "특수" },
 };
@@ -1544,9 +1568,9 @@ function ShopPanel({
             onClick={() => setCategory(c)}
             className="rounded-full px-2 py-0.5 font-serif text-[10px]"
             style={{
-              background: category === c ? "#7D6FE8" : "rgba(255,255,255,0.7)",
-              color: category === c ? "white" : "#1F2937",
-              border: "1px solid #E5E7EB",
+              background: category === c ? "#d896c8" : "rgba(26,15,61,0.45)",
+              color: category === c ? "white" : "#f4efff",
+              border: "1px solid rgba(216,150,200,0.25)",
             }}
           >
             {CATEGORY_LABELS[c]}
@@ -1569,9 +1593,9 @@ function ShopPanel({
               className="relative flex flex-col items-center gap-1 rounded-xl px-2 pb-2 pt-5"
               style={{
                 background: flashing
-                  ? "linear-gradient(135deg, #EEE7FF, #EEEAFF)"
+                  ? "linear-gradient(135deg, rgba(216,150,200,0.18), rgba(255,229,196,0.16))"
                   : rar.tint,
-                border: flashing ? `2px solid #A78BFA` : `2px solid ${rar.border}`,
+                border: flashing ? `2px solid #d896c8` : `2px solid ${rar.border}`,
                 boxShadow: flashing
                   ? "0 0 12px rgba(242,200,75,0.55), 0 4px 8px rgba(31,41,55,0.18)"
                   : "0 1px 2px rgba(31,41,55,0.08)",
@@ -1589,7 +1613,7 @@ function ShopPanel({
                 <span
                   className="pointer-events-none absolute left-1/2 top-5"
                   style={{
-                    color: "#A78BFA",
+                    color: "#d896c8",
                     fontSize: 16,
                     fontWeight: 700,
                     animation: "pet-shop-sparkle 1.1s ease-out forwards",
@@ -1600,14 +1624,14 @@ function ShopPanel({
                 </span>
               ) : null}
               <ItemIconSvg id={item.id} size={40} />
-              <div className="font-serif text-[11px] text-[#111827]">{item.name}</div>
-              <div className="font-serif text-[10px] text-[#6B7280]">{item.desc}</div>
+              <div className="font-serif text-[11px] text-[#f4efff]">{item.name}</div>
+              <div className="font-serif text-[10px] text-[#9b8fb8]">{item.desc}</div>
               <div className="flex w-full items-center justify-between">
-                <span className="font-serif text-[10px] text-[#1F2937]">★ {item.price}</span>
+                <span className="font-serif text-[10px] text-[#f4efff]">★ {item.price}</span>
                 {equipped ? (
                   <span
                     className="rounded-full px-1.5 font-serif text-[9px] font-semibold text-white"
-                    style={{ background: "#7D6FE8" }}
+                    style={{ background: "#d896c8" }}
                   >
                     장착중
                   </span>
@@ -1619,7 +1643,7 @@ function ShopPanel({
                     보유중
                   </span>
                 ) : !collectible && count > 0 ? (
-                  <span className="font-serif text-[10px] text-[#1F2937]">×{count}</span>
+                  <span className="font-serif text-[10px] text-[#f4efff]">×{count}</span>
                 ) : null}
               </div>
               <button
@@ -1627,7 +1651,7 @@ function ShopPanel({
                 disabled={disabled}
                 className="mt-1 w-full rounded-md px-2 py-1 font-serif text-[10px] text-white transition-transform active:scale-95 disabled:opacity-40 disabled:active:scale-100"
                 style={{
-                  background: collectible && owned ? "#9CA3AF" : "linear-gradient(180deg, #D89A5A, #C07840)",
+                  background: collectible && owned ? "#9b8fb8" : "linear-gradient(180deg, #D89A5A, #C07840)",
                   boxShadow: disabled ? "none" : "0 2px 0 rgba(31,41,55,0.25)",
                 }}
               >
@@ -1668,12 +1692,12 @@ function WardrobePanel({
                   onClick={() => onEquip(item.id, !on)}
                   className="flex flex-col items-center rounded-lg p-1.5"
                   style={{
-                    background: on ? "rgba(167,139,250,0.32)" : "rgba(255,255,255,0.7)",
-                    border: on ? "1.5px solid #7D6FE8" : "1px solid #E5E7EB",
+                    background: on ? "rgba(216,150,200,0.32)" : "rgba(26,15,61,0.45)",
+                    border: on ? "1.5px solid #d896c8" : "1px solid rgba(216,150,200,0.25)",
                   }}
                 >
                   <ItemIconSvg id={item.id} size={36} />
-                  <span className="mt-1 font-serif text-[10px] text-[#1F2937]">{item.name}</span>
+                  <span className="mt-1 font-serif text-[10px] text-[#f4efff]">{item.name}</span>
                 </button>
               );
             })}
@@ -1693,12 +1717,12 @@ function WardrobePanel({
                   onClick={() => onEquip(item.id, !on)}
                   className="flex flex-col items-center rounded-lg p-1.5"
                   style={{
-                    background: on ? "rgba(167,139,250,0.32)" : "rgba(255,255,255,0.7)",
-                    border: on ? "1.5px solid #7D6FE8" : "1px solid #E5E7EB",
+                    background: on ? "rgba(216,150,200,0.32)" : "rgba(26,15,61,0.45)",
+                    border: on ? "1.5px solid #d896c8" : "1px solid rgba(216,150,200,0.25)",
                   }}
                 >
                   <ItemIconSvg id={item.id} size={36} />
-                  <span className="mt-1 font-serif text-[10px] text-[#1F2937]">{item.name}</span>
+                  <span className="mt-1 font-serif text-[10px] text-[#f4efff]">{item.name}</span>
                 </button>
               );
             })}
@@ -1718,12 +1742,12 @@ function WardrobePanel({
                   onClick={() => onEquip(item.id, !on)}
                   className="flex flex-col items-center rounded-lg p-1.5"
                   style={{
-                    background: on ? "rgba(167,139,250,0.32)" : "rgba(255,255,255,0.7)",
-                    border: on ? "1.5px solid #7D6FE8" : "1px solid #E5E7EB",
+                    background: on ? "rgba(216,150,200,0.32)" : "rgba(26,15,61,0.45)",
+                    border: on ? "1.5px solid #d896c8" : "1px solid rgba(216,150,200,0.25)",
                   }}
                 >
                   <ItemIconSvg id={item.id} size={36} />
-                  <span className="mt-1 font-serif text-[10px] text-[#1F2937]">{item.name}</span>
+                  <span className="mt-1 font-serif text-[10px] text-[#f4efff]">{item.name}</span>
                 </button>
               );
             })}
@@ -1776,12 +1800,12 @@ function PlaygroundPanel({
     return (
       <div className="flex flex-col gap-3">
         <div className="rounded-xl p-4 text-center" style={{ background: "rgba(167,243,208,0.18)", border: "1px solid #A7F3D0" }}>
-          <div className="font-serif text-[14px] font-medium text-[#111827]">펫 놀이터</div>
-          <div className="mt-2 font-serif text-[11px] text-[#6B7280]">
+          <div className="font-serif text-[14px] font-medium text-[#f4efff]">펫 놀이터</div>
+          <div className="mt-2 font-serif text-[11px] text-[#9b8fb8]">
             길드원의 펫들과 한 공간에서 자유롭게 놀 수 있어요.
             <br />다른 펫에게 다가가서 인사하거나 간식을 선물해보세요.
           </div>
-          <div className="mt-3 inline-block rounded-full bg-white/70 px-3 py-1 font-serif text-[11px] text-[#1F2937]">
+          <div className="mt-3 inline-block rounded-full bg-abyss-deep/45 px-3 py-1 font-serif text-[11px] text-[#f4efff]">
             {loading ? "확인 중..." : `현재 ${count ?? 0}마리가 놀고 있어요`}
           </div>
         </div>
@@ -1800,14 +1824,14 @@ function PlaygroundPanel({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <div className="font-serif text-[11px] text-[#1F2937]">
+        <div className="font-serif text-[11px] text-[#f4efff]">
           현재 {pets?.length ?? 0}마리가 놀고 있어요
         </div>
         <button
           onClick={onExit}
           disabled={busy}
           className="rounded-full px-3 py-1 font-serif text-[11px] disabled:opacity-50"
-          style={{ background: "rgba(255,255,255,0.85)", border: "1px solid #7D6FE8", color: "#1F2937" }}
+          style={{ background: "rgba(26,15,61,0.55)", border: "1px solid #d896c8", color: "#f4efff" }}
         >
           나가기
         </button>
@@ -1817,8 +1841,8 @@ function PlaygroundPanel({
         style={{
           height: 280,
           background: "linear-gradient(180deg, #BFE6FA 0%, #BFE6FA 35%, #86EFAC 35%, #34D399 100%)",
-          borderTop: "1px solid #E5E7EB",
-          borderBottom: "1px solid #E5E7EB",
+          borderTop: "1px solid rgba(216,150,200,0.25)",
+          borderBottom: "1px solid rgba(216,150,200,0.25)",
         }}
       >
         {/* Grass blades */}
@@ -1843,7 +1867,7 @@ function PlaygroundPanel({
             style={{
               position: "absolute",
               inset: 0,
-              background: "rgba(0,0,0,0.35)",
+              background: "rgba(11,8,33,0.65)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -1853,7 +1877,7 @@ function PlaygroundPanel({
             <div
               onClick={(e) => e.stopPropagation()}
               className="rounded-xl px-3 py-3"
-              style={{ background: "#FFFFFF", border: "1px solid #E5E7EB", maxWidth: 220 }}
+              style={{ background: "#0b0821", border: "1px solid rgba(216,150,200,0.25)", maxWidth: 220 }}
             >
               <div className="flex flex-col items-center gap-1">
                 <PetSvg
@@ -1865,12 +1889,12 @@ function PlaygroundPanel({
                   hue={selected.hue}
                   accessories={selected.accessories}
                 />
-                <div className="font-serif text-[13px] font-medium text-[#111827]">{selected.petName}</div>
-                <div className="font-serif text-[10px] text-[#6B7280]">@{selected.nickname}</div>
+                <div className="font-serif text-[13px] font-medium text-[#f4efff]">{selected.petName}</div>
+                <div className="font-serif text-[10px] text-[#9b8fb8]">@{selected.nickname}</div>
               </div>
               {selected.nickname !== myNickname ? (
                 <div className="mt-2 flex flex-col gap-1">
-                  <div className="text-center font-serif text-[10px] text-[#1F2937]">간식 선물하기</div>
+                  <div className="text-center font-serif text-[10px] text-[#f4efff]">간식 선물하기</div>
                   <div className="flex justify-center gap-1.5">
                     {(["treat", "cake"] as ItemId[]).map((id) => {
                       const c = inventory?.[id] ?? 0;
@@ -1883,22 +1907,22 @@ function PlaygroundPanel({
                           }}
                           disabled={c < 1 || busy}
                           className="flex items-center gap-1 rounded-lg px-2 py-1 font-serif text-[10px] disabled:opacity-40"
-                          style={{ background: "rgba(255,255,255,0.7)", border: "1px solid #E5E7EB" }}
+                          style={{ background: "rgba(26,15,61,0.45)", border: "1px solid rgba(216,150,200,0.25)" }}
                         >
                           <ItemIconSvg id={id} size={18} />
-                          <span className="text-[#1F2937]">×{c}</span>
+                          <span className="text-[#f4efff]">×{c}</span>
                         </button>
                       );
                     })}
                   </div>
                 </div>
               ) : (
-                <div className="mt-2 text-center font-serif text-[10px] text-[#6B7280]">내 펫</div>
+                <div className="mt-2 text-center font-serif text-[10px] text-[#9b8fb8]">내 펫</div>
               )}
               <button
                 onClick={() => setSelected(null)}
-                className="mt-2 w-full rounded-md py-1 font-serif text-[10px] text-[#1F2937]"
-                style={{ border: "1px solid #E5E7EB" }}
+                className="mt-2 w-full rounded-md py-1 font-serif text-[10px] text-[#f4efff]"
+                style={{ border: "1px solid rgba(216,150,200,0.25)" }}
               >
                 닫기
               </button>
@@ -1906,7 +1930,7 @@ function PlaygroundPanel({
           </div>
         ) : null}
       </div>
-      <div className="font-serif text-[10px] text-[#6B7280]">펫을 탭해서 인사하거나 간식을 선물하세요.</div>
+      <div className="font-serif text-[10px] text-[#9b8fb8]">펫을 탭해서 인사하거나 간식을 선물하세요.</div>
     </div>
   );
 }
@@ -1975,9 +1999,9 @@ function WanderingPet({
       <div
         className="mx-auto rounded-full px-1.5 py-0.5 font-serif text-[9px]"
         style={{
-          background: isMine ? "rgba(167,139,250,0.85)" : "rgba(255,255,255,0.92)",
-          border: "1px solid #7D6FE8",
-          color: "#1F2937",
+          background: isMine ? "rgba(216,150,200,0.55)" : "rgba(26,15,61,0.85)",
+          border: "1px solid #d896c8",
+          color: "#f4efff",
           maxWidth: 70,
           marginTop: -4,
           textAlign: "center",
@@ -2014,16 +2038,16 @@ function VisitPanel({
       <div className="flex flex-col gap-3">
         <button
           onClick={() => setVisiting(null)}
-          className="self-start font-serif text-[10px] text-[#9CA3AF] underline"
+          className="self-start font-serif text-[10px] text-[#9b8fb8] underline"
         >
           ← 목록으로
         </button>
-        <div className="flex flex-col items-center rounded-xl bg-white/70 p-3">
+        <div className="flex flex-col items-center rounded-xl bg-abyss-deep/45 p-3">
           <PetSvg type={visiting.petType!} stage={visiting.petStage!} size={100} />
-          <div className="mt-2 font-serif text-[13px] text-[#111827]">{visiting.petName}</div>
-          <div className="font-serif text-[10px] text-[#6B7280]">@{visiting.nickname}</div>
+          <div className="mt-2 font-serif text-[13px] text-[#f4efff]">{visiting.petName}</div>
+          <div className="font-serif text-[10px] text-[#9b8fb8]">@{visiting.nickname}</div>
         </div>
-        <div className="font-serif text-[11px] text-[#1F2937]">간식 선물하기</div>
+        <div className="font-serif text-[11px] text-[#f4efff]">간식 선물하기</div>
         <div className="flex flex-wrap gap-2">
           {(["treat", "cake"] as ItemId[]).map((id) => {
             const count = inventory?.[id] ?? 0;
@@ -2033,10 +2057,10 @@ function VisitPanel({
                 onClick={() => onGiftTreat(visiting.nickname, id)}
                 disabled={count < 1 || busy}
                 className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 font-serif text-[10px] disabled:opacity-40"
-                style={{ background: "rgba(255,255,255,0.7)", border: "1px solid #E5E7EB" }}
+                style={{ background: "rgba(26,15,61,0.45)", border: "1px solid rgba(216,150,200,0.25)" }}
               >
                 <ItemIconSvg id={id} size={20} />
-                <span className="text-[#1F2937]">
+                <span className="text-[#f4efff]">
                   {findItem(id)?.name} ×{count}
                 </span>
               </button>
@@ -2048,7 +2072,7 @@ function VisitPanel({
   }
   return (
     <div className="flex flex-col gap-2">
-      <div className="font-serif text-[11px] text-[#6B7280]">
+      <div className="font-serif text-[11px] text-[#9b8fb8]">
         길드원의 펫을 방문해 보세요.
       </div>
       {members.length === 0 ? (
@@ -2059,13 +2083,13 @@ function VisitPanel({
             <button
               key={m.nickname}
               onClick={() => setVisiting(m)}
-              className="flex flex-col items-center rounded-lg bg-white/70 p-2 transition-colors hover:bg-white/90"
+              className="flex flex-col items-center rounded-lg bg-abyss-deep/45 p-2 transition-colors hover:bg-abyss-deep/70"
             >
               <PetSvg type={m.petType!} stage={m.petStage!} size={48} />
-              <div className="mt-1 truncate font-serif text-[10px] text-[#111827]" style={{ maxWidth: 100 }}>
+              <div className="mt-1 truncate font-serif text-[10px] text-[#f4efff]" style={{ maxWidth: 100 }}>
                 {m.petName}
               </div>
-              <div className="font-serif text-[9px] text-[#6B7280]">@{m.nickname}</div>
+              <div className="font-serif text-[9px] text-[#9b8fb8]">@{m.nickname}</div>
             </button>
           ))}
         </div>
@@ -2094,8 +2118,8 @@ function RankingPanel({ members, myNickname }: { members: MemberInfo[]; myNickna
 function rankBadge(idx: number): { emoji: string | null; bg: string; fg: string } {
   if (idx === 0) return { emoji: "👑", bg: "#FEF3C7", fg: "#92400E" };
   if (idx === 1) return { emoji: "🥈", bg: "#E5E5EA", fg: "#3A3A3A" };
-  if (idx === 2) return { emoji: "🥉", bg: "#FED7AA", fg: "#1F2937" };
-  return { emoji: null, bg: "rgba(255,255,255,0.85)", fg: "#1F2937" };
+  if (idx === 2) return { emoji: "🥉", bg: "#FED7AA", fg: "#f4efff" };
+  return { emoji: null, bg: "rgba(26,15,61,0.55)", fg: "#f4efff" };
 }
 
 function RankList({
@@ -2119,12 +2143,12 @@ function RankList({
             className="flex items-center gap-2 rounded-lg px-2 py-1.5"
             style={{
               background: mine
-                ? "rgba(167,139,250,0.22)"
+                ? "rgba(216,150,200,0.22)"
                 : i < 3
                   ? badge.bg
-                  : "rgba(255,255,255,0.7)",
+                  : "rgba(26,15,61,0.45)",
               border: mine
-                ? "1.5px solid #7D6FE8"
+                ? "1.5px solid #d896c8"
                 : i < 3
                   ? `1px solid ${badge.fg}`
                   : "1px solid transparent",
@@ -2137,9 +2161,9 @@ function RankList({
             <div className="flex-1">
               <div className="font-serif text-[11px]" style={{ color: badge.fg }}>
                 {m.petName}
-                {mine ? <span className="ml-1 font-bold text-[9px] text-[#7D6FE8]">· 나</span> : null}
+                {mine ? <span className="ml-1 font-bold text-[9px] text-[#d896c8]">· 나</span> : null}
               </div>
-              <div className="font-serif text-[9px] text-[#6B7280]">@{m.nickname}</div>
+              <div className="font-serif text-[9px] text-[#9b8fb8]">@{m.nickname}</div>
             </div>
             <span className="font-serif text-[10px] font-semibold" style={{ color: badge.fg }}>
               {value(m)}
@@ -2154,7 +2178,7 @@ function RankList({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="mb-1 font-serif text-[11px] font-medium text-[#1F2937]">{title}</div>
+      <div className="mb-1 font-serif text-[11px] font-medium text-[#f4efff]">{title}</div>
       {children}
     </div>
   );
@@ -2162,7 +2186,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function Empty({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-lg bg-white/50 px-3 py-4 text-center font-serif text-[10px] text-[#9CA3AF]">
+    <div className="rounded-lg bg-abyss-deep/35 px-3 py-4 text-center font-serif text-[10px] text-[#9b8fb8]">
       {children}
     </div>
   );
