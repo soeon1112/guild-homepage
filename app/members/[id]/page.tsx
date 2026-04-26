@@ -45,6 +45,16 @@ import { GuestbookSection as GuestbookSectionV2 } from "@/app/components/redesig
 import { AdventureLogSection } from "@/app/components/redesign/minihompi/AdventureLogSection";
 import { PhotosSection } from "@/app/components/redesign/minihompi/PhotosSection";
 
+// `decodeURIComponent` throws on malformed input ("%E"). Be defensive —
+// fall back to the raw value rather than crashing the page.
+function safeDecode(s: string): string {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return s;
+  }
+}
+
 type MemberDoc = {
   nickname: string;
   statusMessage: string;
@@ -137,7 +147,13 @@ export default function MemberMiniHomePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = use(params);
+  const { id: rawId } = use(params);
+  // Next.js 16 `use(params)` on client components hands us the raw URL
+  // segment, which for non-ASCII (e.g. Korean) nicknames stays
+  // percent-encoded — so for /members/나슈타 we receive
+  // "%EB%82%98%EC%8A%88%ED%83%80" instead of "나슈타". Decode up front
+  // so every downstream Firestore lookup compares against real text.
+  const id = safeDecode(rawId);
   const { nickname: loginNick } = useAuth();
   const [member, setMember] = useState<MemberDoc | null>(null);
   // Resolved members doc id (= URL slug for slot-keyed legacy docs, or

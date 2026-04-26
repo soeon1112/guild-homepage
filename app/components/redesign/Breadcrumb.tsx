@@ -3,8 +3,24 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { doc, getDoc } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+} from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
+
+// `decodeURIComponent` throws on malformed input ("%E"). Be defensive.
+function safeDecode(s: string): string {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return s;
+  }
+}
 
 type Segment = { label: string; href?: string };
 
@@ -66,7 +82,10 @@ function resolveSegments(
 
 export function Breadcrumb() {
   const pathname = usePathname() ?? "/";
-  const parts = pathname.split("/").filter(Boolean);
+  // `usePathname()` returns the raw URL — non-ASCII segments come back
+  // percent-encoded (e.g. `%EB%82%98%EC%8A%88%ED%83%80`). Decode each
+  // part so doc lookups + breadcrumb labels read as real text.
+  const parts = pathname.split("/").filter(Boolean).map(safeDecode);
 
   // Resolve member nickname for /members/[id] routes
   const memberId =
@@ -81,9 +100,29 @@ export function Breadcrumb() {
     let cancelled = false;
     (async () => {
       try {
+        // Try direct doc id first (works for slot-keyed members like
+        // members/13). Fall back to a nickname-field query so legacy
+        // /members/{nickname} URLs still resolve to a label.
         const snap = await getDoc(doc(db, "members", memberId));
         if (cancelled) return;
-        setMemberNick((snap.data()?.nickname as string) ?? memberId);
+        if (snap.exists()) {
+          setMemberNick((snap.data()?.nickname as string) ?? memberId);
+          return;
+        }
+        const byNick = await getDocs(
+          query(
+            collection(db, "members"),
+            where("nickname", "==", memberId),
+          ),
+        );
+        if (cancelled) return;
+        if (!byNick.empty) {
+          setMemberNick(
+            (byNick.docs[0].data()?.nickname as string) ?? memberId,
+          );
+        } else {
+          setMemberNick(memberId);
+        }
       } catch {
         if (!cancelled) setMemberNick(memberId);
       }
