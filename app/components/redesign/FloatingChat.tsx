@@ -20,6 +20,7 @@ import NicknameLink from "@/app/components/NicknameLink";
 import { CommentImageView } from "@/app/components/CommentImage";
 import { formatSmart } from "@/src/lib/formatSmart";
 import { handleEvent } from "@/src/lib/badgeCheck";
+import { getOpenPanel, setOpenPanel, useOpenPanel } from "@/src/lib/uiBus";
 
 type ChatFileType = "image" | "gif" | "video";
 
@@ -174,6 +175,15 @@ const MessageItem = memo(
 export default function FloatingChat() {
   const { nickname, ready } = useAuth();
   const [open, setOpen] = useState(false);
+  // Coordinate with the pet floating UI: when chat opens, the pet
+  // icon hides; when pet opens, the chat icon hides. The shared
+  // uiBus tracks which panel currently owns the screen.
+  const activeFloatingPanel = useOpenPanel();
+  const hideForPet = activeFloatingPanel === "pet";
+  useEffect(() => {
+    if (open) setOpenPanel("chat");
+    else if (getOpenPanel() === "chat") setOpenPanel(null);
+  }, [open]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -470,6 +480,7 @@ export default function FloatingChat() {
         }}
         style={{
           pointerEvents: open ? "none" : "auto",
+          display: hideForPet ? "none" : "flex",
         }}
         className="group fixed right-4 bottom-24 z-50 flex h-14 w-14 items-center justify-center rounded-full"
       >
