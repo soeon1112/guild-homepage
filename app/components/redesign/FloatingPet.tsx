@@ -217,6 +217,16 @@ export default function FloatingPet() {
 
   const visible = ready && canSeePets(nickname);
 
+  // Auto-exit the playground whenever the user navigates away — closes
+  // the pet panel, switches to a non-playground tab, or signs out.
+  // Single source of truth so we don't need a "나가기" button anymore.
+  useEffect(() => {
+    if (!nickname) return;
+    if (!pet?.inPlayground) return;
+    if (open && tab === "playground") return;
+    setInPlayground(nickname, false).catch(() => {});
+  }, [open, tab, nickname, pet?.inPlayground]);
+
   // Live ticker for status decay + cooldown countdowns.
   useEffect(() => {
     if (!open) return;
@@ -775,15 +785,6 @@ export default function FloatingPet() {
                     setBusy(true);
                     try {
                       await setInPlayground(nickname, true);
-                    } finally {
-                      setBusy(false);
-                    }
-                  }}
-                  onExit={async () => {
-                    if (!nickname) return;
-                    setBusy(true);
-                    try {
-                      await setInPlayground(nickname, false);
                     } finally {
                       setBusy(false);
                     }
@@ -1789,7 +1790,6 @@ function PlaygroundPanel({
   myPetInPlayground,
   busy,
   onEnter,
-  onExit,
   onGiftTreat,
   inventory,
 }: {
@@ -1797,7 +1797,6 @@ function PlaygroundPanel({
   myPetInPlayground: boolean;
   busy: boolean;
   onEnter: () => void;
-  onExit: () => void;
   onGiftTreat: (to: string, item: ItemId) => void;
   inventory: PetItemsDoc["inventory"];
 }) {
@@ -2076,18 +2075,8 @@ function PlaygroundPanel({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between">
-        <div className="font-serif text-[10px] text-[#9b8fb8]">
-          현재 {pets?.length ?? 0}마리가 놀고 있어요
-        </div>
-        <button
-          onClick={onExit}
-          disabled={busy}
-          className="rounded-full px-2 py-0.5 font-serif text-[10px] disabled:opacity-50"
-          style={{ background: "rgba(26,15,61,0.55)", border: "1px solid #d896c8", color: "#f4efff" }}
-        >
-          나가기
-        </button>
+      <div className="text-center font-serif text-[10px] text-[#9b8fb8]">
+        현재 {pets?.length ?? 0}마리가 놀고 있어요
       </div>
       <div
         className="relative -mx-4 overflow-hidden"
