@@ -2055,41 +2055,34 @@ function PlaygroundPanel({
     return () => unsub();
   }, []);
 
-  // While my pet is in the playground, periodically write a new random
-  // anchor position so other clients see the pet wander. Owner-side only —
-  // other clients just read from the subscription. ~4s cadence keeps
-  // Firestore writes cheap (≈ 15/min per occupant).
+  // While my pet is in the playground, periodically write a new anchor
+  // position so other clients see the pet wander. Owner-side only.
   //
-  // Range covers the full field (X 10–90, Y 10–90) so pets actually
-  // explore the whole playground instead of clumping near a wall. 30%
-  // of ticks pick a completely fresh random anchor (prevents random-walk
-  // drift toward an edge); the other 70% take a wider delta step from
-  // the current position so motion still reads as a stroll, not random
-  // teleporting.
+  // Y stays in 50–90 (grass band) so the pet's feet sit on the grass —
+  // never floats in the sky portion of the field. X stays in 15–85 so
+  // pets don't hug the side walls. Each step is a small delta (±12 X /
+  // ±8 Y) so motion reads as a slow stroll, not a teleport. Cadence
+  // randomizes per tick (8–15 s) so different pets don't all move on
+  // the same beat.
   useEffect(() => {
     if (!myPetInPlayground || !myNickname) return;
     let cancelled = false;
-    let curX = 15 + Math.random() * 70;
-    let curY = 15 + Math.random() * 70;
+    let curX = 30 + Math.random() * 40;
+    let curY = 60 + Math.random() * 25;
+    let timer: ReturnType<typeof setTimeout> | null = null;
     const tick = () => {
       if (cancelled) return;
-      let nextX: number;
-      let nextY: number;
-      if (Math.random() < 0.3) {
-        nextX = 10 + Math.random() * 80;
-        nextY = 10 + Math.random() * 80;
-      } else {
-        nextX = Math.max(10, Math.min(90, curX + (Math.random() - 0.5) * 50));
-        nextY = Math.max(10, Math.min(90, curY + (Math.random() - 0.5) * 40));
-      }
+      const nextX = Math.max(15, Math.min(85, curX + (Math.random() - 0.5) * 24));
+      const nextY = Math.max(50, Math.min(90, curY + (Math.random() - 0.5) * 16));
       curX = nextX;
       curY = nextY;
       updatePlaygroundPosition(myNickname, nextX, nextY).catch(() => {});
+      timer = setTimeout(tick, 8000 + Math.random() * 7000);
     };
-    const interval = setInterval(tick, 4000);
+    timer = setTimeout(tick, 2000 + Math.random() * 3000);
     return () => {
       cancelled = true;
-      clearInterval(interval);
+      if (timer) clearTimeout(timer);
     };
   }, [myPetInPlayground, myNickname]);
 
@@ -2500,7 +2493,11 @@ function WanderingPet({
         left: `${pos.x}%`,
         top: `${pos.y}%`,
         transform: "translate(-50%, -100%)",
-        transition: "left 1400ms ease-in-out, top 1400ms ease-in-out",
+        // Slower 2.5s slide between anchors so motion reads as a stroll,
+        // not a slide. The continuous bobbing animation below adds a
+        // walking feel on top.
+        transition: "left 2500ms ease-in-out, top 2500ms ease-in-out",
+        animation: "pet-walk-bob 0.7s ease-in-out infinite",
         cursor: "pointer",
         zIndex: Math.round(pos.y * 10),
         display: "flex",

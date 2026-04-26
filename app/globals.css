@@ -6457,6 +6457,17 @@ body.has-redesigned-header .bg-scene {
   30%, 80% { opacity: 1; transform: scale(1); }
   100% { opacity: 0; transform: scale(1.05); }
 }
+/* Playground walking bounce — gentle vertical bob on every pet. The
+   pet div is anchored at bottom-center via translate(-50%, -100%); the
+   keyframe re-applies that anchor and adds a small upward offset at
+   the midpoint so the body bobs as if walking. Re-applying the full
+   anchor each frame is required because CSS animations override the
+   element's inline transform during the keyframe. */
+@keyframes pet-walk-bob {
+  0%, 100% { transform: translate(-50%, -100%); }
+  50%      { transform: translate(-50%, calc(-100% - 3px)); }
+}
+
 /* Playground interaction reward — "+3 ★" rises above the pet head and
    fades out. Particle char follows the same shape but a touch shorter. */
 @keyframes pet-pg-bonus {
