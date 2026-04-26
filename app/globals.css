@@ -5963,10 +5963,17 @@ body.has-redesigned-header .bg-scene {
   z-index: 200;
   display: flex;
   align-items: center;
+  /* `safe center` falls back to `flex-start` when the modal is taller than
+     the viewport, so the top of the modal isn't cut off and the scrollbar
+     can reach the close button at the bottom. Older browsers ignore `safe`
+     and use plain `center` (current cut-off behaviour, still better than
+     no scroll at all because of overflow-y: auto below). */
+  align-items: safe center;
   justify-content: center;
   padding: 1rem;
   background: rgba(2, 0, 16, 0.78);
   backdrop-filter: blur(6px);
+  overflow-y: auto;
   animation: rebirth-fade-in 0.25s ease;
 }
 .rebirth-modal {
