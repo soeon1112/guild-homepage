@@ -639,14 +639,14 @@ function PetRoomInner({
           ) : null}
           {SCENES[activeScene].overlay === "park" ? (
             <>
-              {/* ── Sun (top-right of sky) ── */}
+              {/* ── Sun (just a circle, no rays) ── */}
               <div
                 style={{
                   position: "absolute",
-                  right: 14,
-                  top: 14,
-                  width: 30,
-                  height: 30,
+                  right: 18,
+                  top: 18,
+                  width: 32,
+                  height: 32,
                   borderRadius: "50%",
                   background: "#FFE873",
                   border: "1.5px solid #F2C84B",
@@ -654,34 +654,12 @@ function PetRoomInner({
                   zIndex: 1,
                 }}
               />
-              {Array.from({ length: 8 }).map((_, i) => {
-                const angle = (i * 360) / 8;
-                return (
-                  <div
-                    key={`ray-${i}`}
-                    style={{
-                      position: "absolute",
-                      right: 14 + 15,
-                      top: 14 + 15,
-                      width: 9,
-                      height: 3,
-                      background: "#FFE873",
-                      borderRadius: 2,
-                      transform: `translate(-50%, -50%) rotate(${angle}deg) translate(22px, 0)`,
-                      transformOrigin: "0 0",
-                      pointerEvents: "none",
-                      zIndex: 1,
-                    }}
-                  />
-                );
-              })}
 
-              {/* ── Clouds in sky ── */}
+              {/* ── Clouds (3) ── */}
               {[
-                { left: "8%", top: 16, w: 42, h: 13 },
-                { left: "12%", top: 8, w: 28, h: 10 },
-                { left: "38%", top: 22, w: 36, h: 12 },
-                { left: "62%", top: 32, w: 28, h: 10 },
+                { left: "10%", top: 16, w: 42, h: 13 },
+                { left: "40%", top: 24, w: 36, h: 12 },
+                { left: "65%", top: 12, w: 28, h: 10 },
               ].map((c, i) => (
                 <div
                   key={`cloud-${i}`}
@@ -699,74 +677,6 @@ function PetRoomInner({
                     zIndex: 2,
                   }}
                 />
-              ))}
-
-              {/* ── Distant cottage (back-mid of grass) — bottom anchored ── */}
-              <div
-                style={{
-                  position: "absolute",
-                  left: "38%",
-                  bottom: 75,
-                  width: 32,
-                  height: 26,
-                  marginLeft: -16,
-                  pointerEvents: "none",
-                  zIndex: 3,
-                }}
-              >
-                <svg viewBox="0 0 32 26" width="100%" height="100%" style={{ display: "block" }}>
-                  <polygon points="16,2 2,12 30,12" fill="#C0533B" stroke="#5B3A1F" strokeWidth="1" />
-                  <polygon points="16,2 4,11 28,11" fill="#A03B25" opacity="0.5" />
-                  <rect x="4" y="12" width="24" height="12" fill="#F2E0BA" stroke="#5B3A1F" strokeWidth="1" />
-                  <rect x="13" y="17" width="5" height="7" fill="#5B3A1F" />
-                  <rect x="20" y="14" width="6" height="5" fill="#9CC9E5" stroke="#5B3A1F" strokeWidth="0.6" />
-                  <rect x="22" y="6" width="3" height="6" fill="#5B3A1F" />
-                </svg>
-              </div>
-
-              {/* ── Trees (3) — bottom anchored, trunk sits on grass ── */}
-              {[
-                { left: "5%", bottom: 14, canopy: 38, trunk: 24, z: 5 },
-                { left: "30%", bottom: 60, canopy: 22, trunk: 18, z: 3 }, // smaller, farther back
-                { left: "88%", bottom: 12, canopy: 32, trunk: 24, z: 5 },
-              ].map((t, i) => (
-                <div
-                  key={`tree-${i}`}
-                  style={{
-                    position: "absolute",
-                    left: t.left,
-                    bottom: t.bottom,
-                    width: 0,
-                    height: 0,
-                    pointerEvents: "none",
-                    zIndex: t.z,
-                  }}
-                >
-                  {/* Trunk — bottom of trunk = wrapper bottom */}
-                  <div
-                    style={{
-                      position: "absolute",
-                      left: -3,
-                      bottom: 0,
-                      width: 6,
-                      height: t.trunk,
-                      background: "#5B3A1F",
-                    }}
-                  />
-                  {/* Canopy — sits on top of trunk with slight overlap */}
-                  <div
-                    style={{
-                      position: "absolute",
-                      left: -t.canopy / 2,
-                      bottom: t.trunk - 6,
-                      width: t.canopy,
-                      height: t.canopy,
-                      borderRadius: "50%",
-                      background: "#4A9C40",
-                      border: "1.5px solid #2E6B26",
-                    }}
-                  />
-                </div>
               ))}
 
               {/* ── Fence — along front, bottom anchored ── */}
