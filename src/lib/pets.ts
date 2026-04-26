@@ -384,11 +384,17 @@ export async function renamePet(nickname: string, newName: string): Promise<void
   await setDoc(petDocRef(nickname), { name: newName.trim() }, { merge: true });
 }
 
-// Release (파양) the current pet. Deletes the pet doc only — the
-// inventory at users/{nickname}/pet/items is intentionally preserved so
-// the user can re-use purchased items on the next pet they adopt.
+// Release (파양) the current pet. Wipes EVERYTHING pet-related:
+//   - users/{nickname}/pet/current  (the pet itself — type, name,
+//     stage, exp, status, accessories, furniture, furniturePositions,
+//     background, petBodyColor, glow, expBoost…)
+//   - users/{nickname}/pet/items    (every consumable, accessory,
+//     furniture, special item the user owned)
+// Re-adopting after release starts completely fresh (egg stage, no
+// items, default room).
 export async function releasePet(nickname: string): Promise<void> {
   await deleteDoc(petDocRef(nickname));
+  await deleteDoc(itemsDocRef(nickname));
 }
 
 // Persist a fresh decay snapshot. Call this opportunistically whenever

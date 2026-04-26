@@ -430,7 +430,7 @@ export default function FloatingPet() {
     if (!nickname) return;
     if (typeof window === "undefined") return;
     const ok = window.confirm(
-      "정말 파양하시겠습니까? 성장 단계와 상태가 모두 초기화됩니다.\n(보유한 아이템은 유지되어 새 펫에게 사용할 수 있습니다.)",
+      "정말 파양하시겠습니까? 펫과 구매한 모든 펫 아이템이 초기화됩니다.",
     );
     if (!ok) return;
     setBusy(true);
