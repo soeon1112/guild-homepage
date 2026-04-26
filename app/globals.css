@@ -57,7 +57,16 @@
    TopHeader and BottomNav. Combine with Tailwind's `fixed inset-0` —
    this rule's `top`/`bottom` override the inset-0 zeros (custom CSS
    beats utility-layer Tailwind in cascade order). Add
-   `flex items-center justify-center` if you want the inner card centred. */
+   `flex items-center justify-center` if you want the inner card centred.
+
+   Single-scroll behaviour: the frame itself scrolls (`overflow-y: auto`)
+   so the entire modal — photo + caption + comments — moves as one
+   block. `align-items: safe center` overrides Tailwind's `items-center`
+   so the card stays centred when short and pins to the top (with the
+   frame scrolling down to reveal the rest) when taller than the frame.
+   Without `safe`, plain `align-items: center` would cut off the top of
+   tall cards because flex centring doesn't allow scrolling past the
+   start. */
 .modal-safe-frame {
   top: var(--modal-top-offset);
   right: 0;
@@ -65,6 +74,9 @@
   left: 0;
   padding-left: 1rem;
   padding-right: 1rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  align-items: safe center;
 }
 
 @theme inline {
@@ -2178,12 +2190,15 @@ select {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   display: flex;
-  align-items: center;
+  /* `safe center` falls back to `flex-start` when the photo+comments
+     card is taller than the modal frame, so the user can scroll the
+     entire card as one block (no inner scroll regions). */
+  align-items: safe center;
   justify-content: center;
   padding-left: 1rem;
   padding-right: 1rem;
-  /* Tall photo viewer modals can exceed the safe centre area; allow the
-     backdrop itself to scroll so users can reach the comment list bottom. */
+  /* The backdrop is the single scroll surface — entire card scrolls
+     together rather than splitting into photo/comment regions. */
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -2395,19 +2410,16 @@ select {
 }
 
 .minihome-photo-viewer {
-  max-width: 90vw;
-  /* Cap the viewer so it never spills past the BottomNav. The shared
-     --modal-pad-* tokens already inset the parent .minihome-modal frame;
-     here we cap by 100% of that content area so the close button + last
-     comment stay inside the safe centre region. */
-  max-height: 100%;
+  /* Single-scroll: the parent .minihome-modal scrolls the entire card
+     (photo + caption + comments) as one block. No max-height or
+     overflow-y here — those would create a separate scroll region
+     inside the card, which the user explicitly does NOT want. */
   width: 100%;
-  max-width: 520px;
+  max-width: min(90vw, 520px);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.75rem;
-  overflow-y: auto;
   padding: 0.25rem;
 }
 
@@ -6432,6 +6444,16 @@ body.has-redesigned-header .bg-scene {
   0%   { opacity: 0; transform: translate(-50%, 0) scale(0.6); }
   20%  { opacity: 1; transform: translate(-50%, -8px) scale(1); }
   100% { opacity: 0; transform: translate(-50%, -42px) scale(0.85); }
+}
+@keyframes pet-levelup {
+  /* Bounce-in burst, hold, then fade out — matches the 2.8s clear timer
+     scheduled in FloatingPet so the keyframe ends as the React state nulls. */
+  0%   { opacity: 0; transform: scale(0.6); }
+  10%  { opacity: 1; transform: scale(1.15); }
+  18%  { transform: scale(0.96); }
+  25%  { transform: scale(1.04); }
+  30%, 80% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.05); }
 }
 @keyframes pet-button-press {
   0%   { transform: scale(1); }

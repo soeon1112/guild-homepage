@@ -186,6 +186,9 @@ export default function FloatingPet() {
   const [debugStage, setDebugStage] = useState<PetStage | null>(null);
   const [debugType, setDebugType] = useState<PetType | null>(null);
   const [debugPicker, setDebugPicker] = useState<"stage" | "type" | null>(null);
+  // Level-up celebration banner — fires once when stage advances.
+  const [levelUpBanner, setLevelUpBanner] = useState<string | null>(null);
+  const prevStageRef = useRef<PetStage | null>(null);
 
   // Move a placed furniture to a new (x, y) and persist.
   const handleMoveFurniture = useCallback(
@@ -262,6 +265,25 @@ export default function FloatingPet() {
 
   const mood = projected ? computeMood(projected) : "happy";
   const bubble = projected ? computeBubble(projected) : null;
+
+  // ── Level-up celebration ──
+  // Detect stage advance (egg → baby → … → adult) and surface a banner.
+  // The ref stops repeats when stage re-resolves to the same value.
+  useEffect(() => {
+    if (!pet) {
+      prevStageRef.current = null;
+      return;
+    }
+    const prev = prevStageRef.current;
+    if (prev && prev !== stage) {
+      const stageLabel = PET_STAGES.find((s) => s.id === stage)?.label ?? "";
+      setLevelUpBanner(stageLabel);
+      const t = setTimeout(() => setLevelUpBanner(null), 2800);
+      prevStageRef.current = stage;
+      return () => clearTimeout(t);
+    }
+    prevStageRef.current = stage;
+  }, [stage, pet]);
 
   // Lazy-load member list when entering social tabs.
   useEffect(() => {
@@ -544,27 +566,68 @@ export default function FloatingPet() {
               border: "1px solid #E0CFB8",
             }}
           >
-            {/* Header */}
+            {/* Game-style HUD header — pet identity left, currency + close right */}
             <div
-              className="flex items-center justify-between px-4 py-3"
-              style={{ background: "rgba(244,192,122,0.18)", borderBottom: "1px solid #E0CFB8" }}
+              className="flex items-center justify-between gap-2 px-3 py-2"
+              style={{
+                background: "linear-gradient(180deg, rgba(244,192,122,0.32), rgba(244,192,122,0.12))",
+                borderBottom: "1px solid #E0CFB8",
+              }}
             >
-              <div className="flex items-center gap-2 text-[#5B3A1F]">
-                <Heart size={16} />
-                <span className="font-serif text-[13px] font-medium tracking-wider">
-                  나의 펫
-                </span>
+              <div className="flex min-w-0 items-center gap-2 text-[#5B3A1F]">
+                {pet ? (
+                  <>
+                    <span className="truncate font-serif text-[14px] font-bold">
+                      {pet.name}
+                    </span>
+                    <span
+                      className="shrink-0 rounded-md px-1.5 py-0.5 font-serif text-[10px] font-bold tracking-wider text-[#FFF8E5]"
+                      style={{
+                        background: "#C68748",
+                        border: "1px solid #8C5C2A",
+                        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)",
+                      }}
+                    >
+                      Lv.{PET_STAGES.findIndex((s) => s.id === stage) + 1}
+                    </span>
+                    <span
+                      className="shrink-0 rounded-md px-1.5 py-0.5 font-serif text-[10px] font-semibold text-[#5B3A1F]"
+                      style={{ background: "rgba(255,255,255,0.85)", border: "1px solid #E0CFB8" }}
+                    >
+                      {PET_STAGES.find((s) => s.id === stage)?.label ?? ""}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Heart size={16} />
+                    <span className="font-serif text-[13px] font-medium tracking-wider">나의 펫</span>
+                  </>
+                )}
               </div>
-              <div className="flex items-center gap-2">
-                <span className="rounded-full bg-white/80 px-2 py-0.5 font-serif text-[10px] text-[#5B3A1F]">
-                  ★ {points}
-                </span>
+              <div className="flex shrink-0 items-center gap-1.5">
+                <div
+                  className="flex items-center gap-1 rounded-full py-0.5 pr-2 font-serif text-[12px] font-bold text-[#7A5418]"
+                  style={{ background: "#FFF6DC", border: "1px solid #E0BE6E" }}
+                >
+                  <span
+                    className="-ml-0.5 flex h-[18px] w-[18px] items-center justify-center rounded-full font-bold leading-none text-[#7A5418]"
+                    style={{
+                      background: "#F2C84B",
+                      border: "1px solid #B58821",
+                      fontSize: 10,
+                    }}
+                  >
+                    ★
+                  </span>
+                  <span>{points}</span>
+                </div>
                 <button
                   onClick={() => setOpen(false)}
-                  className="text-[#5B3A1F] transition-opacity hover:opacity-70"
+                  className="flex h-[22px] w-[22px] items-center justify-center rounded-full text-[#5B3A1F] transition-opacity hover:opacity-70"
+                  style={{ background: "rgba(255,255,255,0.7)", border: "1px solid #E0CFB8" }}
                   aria-label="닫기"
                 >
-                  <X size={16} />
+                  <X size={14} />
                 </button>
               </div>
             </div>
@@ -572,7 +635,7 @@ export default function FloatingPet() {
             {/* Tabs (only when pet exists) — icon + label */}
             {pet ? (
               <div
-                className="flex shrink-0 justify-around"
+                className="flex shrink-0 justify-around px-1 py-1"
                 style={{ borderBottom: "1px solid #E0CFB8", background: "#FFF6E6" }}
               >
                 {(Object.keys(TAB_LABELS) as Tab[]).map((t) => {
@@ -585,18 +648,25 @@ export default function FloatingPet() {
                         setTab(t);
                         setVisiting(null);
                       }}
-                      className="flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 transition-colors"
+                      className="flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-1 transition-all"
                       style={{
-                        background: isActive ? "rgba(244,192,122,0.22)" : "transparent",
-                        borderBottom: isActive ? "2px solid #C68748" : "2px solid transparent",
+                        background: isActive ? "rgba(244,192,122,0.18)" : "transparent",
                       }}
                     >
-                      <PixelIconView icon={icon} size={20} dim={!isActive} />
                       <span
-                        className="font-serif text-[9px]"
+                        className="flex h-[30px] w-[30px] items-center justify-center rounded-lg transition-all"
+                        style={{
+                          background: isActive ? "#FFF1D5" : "transparent",
+                          border: isActive ? "1px solid #E0BE6E" : "1px solid transparent",
+                        }}
+                      >
+                        <PixelIconView icon={icon} size={22} dim={!isActive} />
+                      </span>
+                      <span
+                        className="font-serif text-[10px] transition-colors"
                         style={{
                           color: isActive ? "#5B3A1F" : "#9C7E5C",
-                          fontWeight: isActive ? 600 : 400,
+                          fontWeight: isActive ? 600 : 500,
                         }}
                       >
                         {TAB_LABELS[t]}
@@ -619,6 +689,7 @@ export default function FloatingPet() {
                   projected={projected!}
                   mood={mood}
                   bubble={bubble}
+                  levelUpBanner={levelUpBanner}
                   inventory={items.inventory}
                   now={now}
                   busy={busy}
@@ -657,6 +728,7 @@ export default function FloatingPet() {
                   busy={busy}
                   onBuy={handleBuy}
                   boughtFlash={boughtFlash}
+                  equippedAccessories={pet.accessories ?? []}
                 />
               ) : tab === "wardrobe" ? (
                 <WardrobePanel
@@ -701,7 +773,7 @@ export default function FloatingPet() {
                   now={now}
                 />
               ) : (
-                <RankingPanel members={members} />
+                <RankingPanel members={members} myNickname={nickname ?? null} />
               )}
             </div>
 
@@ -815,6 +887,7 @@ function MainPanel({
   projected,
   mood,
   bubble,
+  levelUpBanner,
   inventory,
   now,
   busy,
@@ -850,6 +923,7 @@ function MainPanel({
   projected: { hunger: number; happiness: number; clean: number };
   mood: "happy" | "sad";
   bubble: ReturnType<typeof computeBubble>;
+  levelUpBanner: string | null;
   inventory: PetItemsDoc["inventory"];
   now: number;
   busy: boolean;
@@ -924,6 +998,28 @@ function MainPanel({
             <span className="font-serif text-[11px] font-medium text-[#3A2818]">{pet.name}</span>
             <span className="rounded-full bg-[#FFE5C4] px-1.5 font-serif text-[9px] text-[#5B3A1F]">{stageLabel}</span>
           </div>
+          {/* Level-up celebration banner — sits over the room for ~2.8s */}
+          {levelUpBanner ? (
+            <div
+              className="pointer-events-none absolute left-0 right-0 top-[30%] flex items-center justify-center gap-2 py-2 font-serif"
+              style={{
+                background: "rgba(255,243,205,0.95)",
+                borderTop: "2px solid #F2C84B",
+                borderBottom: "2px solid #F2C84B",
+                boxShadow: "0 0 18px rgba(242,200,75,0.55)",
+                animation: "pet-levelup 2.8s ease-out forwards",
+              }}
+            >
+              <span style={{ fontSize: 18 }}>✨</span>
+              <span className="font-bold tracking-widest" style={{ color: "#7A5418", fontSize: 16 }}>
+                LEVEL UP!
+              </span>
+              <span className="font-semibold" style={{ color: "#5B3A1F", fontSize: 11 }}>
+                {levelUpBanner} 단계
+              </span>
+              <span style={{ fontSize: 18 }}>✨</span>
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -955,13 +1051,13 @@ function MainPanel({
       ) : null}
 
       {/* ── HUD stat bars (icon + gradient gauge) ── */}
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-2">
         <HudBar
           icon={STATUS_ICONS.hunger}
           label="포만감"
           value={projected.hunger}
           colorFrom="#FFCFA0"
-          colorTo="#D24545"
+          colorTo="#E07A2F"
         />
         <HudBar
           icon={STATUS_ICONS.happiness}
@@ -983,6 +1079,18 @@ function MainPanel({
           value={Math.round(stageProgress * 100)}
           colorFrom="#FFE56B"
           colorTo="#F2C84B"
+          subLabel={
+            stage === "adult"
+              ? "최고 레벨 달성! ★"
+              : (() => {
+                  const cur = PET_STAGES.find((s) => s.id === stage);
+                  const next = PET_STAGES[(PET_STAGES.findIndex((s) => s.id === stage) + 1) || 0];
+                  if (!cur || !next) return null;
+                  const span = Math.max(1, next.expMin - cur.expMin);
+                  const got = Math.max(0, Math.min(span, (pet.exp ?? 0) - cur.expMin));
+                  return `다음 단계까지 ${got}/${span} XP`;
+                })()
+          }
         />
       </div>
 
@@ -1274,38 +1382,64 @@ function HudBar({
   value,
   colorFrom,
   colorTo,
+  subLabel,
 }: {
   icon: ItemIconRender;
   label: string;
   value: number;
   colorFrom: string;
   colorTo: string;
+  // Optional secondary line ("다음 단계까지 120/500"). Used by the EXP
+  // bar to surface concrete progress numbers under the gauge.
+  subLabel?: string | null;
 }) {
   const v = Math.max(0, Math.min(100, value));
+  // Game HUDs flash red when a vital is critical.
+  const danger = v < 30;
+  const fillFrom = danger ? "#FFAEA0" : colorFrom;
+  const fillTo = danger ? "#E03A3A" : colorTo;
   return (
     <div className="flex items-center gap-2">
-      <PixelIconView icon={icon} size={20} />
+      <span
+        className="flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-full"
+        style={{ background: "rgba(255,255,255,0.85)", border: "1px solid #E0CFB8" }}
+      >
+        <PixelIconView icon={icon} size={20} />
+      </span>
       <div className="flex-1">
         <div className="flex items-center justify-between font-serif text-[10px] text-[#5B3A1F]">
           <span>{label}</span>
-          <span>{Math.round(v)}%</span>
+          <span style={{ color: danger ? "#C2271C" : undefined, fontWeight: danger ? 700 : undefined }}>
+            {Math.round(v)}%
+          </span>
         </div>
         <div
-          className="mt-0.5 h-2 w-full overflow-hidden rounded-full"
+          className="relative mt-0.5 h-2.5 w-full overflow-hidden rounded-full"
           style={{
             background: "#EFE0C9",
-            boxShadow: "inset 0 1px 2px rgba(91,58,31,0.2)",
+            boxShadow: "inset 0 1px 2px rgba(91,58,31,0.25)",
+            border: "1px solid #D6C4A8",
           }}
         >
           <div
             className="h-full rounded-full transition-[width] duration-500"
             style={{
               width: `${v}%`,
-              background: `linear-gradient(90deg, ${colorFrom}, ${colorTo})`,
-              boxShadow: `0 0 6px ${colorTo}66`,
+              background: `linear-gradient(90deg, ${fillFrom}, ${fillTo})`,
+              boxShadow: `0 0 6px ${fillTo}66`,
             }}
           />
+          {/* Glossy highlight running across the top */}
+          {v > 1 ? (
+            <div
+              className="pointer-events-none absolute left-0 top-0 h-[3px] rounded-t-full transition-[width] duration-500"
+              style={{ width: `${v}%`, background: "rgba(255,255,255,0.55)" }}
+            />
+          ) : null}
         </div>
+        {subLabel ? (
+          <div className="mt-0.5 font-serif text-[9px] text-[#7A5A3C]">{subLabel}</div>
+        ) : null}
       </div>
     </div>
   );
@@ -1324,31 +1458,67 @@ function InteractButton({
   disabled?: boolean;
   onClick: () => void;
 }) {
+  const onCooldown = !!cooldownLabel && !!disabled;
+  const ready = !disabled;
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      className="group relative flex flex-col items-center gap-0.5 rounded-xl px-1 py-1.5 font-serif transition-transform active:scale-90 disabled:active:scale-100"
+      className="group relative flex flex-col items-center gap-1 overflow-hidden rounded-xl px-1 py-2 font-serif transition-transform active:scale-90 disabled:active:scale-100"
       style={{
         background: disabled
           ? "rgba(220,210,195,0.7)"
           : "linear-gradient(180deg, #FFFAF0, #FFE5C4)",
-        border: "1px solid #E0CFB8",
+        border: ready ? "1.5px solid #E0BE6E" : "1.5px solid #E0CFB8",
         boxShadow: disabled
           ? "inset 0 1px 0 rgba(255,255,255,0.4)"
-          : "0 2px 0 rgba(91,58,31,0.18), inset 0 1px 0 rgba(255,255,255,0.6)",
-        opacity: disabled ? 0.5 : 1,
+          : "0 2px 0 rgba(91,58,31,0.18), inset 0 1px 0 rgba(255,255,255,0.6), 0 0 6px rgba(242,200,75,0.25)",
+        opacity: disabled && !onCooldown ? 0.5 : 1,
         cursor: disabled ? "not-allowed" : "pointer",
       }}
     >
-      <PixelIconView icon={icon} size={22} dim={disabled} />
-      <span className="text-[10px] text-[#5B3A1F]">{label}</span>
-      {cooldownLabel ? (
-        <span className="text-[9px] text-[#9C7E5C]">{cooldownLabel}</span>
+      <span
+        className="flex h-9 w-9 items-center justify-center rounded-lg"
+        style={{ background: "rgba(255,255,255,0.85)" }}
+      >
+        <PixelIconView icon={icon} size={28} dim={disabled} />
+      </span>
+      <span className="text-[10px] font-medium text-[#5B3A1F]" style={{ opacity: disabled ? 0.55 : 1 }}>
+        {label}
+      </span>
+      {/* Cooldown veil — dark scrim with the remaining time front-and-center,
+          like a typical mobile-game ability button. */}
+      {onCooldown ? (
+        <span
+          className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-xl text-[11px] font-bold text-[#FFF1DC]"
+          style={{ background: "rgba(20,12,4,0.55)" }}
+        >
+          {cooldownLabel}
+        </span>
       ) : null}
     </button>
   );
 }
+
+// Rarity tier coloring — drives the shop card border so a glance hints at
+// item value. Common (consumables) = grey; Rare (accessories/furniture)
+// = blue; Epic (specials like dye/sparkle/nameTag) = gold.
+type Rarity = "common" | "rare" | "epic";
+const EPIC_ITEMS: Record<string, true> = {
+  dye: true,
+  sparkle: true,
+  nameTag: true,
+};
+function itemRarity(id: string, category: ItemCategory): Rarity {
+  if (EPIC_ITEMS[id]) return "epic";
+  if (category === "consumable") return "common";
+  return "rare";
+}
+const RARITY_COLOR: Record<Rarity, { border: string; tint: string; label: string }> = {
+  common: { border: "#A8A8A8", tint: "rgba(168,168,168,0.10)", label: "일반" },
+  rare:   { border: "#7AAEE0", tint: "rgba(122,174,224,0.12)", label: "고급" },
+  epic:   { border: "#F2C84B", tint: "rgba(242,200,75,0.16)",  label: "특수" },
+};
 
 function ShopPanel({
   category,
@@ -1358,6 +1528,7 @@ function ShopPanel({
   busy,
   onBuy,
   boughtFlash,
+  equippedAccessories,
 }: {
   category: ItemCategory;
   setCategory: (c: ItemCategory) => void;
@@ -1366,6 +1537,7 @@ function ShopPanel({
   busy: boolean;
   onBuy: (id: ItemId) => void;
   boughtFlash: string | null;
+  equippedAccessories: ItemId[];
 }) {
   const filtered = ITEMS.filter((i) => i.category === category);
   return (
@@ -1391,26 +1563,36 @@ function ShopPanel({
           const owned = isOwned(inventory, item.id);
           const count = inventory?.[item.id] ?? 0;
           const collectible = item.category !== "consumable";
+          const equipped = equippedAccessories.includes(item.id as ItemId);
           const disabled = busy || points < item.price || (collectible && owned);
           const flashing = boughtFlash === item.id;
+          const rarity = itemRarity(item.id, item.category);
+          const rar = RARITY_COLOR[rarity];
           return (
             <div
               key={item.id}
-              className="relative flex flex-col items-center gap-1 rounded-xl p-2"
+              className="relative flex flex-col items-center gap-1 rounded-xl px-2 pb-2 pt-5"
               style={{
                 background: flashing
                   ? "linear-gradient(135deg, #FFF6CD, #FFE5C4)"
-                  : "rgba(255,255,255,0.7)",
-                border: flashing ? "1px solid #F2C84B" : "1px solid #E0CFB8",
+                  : rar.tint,
+                border: flashing ? `2px solid #F2C84B` : `2px solid ${rar.border}`,
                 boxShadow: flashing
                   ? "0 0 12px rgba(242,200,75,0.55), 0 4px 8px rgba(91,58,31,0.18)"
-                  : "0 1px 2px rgba(91,58,31,0.06)",
+                  : "0 1px 2px rgba(91,58,31,0.08)",
                 transition: "all 0.3s",
               }}
             >
+              {/* Rarity chip — top-left corner of the card */}
+              <span
+                className="absolute left-1.5 top-1.5 rounded px-1 py-[1px] font-serif text-[8px] font-bold tracking-wider text-white"
+                style={{ background: rar.border }}
+              >
+                {rar.label}
+              </span>
               {flashing ? (
                 <span
-                  className="pointer-events-none absolute left-1/2 top-3"
+                  className="pointer-events-none absolute left-1/2 top-5"
                   style={{
                     color: "#F2C84B",
                     fontSize: 16,
@@ -1427,7 +1609,14 @@ function ShopPanel({
               <div className="font-serif text-[10px] text-[#7A5A3C]">{item.desc}</div>
               <div className="flex w-full items-center justify-between">
                 <span className="font-serif text-[10px] text-[#5B3A1F]">★ {item.price}</span>
-                {collectible && owned ? (
+                {equipped ? (
+                  <span
+                    className="rounded-full px-1.5 font-serif text-[9px] font-semibold text-white"
+                    style={{ background: "#C68748" }}
+                  >
+                    장착중
+                  </span>
+                ) : collectible && owned ? (
                   <span
                     className="rounded-full px-1.5 font-serif text-[9px]"
                     style={{ background: "#D7E5C7", color: "#2E6B26" }}
@@ -1890,45 +2079,79 @@ function VisitPanel({
   );
 }
 
-function RankingPanel({ members }: { members: MemberInfo[] }) {
+function RankingPanel({ members, myNickname }: { members: MemberInfo[]; myNickname: string | null }) {
   const byExp = [...members].sort((a, b) => (b.exp ?? 0) - (a.exp ?? 0));
   const byHappy = [...members].sort((a, b) => (b.happiness ?? 0) - (a.happiness ?? 0));
   return (
     <div className="flex flex-col gap-3">
       <Section title="레벨 (경험치) 순">
-        <RankList items={byExp} value={(m) => `${m.exp ?? 0} XP`} />
+        <RankList items={byExp} value={(m) => `${m.exp ?? 0} XP`} myNickname={myNickname} />
       </Section>
       <Section title="행복도 순">
-        <RankList items={byHappy} value={(m) => `${Math.round(m.happiness ?? 0)}%`} />
+        <RankList items={byHappy} value={(m) => `${Math.round(m.happiness ?? 0)}%`} myNickname={myNickname} />
       </Section>
     </div>
   );
 }
 
+// Medals make the top of the leaderboard feel celebratory at a glance.
+// 1=gold crown, 2=silver, 3=bronze. 4+ falls back to numeric.
+function rankBadge(idx: number): { emoji: string | null; bg: string; fg: string } {
+  if (idx === 0) return { emoji: "👑", bg: "#FFE7A8", fg: "#7A5418" };
+  if (idx === 1) return { emoji: "🥈", bg: "#E5E5EA", fg: "#3A3A3A" };
+  if (idx === 2) return { emoji: "🥉", bg: "#F1D6B6", fg: "#5B3A1F" };
+  return { emoji: null, bg: "rgba(255,255,255,0.85)", fg: "#5B3A1F" };
+}
+
 function RankList({
   items,
   value,
+  myNickname,
 }: {
   items: MemberInfo[];
   value: (m: MemberInfo) => string;
+  myNickname: string | null;
 }) {
   if (items.length === 0) return <Empty>아직 데이터가 없어요.</Empty>;
   return (
     <div className="flex flex-col gap-1">
-      {items.slice(0, 10).map((m, i) => (
-        <div
-          key={m.nickname}
-          className="flex items-center gap-2 rounded-lg bg-white/70 px-2 py-1.5"
-        >
-          <span className="w-5 font-serif text-[11px] text-[#9C7E5C]">{i + 1}</span>
-          <PetSvg type={m.petType!} stage={m.petStage!} size={24} />
-          <div className="flex-1">
-            <div className="font-serif text-[11px] text-[#3A2818]">{m.petName}</div>
-            <div className="font-serif text-[9px] text-[#7A5A3C]">@{m.nickname}</div>
+      {items.slice(0, 10).map((m, i) => {
+        const badge = rankBadge(i);
+        const mine = myNickname != null && m.nickname === myNickname;
+        return (
+          <div
+            key={m.nickname}
+            className="flex items-center gap-2 rounded-lg px-2 py-1.5"
+            style={{
+              background: mine
+                ? "rgba(244,192,122,0.32)"
+                : i < 3
+                  ? badge.bg
+                  : "rgba(255,255,255,0.7)",
+              border: mine
+                ? "1.5px solid #C68748"
+                : i < 3
+                  ? `1px solid ${badge.fg}`
+                  : "1px solid transparent",
+            }}
+          >
+            <span className="flex w-6 justify-center font-serif text-[11px]" style={{ color: badge.fg }}>
+              {badge.emoji ? <span style={{ fontSize: 16 }}>{badge.emoji}</span> : <span>{i + 1}</span>}
+            </span>
+            <PetSvg type={m.petType!} stage={m.petStage!} size={26} />
+            <div className="flex-1">
+              <div className="font-serif text-[11px]" style={{ color: badge.fg }}>
+                {m.petName}
+                {mine ? <span className="ml-1 font-bold text-[9px] text-[#C68748]">· 나</span> : null}
+              </div>
+              <div className="font-serif text-[9px] text-[#7A5A3C]">@{m.nickname}</div>
+            </div>
+            <span className="font-serif text-[10px] font-semibold" style={{ color: badge.fg }}>
+              {value(m)}
+            </span>
           </div>
-          <span className="font-serif text-[10px] text-[#5B3A1F]">{value(m)}</span>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
