@@ -971,9 +971,7 @@ function MainPanel({
           className="rounded-lg px-3 py-2 font-serif text-[10px] text-[#5B3A1F]"
           style={{ background: "rgba(244,192,122,0.18)", border: "1px solid #E0CFB8" }}
         >
-          {selectedFurniture
-            ? "방 안의 원하는 위치를 탭해서 가구를 옮기세요."
-            : "옮기고 싶은 가구를 탭하면 선택됩니다."}
+          가구를 길게 누른 채 드래그해서 원하는 위치로 옮기세요. 바닥 영역 안에서만 배치됩니다.
         </div>
       ) : null}
     </div>

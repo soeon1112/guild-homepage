@@ -150,6 +150,39 @@ function PetRoomInner({
   const [activeAction, setActiveAction] = useState<SpecialAction>("none");
   const walkDurRef = useRef(0);
 
+  // ── Long-press drag for furniture (placement mode) ──
+  // Refs hold the authoritative drag state (avoids stale closures in
+  // pointermove/pointerup handlers); state is mirrored only for the
+  // few things React needs to re-render (selection ring + position).
+  const [dragId, setDragId] = useState<ItemId | null>(null);
+  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
+  const dragStartRef = useRef<{
+    id: ItemId;
+    startCursorX: number;
+    startCursorY: number;
+    startFx: number;
+    startFy: number;
+  } | null>(null);
+  const dragPosRef = useRef<{ x: number; y: number } | null>(null);
+  const longPressTimerRef = useRef<number | null>(null);
+  const cancelLongPress = () => {
+    if (longPressTimerRef.current != null) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+  const endDrag = (commit: boolean) => {
+    cancelLongPress();
+    if (commit && dragStartRef.current && dragPosRef.current) {
+      onMoveFurniture?.(dragStartRef.current.id, dragPosRef.current.x, dragPosRef.current.y);
+    }
+    if (dragStartRef.current) onSelectFurniture?.(null);
+    dragStartRef.current = null;
+    dragPosRef.current = null;
+    setDragId(null);
+    setDragPos(null);
+  };
+
   // ── Scene mode (interaction cutscene) ──
   // When `activeScene` becomes non-null, suspend normal scheduling,
   // snap pet to anchor, run scene animation for SCENES[id].durationMs,
@@ -350,16 +383,24 @@ function PetRoomInner({
 
   return (
     <div
-      onClick={(e) => {
-        if (!placementMode || !selectedFurniture) return;
+      onPointerMove={(e) => {
+        if (!dragStartRef.current) return;
         const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-        const xPct = ((e.clientX - rect.left) / rect.width) * 100;
-        const cssY = ((e.clientY - rect.top) / rect.height) * H;
-        if (cssY < wallEnd) return; // ignore taps on the wall
-        const yPct = ((cssY - wallEnd) / floorDepth) * 100;
-        onMoveFurniture?.(selectedFurniture, xPct, Math.max(0, Math.min(100, yPct)));
-        onSelectFurniture?.(null);
+        const cursorXPx = e.clientX - rect.left;
+        const cursorYPx = e.clientY - rect.top;
+        const wallEndPx = (wallEnd / H) * rect.height;
+        const floorDepthPx = rect.height - wallEndPx;
+        const dxPct = ((cursorXPx - dragStartRef.current.startCursorX) / rect.width) * 100;
+        const dyPct = ((cursorYPx - dragStartRef.current.startCursorY) / floorDepthPx) * 100;
+        const newX = Math.max(0, Math.min(100, dragStartRef.current.startFx + dxPct));
+        // Clamp to floor area only — never above the wall line.
+        const newY = Math.max(0, Math.min(100, dragStartRef.current.startFy + dyPct));
+        dragPosRef.current = { x: newX, y: newY };
+        setDragPos({ x: newX, y: newY });
       }}
+      onPointerUp={() => endDrag(true)}
+      onPointerCancel={() => endDrag(false)}
+      onPointerLeave={() => endDrag(true)}
       style={{
         position: "relative",
         width: "100%",
@@ -367,7 +408,9 @@ function PetRoomInner({
         overflow: "hidden",
         borderRadius: 16,
         boxShadow: "inset 0 0 0 1px #E0CFB8, 0 4px 12px rgba(91,58,31,0.10)",
-        cursor: placementMode && selectedFurniture ? "crosshair" : "default",
+        cursor: placementMode ? (dragId ? "grabbing" : "default") : "default",
+        touchAction: placementMode ? "none" : "auto",
+        userSelect: "none",
       }}
     >
       <svg
@@ -479,31 +522,50 @@ function PetRoomInner({
         </defs>
       </svg>
 
-      {/* Furniture HTML overlays — each gets a z-index based on its
-          y position so the pet can pass in front of / behind it. */}
+      {/* Furniture HTML overlays — z-index from y, long-press drag in
+          placement mode. The pet wrapper sets pointerEvents:none in
+          placement mode so back-row furniture stays selectable. */}
       {!activeScene &&
         furniture.map((id) => {
           const placement = FURNITURE_PLACEMENTS[id];
           const icon: ItemIconRender | undefined = ITEM_ICONS[id];
           if (!placement || !icon) return null;
           const userPos = furniturePositions?.[id];
-          const fx = userPos?.x ?? placement.x;
-          const fy = userPos?.y ?? placement.y;
+          const baseFx = userPos?.x ?? placement.x;
+          const baseFy = userPos?.y ?? placement.y;
+          const fx = dragId === id && dragPos ? dragPos.x : baseFx;
+          const fy = dragId === id && dragPos ? dragPos.y : baseFy;
           const sizePx = (placement.size / 100) * W;
           const cols = Math.max(...icon.grid.map((r) => r.length));
           const px = sizePx / cols;
           const leftPx = (fx / 100) * W - sizePx / 2;
-          // Floor area: [wallEnd .. floorEnd]. y=0 at wall, y=100 at viewer.
-          const floorDepth = floorEnd - wallEnd;
           const bottomPx = (1 - fy / 100) * floorDepth + 2;
           const isSelected = placementMode && selectedFurniture === id;
+          const isDragging = dragId === id;
           return (
             <div
               key={`furn-${id}`}
-              onClick={(e) => {
+              onPointerDown={(e) => {
                 if (!placementMode) return;
                 e.stopPropagation();
-                onSelectFurniture?.(isSelected ? null : id);
+                const containerEl = e.currentTarget.parentElement as HTMLDivElement;
+                const rect = containerEl.getBoundingClientRect();
+                const startCursorX = e.clientX - rect.left;
+                const startCursorY = e.clientY - rect.top;
+                cancelLongPress();
+                longPressTimerRef.current = window.setTimeout(() => {
+                  dragStartRef.current = {
+                    id,
+                    startCursorX,
+                    startCursorY,
+                    startFx: baseFx,
+                    startFy: baseFy,
+                  };
+                  dragPosRef.current = { x: baseFx, y: baseFy };
+                  setDragId(id);
+                  setDragPos({ x: baseFx, y: baseFy });
+                  onSelectFurniture?.(id);
+                }, 220);
               }}
               style={{
                 position: "absolute",
@@ -511,14 +573,19 @@ function PetRoomInner({
                 bottom: bottomPx,
                 width: sizePx,
                 height: sizePx,
-                zIndex: Math.round(fy * 10),
+                zIndex: isDragging ? 9999 : Math.round(fy * 10),
                 pointerEvents: placementMode ? "auto" : "none",
-                cursor: placementMode ? "pointer" : "default",
+                cursor: placementMode ? (isDragging ? "grabbing" : "grab") : "default",
                 outline: isSelected ? "2px dashed #C68748" : "none",
                 outlineOffset: 2,
                 borderRadius: 4,
                 background: isSelected ? "rgba(244,192,122,0.25)" : "transparent",
-                transition: "left 200ms ease-out, bottom 200ms ease-out",
+                transition: isDragging
+                  ? "none"
+                  : "left 200ms ease-out, bottom 200ms ease-out",
+                touchAction: "none",
+                transform: isDragging ? "scale(1.08)" : "none",
+                filter: isDragging ? "drop-shadow(0 4px 6px rgba(0,0,0,0.25))" : "none",
               }}
             >
               <svg viewBox={`0 0 ${cols * px} ${icon.grid.length * px}`} width="100%" height="100%" style={{ display: "block" }}>
@@ -611,8 +678,8 @@ function PetRoomInner({
       ) : null}
 
       {/* Pet — HTML overlay so we can freely transition position +
-          z-sort against furniture. Bottom + zIndex computed from posY
-          (0..1 = back..front). */}
+          z-sort against furniture. In placement mode, pointerEvents
+          is disabled so back-row furniture stays selectable. */}
       <div
         style={{
           position: "absolute",
@@ -626,9 +693,8 @@ function PetRoomInner({
             ? `left ${walkDuration}ms ease-in-out, bottom ${walkDuration}ms ease-in-out`
             : "bottom 400ms ease-out",
           willChange: "transform, left, bottom",
-          // Match scale used by furniture (fy 0..100 → z 0..1000) so a
-          // pet at y=0.7 sits just in front of furniture at y=70.
           zIndex: Math.round(posY * 1000) + 1,
+          pointerEvents: placementMode ? "none" : "auto",
         }}
       >
         <div
