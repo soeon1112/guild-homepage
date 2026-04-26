@@ -278,6 +278,13 @@ const MODAL_BACKDROP: React.CSSProperties = {
   WebkitBackdropFilter: "blur(12px)",
 };
 
+// Inbox-specific: no dim/blur, so the main page stays visible behind the
+// letter modal. Compose still uses the dimmed backdrop so the form has
+// strong focus while the user is composing.
+const INBOX_BACKDROP: React.CSSProperties = {
+  background: "transparent",
+};
+
 const MODAL_CARD: React.CSSProperties = {
   background: "rgba(26,15,61,0.92)",
   border: "1px solid rgba(216,150,200,0.3)",
@@ -597,7 +604,7 @@ function InboxModal({
   return (
     <motion.div
       className="modal-safe-frame fixed inset-0 z-[70] flex items-center justify-center"
-      style={MODAL_BACKDROP}
+      style={INBOX_BACKDROP}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
