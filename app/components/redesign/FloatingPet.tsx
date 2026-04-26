@@ -1564,6 +1564,8 @@ const EPIC_ITEMS: Record<string, true> = {
 };
 function itemRarity(id: string, category: ItemCategory): Rarity {
   if (EPIC_ITEMS[id]) return "epic";
+  // 특별 케이크는 EXP 부스트라 일반 소모품보다 한 등급 위(고급).
+  if (id === "cake") return "rare";
   if (category === "consumable") return "common";
   return "rare";
 }

@@ -273,7 +273,7 @@ export const ITEMS: Item[] = [
   // consumables
   { id: "food",  category: "consumable", name: "일반 사료", price: 2,  desc: "포만감 +30%", consumeEffect: { hunger: 30 } },
   { id: "treat", category: "consumable", name: "고급 간식", price: 5,  desc: "포만감 +15%, 행복도 +10%", consumeEffect: { hunger: 15, happiness: 10 } },
-  { id: "cake",  category: "consumable", name: "특별 케이크", price: 20, desc: "다음 상호작용 5회 경험치 2배", consumeEffect: { expBoostCount: 5 } },
+  { id: "cake",  category: "consumable", name: "특별 케이크", price: 20, desc: "상호작용 5회 경험치 2배", consumeEffect: { expBoostCount: 5 } },
   // accessories
   { id: "ribbon",   category: "accessory", name: "리본",   price: 15, desc: "패션 — 리본" },
   { id: "scarf",    category: "accessory", name: "스카프", price: 15, desc: "패션 — 스카프" },
