@@ -39,8 +39,10 @@ import {
   ITEMS,
   loadPet,
   loadPetItems,
+  PET_DYE_COLORS,
   PET_STAGES,
   PET_TYPES,
+  applyDyeColor,
   projectStatus,
   refreshDecaySnapshot,
   releasePet,
@@ -166,6 +168,7 @@ export default function FloatingPet() {
   const [boughtFlash, setBoughtFlash] = useState<string | null>(null);
   const [placementMode, setPlacementMode] = useState(false);
   const [selectedFurniture, setSelectedFurniture] = useState<ItemId | null>(null);
+  const [dyePicker, setDyePicker] = useState<{ open: boolean; preview: string | null }>({ open: false, preview: null });
 
   // Move a placed furniture to a new (x, y) and persist.
   const handleMoveFurniture = useCallback(
@@ -275,6 +278,27 @@ export default function FloatingPet() {
       cancelled = true;
     };
   }, [open, visible, tab]);
+
+  // Apply a body dye color (consumes 1 dye for non-null colors).
+  const handleApplyDye = useCallback(
+    async (color: string | null) => {
+      if (!nickname) return;
+      setBusy(true);
+      try {
+        const res = await applyDyeColor(nickname, color);
+        if (!res.ok) {
+          if (res.reason === "no_item") setToast("염색약이 없어요.");
+          else setToast("실패했어요.");
+        } else {
+          setToast(color ? "염색 완료!" : "기본색으로 되돌렸어요.");
+        }
+        setDyePicker({ open: false, preview: null });
+      } finally {
+        setBusy(false);
+      }
+    },
+    [nickname],
+  );
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -597,6 +621,9 @@ export default function FloatingPet() {
                   selectedFurniture={selectedFurniture}
                   setSelectedFurniture={setSelectedFurniture}
                   onMoveFurniture={handleMoveFurniture}
+                  dyePicker={dyePicker}
+                  setDyePicker={setDyePicker}
+                  onApplyDye={handleApplyDye}
                 />
               ) : tab === "shop" ? (
                 <ShopPanel
@@ -760,6 +787,9 @@ function MainPanel({
   selectedFurniture,
   setSelectedFurniture,
   onMoveFurniture,
+  dyePicker,
+  setDyePicker,
+  onApplyDye,
 }: {
   pet: PetDoc;
   stage: ReturnType<typeof computeStage>;
@@ -786,6 +816,9 @@ function MainPanel({
   selectedFurniture: ItemId | null;
   setSelectedFurniture: (id: ItemId | null) => void;
   onMoveFurniture: (id: ItemId, x: number, y: number) => void;
+  dyePicker: { open: boolean; preview: string | null };
+  setDyePicker: (s: { open: boolean; preview: string | null }) => void;
+  onApplyDye: (color: string | null) => void;
 }) {
   const stageLabel = PET_STAGES.find((s) => s.id === stage)?.label ?? "";
   return (
@@ -810,6 +843,7 @@ function MainPanel({
             mood={mood}
             glow={!!pet.glow}
             hue={pet.hue ?? 0}
+            bodyColor={dyePicker.preview ?? pet.petBodyColor ?? null}
             reaction={reaction}
             height={280}
             activeScene={activeScene}
@@ -943,6 +977,88 @@ function MainPanel({
             );
           })}
         </div>
+      </div>
+
+      {/* Special items — dye + reset */}
+      <div>
+        <div className="mb-1 font-serif text-[11px] text-[#5B3A1F]">특수 아이템</div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            onClick={() => setDyePicker({ open: !dyePicker.open, preview: null })}
+            disabled={busy || (inventory?.dye ?? 0) < 1}
+            className="flex items-center gap-1 rounded-lg px-2 py-1 font-serif text-[10px] disabled:opacity-40"
+            style={{
+              background: dyePicker.open ? "rgba(244,192,122,0.45)" : "rgba(255,255,255,0.7)",
+              border: "1px solid #E0CFB8",
+            }}
+          >
+            <ItemIconSvg id="dye" size={20} />
+            <span className="text-[#5B3A1F]">염색약 ×{inventory?.dye ?? 0}</span>
+          </button>
+          {pet.petBodyColor ? (
+            <button
+              onClick={() => onApplyDye(null)}
+              disabled={busy}
+              className="rounded-lg px-2 py-1 font-serif text-[10px] disabled:opacity-40"
+              style={{ background: "rgba(255,255,255,0.7)", border: "1px solid #E0CFB8", color: "#5B3A1F" }}
+            >
+              기본색으로 (무료)
+            </button>
+          ) : null}
+        </div>
+        {dyePicker.open ? (
+          <div
+            className="mt-2 rounded-lg p-2"
+            style={{ background: "rgba(244,192,122,0.18)", border: "1px solid #E0CFB8" }}
+          >
+            <div className="mb-1 font-serif text-[10px] text-[#5B3A1F]">
+              색상을 선택하세요. 미리보기 후 적용됩니다.
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {PET_DYE_COLORS.map((c) => {
+                const selected = dyePicker.preview === c.color;
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() =>
+                      setDyePicker({ open: true, preview: c.color })
+                    }
+                    title={c.label}
+                    style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: 12,
+                      background: c.color
+                        ? c.color
+                        : "linear-gradient(135deg, #FFE5C4 50%, #B98750 50%)",
+                      border: selected ? "2px solid #5B3A1F" : "1px solid #C68748",
+                      boxShadow: selected ? "0 0 6px rgba(0,0,0,0.25)" : "none",
+                      cursor: "pointer",
+                    }}
+                    aria-label={c.label}
+                  />
+                );
+              })}
+            </div>
+            <div className="mt-2 flex items-center justify-end gap-2">
+              <button
+                onClick={() => setDyePicker({ open: false, preview: null })}
+                className="rounded-md px-2 py-1 font-serif text-[10px] text-[#5B3A1F]"
+                style={{ border: "1px solid #E0CFB8", background: "white" }}
+              >
+                취소
+              </button>
+              <button
+                onClick={() => onApplyDye(dyePicker.preview)}
+                disabled={busy || dyePicker.preview === undefined}
+                className="rounded-md px-3 py-1 font-serif text-[10px] text-white disabled:opacity-40"
+                style={{ background: "#C68748" }}
+              >
+                적용
+              </button>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {/* Release + 꾸미기 controls */}

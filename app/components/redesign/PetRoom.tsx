@@ -57,6 +57,7 @@ type Props = {
   mood?: PetMood;
   glow?: boolean;
   hue?: number;
+  bodyColor?: string | null;
   reaction?: PetReaction;
   height?: number;
   activeScene?: SceneId | null;
@@ -118,9 +119,11 @@ function PetRoomInner({
   selectedFurniture = null,
   onSelectFurniture,
   onMoveFurniture,
+  bodyColor = null,
 }: Props) {
   const theme = ROOM_THEMES[background];
-  const palette = PET_PALETTE[type];
+  const basePalette = PET_PALETTE[type];
+  const palette = bodyColor ? { ...basePalette, primary: bodyColor } : basePalette;
   const sprite = stage === "egg" ? EGG_SPRITE : spriteFor(type, stage);
   const useFilter = hue !== 0 || glow;
 

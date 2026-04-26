@@ -41,7 +41,8 @@ type PetSvgProps = {
   background?: BackgroundId;
   mood?: PetMood;
   glow?: boolean;
-  hue?: number; // 0..360 dye hue rotation
+  hue?: number; // 0..360 dye hue rotation (legacy)
+  bodyColor?: string | null; // overrides PET_PALETTE.primary if set
 };
 
 function renderGrid(
@@ -82,8 +83,11 @@ function PetSvgInner({
   mood = "happy",
   glow = false,
   hue = 0,
+  bodyColor = null,
 }: PetSvgProps) {
-  const palette = PET_PALETTE[type];
+  const basePalette = PET_PALETTE[type];
+  // Body-only dye: replace primary while keeping secondary/accent/etc.
+  const palette = bodyColor ? { ...basePalette, primary: bodyColor } : basePalette;
   const sprite = stage === "egg" ? EGG_SPRITE : spriteFor(type, stage);
   const px = size / CANVAS;
 

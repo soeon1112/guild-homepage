@@ -287,6 +287,19 @@ export type BackgroundId = "none" | "bgForest" | "bgOcean" | "bgSpace";
 // the pet (greater y = drawn in front).
 export type FurnitureUserPosition = { x: number; y: number };
 
+// Dye palette — only applied to the pet's *body* (the primary color
+// in PET_PALETTE). Eyes/nose/mouth/cheek/inner-ear pixels are coded
+// 'B', 'w', 'p', 'y', etc. and stay untouched.
+export const PET_DYE_COLORS: { id: string; label: string; color: string | null }[] = [
+  { id: "default", label: "기본색", color: null },
+  { id: "red",     label: "빨강",   color: "#E76A6A" },
+  { id: "blue",    label: "파랑",   color: "#7AAEE0" },
+  { id: "green",   label: "초록",   color: "#7BC472" },
+  { id: "purple",  label: "보라",   color: "#A878D0" },
+  { id: "pink",    label: "분홍",   color: "#F4A6BC" },
+  { id: "gold",    label: "금색",   color: "#F2C84B" },
+];
+
 // ── Firestore types ───────────────────────────────────────────
 export type PetDoc = {
   type: PetType;
@@ -313,7 +326,11 @@ export type PetDoc = {
   expBoostUntil?: Timestamp | null;
   expBoostMult?: number;
   glow?: boolean;          // sparkle item ever applied
-  hue?: number;            // dye item: 0..360 hue rotation
+  hue?: number;            // legacy hueRotate (kept for compatibility)
+  // Body-only dye color from PET_DYE_COLORS. When set, overrides the
+  // pet's primary palette color while leaving all other detail
+  // pixels (eyes, nose, mouth, cheek, etc.) untouched.
+  petBodyColor?: string | null;
 };
 
 export type PetItemsDoc = {
@@ -590,6 +607,36 @@ export async function setFurniturePosition(
 
 export async function applyDye(nickname: string, hue: number): Promise<void> {
   await setDoc(petDocRef(nickname), { hue }, { merge: true });
+}
+
+// Body-only dye. Pass `null` to reset to the pet type's natural color.
+export async function setPetBodyColor(
+  nickname: string,
+  color: string | null,
+): Promise<void> {
+  await setDoc(petDocRef(nickname), { petBodyColor: color }, { merge: true });
+}
+
+// Apply a body color and consume one dye item. Free reset (color=null)
+// does NOT consume — just clears the override.
+export async function applyDyeColor(
+  nickname: string,
+  color: string | null,
+): Promise<{ ok: boolean; reason?: string }> {
+  if (color === null) {
+    await setPetBodyColor(nickname, null);
+    return { ok: true };
+  }
+  const items = await loadPetItems(nickname);
+  const have = items.inventory?.dye ?? 0;
+  if (have < 1) return { ok: false, reason: "no_item" };
+  await setPetBodyColor(nickname, color);
+  await setDoc(
+    itemsDocRef(nickname),
+    { inventory: { dye: have - 1 } } as Partial<PetItemsDoc>,
+    { merge: true },
+  );
+  return { ok: true };
 }
 
 export async function applySparkle(nickname: string): Promise<void> {
