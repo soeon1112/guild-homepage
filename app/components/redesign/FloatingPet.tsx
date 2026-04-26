@@ -2184,61 +2184,86 @@ function PlaygroundPanel({
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              className="rounded-xl px-3 py-3"
-              style={{ background: "#0b0821", border: "1px solid rgba(216,150,200,0.25)", maxWidth: 220 }}
+              className="flex flex-col rounded-xl"
+              style={{
+                background: "#0b0821",
+                border: "1px solid rgba(216,150,200,0.30)",
+                width: "92%",
+                maxWidth: 300,
+                maxHeight: "92%",
+                padding: 10,
+              }}
             >
-              <div className="flex flex-col items-center gap-1">
+              {/* Compact header — small portrait + name/@nick + close X. */}
+              <div
+                className="flex items-center gap-2 pb-2"
+                style={{ borderBottom: "1px solid rgba(216,150,200,0.20)" }}
+              >
                 <PetSvg
                   type={selected.petType}
                   stage={selected.petStage}
-                  size={64}
+                  size={40}
                   bodyColor={selected.petBodyColor}
                   glow={selected.glow}
                   hue={selected.hue}
                   accessories={selected.accessories}
                 />
-                <div className="font-serif text-[13px] font-medium text-[#f4efff]">{selected.petName}</div>
-                <div className="font-serif text-[10px] text-[#9b8fb8]">@{selected.nickname}</div>
+                <div className="min-w-0 flex-1 leading-tight">
+                  <div className="truncate font-serif text-[13px] font-bold text-stardust">
+                    {selected.petName}
+                  </div>
+                  <div className="truncate font-serif text-[10px] text-[#9b8fb8]">
+                    @{selected.nickname}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelected(null)}
+                  className="flex h-[26px] w-[26px] items-center justify-center rounded-full font-bold text-stardust"
+                  style={{
+                    background: "rgba(26,15,61,0.55)",
+                    border: "1px solid rgba(216,150,200,0.30)",
+                  }}
+                  aria-label="닫기"
+                >
+                  ✕
+                </button>
               </div>
               {selected.nickname !== myNickname ? (
-                <div className="mt-3 flex flex-col gap-2">
-                  {/* Greet / play go through the consent flow. */}
-                  {(["greet", "play"] as PlaygroundRequestKind[]).map((k) => {
-                    const done = alreadyToday(k, selected.nickname);
-                    const label = k === "greet" ? "인사하기" : "같이 놀기";
-                    const myPet = pets?.find((p) => p.nickname === myNickname);
-                    return (
-                      <button
-                        key={k}
-                        onClick={() =>
-                          sendInteractionRequest(k, selected, myPet?.petName ?? myNickname)
-                        }
-                        disabled={done || interactBusy}
-                        className="flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 font-serif text-[12px] font-bold disabled:opacity-50"
-                        style={{
-                          background: done ? "rgba(26,15,61,0.45)" : "rgba(61,46,107,0.55)",
-                          border: `1px solid ${done ? "rgba(216,150,200,0.20)" : "rgba(216,150,200,0.45)"}`,
-                          color: "#FFE5C4",
-                        }}
-                      >
-                        <span style={{ opacity: done ? 0.6 : 1 }}>
-                          {label} {done ? "" : "+3 ★"}
-                        </span>
-                        {done ? (
-                          <span
-                            className="rounded-md px-1.5 py-0.5 text-[9px] font-semibold"
-                            style={{ background: "rgba(155,143,184,0.25)", color: "#9b8fb8" }}
-                          >
-                            오늘 완료
+                <div className="mt-2 flex flex-col gap-2 overflow-y-auto">
+                  {/* Greet / play in one row. */}
+                  <div className="flex gap-1.5">
+                    {(["greet", "play"] as PlaygroundRequestKind[]).map((k) => {
+                      const done = alreadyToday(k, selected.nickname);
+                      const label = k === "greet" ? "인사하기" : "같이 놀기";
+                      const myPet = pets?.find((p) => p.nickname === myNickname);
+                      return (
+                        <button
+                          key={k}
+                          onClick={() =>
+                            sendInteractionRequest(k, selected, myPet?.petName ?? myNickname)
+                          }
+                          disabled={done || interactBusy}
+                          className="flex flex-1 flex-col items-center justify-center rounded-lg px-2 py-1.5 font-serif disabled:opacity-50"
+                          style={{
+                            background: done ? "rgba(26,15,61,0.45)" : "rgba(61,46,107,0.55)",
+                            border: `1px solid ${done ? "rgba(216,150,200,0.20)" : "rgba(216,150,200,0.40)"}`,
+                            color: "#FFE5C4",
+                          }}
+                        >
+                          <span className="text-[11px] font-bold" style={{ opacity: done ? 0.6 : 1 }}>
+                            {label}
                           </span>
-                        ) : null}
-                      </button>
-                    );
-                  })}
-                  {/* Treat is unilateral. */}
+                          <span className="text-[9px]" style={{ opacity: 0.85 }}>
+                            {done ? "오늘 완료" : "+3 ★"}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {/* Treat row — title inline + 2 icon buttons. */}
                   <div>
                     <div className="flex items-center justify-between font-serif text-[10px]">
-                      <span className="text-[#f4efff]">간식 선물하기 +3 ★</span>
+                      <span className="font-semibold text-stardust">간식 선물 +3 ★</span>
                       {alreadyToday("treat", selected.nickname) ? (
                         <span
                           className="rounded-md px-1.5 py-0.5 text-[9px] font-semibold"
@@ -2248,7 +2273,7 @@ function PlaygroundPanel({
                         </span>
                       ) : null}
                     </div>
-                    <div className="mt-1.5 flex justify-center gap-1.5">
+                    <div className="mt-1 flex justify-center gap-1.5">
                       {(["treat", "cake"] as ItemId[]).map((id) => {
                         const c = inventory?.[id] ?? 0;
                         const done = alreadyToday("treat", selected.nickname);
@@ -2261,7 +2286,7 @@ function PlaygroundPanel({
                             className="flex items-center gap-1 rounded-lg px-2 py-1 font-serif text-[10px] disabled:opacity-40"
                             style={{ background: "rgba(26,15,61,0.45)", border: "1px solid rgba(216,150,200,0.25)" }}
                           >
-                            <ItemIconSvg id={id} size={18} />
+                            <ItemIconSvg id={id} size={16} />
                             <span className="text-[#f4efff]">×{c}</span>
                           </button>
                         );
@@ -2269,21 +2294,14 @@ function PlaygroundPanel({
                     </div>
                   </div>
                   {pgLog ? (
-                    <div className="text-center font-serif text-[10px] text-[#9b8fb8]">
-                      오늘 놀이터 별빛: {pgLog.totalEarned} / 30
+                    <div className="text-center font-serif text-[9px] text-[#9b8fb8]">
+                      오늘: {pgLog.totalEarned} / 30 ★
                     </div>
                   ) : null}
                 </div>
               ) : (
                 <div className="mt-2 text-center font-serif text-[10px] text-[#9b8fb8]">내 펫</div>
               )}
-              <button
-                onClick={() => setSelected(null)}
-                className="mt-2 w-full rounded-md py-1 font-serif text-[10px] text-[#f4efff]"
-                style={{ border: "1px solid rgba(216,150,200,0.25)" }}
-              >
-                닫기
-              </button>
             </div>
           </div>
         ) : null}
