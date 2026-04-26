@@ -23,6 +23,7 @@ import {
   ROOM_WALL_DECOR,
   ROOM_WALL_TRIM,
   spriteFor,
+  STAGE_BEHAVIOR,
   type ItemIconRender,
   type PixelGrid,
 } from "@/src/lib/petArt";
@@ -117,11 +118,11 @@ function PetRoomInner({
   const floorEnd = H;
   const showOutdoor = background !== "none" && BACKGROUND_SPRITES[background];
 
-  // Pet sizing — bigger to satisfy the user's "1.5–2x larger" request.
-  // Foot baseline sits 18px above the container bottom.
-  const petSize = Math.min(140, Math.max(96, Math.round(H * 0.5)));
+  // Pet sizing — 70% of previous (140 → 98) so furniture has room.
+  const petSize = Math.min(98, Math.max(68, Math.round(H * 0.35)));
   const petBottom = 12;
   const isEgg = stage === "egg";
+  const behavior = STAGE_BEHAVIOR[stage];
 
   // ── State machine ──
   const [mode, setMode] = useState<Mode>("idle");
@@ -130,33 +131,28 @@ function PetRoomInner({
   const [blink, setBlink] = useState(false);
   const walkDurRef = useRef(0);
 
-  // Eggs don't move — keep them dead-center.
-  const movable = !isEgg;
-
-  // Behaviour scheduler.
+  // Behaviour scheduler — every stage moves now (egg rolls!).
   useEffect(() => {
-    if (!movable) return;
     let cancelled = false;
 
     const tick = () => {
       if (cancelled) return;
-      // Roll for next behaviour after a base wait of 5–10s while idle.
       const delay =
-        mode === "idle" ? 5000 + Math.random() * 5000 : 0;
+        mode === "idle"
+          ? behavior.idleWaitMin + Math.random() * (behavior.idleWaitMax - behavior.idleWaitMin)
+          : 0;
       const t = window.setTimeout(() => {
         if (cancelled) return;
         const r = Math.random();
-        if (r < 0.15) {
-          // Sit and rest 3–5s.
+        if (r < behavior.sitChance) {
           setMode("sitting");
           window.setTimeout(() => {
             if (!cancelled) setMode("idle");
           }, 3000 + Math.random() * 2000);
-        } else {
-          // Walk to a new random position (-0.85..0.85).
+        } else if (r < behavior.sitChance + behavior.walkChance) {
           const next = (Math.random() * 2 - 1) * 0.85;
           const distance = Math.abs(next - posPct);
-          const dur = Math.max(1200, distance * 1800);
+          const dur = Math.max(behavior.walkDurMin, distance * behavior.walkDurPerUnit);
           walkDurRef.current = dur;
           setFacing(next > posPct ? "right" : "left");
           setMode("walking");
@@ -165,6 +161,7 @@ function PetRoomInner({
             if (!cancelled) setMode("idle");
           }, dur + 80);
         }
+        // else: stay idle (re-runs scheduler via effect dependency on mode/posPct)
       }, delay);
       return () => window.clearTimeout(t);
     };
@@ -174,7 +171,7 @@ function PetRoomInner({
       cancelled = true;
       cleanup?.();
     };
-  }, [mode, posPct, movable]);
+  }, [mode, posPct, behavior]);
 
   // Blink scheduler — independent of behaviour.
   useEffect(() => {
@@ -211,12 +208,20 @@ function PetRoomInner({
   // CSS transition timing for `left` matches the planned walk duration.
   const walkDuration = mode === "walking" ? walkDurRef.current : 0;
 
+  // Stage-specific animation selection
+  const swayKeyframe =
+    stage === "egg" ? "pet-roll-sway"
+    : stage === "baby" ? "pet-waddle-sway"
+    : stage === "teen" ? "pet-walk-sway-active"
+    : "pet-walk-sway";
+  const idleKeyframe = behavior.idleBouncy ? "pet-bob-egg" : "pet-bob";
+
   const innerAnim =
     mode === "walking"
-      ? "pet-walk-sway 0.45s ease-in-out infinite"
+      ? `${swayKeyframe} ${behavior.swayDuration}ms ease-in-out infinite`
       : mode === "sitting"
       ? "pet-sit 1.2s ease-in-out infinite"
-      : "pet-bob 1.6s ease-in-out infinite";
+      : `${idleKeyframe} ${behavior.bobDuration}ms ease-in-out infinite`;
 
   // Pet horizontal range: 18%..82% of container (leaves margin so the
   // sprite never crosses the edge).

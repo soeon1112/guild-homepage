@@ -6412,3 +6412,24 @@ body.has-redesigned-header .bg-scene {
   0%, 100% { transform: translateY(2px) scaleY(0.96); }
   50%      { transform: translateY(2px) scaleY(0.94); }
 }
+
+@keyframes pet-roll-sway {
+  0%, 100% { transform: rotate(-14deg) translateY(0); }
+  25%      { transform: rotate(0deg) translateY(-6px); }
+  50%      { transform: rotate(14deg) translateY(0); }
+  75%      { transform: rotate(0deg) translateY(-6px); }
+}
+@keyframes pet-waddle-sway {
+  0%, 100% { transform: rotate(-6deg); }
+  50%      { transform: rotate(6deg); }
+}
+@keyframes pet-walk-sway-active {
+  0%, 100% { transform: rotate(-5deg) translateY(0); }
+  25%      { transform: rotate(0deg) translateY(-4px); }
+  50%      { transform: rotate(5deg) translateY(0); }
+  75%      { transform: rotate(0deg) translateY(-4px); }
+}
+@keyframes pet-bob-egg {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}

@@ -746,6 +746,67 @@ const PANDA: Record<Exclude<PetStage, "egg">, PixelGrid> = {
   ],
 };
 
+// ── Stage-specific movement behaviour ────────────────────────
+// Different growth stages move differently per the user's spec:
+// - egg:   slow bouncy lateral roll, big idle bounce
+// - baby:  slow waddle (gentle side-to-side)
+// - child: normal walking
+// - teen:  active walking + occasional sprint
+// - adult: natural walking + occasional sit
+export type StageBehavior = {
+  idleWaitMin: number;     // ms before next behaviour roll
+  idleWaitMax: number;
+  walkDurPerUnit: number;  // ms per unit of normalized distance (1.0 = full range)
+  walkDurMin: number;
+  sitChance: number;       // 0..1 (rolled when scheduling next behaviour)
+  walkChance: number;      // 0..1 (rest = "stay idle longer")
+  bobAmplitude: number;    // px — vertical oscillation magnitude
+  bobDuration: number;     // ms — full bob cycle
+  swayAmplitude: number;   // deg — rotation magnitude during walking
+  swayDuration: number;    // ms — full sway cycle
+  // Egg-only: idle bounce is bigger to feel "통통 튀는"
+  idleBouncy?: boolean;
+};
+
+export const STAGE_BEHAVIOR: Record<PetStage, StageBehavior> = {
+  egg: {
+    idleWaitMin: 2500, idleWaitMax: 4500,
+    walkDurPerUnit: 2400, walkDurMin: 1800,
+    sitChance: 0, walkChance: 0.9,
+    bobAmplitude: 6, bobDuration: 600,
+    swayAmplitude: 14, swayDuration: 380,
+    idleBouncy: true,
+  },
+  baby: {
+    idleWaitMin: 3500, idleWaitMax: 6000,
+    walkDurPerUnit: 2200, walkDurMin: 1600,
+    sitChance: 0.05, walkChance: 0.85,
+    bobAmplitude: 3, bobDuration: 900,
+    swayAmplitude: 6, swayDuration: 600,
+  },
+  child: {
+    idleWaitMin: 3000, idleWaitMax: 6000,
+    walkDurPerUnit: 1700, walkDurMin: 1200,
+    sitChance: 0.1, walkChance: 0.85,
+    bobAmplitude: 3, bobDuration: 800,
+    swayAmplitude: 4, swayDuration: 420,
+  },
+  teen: {
+    idleWaitMin: 2500, idleWaitMax: 5000,
+    walkDurPerUnit: 1100, walkDurMin: 800,
+    sitChance: 0.05, walkChance: 0.9,
+    bobAmplitude: 4, bobDuration: 700,
+    swayAmplitude: 5, swayDuration: 280,
+  },
+  adult: {
+    idleWaitMin: 4000, idleWaitMax: 8000,
+    walkDurPerUnit: 1700, walkDurMin: 1200,
+    sitChance: 0.2, walkChance: 0.75,
+    bobAmplitude: 3, bobDuration: 800,
+    swayAmplitude: 3, swayDuration: 420,
+  },
+};
+
 export const PET_SPRITES: Record<PetType, Record<Exclude<PetStage, "egg">, PixelGrid>> = {
   cat: CAT,
   dog: DOG,
