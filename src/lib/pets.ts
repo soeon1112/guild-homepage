@@ -11,6 +11,7 @@ import {
   arrayRemove,
   arrayUnion,
   collection,
+  deleteDoc,
   doc,
   getDoc,
   increment,
@@ -354,6 +355,13 @@ export async function createPet(
 
 export async function renamePet(nickname: string, newName: string): Promise<void> {
   await setDoc(petDocRef(nickname), { name: newName.trim() }, { merge: true });
+}
+
+// Release (파양) the current pet. Deletes the pet doc only — the
+// inventory at users/{nickname}/pet/items is intentionally preserved so
+// the user can re-use purchased items on the next pet they adopt.
+export async function releasePet(nickname: string): Promise<void> {
+  await deleteDoc(petDocRef(nickname));
 }
 
 // Persist a fresh decay snapshot. Call this opportunistically whenever

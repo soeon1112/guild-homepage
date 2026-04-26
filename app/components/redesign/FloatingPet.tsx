@@ -43,6 +43,7 @@ import {
   PET_TYPES,
   projectStatus,
   refreshDecaySnapshot,
+  releasePet,
   renamePet,
   setAccessoryEquipped,
   setBackground,
@@ -363,6 +364,23 @@ export default function FloatingPet() {
     [nickname, showToast],
   );
 
+  const handleRelease = useCallback(async () => {
+    if (!nickname) return;
+    if (typeof window === "undefined") return;
+    const ok = window.confirm(
+      "정말 파양하시겠습니까? 성장 단계와 상태가 모두 초기화됩니다.\n(보유한 아이템은 유지되어 새 펫에게 사용할 수 있습니다.)",
+    );
+    if (!ok) return;
+    setBusy(true);
+    try {
+      await releasePet(nickname);
+      showToast("펫이 떠났어요…");
+      setTab("main");
+    } finally {
+      setBusy(false);
+    }
+  }, [nickname, showToast]);
+
   const handleRename = useCallback(async () => {
     if (!nickname || !pendingName.trim()) return;
     if (!isOwned(items.inventory, "nameTag")) {
@@ -520,6 +538,7 @@ export default function FloatingPet() {
                   onInteract={handleInteraction}
                   onConsume={handleConsume}
                   onRename={handleRename}
+                  onRelease={handleRelease}
                 />
               ) : tab === "shop" ? (
                 <ShopPanel
@@ -673,6 +692,7 @@ function MainPanel({
   onInteract,
   onConsume,
   onRename,
+  onRelease,
 }: {
   pet: PetDoc;
   stage: ReturnType<typeof computeStage>;
@@ -690,6 +710,7 @@ function MainPanel({
   onInteract: (id: InteractionId) => void;
   onConsume: (id: ItemId) => void;
   onRename: () => void;
+  onRelease: () => void;
 }) {
   const stageLabel = PET_STAGES.find((s) => s.id === stage)?.label ?? "";
   return (
@@ -831,6 +852,17 @@ function MainPanel({
             );
           })}
         </div>
+      </div>
+
+      {/* Release link — discreet bottom action */}
+      <div className="mt-2 flex justify-end">
+        <button
+          onClick={onRelease}
+          disabled={busy}
+          className="font-serif text-[10px] text-[#B07F5C] underline opacity-70 transition-opacity hover:opacity-100 disabled:opacity-30"
+        >
+          파양하기
+        </button>
       </div>
     </div>
   );
