@@ -1991,10 +1991,23 @@ function PlaygroundPanel({
     return () => unsub();
   }, [myPetInPlayground, myNickname]);
 
-  // Outgoing-request status watcher.
+  // Outgoing-request status watcher. First-snapshot guard: Firestore
+  // fires immediately with every existing doc — including stale resolved
+  // requests from previous sessions. Mark them all as "already seen"
+  // without toasting; only NEW resolutions during this session trigger
+  // animations or toasts. (Was producing a spurious "응답이 없어요"
+  // toast right after entering the playground.)
   useEffect(() => {
     if (!myPetInPlayground || !myNickname) return;
+    let firstFire = true;
     const unsub = subscribeOutgoingPlaygroundRequests(myNickname, (reqs) => {
+      if (firstFire) {
+        firstFire = false;
+        for (const r of reqs) {
+          if (r.status !== "pending") seenOutgoingRef.current.add(r.id);
+        }
+        return;
+      }
       for (const r of reqs) {
         if (r.status === "pending") continue;
         if (seenOutgoingRef.current.has(r.id)) continue;
