@@ -187,9 +187,14 @@ function PetRoomInner({
   };
 
   // ── Scene mode (interaction cutscene) ──
-  // When `activeScene` becomes non-null, suspend normal scheduling,
-  // snap pet to anchor, run scene animation for SCENES[id].durationMs,
-  // then call onSceneEnd so FloatingPet can clear it back to null.
+  // CRITICAL: depend ONLY on `activeScene` here. The previous version
+  // also depended on `onSceneEnd`, which is a fresh inline arrow on
+  // every parent re-render (status timer ticks every second). Each
+  // re-render reset the timeout, so the scene effectively NEVER ended.
+  // We mirror onSceneEnd into a ref so the callback stays current
+  // without retriggering the effect.
+  const onSceneEndRef = useRef(onSceneEnd);
+  useEffect(() => { onSceneEndRef.current = onSceneEnd; }, [onSceneEnd]);
   useEffect(() => {
     if (!activeScene) return;
     const scene = SCENES[activeScene];
@@ -200,10 +205,10 @@ function PetRoomInner({
     }
     const t = window.setTimeout(() => {
       setMode("idle");
-      onSceneEnd?.();
+      onSceneEndRef.current?.();
     }, scene.durationMs);
     return () => window.clearTimeout(t);
-  }, [activeScene, onSceneEnd]);
+  }, [activeScene]);
 
   // Behaviour scheduler — every stage moves now. Position picker
   // alternates sides so the pet keeps crossing through center.
@@ -634,14 +639,14 @@ function PetRoomInner({
           ) : null}
           {SCENES[activeScene].overlay === "park" ? (
             <>
-              {/* ── Sun (perfectly round HTML circle) ── */}
+              {/* ── Sun (top-right of sky) ── */}
               <div
                 style={{
                   position: "absolute",
-                  right: "10%",
-                  top: "10%",
-                  width: 32,
-                  height: 32,
+                  right: 14,
+                  top: 14,
+                  width: 30,
+                  height: 30,
                   borderRadius: "50%",
                   background: "#FFE873",
                   border: "1.5px solid #F2C84B",
@@ -656,13 +661,13 @@ function PetRoomInner({
                     key={`ray-${i}`}
                     style={{
                       position: "absolute",
-                      right: "calc(10% + 16px)",
-                      top: "calc(10% + 16px)",
-                      width: 10,
+                      right: 14 + 15,
+                      top: 14 + 15,
+                      width: 9,
                       height: 3,
                       background: "#FFE873",
                       borderRadius: 2,
-                      transform: `translate(-50%, -50%) rotate(${angle}deg) translate(24px, 0)`,
+                      transform: `translate(-50%, -50%) rotate(${angle}deg) translate(22px, 0)`,
                       transformOrigin: "0 0",
                       pointerEvents: "none",
                       zIndex: 1,
@@ -671,12 +676,12 @@ function PetRoomInner({
                 );
               })}
 
-              {/* ── Clouds (4) ── */}
+              {/* ── Clouds in sky ── */}
               {[
-                { left: "8%", top: "10%", w: 42, h: 14 },
-                { left: "12%", top: "7%", w: 28, h: 11 },
-                { left: "35%", top: "16%", w: 36, h: 12 },
-                { left: "62%", top: "26%", w: 30, h: 10 },
+                { left: "8%", top: 16, w: 42, h: 13 },
+                { left: "12%", top: 8, w: 28, h: 10 },
+                { left: "38%", top: 22, w: 36, h: 12 },
+                { left: "62%", top: 32, w: 28, h: 10 },
               ].map((c, i) => (
                 <div
                   key={`cloud-${i}`}
@@ -696,157 +701,143 @@ function PetRoomInner({
                 />
               ))}
 
-              {/* ── Distant cottage (back-mid) ── */}
+              {/* ── Distant cottage (back-mid of grass) — bottom anchored ── */}
               <div
                 style={{
                   position: "absolute",
-                  left: "42%",
-                  top: "44%",
-                  width: 36,
-                  height: 30,
+                  left: "38%",
+                  bottom: 75,
+                  width: 32,
+                  height: 26,
+                  marginLeft: -16,
                   pointerEvents: "none",
                   zIndex: 3,
                 }}
               >
-                <svg viewBox="0 0 36 30" width="100%" height="100%" style={{ display: "block" }}>
-                  {/* roof */}
-                  <polygon points="18,2 2,14 34,14" fill="#C0533B" stroke="#5B3A1F" strokeWidth="1" />
-                  {/* roof shadow line */}
-                  <polygon points="18,2 4,13 32,13" fill="#A03B25" opacity="0.5" />
-                  {/* wall */}
-                  <rect x="4" y="14" width="28" height="14" fill="#F2E0BA" stroke="#5B3A1F" strokeWidth="1" />
-                  {/* door */}
-                  <rect x="14" y="20" width="6" height="8" fill="#5B3A1F" />
-                  {/* doorknob */}
-                  <rect x="18" y="24" width="1" height="1" fill="#FFE873" />
-                  {/* window */}
-                  <rect x="22" y="17" width="7" height="6" fill="#9CC9E5" stroke="#5B3A1F" strokeWidth="0.6" />
-                  <line x1="25.5" y1="17" x2="25.5" y2="23" stroke="#5B3A1F" strokeWidth="0.5" />
-                  {/* chimney */}
-                  <rect x="24" y="6" width="3" height="6" fill="#5B3A1F" />
+                <svg viewBox="0 0 32 26" width="100%" height="100%" style={{ display: "block" }}>
+                  <polygon points="16,2 2,12 30,12" fill="#C0533B" stroke="#5B3A1F" strokeWidth="1" />
+                  <polygon points="16,2 4,11 28,11" fill="#A03B25" opacity="0.5" />
+                  <rect x="4" y="12" width="24" height="12" fill="#F2E0BA" stroke="#5B3A1F" strokeWidth="1" />
+                  <rect x="13" y="17" width="5" height="7" fill="#5B3A1F" />
+                  <rect x="20" y="14" width="6" height="5" fill="#9CC9E5" stroke="#5B3A1F" strokeWidth="0.6" />
+                  <rect x="22" y="6" width="3" height="6" fill="#5B3A1F" />
                 </svg>
               </div>
 
-              {/* ── Trees (3 — big-left, small-mid, big-right) ── */}
+              {/* ── Trees (3) — bottom anchored, trunk sits on grass ── */}
               {[
-                { left: "4%", canopyTop: "30%", trunkTop: "44%", trunkLeft: "calc(4% + 14px)", canopy: 36 },
-                { left: "70%", canopyTop: "44%", trunkTop: "54%", trunkLeft: "calc(70% + 9px)", canopy: 22 },
-                { left: "84%", canopyTop: "36%", trunkTop: "48%", trunkLeft: "calc(84% + 12px)", canopy: 30 },
+                { left: "5%", bottom: 14, canopy: 38, trunk: 24, z: 5 },
+                { left: "30%", bottom: 60, canopy: 22, trunk: 18, z: 3 }, // smaller, farther back
+                { left: "88%", bottom: 12, canopy: 32, trunk: 24, z: 5 },
               ].map((t, i) => (
-                <div key={`tree-${i}`} style={{ pointerEvents: "none" }}>
+                <div
+                  key={`tree-${i}`}
+                  style={{
+                    position: "absolute",
+                    left: t.left,
+                    bottom: t.bottom,
+                    width: 0,
+                    height: 0,
+                    pointerEvents: "none",
+                    zIndex: t.z,
+                  }}
+                >
+                  {/* Trunk — bottom of trunk = wrapper bottom */}
                   <div
                     style={{
                       position: "absolute",
-                      left: t.left,
-                      top: t.canopyTop,
+                      left: -3,
+                      bottom: 0,
+                      width: 6,
+                      height: t.trunk,
+                      background: "#5B3A1F",
+                    }}
+                  />
+                  {/* Canopy — sits on top of trunk with slight overlap */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: -t.canopy / 2,
+                      bottom: t.trunk - 6,
                       width: t.canopy,
                       height: t.canopy,
                       borderRadius: "50%",
                       background: "#4A9C40",
                       border: "1.5px solid #2E6B26",
-                      zIndex: 4,
-                    }}
-                  />
-                  <div
-                    style={{
-                      position: "absolute",
-                      left: t.trunkLeft,
-                      top: t.trunkTop,
-                      width: 6,
-                      height: 24,
-                      background: "#5B3A1F",
-                      zIndex: 4,
                     }}
                   />
                 </div>
               ))}
 
-              {/* ── Fence (along front-bottom) ── */}
-              <svg viewBox="0 0 320 60" width="100%" preserveAspectRatio="none" style={{ position: "absolute", left: 0, bottom: 22, height: 22, pointerEvents: "none", zIndex: 6 }}>
-                {/* horizontal rails */}
-                <rect x="0" y="6" width="320" height="2" fill="#FFFFFF" />
-                <rect x="0" y="14" width="320" height="2" fill="#FFFFFF" />
-                {/* vertical pickets */}
-                {Array.from({ length: 14 }).map((_, i) => (
-                  <rect key={`fence-${i}`} x={i * 24 + 4} y="0" width="3" height="22" fill="#FFFFFF" />
-                ))}
-              </svg>
-
-              {/* ── Park bench (front-left) ── */}
-              <div
+              {/* ── Fence — along front, bottom anchored ── */}
+              <svg
+                viewBox="0 0 320 22"
+                width="100%"
+                preserveAspectRatio="none"
                 style={{
                   position: "absolute",
-                  left: "10%",
-                  top: "70%",
-                  width: 44,
+                  left: 0,
+                  bottom: 0,
                   height: 22,
                   pointerEvents: "none",
                   zIndex: 7,
                 }}
               >
-                <svg viewBox="0 0 44 22" width="100%" height="100%" style={{ display: "block" }}>
-                  {/* back top rail */}
-                  <rect x="2" y="0" width="40" height="3" fill="#8E5E33" stroke="#4A2C18" strokeWidth="0.5" />
-                  {/* back middle rail */}
-                  <rect x="2" y="5" width="40" height="2" fill="#8E5E33" />
-                  {/* seat */}
-                  <rect x="0" y="9" width="44" height="4" fill="#A07040" stroke="#4A2C18" strokeWidth="0.5" />
-                  {/* legs */}
-                  <rect x="3" y="13" width="3" height="9" fill="#5B3A1F" />
-                  <rect x="38" y="13" width="3" height="9" fill="#5B3A1F" />
-                  {/* back supports */}
-                  <rect x="6" y="0" width="2" height="10" fill="#5B3A1F" />
-                  <rect x="36" y="0" width="2" height="10" fill="#5B3A1F" />
-                </svg>
-              </div>
+                <rect x="0" y="6" width="320" height="2" fill="#FFFFFF" />
+                <rect x="0" y="14" width="320" height="2" fill="#FFFFFF" />
+                {Array.from({ length: 14 }).map((_, i) => (
+                  <rect key={`fence-${i}`} x={i * 24 + 4} y={0} width={3} height={22} fill="#FFFFFF" />
+                ))}
+              </svg>
 
-              {/* ── Flowers scattered on grass ── */}
+              {/* ── Flowers scattered on grass — bottom anchored ── */}
               {[
-                { left: "22%", top: "82%", color: "#E76A6A" },
-                { left: "32%", top: "85%", color: "#FFE873" },
-                { left: "44%", top: "78%", color: "#F4A6BC" },
-                { left: "56%", top: "84%", color: "#E76A6A" },
-                { left: "64%", top: "80%", color: "#FFE873" },
-                { left: "74%", top: "85%", color: "#F4A6BC" },
-                { left: "82%", top: "82%", color: "#A878D0" },
-                { left: "28%", top: "92%", color: "#FFE873" },
-                { left: "50%", top: "92%", color: "#F4A6BC" },
-                { left: "72%", top: "92%", color: "#E76A6A" },
+                { left: "16%", bottom: 38, color: "#E76A6A" },
+                { left: "26%", bottom: 30, color: "#FFE873" },
+                { left: "44%", bottom: 36, color: "#F4A6BC" },
+                { left: "56%", bottom: 28, color: "#E76A6A" },
+                { left: "64%", bottom: 40, color: "#FFE873" },
+                { left: "74%", bottom: 32, color: "#F4A6BC" },
+                { left: "82%", bottom: 38, color: "#A878D0" },
+                { left: "20%", bottom: 24, color: "#FFE873" },
+                { left: "50%", bottom: 22, color: "#F4A6BC" },
+                { left: "72%", bottom: 24, color: "#E76A6A" },
               ].map((f, i) => (
                 <div
                   key={`flower-${i}`}
                   style={{
                     position: "absolute",
                     left: f.left,
-                    top: f.top,
+                    bottom: f.bottom,
+                    width: 7,
                     pointerEvents: "none",
                     zIndex: 8,
                   }}
                 >
-                  {/* stem */}
-                  <div style={{ width: 1, height: 6, background: "#3D8B3D", marginLeft: 3 }} />
-                  {/* petal cluster — center + 4 petals around */}
-                  <div style={{ position: "relative", width: 8, height: 8, marginTop: -8 }}>
+                  {/* petals on top */}
+                  <div style={{ position: "relative", width: 7, height: 7 }}>
                     <div style={{ position: "absolute", left: 2, top: 0, width: 3, height: 3, borderRadius: "50%", background: f.color }} />
                     <div style={{ position: "absolute", left: 0, top: 2, width: 3, height: 3, borderRadius: "50%", background: f.color }} />
                     <div style={{ position: "absolute", left: 4, top: 2, width: 3, height: 3, borderRadius: "50%", background: f.color }} />
                     <div style={{ position: "absolute", left: 2, top: 4, width: 3, height: 3, borderRadius: "50%", background: f.color }} />
                     <div style={{ position: "absolute", left: 2, top: 2, width: 3, height: 3, borderRadius: "50%", background: "#FFE873" }} />
                   </div>
+                  {/* stem hanging down from petals */}
+                  <div style={{ width: 1, height: 6, background: "#3D8B3D", marginLeft: 3 }} />
                 </div>
               ))}
 
-              {/* ── Butterfly — flies across sky ── */}
+              {/* ── Butterfly — flies at pet head height ── */}
               <div
                 style={{
                   position: "absolute",
                   left: "-8%",
-                  top: "20%",
+                  top: "55%",
                   width: 16,
                   height: 12,
                   pointerEvents: "none",
                   zIndex: 9,
-                  animation: "butterfly-fly 6s linear infinite",
+                  animation: "butterfly-fly 7s linear infinite",
                 }}
               >
                 <div style={{ animation: "butterfly-wings 0.18s ease-in-out infinite" }}>
@@ -861,7 +852,7 @@ function PetRoomInner({
               </div>
 
               {/* ── Grass blades — small rects on the ground ── */}
-              <svg viewBox="0 0 320 200" width="100%" height="100%" preserveAspectRatio="none" style={{ display: "block", position: "absolute", inset: 0, pointerEvents: "none", zIndex: 5 }}>
+              <svg viewBox="0 0 320 200" width="100%" height="100%" preserveAspectRatio="none" style={{ display: "block", position: "absolute", inset: 0, pointerEvents: "none", zIndex: 4 }}>
                 {Array.from({ length: 30 }).map((_, i) => {
                   const x = (i * 11) + (i % 2 ? 2 : 0);
                   const baseY = 130 + (i % 5) * 12;

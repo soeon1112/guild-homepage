@@ -1905,10 +1905,8 @@ export type Scene = {
 export const SCENES: Record<SceneId, Scene> = {
   feed: {
     id: "feed",
-    durationMs: 2800,
+    durationMs: 5000,
     overlay: "none",
-    // Bowl in front of pet on the floor — slightly to the right so pet
-    // can lean over it. Prop sized at ~70% of pet so it's clearly visible.
     prop: { sprite: "bowl", x: 62, size: 0.7, floorOffset: 0 },
     petAnim: "eat",
     particle: "heart",
@@ -1916,7 +1914,7 @@ export const SCENES: Record<SceneId, Scene> = {
   },
   play: {
     id: "play",
-    durationMs: 3600,
+    durationMs: 6000,
     overlay: "none",
     prop: { sprite: "ball", x: 70, size: 0.45, floorOffset: 0 },
     petAnim: "chase",
@@ -1924,7 +1922,7 @@ export const SCENES: Record<SceneId, Scene> = {
   },
   wash: {
     id: "wash",
-    durationMs: 3400,
+    durationMs: 6000,
     overlay: "bath",
     petAnim: "shake",
     particle: "drop",
@@ -1932,14 +1930,14 @@ export const SCENES: Record<SceneId, Scene> = {
   },
   walk: {
     id: "walk",
-    durationMs: 4400,
+    durationMs: 8000,
     overlay: "park",
     petAnim: "run",
     particle: "leaf",
   },
   pet: {
     id: "pet",
-    durationMs: 2600,
+    durationMs: 5000,
     overlay: "none",
     prop: { sprite: "hand", x: 50, size: 0.55, floorOffset: 0 },
     petAnim: "happy",
@@ -1949,7 +1947,7 @@ export const SCENES: Record<SceneId, Scene> = {
   },
   treat: {
     id: "treat",
-    durationMs: 2800,
+    durationMs: 5000,
     overlay: "none",
     prop: { sprite: "cookie", x: 62, size: 0.5, floorOffset: 0 },
     petAnim: "eat",
@@ -1958,7 +1956,7 @@ export const SCENES: Record<SceneId, Scene> = {
   },
   sleep: {
     id: "sleep",
-    durationMs: 3500,
+    durationMs: 7000,
     overlay: "dark",
     petAnim: "sleep",
     particle: "zzz",
@@ -1966,7 +1964,7 @@ export const SCENES: Record<SceneId, Scene> = {
   },
   train: {
     id: "train",
-    durationMs: 3400,
+    durationMs: 6000,
     overlay: "none",
     prop: { sprite: "hurdle", x: 60, size: 0.6, floorOffset: 0 },
     petAnim: "jump",
