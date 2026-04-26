@@ -12,6 +12,10 @@ const MEMBER_SLOTS: string[] = [
   "12", "13", "14", "14-1", "15", "16", "17", "17-1", "18", "19", "20", "21", "22",
 ];
 
+// Nicknames that have a real users doc but should never appear in the
+// members list (test/staff accounts). Edit here to add or restore.
+const HIDDEN_NICKNAMES = new Set<string>(["테스트"]);
+
 function isKorean(s: string) {
   return /[가-힯]/.test(s.charAt(0));
 }
@@ -74,6 +78,7 @@ export default function MembersPage() {
         type UserData = {
           lastAttendance?: Timestamp;
           bodySelected?: boolean;
+          password?: string;
         };
 
         const memberById = new Map<string, MemberData>();
@@ -87,57 +92,67 @@ export default function MembersPage() {
         });
 
         // Profile is "filled" — i.e. user belongs in 빛나는 별들 — once
-        // any of these has content. Empty doc (just nickname/createdAt
-        // from signup or handleClaim) keeps them in 잠들어 있는 별들.
+        // any actual profile content has been written. Picking an avatar
+        // body alone (`bodySelected`) is intentionally NOT enough: a fresh
+        // signup who only chose a body silhouette but never wrote a bio /
+        // status / mood should stay in 잠든 별들 until they fill the
+        // profile itself.
         const isProfileFilled = (
           data: MemberData,
-          user: UserData | undefined,
+          _user: UserData | undefined,
         ) =>
           !!(
             data.statusMessage?.trim() ||
             data.profileImage ||
             data.mood ||
-            data.bio?.trim() ||
-            user?.bodySelected
+            data.bio?.trim()
           );
 
         const slotIds = new Set(MEMBER_SLOTS);
 
-        const slotList: MemberCardData[] = MEMBER_SLOTS.map((id) => {
+        // Only render slot cards that have a real member behind them.
+        // Empty slots (no doc, or doc with blank nickname) used to render
+        // as a "미등록된 새벽" placeholder card — we drop those entirely.
+        const slotList: MemberCardData[] = MEMBER_SLOTS.flatMap((id) => {
           const data = memberById.get(id);
-          if (!data) {
-            return {
-              id,
-              nickname: "",
-              bio: "",
-              profileImage: "",
-              registered: false,
-            };
-          }
-          const nickname = data.nickname ?? "";
-          const user = nickname ? userByNickname.get(nickname) : undefined;
+          if (!data) return [];
+          const nickname = (data.nickname ?? "").trim();
+          if (!nickname) return [];
+          if (HIDDEN_NICKNAMES.has(nickname)) return [];
+          const user = userByNickname.get(nickname);
           const last = user?.lastAttendance;
           const lastSeenHours = last
             ? (now - last.toMillis()) / (1000 * 60 * 60)
             : undefined;
-          return {
-            id,
-            nickname,
-            bio: data.bio || data.statusMessage || "",
-            profileImage: data.profileImage || "",
-            registered: isProfileFilled(data, user),
-            lastSeenHours,
-          };
+          return [
+            {
+              id,
+              nickname,
+              bio: data.bio || data.statusMessage || "",
+              profileImage: data.profileImage || "",
+              registered: isProfileFilled(data, user),
+              lastSeenHours,
+            },
+          ];
         });
 
         // Members not on the fixed slot list (= signed up via the new
         // auto-registration in AuthProvider). Sorted into the same two
-        // sections by the same isProfileFilled rule.
+        // sections by the same isProfileFilled rule. Skip docs without a
+        // real nickname or without a matching users doc — those are
+        // leftover/scratch member docs (e.g. "기타" placeholders) that
+        // shouldn't appear in the list.
         const extras: MemberCardData[] = [];
         memberById.forEach((data, id) => {
           if (slotIds.has(id)) return;
-          const nickname = data.nickname ?? id;
-          const user = nickname ? userByNickname.get(nickname) : undefined;
+          const nickname = (data.nickname ?? "").trim();
+          if (!nickname) return;
+          if (HIDDEN_NICKNAMES.has(nickname)) return;
+          const user = userByNickname.get(nickname);
+          // Require a real signup (= users doc with password). Filters
+          // out non-signup junk docs like "기타" (taggedPhotoCount-only
+          // placeholder) that happen to share a name with a member doc.
+          if (!user || typeof user.password !== "string") return;
           const last = user?.lastAttendance;
           const lastSeenHours = last
             ? (now - last.toMillis()) / (1000 * 60 * 60)
