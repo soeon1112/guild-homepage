@@ -1117,18 +1117,25 @@ function MainPanel({
           value={Math.round(stageProgress * 100)}
           colorFrom="#FFE5C4"
           colorTo="#FFB5A7"
-          subLabel={
-            stage === "adult"
+          subLabel={(() => {
+            const base = stage === "adult"
               ? "최고 레벨 달성! ★"
               : (() => {
                   const cur = PET_STAGES.find((s) => s.id === stage);
                   const next = PET_STAGES[(PET_STAGES.findIndex((s) => s.id === stage) + 1) || 0];
-                  if (!cur || !next) return null;
+                  if (!cur || !next) return "";
                   const span = Math.max(1, next.expMin - cur.expMin);
                   const got = Math.max(0, Math.min(span, (pet.exp ?? 0) - cur.expMin));
                   return `다음 단계까지 ${got}/${span} XP`;
-                })()
-          }
+                })();
+            const boost = pet.expBoostRemaining ?? 0;
+            if (boost > 0) {
+              return base
+                ? `${base} · ✨ 2배 ${boost}/5`
+                : `✨ 경험치 2배 남은 횟수 ${boost}/5`;
+            }
+            return base || null;
+          })()}
         />
       </div>
 

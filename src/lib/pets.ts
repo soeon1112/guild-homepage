@@ -263,16 +263,17 @@ export type Item = {
   name: string;
   price: number;
   desc: string;
-  // For consumables this is the immediate effect when used directly
-  // (cake doesn't decay status — applies an exp boost flag).
-  consumeEffect?: { hunger?: number; happiness?: number; expBoostMs?: number; expBoostMult?: number };
+  // For consumables this is the immediate effect when used directly.
+  // - hunger / happiness: status restore (food, treat).
+  // - expBoostCount: charges of "next N interactions get 2× EXP" (cake).
+  consumeEffect?: { hunger?: number; happiness?: number; expBoostCount?: number };
 };
 
 export const ITEMS: Item[] = [
   // consumables
   { id: "food",  category: "consumable", name: "일반 사료", price: 2,  desc: "포만감 +30%", consumeEffect: { hunger: 30 } },
   { id: "treat", category: "consumable", name: "고급 간식", price: 5,  desc: "포만감 +15%, 행복도 +10%", consumeEffect: { hunger: 15, happiness: 10 } },
-  { id: "cake",  category: "consumable", name: "특별 케이크", price: 20, desc: "경험치 2배 부스트 1시간", consumeEffect: { expBoostMs: HOUR, expBoostMult: 2 } },
+  { id: "cake",  category: "consumable", name: "특별 케이크", price: 20, desc: "다음 상호작용 5회 경험치 2배", consumeEffect: { expBoostCount: 5 } },
   // accessories
   { id: "ribbon",   category: "accessory", name: "리본",   price: 15, desc: "패션 — 리본" },
   { id: "scarf",    category: "accessory", name: "스카프", price: 15, desc: "패션 — 스카프" },
@@ -353,8 +354,8 @@ export type PetDoc = {
   // from petArt.ts.
   furniturePositions?: Partial<Record<ItemId, FurnitureUserPosition>>;
   // Special effects.
-  expBoostUntil?: Timestamp | null;
-  expBoostMult?: number;
+  // 특별 케이크 사용 시 5로 세팅 → 상호작용마다 1씩 차감 + 2× EXP. 0이면 효과 없음.
+  expBoostRemaining?: number;
   glow?: boolean;          // sparkle item ever applied
   hue?: number;            // legacy hueRotate (kept for compatibility)
   // Body-only dye color from PET_DYE_COLORS. When set, overrides the
@@ -510,21 +511,21 @@ export async function doInteraction(
   if (projected.hunger <= 30 || projected.happiness <= 30 || projected.clean <= 30) {
     gain = Math.max(1, Math.floor(gain / 2));
   }
-  const boostUntil = pet.expBoostUntil?.toMillis?.() ?? 0;
-  if (boostUntil > now && pet.expBoostMult && pet.expBoostMult > 1) {
-    gain = Math.round(gain * pet.expBoostMult);
+  const boostRemaining = pet.expBoostRemaining ?? 0;
+  const usedBoost = boostRemaining > 0;
+  if (usedBoost) {
+    gain = gain * 2;
   }
 
-  await setDoc(
-    petDocRef(nickname),
-    {
-      ...next,
-      lastDecayAt: Timestamp.fromMillis(now),
-      exp: increment(gain),
-      cooldowns: { ...(pet.cooldowns ?? {}), [id]: Timestamp.fromMillis(now) },
-    },
-    { merge: true },
-  );
+  const patch: Record<string, unknown> = {
+    ...next,
+    lastDecayAt: Timestamp.fromMillis(now),
+    exp: increment(gain),
+    cooldowns: { ...(pet.cooldowns ?? {}), [id]: Timestamp.fromMillis(now) },
+  };
+  if (usedBoost) patch.expBoostRemaining = increment(-1);
+
+  await setDoc(petDocRef(nickname), patch, { merge: true });
   return { ok: true };
 }
 
@@ -558,9 +559,10 @@ export async function consumeItem(
     ...next,
     lastDecayAt: Timestamp.fromMillis(now),
   };
-  if (fx.expBoostMs && fx.expBoostMult) {
-    patch.expBoostUntil = Timestamp.fromMillis(now + fx.expBoostMs);
-    patch.expBoostMult = fx.expBoostMult;
+  if (fx.expBoostCount && fx.expBoostCount > 0) {
+    // Set (not increment) — matches prior behavior of using a fresh
+    // cake giving you a full new boost rather than topping up.
+    patch.expBoostRemaining = fx.expBoostCount;
   }
   await setDoc(petDocRef(nickname), patch, { merge: true });
   await setDoc(
