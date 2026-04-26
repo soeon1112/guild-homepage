@@ -81,7 +81,19 @@ export const FASHION_ITEMS: Record<
     ],
     accessories: [],
   },
-  child_male: { tops: [], bottoms: [], shoes: [], accessories: [] },
+  child_male: {
+    tops: [{ id: "tops1", name: "키즈 스쿨룩", price: 50 }],
+    bottoms: [],
+    shoes: [
+      {
+        id: "shoes1",
+        name: "키즈 스쿨룩 신발",
+        price: 40,
+        previewFile: "shoes1_preview_1",
+      },
+    ],
+    accessories: [],
+  },
 };
 
 export type OwnedEntry = {
