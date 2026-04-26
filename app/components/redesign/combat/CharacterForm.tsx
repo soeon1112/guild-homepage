@@ -224,7 +224,7 @@ export function CharacterForm({
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
           onClick={submitting ? undefined : onClose}
-          className="fixed inset-0 z-[80] flex items-center justify-center p-4"
+          className="modal-safe-frame fixed inset-0 z-[80] flex items-center justify-center"
           style={{
             background: "rgba(11, 8, 33, 0.75)",
             backdropFilter: "blur(10px)",
@@ -240,7 +240,7 @@ export function CharacterForm({
             exit={{ scale: 0.95, y: 18, opacity: 0 }}
             transition={{ duration: 0.22, ease: "easeOut" }}
             onClick={(e) => e.stopPropagation()}
-            className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl"
+            className="relative flex max-h-full w-full max-w-lg flex-col overflow-hidden rounded-2xl"
             style={{
               background: "rgba(26, 15, 61, 0.95)",
               border: "1px solid rgba(216, 150, 200, 0.3)",

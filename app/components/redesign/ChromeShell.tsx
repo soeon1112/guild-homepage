@@ -62,12 +62,13 @@ export function ChromeShell({ children }: { children: React.ReactNode }) {
       <CosmicBackground />
       <TopHeader />
       <Breadcrumb />
-      {/* Bottom padding clears the floating BottomNav on every page in one
-          spot. 8rem (128px) covers the nav (~72–80px) plus comfortable
-          buffer; env(safe-area-inset-bottom) tacks on the iOS home indicator
-          so the last page item never sits under the nav even on the tallest
-          iPhones. */}
-      <main className="relative z-10 flex-1 pb-[calc(8rem+env(safe-area-inset-bottom))]">
+      {/* Bottom padding clears BOTH the floating BottomNav AND the floating
+          chat icon (FloatingChat lives at right-4 bottom-24 with a 56px
+          button → top edge sits 152px above screen bottom). 12rem (192px)
+          covers chat-icon top (152) + ~40px breathing room; env(safe-area-
+          inset-bottom) tacks on the iOS home indicator. Last page item
+          never gets clipped by either floating element. */}
+      <main className="relative z-10 flex-1 pb-[calc(12rem+env(safe-area-inset-bottom))]">
         {children}
       </main>
       <BottomNav />

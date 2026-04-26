@@ -37,6 +37,30 @@
   --input: rgba(216, 150, 200, 0.2);
   --ring: #d896c8;
   --radius: 0.75rem;
+
+  /* ── Layout chrome offsets ──
+     Used by every fixed/full-screen modal so its content never overlaps
+     the sticky TopHeader (h-[56px]) or the floating BottomNav (~80px high
+     above the iOS home indicator). All values include the platform safe
+     areas so a modal looks correct on the tallest iPhones too.
+       --modal-pad-top    = 56px + safe-area-top + 0.5rem breathing room
+       --modal-pad-bottom = 7rem (covers nav ~80px + ~32px buffer) +
+                            safe-area-bottom (home indicator). */
+  --top-header-height: 56px;
+  --modal-pad-top: calc(56px + env(safe-area-inset-top) + 0.5rem);
+  --modal-pad-bottom: calc(7rem + env(safe-area-inset-bottom));
+}
+
+/* Reusable modal frame: positions a fixed full-screen overlay so its
+   centred content stays between the TopHeader and the BottomNav. Apply on
+   any `position: fixed; inset: 0` overlay (use alongside Tailwind's
+   `flex items-center justify-center` if centring is desired). The
+   horizontal padding mirrors `p-4`. */
+.modal-safe-frame {
+  padding-top: var(--modal-pad-top);
+  padding-bottom: var(--modal-pad-bottom);
+  padding-left: 1rem;
+  padding-right: 1rem;
 }
 
 @theme inline {
@@ -2146,7 +2170,17 @@ select {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
+  /* Top + bottom padding keeps the centred modal between the sticky
+     TopHeader and the floating BottomNav, so the close button and last
+     row stay tappable even when the modal is taller than the viewport. */
+  padding-top: var(--modal-pad-top);
+  padding-bottom: var(--modal-pad-bottom);
+  padding-left: 1rem;
+  padding-right: 1rem;
+  /* Tall photo viewer modals can exceed the safe centre area; allow the
+     backdrop itself to scroll so users can reach the comment list bottom. */
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .minihome-modal-content {
@@ -2357,7 +2391,11 @@ select {
 
 .minihome-photo-viewer {
   max-width: 90vw;
-  max-height: 90vh;
+  /* Cap the viewer so it never spills past the BottomNav. The shared
+     --modal-pad-* tokens already inset the parent .minihome-modal frame;
+     here we cap by 100% of that content area so the close button + last
+     comment stay inside the safe centre region. */
+  max-height: 100%;
   width: 100%;
   max-width: 520px;
   display: flex;
@@ -3503,7 +3541,12 @@ select {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
+  /* Keep the image inside the safe modal area so the close button isn't
+     hidden under the BottomNav on small phones. */
+  padding-top: var(--modal-pad-top);
+  padding-bottom: var(--modal-pad-bottom);
+  padding-left: 1rem;
+  padding-right: 1rem;
 }
 
 .comment-image-lightbox-img {
@@ -6017,14 +6060,14 @@ body.has-redesigned-header .bg-scene {
   justify-content: center;
   /* Top padding clears the sticky TopHeader (h-[56px] + safe-area-inset-top)
      so the modal start isn't hidden behind it. Bottom padding leaves room
-     for the fixed BottomNav (h-9 button + py-2 + pt-2 + pb-3 ≈ 72px) plus
-     iOS home-indicator safe area, so a tall modal scrolls all the way to
-     the close button without it sliding under the nav. */
-  padding:
-    calc(56px + 1rem + env(safe-area-inset-top))
-    1rem
-    calc(6rem + env(safe-area-inset-bottom))
-    1rem;
+     for the fixed BottomNav (~80px paint area) plus iOS home-indicator
+     safe area, so a tall modal scrolls all the way to the close button
+     without it sliding under the nav. Values come from the shared
+     --modal-pad-* tokens defined at the top of this file. */
+  padding-top: var(--modal-pad-top);
+  padding-bottom: var(--modal-pad-bottom);
+  padding-left: 1rem;
+  padding-right: 1rem;
   background: rgba(2, 0, 16, 0.78);
   backdrop-filter: blur(6px);
   /* Lock to vertical scroll — `overflow-x: hidden` blocks any sideways

@@ -317,7 +317,7 @@ function BadgeDetailModal({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      className="modal-safe-frame fixed inset-0 z-[100] flex items-center justify-center"
       onClick={onClose}
       style={{ background: "rgba(11,8,33,0.7)", backdropFilter: "blur(4px)" }}
     >
@@ -378,7 +378,7 @@ function BadgeDetailModal({
 function PrivacyModal({ onClose }: { onClose: () => void }) {
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      className="modal-safe-frame fixed inset-0 z-[100] flex items-center justify-center"
       onClick={onClose}
       style={{ background: "rgba(11,8,33,0.6)", backdropFilter: "blur(6px)" }}
     >

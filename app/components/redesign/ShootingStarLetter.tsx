@@ -1152,7 +1152,7 @@ function ComposeModal({
 
   return (
     <motion.div
-      className="fixed inset-0 z-[70] flex items-center justify-center p-4"
+      className="modal-safe-frame fixed inset-0 z-[70] flex items-center justify-center"
       style={MODAL_BACKDROP}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -1398,7 +1398,7 @@ function InboxModal({
 
   return (
     <motion.div
-      className="fixed inset-0 z-[70] flex items-center justify-center p-4"
+      className="modal-safe-frame fixed inset-0 z-[70] flex items-center justify-center"
       style={MODAL_BACKDROP}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}

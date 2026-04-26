@@ -247,7 +247,7 @@ function AuthModal({
 
   return (
     <motion.div
-      className="fixed inset-0 z-[70] flex items-center justify-center p-4"
+      className="modal-safe-frame fixed inset-0 z-[70] flex items-center justify-center"
       style={{
         background: "rgba(11,8,33,0.8)",
         backdropFilter: "blur(12px)",
