@@ -1774,25 +1774,26 @@ const S_COOKIE: ItemIconRender = {
   resolve: colorMap({ c: "#C58E5A", C: "#5B3A1F" }),
 };
 
-// 손 — 위에서 펫 머리 쓰다듬는 모양
+// 손 — 위에서 내려와서 머리 쓰다듬는 모양 (손바닥이 아래를 향함).
+// 위쪽이 손목, 아래쪽이 손가락 4개. h = 음영, k = 살구색.
 const S_HAND: ItemIconRender = {
   grid: [
     "..............",
-    "....hhhh......",
-    "...hkkkkh.....",
-    "..hkkkkkkh....",
-    "..hkkkkkkh....",
-    "..hkkkkkkh....",
-    "..hkkkkkkh....",
-    "...hkkkkh.....",
-    "....kkkk......",
-    "....kkkk......",
-    "....kkkk......",
     "..............",
+    ".....kkkk.....",  // 손목 위
+    ".....khhk.....",  // 손목
+    "....kkhhkk....",  // 손목 → 손등
+    "...kkhhhhkk...",  // 손등 시작
+    "..kkhhhhhhkk..",  // 손등
+    ".kkhhhhhhhhkk.",  // 가장 넓은 부분 (엄지 약간 보임)
+    "..kkkkkkkkkk..",  // 손바닥 너비
+    "..kk.kk.kk.kk.",  // 손가락 4개 분리
+    "..kk.kk.kk.kk.",  // 손가락
+    "..kk.kk.kk.kk.",  // 손가락 끝
     "..............",
     "..............",
   ],
-  resolve: colorMap({ h: "#A87850", k: "#E0B080" }),
+  resolve: colorMap({ h: "#B07850", k: "#E8B888" }),
 };
 
 // 허들 — 빨/흰 줄무늬 막대 + 검은 다리

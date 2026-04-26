@@ -687,7 +687,7 @@ function ScenePropView({
     }
   }
 
-  // Hand sprite floats above pet — uses pet position
+  // Hand sprite floats above pet — sways side-to-side (petting motion)
   if (scene.handAbovePet) {
     return (
       <div
@@ -695,11 +695,13 @@ function ScenePropView({
         style={{
           position: "absolute",
           left: `${petLeftPct}%`,
-          bottom: petBottom + petSize - 8,
+          // Hand hovers slightly above the pet's head — its fingers
+          // dangle down toward the pet.
+          bottom: petBottom + petSize - 14,
           width: sizePx,
           height: sizePx,
           marginLeft: -sizePx / 2,
-          animation: "scene-fade-in 0.3s ease-out, pet-bob 0.7s ease-in-out infinite 0.3s",
+          animation: "scene-fade-in 0.3s ease-out, scene-hand-pet 0.7s ease-in-out infinite 0.3s",
           pointerEvents: "none",
           zIndex: 3,
         }}

@@ -6520,6 +6520,11 @@ body.has-redesigned-header .bg-scene {
   50%      { transform: translate(44px, -2px); }
   75%      { transform: translate(0, -24px); }
 }
+@keyframes scene-hand-pet {
+  /* Sway side-to-side over the pet's head — palm-down stroking motion. */
+  0%, 100% { transform: translate(-10px, 0); }
+  50%      { transform: translate(10px, 0); }
+}
 @keyframes pet-scene-jump {
   0%, 100% { transform: translateY(0); }
   20%      { transform: translateY(-22px); }
