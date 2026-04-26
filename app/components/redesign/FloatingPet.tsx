@@ -58,6 +58,13 @@ import {
   type PetType,
 } from "@/src/lib/pets";
 import { ItemIconSvg, PetSvg } from "./PetSvg";
+import { PetRoom, type PetReaction } from "./PetRoom";
+import {
+  INTERACTION_ICONS,
+  STATUS_ICONS,
+  TAB_ICONS,
+  type ItemIconRender,
+} from "@/src/lib/petArt";
 
 type Tab = "main" | "shop" | "wardrobe" | "playground" | "visit" | "ranking";
 
@@ -152,6 +159,8 @@ export default function FloatingPet() {
   const [renaming, setRenaming] = useState(false);
   const [pendingName, setPendingName] = useState("");
   const [shopCategory, setShopCategory] = useState<ItemCategory>("consumable");
+  const [reaction, setReaction] = useState<PetReaction>(null);
+  const [boughtFlash, setBoughtFlash] = useState<string | null>(null);
 
   const visible = ready && canSeePets(nickname);
 
@@ -285,6 +294,19 @@ export default function FloatingPet() {
         } else {
           const inter = INTERACTIONS.find((i) => i.id === id);
           showToast(`${inter?.label} 완료!`);
+          // Map interaction → pet reaction overlay.
+          const map: Record<InteractionId, PetReaction> = {
+            feed: { kind: "fed" },
+            play: { kind: "play" },
+            wash: { kind: "clean" },
+            walk: { kind: "play" },
+            pet: { kind: "happy" },
+            treat: { kind: "fed" },
+            sleep: { kind: "sleep" },
+            train: { kind: "happy" },
+          };
+          setReaction(map[id]);
+          setTimeout(() => setReaction(null), 1500);
         }
       } finally {
         setBusy(false);
@@ -305,8 +327,11 @@ export default function FloatingPet() {
       setBusy(true);
       try {
         const res = await buyItem(nickname, id, points);
-        if (res.ok) showToast(`${item.name} 구매!`);
-        else showToast("구매 실패");
+        if (res.ok) {
+          showToast(`${item.name} 구매!`);
+          setBoughtFlash(id);
+          setTimeout(() => setBoughtFlash((cur) => (cur === id ? null : cur)), 1200);
+        } else showToast("구매 실패");
       } finally {
         setBusy(false);
       }
@@ -490,29 +515,41 @@ export default function FloatingPet() {
               </div>
             </div>
 
-            {/* Tabs (only when pet exists) */}
+            {/* Tabs (only when pet exists) — icon + label */}
             {pet ? (
               <div
-                className="flex shrink-0 overflow-x-auto"
+                className="flex shrink-0 justify-around"
                 style={{ borderBottom: "1px solid #E0CFB8", background: "#FFF6E6" }}
               >
-                {(Object.keys(TAB_LABELS) as Tab[]).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => {
-                      setTab(t);
-                      setVisiting(null);
-                    }}
-                    className="px-3 py-2 font-serif text-[11px] tracking-wide transition-colors"
-                    style={{
-                      color: tab === t ? "#5B3A1F" : "#9C7E5C",
-                      borderBottom: tab === t ? "2px solid #C68748" : "2px solid transparent",
-                      fontWeight: tab === t ? 600 : 400,
-                    }}
-                  >
-                    {TAB_LABELS[t]}
-                  </button>
-                ))}
+                {(Object.keys(TAB_LABELS) as Tab[]).map((t) => {
+                  const isActive = tab === t;
+                  const icon = TAB_ICONS[t];
+                  return (
+                    <button
+                      key={t}
+                      onClick={() => {
+                        setTab(t);
+                        setVisiting(null);
+                      }}
+                      className="flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 transition-colors"
+                      style={{
+                        background: isActive ? "rgba(244,192,122,0.22)" : "transparent",
+                        borderBottom: isActive ? "2px solid #C68748" : "2px solid transparent",
+                      }}
+                    >
+                      <PixelIconView icon={icon} size={20} dim={!isActive} />
+                      <span
+                        className="font-serif text-[9px]"
+                        style={{
+                          color: isActive ? "#5B3A1F" : "#9C7E5C",
+                          fontWeight: isActive ? 600 : 400,
+                        }}
+                      >
+                        {TAB_LABELS[t]}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             ) : null}
 
@@ -539,6 +576,7 @@ export default function FloatingPet() {
                   onConsume={handleConsume}
                   onRename={handleRename}
                   onRelease={handleRelease}
+                  reaction={reaction}
                 />
               ) : tab === "shop" ? (
                 <ShopPanel
@@ -548,6 +586,7 @@ export default function FloatingPet() {
                   inventory={items.inventory}
                   busy={busy}
                   onBuy={handleBuy}
+                  boughtFlash={boughtFlash}
                 />
               ) : tab === "wardrobe" ? (
                 <WardrobePanel
@@ -693,6 +732,7 @@ function MainPanel({
   onConsume,
   onRename,
   onRelease,
+  reaction,
 }: {
   pet: PetDoc;
   stage: ReturnType<typeof computeStage>;
@@ -711,123 +751,125 @@ function MainPanel({
   onConsume: (id: ItemId) => void;
   onRename: () => void;
   onRelease: () => void;
+  reaction: PetReaction;
 }) {
   const stageLabel = PET_STAGES.find((s) => s.id === stage)?.label ?? "";
   return (
     <div className="flex flex-col gap-3">
-      {/* Pet portrait */}
-      <div
-        className="relative flex flex-col items-center overflow-hidden rounded-xl px-3 py-3"
-        style={{
-          background: pet.background !== "none" ? "transparent" : "rgba(255,255,255,0.5)",
-          border: "1px solid #E0CFB8",
-        }}
-      >
-        {bubble ? (
-          <div
-            className="absolute right-3 top-2 rounded-full bg-white px-2 py-0.5 font-serif text-[10px] text-[#5B3A1F]"
-            style={{ border: "1px solid #E0CFB8" }}
-          >
-            {bubble.message}
-          </div>
-        ) : null}
-        <PetSvg
+      {/* ── Pet room (animated stage) ── */}
+      <div className="relative">
+        <PetRoom
           type={pet.type}
           stage={stage}
-          size={120}
           accessories={pet.accessories ?? []}
+          furniture={pet.furniture ?? []}
           background={pet.background ?? "none"}
           mood={mood}
           glow={!!pet.glow}
           hue={pet.hue ?? 0}
+          reaction={reaction}
+          height={184}
         />
-        {renaming ? (
-          <div className="mt-2 flex w-full items-center gap-2">
-            <input
-              value={pendingName}
-              onChange={(e) => setPendingName(e.target.value)}
-              placeholder="새 이름"
-              className="flex-1 rounded-lg border border-[#E0CFB8] bg-white px-2 py-1 font-serif text-[12px] outline-none focus:border-[#C68748]"
-            />
-            <button
-              onClick={onRename}
-              disabled={busy}
-              className="rounded-lg px-2 py-1 font-serif text-[11px] font-medium text-white"
-              style={{ background: "#C68748" }}
-            >
-              변경
-            </button>
-            <button
-              onClick={() => setRenaming(false)}
-              className="rounded-lg px-2 py-1 font-serif text-[11px] text-[#5B3A1F]"
-              style={{ border: "1px solid #E0CFB8" }}
-            >
-              취소
-            </button>
-          </div>
-        ) : (
-          <div className="mt-2 flex items-center gap-2">
-            <span className="font-serif text-[14px] font-medium text-[#3A2818]">
-              {pet.name}
-            </span>
-            <span className="rounded-full bg-[#FFE5C4] px-2 py-0.5 font-serif text-[10px] text-[#5B3A1F]">
-              {stageLabel}
-            </span>
-            <button
-              onClick={() => {
-                setRenaming(true);
-                setPendingName(pet.name);
-              }}
-              className="font-serif text-[10px] text-[#9C7E5C] underline"
-            >
-              이름표
-            </button>
-          </div>
-        )}
-        <div className="mt-1 font-serif text-[10px] text-[#7A5A3C]">
-          경험치 {pet.exp ?? 0}
-        </div>
-        <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-[#EFE0C9]">
+        {bubble ? (
           <div
-            className="h-full"
-            style={{
-              width: `${Math.round(stageProgress * 100)}%`,
-              background: "linear-gradient(90deg, #FFB5A7, #C68748)",
-            }}
-          />
+            className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-white/95 px-2 py-0.5 font-serif text-[10px] text-[#5B3A1F]"
+            style={{ border: "1px solid #E0CFB8", boxShadow: "0 2px 6px rgba(0,0,0,0.1)" }}
+          >
+            {bubble.message}
+          </div>
+        ) : null}
+        {/* Name + stage + xp pill row */}
+        <div className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-white/85 px-2 py-1 backdrop-blur-sm" style={{ border: "1px solid #E0CFB8" }}>
+          <span className="font-serif text-[11px] font-medium text-[#3A2818]">{pet.name}</span>
+          <span className="rounded-full bg-[#FFE5C4] px-1.5 font-serif text-[9px] text-[#5B3A1F]">{stageLabel}</span>
         </div>
       </div>
 
-      {/* Status bars */}
-      <div className="flex flex-col gap-2">
-        <StatusBar label="포만감" value={projected.hunger} color="#E48A6F" />
-        <StatusBar label="행복" value={projected.happiness} color="#E5B85F" />
-        <StatusBar label="청결" value={projected.clean} color="#82B4D8" />
+      {/* Rename row */}
+      {renaming ? (
+        <div className="flex w-full items-center gap-2">
+          <input
+            value={pendingName}
+            onChange={(e) => setPendingName(e.target.value)}
+            placeholder="새 이름"
+            className="flex-1 rounded-lg border border-[#E0CFB8] bg-white px-2 py-1 font-serif text-[12px] outline-none focus:border-[#C68748]"
+          />
+          <button
+            onClick={onRename}
+            disabled={busy}
+            className="rounded-lg px-2 py-1 font-serif text-[11px] font-medium text-white"
+            style={{ background: "#C68748" }}
+          >
+            변경
+          </button>
+          <button
+            onClick={() => setRenaming(false)}
+            className="rounded-lg px-2 py-1 font-serif text-[11px] text-[#5B3A1F]"
+            style={{ border: "1px solid #E0CFB8" }}
+          >
+            취소
+          </button>
+        </div>
+      ) : null}
+
+      {/* ── HUD stat bars (icon + gradient gauge) ── */}
+      <div className="flex flex-col gap-1.5">
+        <HudBar
+          icon={STATUS_ICONS.hunger}
+          label="포만감"
+          value={projected.hunger}
+          colorFrom="#FFCFA0"
+          colorTo="#D24545"
+        />
+        <HudBar
+          icon={STATUS_ICONS.happiness}
+          label="행복"
+          value={projected.happiness}
+          colorFrom="#FFB5C8"
+          colorTo="#E04575"
+        />
+        <HudBar
+          icon={STATUS_ICONS.clean}
+          label="청결"
+          value={projected.clean}
+          colorFrom="#B0E0FA"
+          colorTo="#5BAEEA"
+        />
+        <HudBar
+          icon={STATUS_ICONS.exp}
+          label={`경험치 · Lv.${PET_STAGES.findIndex((s) => s.id === stage) + 1}`}
+          value={Math.round(stageProgress * 100)}
+          colorFrom="#FFE56B"
+          colorTo="#F2C84B"
+        />
       </div>
 
-      {/* Interactions */}
+      {/* ── Icon-based interaction grid (3 × 3, with rename/wear) ── */}
       <div className="grid grid-cols-4 gap-1.5">
         {INTERACTIONS.map((inter) => {
           const remaining = cooldownRemainingMs(pet, inter.id, now);
           const disabled = remaining > 0 || busy;
+          const icon = INTERACTION_ICONS[inter.id as keyof typeof INTERACTION_ICONS];
           return (
-            <button
+            <InteractButton
               key={inter.id}
-              onClick={() => onInteract(inter.id)}
+              icon={icon}
+              label={inter.label}
+              cooldownLabel={remaining > 0 ? formatDuration(remaining) : null}
               disabled={disabled}
-              className="flex flex-col items-center rounded-lg px-1 py-1.5 font-serif transition-opacity disabled:opacity-40"
-              style={{
-                background: "rgba(255,255,255,0.7)",
-                border: "1px solid #E0CFB8",
-              }}
-            >
-              <span className="text-[11px] text-[#5B3A1F]">{inter.label}</span>
-              {remaining > 0 ? (
-                <span className="text-[9px] text-[#9C7E5C]">{formatDuration(remaining)}</span>
-              ) : null}
-            </button>
+              onClick={() => onInteract(inter.id)}
+            />
           );
         })}
+        <InteractButton
+          icon={INTERACTION_ICONS.wear}
+          label="이름표"
+          disabled={busy || renaming}
+          onClick={() => {
+            setRenaming(true);
+            setPendingName(pet.name);
+          }}
+        />
       </div>
 
       {/* Quick consumables */}
@@ -868,6 +910,114 @@ function MainPanel({
   );
 }
 
+// ── Reusable bits ────────────────────────────────────────────
+
+function PixelIconView({ icon, size = 20, dim = false }: { icon: ItemIconRender; size?: number; dim?: boolean }) {
+  const grid = icon.grid;
+  const cols = Math.max(...grid.map((r) => r.length));
+  const px = size / cols;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      shapeRendering="crispEdges"
+      style={{ display: "block", opacity: dim ? 0.55 : 1 }}
+      aria-hidden
+    >
+      {grid.flatMap((row, r) =>
+        row.split("").map((c, ci) => {
+          const fill = icon.resolve(c);
+          if (!fill) return null;
+          return <rect key={`${r}-${ci}`} x={ci * px} y={r * px} width={px} height={px} fill={fill} />;
+        }),
+      )}
+    </svg>
+  );
+}
+
+function HudBar({
+  icon,
+  label,
+  value,
+  colorFrom,
+  colorTo,
+}: {
+  icon: ItemIconRender;
+  label: string;
+  value: number;
+  colorFrom: string;
+  colorTo: string;
+}) {
+  const v = Math.max(0, Math.min(100, value));
+  return (
+    <div className="flex items-center gap-2">
+      <PixelIconView icon={icon} size={20} />
+      <div className="flex-1">
+        <div className="flex items-center justify-between font-serif text-[10px] text-[#5B3A1F]">
+          <span>{label}</span>
+          <span>{Math.round(v)}%</span>
+        </div>
+        <div
+          className="mt-0.5 h-2 w-full overflow-hidden rounded-full"
+          style={{
+            background: "#EFE0C9",
+            boxShadow: "inset 0 1px 2px rgba(91,58,31,0.2)",
+          }}
+        >
+          <div
+            className="h-full rounded-full transition-[width] duration-500"
+            style={{
+              width: `${v}%`,
+              background: `linear-gradient(90deg, ${colorFrom}, ${colorTo})`,
+              boxShadow: `0 0 6px ${colorTo}66`,
+            }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InteractButton({
+  icon,
+  label,
+  cooldownLabel,
+  disabled,
+  onClick,
+}: {
+  icon: ItemIconRender;
+  label: string;
+  cooldownLabel?: string | null;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="group relative flex flex-col items-center gap-0.5 rounded-xl px-1 py-1.5 font-serif transition-transform active:scale-90 disabled:active:scale-100"
+      style={{
+        background: disabled
+          ? "rgba(220,210,195,0.7)"
+          : "linear-gradient(180deg, #FFFAF0, #FFE5C4)",
+        border: "1px solid #E0CFB8",
+        boxShadow: disabled
+          ? "inset 0 1px 0 rgba(255,255,255,0.4)"
+          : "0 2px 0 rgba(91,58,31,0.18), inset 0 1px 0 rgba(255,255,255,0.6)",
+        opacity: disabled ? 0.5 : 1,
+        cursor: disabled ? "not-allowed" : "pointer",
+      }}
+    >
+      <PixelIconView icon={icon} size={22} dim={disabled} />
+      <span className="text-[10px] text-[#5B3A1F]">{label}</span>
+      {cooldownLabel ? (
+        <span className="text-[9px] text-[#9C7E5C]">{cooldownLabel}</span>
+      ) : null}
+    </button>
+  );
+}
+
 function ShopPanel({
   category,
   setCategory,
@@ -875,6 +1025,7 @@ function ShopPanel({
   inventory,
   busy,
   onBuy,
+  boughtFlash,
 }: {
   category: ItemCategory;
   setCategory: (c: ItemCategory) => void;
@@ -882,6 +1033,7 @@ function ShopPanel({
   inventory: PetItemsDoc["inventory"];
   busy: boolean;
   onBuy: (id: ItemId) => void;
+  boughtFlash: string | null;
 }) {
   const filtered = ITEMS.filter((i) => i.category === category);
   return (
@@ -908,22 +1060,48 @@ function ShopPanel({
           const count = inventory?.[item.id] ?? 0;
           const collectible = item.category !== "consumable";
           const disabled = busy || points < item.price || (collectible && owned);
+          const flashing = boughtFlash === item.id;
           return (
             <div
               key={item.id}
-              className="flex flex-col items-center gap-1 rounded-xl p-2"
+              className="relative flex flex-col items-center gap-1 rounded-xl p-2"
               style={{
-                background: "rgba(255,255,255,0.7)",
-                border: "1px solid #E0CFB8",
+                background: flashing
+                  ? "linear-gradient(135deg, #FFF6CD, #FFE5C4)"
+                  : "rgba(255,255,255,0.7)",
+                border: flashing ? "1px solid #F2C84B" : "1px solid #E0CFB8",
+                boxShadow: flashing
+                  ? "0 0 12px rgba(242,200,75,0.55), 0 4px 8px rgba(91,58,31,0.18)"
+                  : "0 1px 2px rgba(91,58,31,0.06)",
+                transition: "all 0.3s",
               }}
             >
+              {flashing ? (
+                <span
+                  className="pointer-events-none absolute left-1/2 top-3"
+                  style={{
+                    color: "#F2C84B",
+                    fontSize: 16,
+                    fontWeight: 700,
+                    animation: "pet-shop-sparkle 1.1s ease-out forwards",
+                  }}
+                  aria-hidden
+                >
+                  ✦
+                </span>
+              ) : null}
               <ItemIconSvg id={item.id} size={40} />
               <div className="font-serif text-[11px] text-[#3A2818]">{item.name}</div>
               <div className="font-serif text-[10px] text-[#7A5A3C]">{item.desc}</div>
               <div className="flex w-full items-center justify-between">
                 <span className="font-serif text-[10px] text-[#5B3A1F]">★ {item.price}</span>
                 {collectible && owned ? (
-                  <span className="font-serif text-[10px] text-[#3D8B3D]">보유중</span>
+                  <span
+                    className="rounded-full px-1.5 font-serif text-[9px]"
+                    style={{ background: "#D7E5C7", color: "#2E6B26" }}
+                  >
+                    보유중
+                  </span>
                 ) : !collectible && count > 0 ? (
                   <span className="font-serif text-[10px] text-[#5B3A1F]">×{count}</span>
                 ) : null}
@@ -931,8 +1109,11 @@ function ShopPanel({
               <button
                 onClick={() => onBuy(item.id)}
                 disabled={disabled}
-                className="mt-1 w-full rounded-md px-2 py-1 font-serif text-[10px] text-white disabled:opacity-40"
-                style={{ background: "#C68748" }}
+                className="mt-1 w-full rounded-md px-2 py-1 font-serif text-[10px] text-white transition-transform active:scale-95 disabled:opacity-40 disabled:active:scale-100"
+                style={{
+                  background: collectible && owned ? "#A0A0A0" : "linear-gradient(180deg, #D89A5A, #C07840)",
+                  boxShadow: disabled ? "none" : "0 2px 0 rgba(91,58,31,0.25)",
+                }}
               >
                 {collectible && owned ? "보유중" : "구매"}
               </button>

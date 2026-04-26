@@ -18,7 +18,7 @@
 // (small round head-only), child (small body appears), teen (taller,
 // tail/wings emerge), adult (full sprite).
 
-import type { ItemId, PetStage, PetType, BackgroundId } from "./pets";
+import type { ItemId, PetStage, PetType, BackgroundId, InteractionId } from "./pets";
 
 export type PixelGrid = string[]; // 16 strings of length 16
 
@@ -1579,3 +1579,413 @@ export const ITEM_ICONS: Record<ItemId, ItemIconRender> = {
   sparkle: I_SPARKLE,
   dye: I_DYE,
 };
+
+// ── Pet room (game-feel main view) ───────────────────────────
+// Default room is a cozy interior: wallpaper top-half, wood floor
+// bottom-half. Renderer draws this, then overlays placed furniture,
+// then the pet on top. When background = bgForest/bgOcean/bgSpace the
+// outdoor background takes over the full canvas instead.
+
+export const ROOM_WALL_COLOR = "#F5DDC0";
+export const ROOM_WALL_TRIM = "#E8C9A0";
+export const ROOM_WALL_DECOR = "#D9B380";
+export const ROOM_FLOOR_COLOR = "#B98750";
+export const ROOM_FLOOR_LINE = "#8E5E33";
+
+// Placement grid is normalized 0..100 × 0..100. The renderer maps
+// these onto the room canvas. y measured from the floor line up.
+export type FurniturePlacement = {
+  // Anchor on the floor: x = horizontal center 0..100, baseline = y from
+  // floor (0 = sitting on floor). Sprite is drawn `size` wide and tall.
+  x: number;
+  y: number;
+  size: number; // % of room width
+};
+
+export const FURNITURE_PLACEMENTS: Partial<Record<ItemId, FurniturePlacement>> = {
+  cushion:     { x: 22, y: 0,  size: 22 },
+  bed:         { x: 78, y: 0,  size: 30 },
+  house:       { x: 50, y: 0,  size: 36 },
+  toyBall:     { x: 12, y: 0,  size: 14 },
+  toyYarn:     { x: 35, y: 0,  size: 14 },
+  toyBone:     { x: 90, y: 0,  size: 14 },
+  bowlBasic:   { x: 60, y: 0,  size: 16 },
+  bowlPremium: { x: 60, y: 0,  size: 16 }, // overrides bowlBasic
+};
+
+// ── Status icons (HUD) ───────────────────────────────────────
+// Tiny 12×12 icons next to each status bar.
+const ICON_HUNGER: ItemIconRender = {
+  grid: [
+    "............",
+    "....BB......",
+    "...BkkB.....",
+    "..BkkkkB....",
+    "..BkrrkB....",
+    "..BkrrkB....",
+    "..BkkkkB....",
+    "...BkkB.....",
+    "....BB......",
+    "............",
+    "............",
+    "............",
+  ],
+  resolve: colorMap({ B: "#5B3A1F", k: "#FFCFA0", r: "#D24545" }),
+};
+
+const ICON_HAPPY: ItemIconRender = {
+  grid: [
+    "............",
+    "...rr..rr...",
+    "..rrrrrrrr..",
+    "..rrrrrrrr..",
+    "..rrwwrrrr..",
+    "..rrrrrrrr..",
+    "...rrrrrr...",
+    "....rrrr....",
+    ".....rr.....",
+    "............",
+    "............",
+    "............",
+  ],
+  resolve: colorMap({ r: "#F08FA9", w: "#FFFFFF" }),
+};
+
+const ICON_CLEAN: ItemIconRender = {
+  grid: [
+    "............",
+    ".....b......",
+    "....bbb.....",
+    "....bbb.....",
+    "...bbbbb....",
+    "...bbwbb....",
+    "..bbbwbbb...",
+    "..bbbbbbb...",
+    "...bbbbb....",
+    "............",
+    "............",
+    "............",
+  ],
+  resolve: colorMap({ b: "#5BAEEA", w: "#D6ECFA" }),
+};
+
+const ICON_EXP: ItemIconRender = {
+  grid: [
+    "............",
+    "............",
+    ".....y......",
+    "....yyy.....",
+    ".yyyyyyyyy..",
+    "..yyyyyyy...",
+    "...yywyy....",
+    "..yyyyyyy...",
+    "..yy...yy...",
+    ".y......y...",
+    "............",
+    "............",
+  ],
+  resolve: colorMap({ y: "#F2C84B", w: "#FFF6C4" }),
+};
+
+export const STATUS_ICONS = {
+  hunger: ICON_HUNGER,
+  happiness: ICON_HAPPY,
+  clean: ICON_CLEAN,
+  exp: ICON_EXP,
+};
+
+// ── Interaction icons (game-feel buttons) ────────────────────
+const II_FEED: ItemIconRender = {
+  grid: [
+    "............",
+    "............",
+    "............",
+    "...BB..BB...",
+    "..BkkBBkkB..",
+    "..BkkkkkkB..",
+    "..gggggggg..",
+    "..g......g..",
+    "..g......g..",
+    "...gggggg...",
+    "............",
+    "............",
+  ],
+  resolve: colorMap({ B: "#5B3A1F", k: "#E0A87B", g: "#A8A8A8" }),
+};
+
+const II_PLAY: ItemIconRender = {
+  grid: [
+    "............",
+    "............",
+    "....rrrr....",
+    "...rwwwwr...",
+    "..rwwbbwwr..",
+    "..rwbwwbwr..",
+    "..rwbwwbwr..",
+    "..rwwbbwwr..",
+    "...rwwwwr...",
+    "....rrrr....",
+    "............",
+    "............",
+  ],
+  resolve: colorMap({ r: "#E76A6A", w: "#FFFFFF", b: "#3D5DA8" }),
+};
+
+const II_WASH: ItemIconRender = {
+  grid: [
+    "............",
+    ".....b......",
+    "....bbb.....",
+    "...bbbbb....",
+    "...bbwbb....",
+    "..bbbbbbb...",
+    "..bbbbbbb...",
+    "...bbbbb....",
+    "............",
+    "....b...b...",
+    "...b...b....",
+    "............",
+  ],
+  resolve: colorMap({ b: "#5BAEEA", w: "#D6ECFA" }),
+};
+
+const II_WALK: ItemIconRender = {
+  grid: [
+    "............",
+    "...kk....kk.",
+    "..kkkk..kkkk",
+    ".kkkkkk.kkkk",
+    ".kkkkkk.kkkk",
+    "..kkkk..kkkk",
+    "...kk....kk.",
+    "............",
+    "............",
+    "............",
+    "............",
+    "............",
+  ],
+  resolve: colorMap({ k: "#5B3A1F" }),
+};
+
+const II_PET: ItemIconRender = {
+  grid: [
+    "............",
+    "............",
+    "..k.........",
+    "..kk.kk.....",
+    "..kkkkkk....",
+    "..kkkkkkk...",
+    "...kkkkkk...",
+    "...kkkkkk...",
+    "....kkkk....",
+    "....kkkk....",
+    "............",
+    "............",
+  ],
+  resolve: colorMap({ k: "#E0B080" }),
+};
+
+const II_TREAT: ItemIconRender = {
+  grid: [
+    "............",
+    "............",
+    "....kkkk....",
+    "..kkBkkBkk..",
+    ".kkkkkkkkkk.",
+    ".kBkkBkkkBk.",
+    ".kkkkkkBkkk.",
+    ".kkBkkkkkkk.",
+    "..kkkBkkkk..",
+    "....kkkk....",
+    "............",
+    "............",
+  ],
+  resolve: colorMap({ k: "#E0A050", B: "#5B3A1F" }),
+};
+
+const II_SLEEP: ItemIconRender = {
+  grid: [
+    "............",
+    "....BBB.....",
+    "...B........",
+    "..B......B..",
+    ".B......BB..",
+    ".B.....BB...",
+    ".B....BB....",
+    ".B...BB.....",
+    ".B..BBBB....",
+    "..B.........",
+    "...BBB......",
+    "............",
+  ],
+  resolve: colorMap({ B: "#7E61D2" }),
+};
+
+const II_TRAIN: ItemIconRender = {
+  grid: [
+    "............",
+    "............",
+    "....g....g..",
+    "...gg....gg.",
+    "..ggg....ggg",
+    "..ggggggggg.",
+    "..ggggggggg.",
+    "..ggg....ggg",
+    "...gg....gg.",
+    "....g....g..",
+    "............",
+    "............",
+  ],
+  resolve: colorMap({ g: "#5B5B5B" }),
+};
+
+const II_WEAR: ItemIconRender = {
+  grid: [
+    "............",
+    ".....k......",
+    "....kkk.....",
+    ".....k......",
+    "....kkk.....",
+    "...kkkkk....",
+    "..kkkkkkk...",
+    ".kkk...kkk..",
+    "kkk.....kkk.",
+    "............",
+    "............",
+    "............",
+  ],
+  resolve: colorMap({ k: "#5B3A1F" }),
+};
+
+export const INTERACTION_ICONS: Record<InteractionId | "wear", ItemIconRender> = {
+  feed: II_FEED,
+  play: II_PLAY,
+  wash: II_WASH,
+  walk: II_WALK,
+  pet: II_PET,
+  treat: II_TREAT,
+  sleep: II_SLEEP,
+  train: II_TRAIN,
+  wear: II_WEAR,
+};
+
+// ── Tab icons ────────────────────────────────────────────────
+const TAB_HOME: ItemIconRender = {
+  grid: [
+    "............",
+    "....rrrr....",
+    "...rrrrrr...",
+    "..rrrrrrrr..",
+    ".rrrrrrrrrr.",
+    "..yyyyyyyy..",
+    "..yywwwwwy..",
+    "..yywwwwwy..",
+    "..yywBBwwy..",
+    "..yywBBwwy..",
+    "..yyyyyyyy..",
+    "............",
+  ],
+  resolve: colorMap({ r: "#C0533B", y: "#D9B57A", w: "#FFFFFF", B: "#5B3A1F" }),
+};
+
+const TAB_SHOP: ItemIconRender = {
+  grid: [
+    "............",
+    "....k..k....",
+    "...kk..kk...",
+    "...k....k...",
+    "..kkkkkkkk..",
+    "..kkkkkkkk..",
+    "..kk....kk..",
+    "..kk....kk..",
+    "..kk....kk..",
+    "..kkkkkkkk..",
+    "..kkkkkkkk..",
+    "............",
+  ],
+  resolve: colorMap({ k: "#C68748" }),
+};
+
+const TAB_WARDROBE: ItemIconRender = {
+  grid: [
+    "............",
+    ".....g......",
+    "....ggg.....",
+    ".....g......",
+    "....kkk.....",
+    "...kkkkk....",
+    "..kkkkkkk...",
+    ".kkk...kkk..",
+    ".kk.....kk..",
+    ".kk.....kk..",
+    "............",
+    "............",
+  ],
+  resolve: colorMap({ g: "#A0A0A0", k: "#5B3A1F" }),
+};
+
+const TAB_PLAYGROUND: ItemIconRender = {
+  grid: [
+    "............",
+    "............",
+    "...rrrr.....",
+    "..rwwwwr....",
+    "..rwbbwr....",
+    "..rwbbwr....",
+    "..rwwwwr.b..",
+    "...rrrr..b..",
+    ".........b..",
+    "........bbb.",
+    ".........b..",
+    "............",
+  ],
+  resolve: colorMap({ r: "#E76A6A", w: "#FFFFFF", b: "#3D5DA8" }),
+};
+
+const TAB_VISIT: ItemIconRender = {
+  grid: [
+    "............",
+    "..kkkkkkkk..",
+    "..kkkkkkkk..",
+    "..kk....kk..",
+    "..kk....kk..",
+    "..kk..yykk..",
+    "..kk....kk..",
+    "..kk....kk..",
+    "..kk....kk..",
+    "..kk....kk..",
+    "..kkkkkkkk..",
+    "............",
+  ],
+  resolve: colorMap({ k: "#8E5E33", y: "#F2C84B" }),
+};
+
+const TAB_RANKING: ItemIconRender = {
+  grid: [
+    "............",
+    "...yyyyyy...",
+    "..ykkkkkky..",
+    "..yk1111ky..",
+    "..yk1111ky..",
+    "..ykkkkkky..",
+    "...yykkyy...",
+    "....yyyy....",
+    "...kkyykk...",
+    "..kkkkkkkk..",
+    "............",
+    "............",
+  ],
+  resolve: colorMap({ y: "#F2C84B", k: "#A87838", "1": "#FFF6C4" }),
+};
+
+export type TabIconKey = "main" | "shop" | "wardrobe" | "playground" | "visit" | "ranking";
+
+export const TAB_ICONS: Record<TabIconKey, ItemIconRender> = {
+  main: TAB_HOME,
+  shop: TAB_SHOP,
+  wardrobe: TAB_WARDROBE,
+  playground: TAB_PLAYGROUND,
+  visit: TAB_VISIT,
+  ranking: TAB_RANKING,
+};
+

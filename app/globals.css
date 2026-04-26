@@ -6360,3 +6360,45 @@ body.has-redesigned-header .bg-scene {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* ── Pet game-feel animations ───────────────────────────── */
+@keyframes pet-walk {
+  0%   { transform: translateX(-40%); }
+  48%  { transform: translateX(40%); }
+  50%  { transform: translateX(40%) scaleX(-1); }
+  98%  { transform: translateX(-40%) scaleX(-1); }
+  100% { transform: translateX(-40%); }
+}
+@keyframes pet-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-3px); }
+}
+@keyframes pet-blink {
+  0%, 92%, 100% { opacity: 0; }
+  93%, 97%       { opacity: 1; }
+}
+@keyframes pet-react-bounce {
+  0%, 100% { transform: translateY(0) scale(1); }
+  30%      { transform: translateY(-12px) scale(1.05); }
+  60%      { transform: translateY(0) scale(0.96); }
+}
+@keyframes pet-heart-rise {
+  0%   { opacity: 0; transform: translate(-50%, 0) scale(0.6); }
+  20%  { opacity: 1; transform: translate(-50%, -8px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -42px) scale(0.85); }
+}
+@keyframes pet-button-press {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(0.92); }
+  100% { transform: scale(1); }
+}
+@keyframes pet-shop-sparkle {
+  0%   { opacity: 0; transform: translate(-50%, 0) scale(0.3); }
+  30%  { opacity: 1; transform: translate(-50%, -10px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -36px) scale(1.2); }
+}
+@keyframes pet-zzz-float {
+  0%   { opacity: 0; transform: translate(0, 0) scale(0.6); }
+  20%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(8px, -28px) scale(1.1); }
+}
