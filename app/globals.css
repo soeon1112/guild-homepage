@@ -5970,7 +5970,11 @@ body.has-redesigned-header .bg-scene {
      no scroll at all because of overflow-y: auto below). */
   align-items: safe center;
   justify-content: center;
-  padding: 1rem;
+  /* Bottom padding leaves room for the fixed BottomNav (h-9 button + py-2
+     + pt-2 + pb-3 ≈ 72px) plus iOS home-indicator safe area, so a tall
+     modal can be scrolled all the way to the close button without it
+     sliding under the nav. */
+  padding: 1rem 1rem calc(6rem + env(safe-area-inset-bottom)) 1rem;
   background: rgba(2, 0, 16, 0.78);
   backdrop-filter: blur(6px);
   overflow-y: auto;
