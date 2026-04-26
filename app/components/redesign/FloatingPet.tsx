@@ -41,6 +41,9 @@ import {
   loadPet,
   loadPetItems,
   loadPlaygroundPets,
+  sendPlaygroundChat,
+  subscribePlaygroundChat,
+  type PlaygroundChatMessage,
   PET_DYE_COLORS,
   PET_STAGES,
   PET_TYPES,
@@ -1790,6 +1793,11 @@ function PlaygroundPanel({
   const [count, setCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<PlaygroundPet | null>(null);
+  // Map of nickname → latest chat message; each entry is rendered as a
+  // bubble above that nickname's pet for ~5 s.
+  const [chatByNickname, setChatByNickname] = useState<Record<string, PlaygroundChatMessage>>({});
+  const [chatDraft, setChatDraft] = useState("");
+  const [chatBusy, setChatBusy] = useState(false);
 
   // Load pets — when entering, refresh; when on entry screen, also count.
   useEffect(() => {
@@ -1806,6 +1814,32 @@ function PlaygroundPanel({
       cancelled = true;
     };
   }, [myPetInPlayground]);
+
+  // Realtime chat subscription — only while we're in the playground.
+  useEffect(() => {
+    if (!myPetInPlayground) return;
+    const unsub = subscribePlaygroundChat((msgs) => {
+      const map: Record<string, PlaygroundChatMessage> = {};
+      for (const m of msgs) {
+        const cur = map[m.nickname];
+        if (!cur || m.ts > cur.ts) map[m.nickname] = m;
+      }
+      setChatByNickname(map);
+    });
+    return () => unsub();
+  }, [myPetInPlayground]);
+
+  const sendChat = useCallback(async () => {
+    const text = chatDraft.trim();
+    if (!text || chatBusy) return;
+    setChatBusy(true);
+    try {
+      await sendPlaygroundChat(myNickname, text);
+      setChatDraft("");
+    } finally {
+      setChatBusy(false);
+    }
+  }, [chatDraft, chatBusy, myNickname]);
 
   if (!myPetInPlayground) {
     return (
@@ -1868,6 +1902,7 @@ function PlaygroundPanel({
             key={p.nickname}
             pet={p}
             isMine={p.nickname === myNickname}
+            chatMessage={chatByNickname[p.nickname] ?? null}
             onTap={() => setSelected(p)}
           />
         ))}
@@ -1941,6 +1976,40 @@ function PlaygroundPanel({
           </div>
         ) : null}
       </div>
+      {/* Playground chat — separate from the main guild chat. Messages
+          appear as a bubble above the sender's pet for ~5 s. */}
+      <form
+        className="mt-1 flex items-center gap-1.5"
+        onSubmit={(e) => {
+          e.preventDefault();
+          sendChat();
+        }}
+      >
+        <input
+          value={chatDraft}
+          onChange={(e) => setChatDraft(e.target.value.slice(0, 80))}
+          placeholder="놀이터 채팅..."
+          maxLength={80}
+          disabled={chatBusy}
+          className="flex-1 rounded-full px-3 py-1.5 font-serif text-[12px] outline-none"
+          style={{
+            background: "rgba(11,8,33,0.65)",
+            border: "1px solid rgba(216,150,200,0.30)",
+            color: "#f4efff",
+          }}
+        />
+        <button
+          type="submit"
+          disabled={!chatDraft.trim() || chatBusy}
+          className="rounded-full px-3 py-1.5 font-serif text-[11px] font-bold text-stardust disabled:opacity-50"
+          style={{
+            background: "#6b4ba8",
+            border: "1px solid rgba(216,150,200,0.45)",
+          }}
+        >
+          보내기
+        </button>
+      </form>
       <div className="font-serif text-[10px] text-[#9b8fb8]">펫을 탭해서 인사하거나 간식을 선물하세요.</div>
     </div>
   );
@@ -1949,10 +2018,12 @@ function PlaygroundPanel({
 function WanderingPet({
   pet,
   isMine,
+  chatMessage,
   onTap,
 }: {
   pet: PlaygroundPet;
   isMine: boolean;
+  chatMessage: PlaygroundChatMessage | null;
   onTap: () => void;
 }) {
   // Random per-pet starting position + speed/cadence so they don't
@@ -1985,6 +2056,17 @@ function WanderingPet({
     };
   }, []);
 
+  // Chat bubble — show for 5 s on each new chatMessage. Keyed by id so
+  // a fresh repeat from the same user re-shows the bubble.
+  const [bubbleText, setBubbleText] = useState<string | null>(null);
+  useEffect(() => {
+    if (!chatMessage) return;
+    if (Date.now() - chatMessage.ts > 5000) return;
+    setBubbleText(chatMessage.message);
+    const t = setTimeout(() => setBubbleText(null), 5000);
+    return () => clearTimeout(t);
+  }, [chatMessage?.id]);
+
   return (
     <div
       onClick={onTap}
@@ -1996,8 +2078,53 @@ function WanderingPet({
         transition: `left ${initialRef.current.period - 400}ms ease-in-out, top ${initialRef.current.period - 400}ms ease-in-out`,
         cursor: "pointer",
         zIndex: Math.round(pos.y * 10),
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
       }}
     >
+      {bubbleText ? (
+        <div
+          className="relative mb-1 max-w-[140px] rounded-lg px-2 py-1 font-serif text-[11px] text-[#1F2937]"
+          style={{
+            background: "#FFFFFF",
+            border: "1px solid #d896c8",
+            boxShadow: "0 2px 4px rgba(11,8,33,0.25)",
+            textAlign: "center",
+            wordBreak: "keep-all",
+          }}
+        >
+          {bubbleText}
+          {/* Tail — outer triangle (border color) and inner triangle
+              (white) layered to look like a speech-bubble tail. */}
+          <span
+            style={{
+              position: "absolute",
+              bottom: -7,
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: 0,
+              height: 0,
+              borderLeft: "6px solid transparent",
+              borderRight: "6px solid transparent",
+              borderTop: "6px solid #d896c8",
+            }}
+          />
+          <span
+            style={{
+              position: "absolute",
+              bottom: -5,
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: 0,
+              height: 0,
+              borderLeft: "5px solid transparent",
+              borderRight: "5px solid transparent",
+              borderTop: "5px solid #FFFFFF",
+            }}
+          />
+        </div>
+      ) : null}
       <PetSvg
         type={pet.petType}
         stage={pet.petStage}

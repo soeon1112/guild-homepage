@@ -16,6 +16,10 @@ import {
   getDoc,
   getDocs,
   increment,
+  limit as fsLimit,
+  onSnapshot,
+  orderBy,
+  query,
   serverTimestamp,
   setDoc,
   Timestamp,
@@ -691,6 +695,63 @@ export async function loadPlaygroundPets(): Promise<PlaygroundPet[]> {
 export async function countPlaygroundPets(): Promise<number> {
   const list = await loadPlaygroundPets();
   return list.length;
+}
+
+// ── Playground chat ───────────────────────────────────────────
+// Realtime, transient — messages are written to a flat
+// `playgroundChat` collection and rendered as bubbles above each pet
+// for ~5 s. Old documents are NOT cleaned up here (a tiny accumulation
+// is fine; client subscriptions only look at the recent window).
+export type PlaygroundChatMessage = {
+  id: string;
+  nickname: string;
+  message: string;
+  ts: number; // millis since epoch
+};
+
+export async function sendPlaygroundChat(
+  nickname: string,
+  message: string,
+): Promise<{ ok: boolean; reason?: string }> {
+  const trimmed = message.trim().slice(0, 80);
+  if (!trimmed) return { ok: false, reason: "empty" };
+  await addDoc(collection(db, "playgroundChat"), {
+    nickname,
+    message: trimmed,
+    createdAt: serverTimestamp(),
+  });
+  return { ok: true };
+}
+
+// Subscribe to the most recent ~30 chat messages. The renderer maps
+// them to the latest message per nickname and shows that nickname's
+// bubble for ~5 s after the message lands.
+export function subscribePlaygroundChat(
+  cb: (messages: PlaygroundChatMessage[]) => void,
+): () => void {
+  const q = query(
+    collection(db, "playgroundChat"),
+    orderBy("createdAt", "desc"),
+    fsLimit(30),
+  );
+  return onSnapshot(q, (snap) => {
+    const list: PlaygroundChatMessage[] = [];
+    snap.docs.forEach((d) => {
+      const data = d.data() as {
+        nickname?: string;
+        message?: string;
+        createdAt?: { toMillis?: () => number };
+      };
+      if (!data.nickname || !data.message) return;
+      list.push({
+        id: d.id,
+        nickname: data.nickname,
+        message: data.message,
+        ts: data.createdAt?.toMillis?.() ?? Date.now(),
+      });
+    });
+    cb(list);
+  });
 }
 
 // Body-only dye. Pass `null` to reset to the pet type's natural color.
