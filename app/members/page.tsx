@@ -64,28 +64,46 @@ export default function MembersPage() {
 
         const now = Date.now();
 
-        const memberById = new Map<
-          string,
-          {
-            nickname?: string;
-            bio?: string;
-            statusMessage?: string;
-            profileImage?: string;
-          }
-        >();
+        type MemberData = {
+          nickname?: string;
+          bio?: string;
+          statusMessage?: string;
+          profileImage?: string;
+          mood?: string;
+        };
+        type UserData = {
+          lastAttendance?: Timestamp;
+          bodySelected?: boolean;
+        };
+
+        const memberById = new Map<string, MemberData>();
         membersSnap.forEach((d) => {
-          memberById.set(d.id, d.data());
+          memberById.set(d.id, d.data() as MemberData);
         });
 
-        const userByNickname = new Map<
-          string,
-          { lastAttendance?: Timestamp }
-        >();
+        const userByNickname = new Map<string, UserData>();
         usersSnap.forEach((u) => {
-          userByNickname.set(u.id, u.data() as { lastAttendance?: Timestamp });
+          userByNickname.set(u.id, u.data() as UserData);
         });
 
-        const list: MemberCardData[] = MEMBER_SLOTS.map((id) => {
+        // Profile is "filled" — i.e. user belongs in 빛나는 별들 — once
+        // any of these has content. Empty doc (just nickname/createdAt
+        // from signup or handleClaim) keeps them in 잠들어 있는 별들.
+        const isProfileFilled = (
+          data: MemberData,
+          user: UserData | undefined,
+        ) =>
+          !!(
+            data.statusMessage?.trim() ||
+            data.profileImage ||
+            data.mood ||
+            data.bio?.trim() ||
+            user?.bodySelected
+          );
+
+        const slotIds = new Set(MEMBER_SLOTS);
+
+        const slotList: MemberCardData[] = MEMBER_SLOTS.map((id) => {
           const data = memberById.get(id);
           if (!data) {
             return {
@@ -107,12 +125,34 @@ export default function MembersPage() {
             nickname,
             bio: data.bio || data.statusMessage || "",
             profileImage: data.profileImage || "",
-            registered: true,
+            registered: isProfileFilled(data, user),
             lastSeenHours,
           };
         });
 
-        setMembers(list);
+        // Members not on the fixed slot list (= signed up via the new
+        // auto-registration in AuthProvider). Sorted into the same two
+        // sections by the same isProfileFilled rule.
+        const extras: MemberCardData[] = [];
+        memberById.forEach((data, id) => {
+          if (slotIds.has(id)) return;
+          const nickname = data.nickname ?? id;
+          const user = nickname ? userByNickname.get(nickname) : undefined;
+          const last = user?.lastAttendance;
+          const lastSeenHours = last
+            ? (now - last.toMillis()) / (1000 * 60 * 60)
+            : undefined;
+          extras.push({
+            id,
+            nickname,
+            bio: data.bio || data.statusMessage || "",
+            profileImage: data.profileImage || "",
+            registered: isProfileFilled(data, user),
+            lastSeenHours,
+          });
+        });
+
+        setMembers([...slotList, ...extras]);
         setLoaded(true);
       } catch (e) {
         console.error(e);
@@ -145,7 +185,11 @@ export default function MembersPage() {
   const filteredUnregistered = useMemo(
     () =>
       q
-        ? unregistered.filter((m) => m.id.toLowerCase().includes(q))
+        ? unregistered.filter(
+            (m) =>
+              m.id.toLowerCase().includes(q) ||
+              m.nickname.toLowerCase().includes(q),
+          )
         : unregistered,
     [unregistered, q],
   );

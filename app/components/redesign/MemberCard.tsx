@@ -122,9 +122,9 @@ export function MemberCard({
             <div className="flex min-w-0 flex-1 flex-col gap-1.5">
               <span
                 className="truncate font-serif text-[13px] tracking-wide text-text-sub/60 italic sm:text-sm"
-                style={{ filter: "blur(0.4px)" }}
+                style={{ filter: nickname ? undefined : "blur(0.4px)" }}
               >
-                미등록된 새벽
+                {nickname || "미등록된 새벽"}
               </span>
               <span
                 className="wrap-anywhere font-serif text-[10px] italic leading-relaxed text-text-sub/50 sm:text-[11px]"
@@ -135,7 +135,7 @@ export function MemberCard({
                   overflow: "hidden",
                 }}
               >
-                아직 이곳에 빛이 머물기 전
+                {nickname ? "프로필 등록을 기다리는 별" : "아직 이곳에 빛이 머물기 전"}
               </span>
             </div>
           </div>

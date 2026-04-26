@@ -76,6 +76,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           password: p,
           createdAt: serverTimestamp(),
         });
+        // Auto-register an empty members doc so the new signup appears
+        // in the members list. Defaults to the "잠들어 있는 별" section
+        // (no profile content yet) — they move to "빛나는 별" once they
+        // fill statusMessage / profileImage / mood / pick a body type.
+        await setDoc(doc(db, "members", n), {
+          nickname: n,
+          statusMessage: "",
+          profileImage: "",
+          createdAt: serverTimestamp(),
+        });
         localStorage.setItem(STORAGE_KEY, n);
         setNickname(n);
         handleEvent({ type: "login", nickname: n });
