@@ -17,7 +17,16 @@ export type FashionField =
   | "avatarShoes"
   | "avatarAccessories";
 
-export type FashionItem = { id: string; name: string; price: number };
+// `previewFile` overrides the default preview filename (`${id}_preview`).
+// Use it when an item's preview PNG is named differently from the
+// convention — e.g. an older screenshot kept around as `shoes1_preview_1`
+// instead of being overwritten in place.
+export type FashionItem = {
+  id: string;
+  name: string;
+  price: number;
+  previewFile?: string;
+};
 
 export const FASHION_SUB_TABS: { value: FashionSubTab; label: string }[] = [
   { value: "adult_male", label: "성인남" },
@@ -62,7 +71,14 @@ export const FASHION_ITEMS: Record<
   child_female: {
     tops: [{ id: "tops1", name: "키즈 스쿨룩", price: 50 }],
     bottoms: [],
-    shoes: [{ id: "shoes1", name: "키즈 스쿨룩 신발", price: 40 }],
+    shoes: [
+      {
+        id: "shoes1",
+        name: "키즈 스쿨룩 신발",
+        price: 40,
+        previewFile: "shoes1_preview_1",
+      },
+    ],
     accessories: [],
   },
   child_male: { tops: [], bottoms: [], shoes: [], accessories: [] },
@@ -127,4 +143,17 @@ export function getFashionItem(
   return (
     FASHION_ITEMS[body]?.[category]?.find((i) => i.id === id) ?? null
   );
+}
+
+// Resolves the preview PNG basename for a fashion item. Default convention
+// is `${id}_preview`; items can override via `FashionItem.previewFile`.
+// Used by shop pickers and wardrobe thumbnails so the ownedFashion path
+// (which only carries `body/category/id`) can recover the right filename.
+export function fashionPreviewFilename(
+  body: FashionSubTab,
+  category: FashionCategoryKey,
+  id: string,
+): string {
+  const item = getFashionItem(body, category, id);
+  return item?.previewFile ?? `${id}_preview`;
 }

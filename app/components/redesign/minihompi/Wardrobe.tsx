@@ -9,6 +9,7 @@ import {
   type FashionCategoryKey,
   type FashionSubTab,
   type OwnedEntry,
+  fashionPreviewFilename,
   getFashionItem,
   parseOwned,
 } from "@/src/lib/fashion";
@@ -96,7 +97,11 @@ export default function Wardrobe({
                 >
                   <div className="wardrobe-equipped-thumb">
                     <img
-                      src={partUrl(body, e.cat, `${e.id}_preview`)}
+                      src={partUrl(
+                        body,
+                        e.cat,
+                        fashionPreviewFilename(body, e.cat, e.id),
+                      )}
                       alt=""
                       draggable={false}
                     />
@@ -154,7 +159,11 @@ export default function Wardrobe({
                             src={partUrl(
                               body,
                               entry.category,
-                              `${entry.id}_preview`,
+                              fashionPreviewFilename(
+                                body,
+                                entry.category,
+                                entry.id,
+                              ),
                             )}
                             alt=""
                             className="shop-fashion-preview"

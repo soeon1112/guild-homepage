@@ -27,6 +27,7 @@ import {
   type FashionCategoryKey,
   type FashionItem,
   type FashionSubTab,
+  fashionPreviewFilename,
   isOwned,
   ownedKey,
 } from "@/src/lib/fashion";
@@ -1182,7 +1183,11 @@ export default function ShopPage() {
                             src={partUrl(
                               fashionSubTab,
                               fashionCatTab,
-                              `${item.id}_preview`,
+                              fashionPreviewFilename(
+                                fashionSubTab,
+                                fashionCatTab,
+                                item.id,
+                              ),
                             )}
                             alt=""
                             className="shop-fashion-preview"
