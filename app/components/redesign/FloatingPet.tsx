@@ -1848,7 +1848,8 @@ function PlaygroundPanel({
           <div className="font-serif text-[14px] font-medium text-[#f4efff]">펫 놀이터</div>
           <div className="mt-2 font-serif text-[11px] text-[#9b8fb8]">
             길드원의 펫들과 한 공간에서 자유롭게 놀 수 있어요.
-            <br />다른 펫에게 다가가서 인사하거나 간식을 선물해보세요.
+            <br />다른 펫에게 인사하거나 같이 놀면 별빛을 얻을 수 있어요! ⭐
+            <br />간식을 선물할 수도 있답니다.
           </div>
           <div className="mt-3 inline-block rounded-full bg-abyss-deep/45 px-3 py-1 font-serif text-[11px] text-[#f4efff]">
             {loading ? "확인 중..." : `현재 ${count ?? 0}마리가 놀고 있어요`}
@@ -1869,13 +1870,13 @@ function PlaygroundPanel({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <div className="font-serif text-[11px] text-[#f4efff]">
+        <div className="font-serif text-[10px] text-[#9b8fb8]">
           현재 {pets?.length ?? 0}마리가 놀고 있어요
         </div>
         <button
           onClick={onExit}
           disabled={busy}
-          className="rounded-full px-3 py-1 font-serif text-[11px] disabled:opacity-50"
+          className="rounded-full px-2 py-0.5 font-serif text-[10px] disabled:opacity-50"
           style={{ background: "rgba(26,15,61,0.55)", border: "1px solid #d896c8", color: "#f4efff" }}
         >
           나가기
@@ -2010,7 +2011,6 @@ function PlaygroundPanel({
           보내기
         </button>
       </form>
-      <div className="font-serif text-[10px] text-[#9b8fb8]">펫을 탭해서 인사하거나 간식을 선물하세요.</div>
     </div>
   );
 }
