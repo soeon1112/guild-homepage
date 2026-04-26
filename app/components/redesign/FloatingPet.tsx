@@ -1090,51 +1090,49 @@ function MainPanel({
         </div>
       ) : null}
 
-      {/* ── HUD stat bars (icon + gradient gauge) ── */}
-      <div className="flex flex-col gap-2">
-        <HudBar
+      {/* ── HUD circular gauges (4 in a row) ── */}
+      <div className="flex flex-row items-start gap-2">
+        <CircleGauge
           icon={STATUS_ICONS.hunger}
           label="포만감"
           value={projected.hunger}
-          colorFrom="#FED7AA"
-          colorTo="#FB923C"
+          color="#FB923C"
+          centerText={`${Math.round(projected.hunger)}%`}
         />
-        <HudBar
+        <CircleGauge
           icon={STATUS_ICONS.happiness}
           label="행복"
           value={projected.happiness}
-          colorFrom="#FBCFE8"
-          colorTo="#EC4899"
+          color="#EC4899"
+          centerText={`${Math.round(projected.happiness)}%`}
         />
-        <HudBar
+        <CircleGauge
           icon={STATUS_ICONS.clean}
           label="청결"
           value={projected.clean}
-          colorFrom="#BAE6FD"
-          colorTo="#38BDF8"
+          color="#38BDF8"
+          centerText={`${Math.round(projected.clean)}%`}
         />
-        <HudBar
+        <CircleGauge
           icon={STATUS_ICONS.exp}
-          label={`경험치 · Lv.${PET_STAGES.findIndex((s) => s.id === stage) + 1}`}
+          label="경험치"
           value={Math.round(stageProgress * 100)}
-          colorFrom="#FFE5C4"
-          colorTo="#FFB5A7"
-          subLabel={(() => {
+          color="#A78BFA"
+          centerText={`Lv.${PET_STAGES.findIndex((s) => s.id === stage) + 1}`}
+          subText={(() => {
             const base = stage === "adult"
-              ? "최고 레벨 달성! ★"
+              ? "최고 레벨 ★"
               : (() => {
                   const cur = PET_STAGES.find((s) => s.id === stage);
                   const next = PET_STAGES[(PET_STAGES.findIndex((s) => s.id === stage) + 1) || 0];
                   if (!cur || !next) return "";
                   const span = Math.max(1, next.expMin - cur.expMin);
                   const got = Math.max(0, Math.min(span, (pet.exp ?? 0) - cur.expMin));
-                  return `다음 단계까지 ${got}/${span} XP`;
+                  return `${got}/${span} XP`;
                 })();
             const boost = pet.expBoostRemaining ?? 0;
             if (boost > 0) {
-              return base
-                ? `${base} · ✨ 2배 ${boost}/5`
-                : `✨ 경험치 2배 남은 횟수 ${boost}/5`;
+              return base ? `${base}\n✨ 2배 ${boost}/5` : `✨ 2배 ${boost}/5`;
             }
             return base || null;
           })()}
@@ -1428,71 +1426,83 @@ function PixelIconView({ icon, size = 20, dim = false }: { icon: ItemIconRender;
   );
 }
 
-function HudBar({
+// Circular donut gauge — replaces the old horizontal HudBar so all 4
+// stats fit on a single row above the interaction grid (less scrolling
+// to see the pet react after a press). CSS transition on
+// strokeDashoffset = smooth fill animation when stats change.
+const GAUGE_RADIUS = 22;
+const GAUGE_STROKE = 5;
+const GAUGE_CIRC = 2 * Math.PI * GAUGE_RADIUS;
+const GAUGE_SIZE = 56;
+
+function CircleGauge({
   icon,
   label,
   value,
-  colorFrom,
-  colorTo,
-  subLabel,
+  color,
+  centerText,
+  subText,
 }: {
   icon: ItemIconRender;
   label: string;
   value: number;
-  colorFrom: string;
-  colorTo: string;
-  // Optional secondary line ("다음 단계까지 120/500"). Used by the EXP
-  // bar to surface concrete progress numbers under the gauge.
-  subLabel?: string | null;
+  color: string;
+  centerText: string;
+  subText?: string | null;
 }) {
   const v = Math.max(0, Math.min(100, value));
-  // Game HUDs flash red when a vital is critical.
   const danger = v < 30;
-  const fillFrom = danger ? "#FECACA" : colorFrom;
-  const fillTo = danger ? "#EF4444" : colorTo;
+  const stroke = danger ? "#EF4444" : color;
+  const offset = GAUGE_CIRC * (1 - v / 100);
   return (
-    <div className="flex items-center gap-2">
-      <span
-        className="flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-full"
-        style={{ background: "rgba(26,15,61,0.55)", border: "1px solid rgba(216,150,200,0.25)" }}
-      >
-        <PixelIconView icon={icon} size={20} />
-      </span>
-      <div className="flex-1">
-        <div className="flex items-center justify-between font-serif text-[10px] text-[#f4efff]">
-          <span>{label}</span>
-          <span style={{ color: danger ? "#FFB5A7" : undefined, fontWeight: danger ? 700 : undefined }}>
-            {Math.round(v)}%
+    <div className="flex flex-1 flex-col items-center gap-1">
+      <div className="relative" style={{ width: GAUGE_SIZE, height: GAUGE_SIZE }}>
+        <svg width={GAUGE_SIZE} height={GAUGE_SIZE} viewBox={`0 0 ${GAUGE_SIZE} ${GAUGE_SIZE}`}>
+          {/* Track */}
+          <circle
+            cx={GAUGE_SIZE / 2}
+            cy={GAUGE_SIZE / 2}
+            r={GAUGE_RADIUS}
+            fill="none"
+            stroke="rgba(216,150,200,0.20)"
+            strokeWidth={GAUGE_STROKE}
+          />
+          {/* Animated fill arc — starts at 12 o'clock via -90deg rotate. */}
+          <circle
+            cx={GAUGE_SIZE / 2}
+            cy={GAUGE_SIZE / 2}
+            r={GAUGE_RADIUS}
+            fill="none"
+            stroke={stroke}
+            strokeWidth={GAUGE_STROKE}
+            strokeLinecap="round"
+            strokeDasharray={GAUGE_CIRC}
+            strokeDashoffset={offset}
+            transform={`rotate(-90 ${GAUGE_SIZE / 2} ${GAUGE_SIZE / 2})`}
+            style={{ transition: "stroke-dashoffset 0.5s ease-out, stroke 0.3s ease" }}
+          />
+        </svg>
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <span
+            className="font-serif text-[12px] font-bold"
+            style={{ color: danger ? "#FFB5A7" : "#FFE5C4" }}
+          >
+            {centerText}
           </span>
         </div>
-        <div
-          className="relative mt-0.5 h-2.5 w-full overflow-hidden rounded-full"
-          style={{
-            background: "rgba(11,8,33,0.65)",
-            boxShadow: "inset 0 1px 3px rgba(0,0,0,0.5)",
-            border: "1px solid rgba(216,150,200,0.30)",
-          }}
-        >
-          <div
-            className="h-full rounded-full transition-[width] duration-500"
-            style={{
-              width: `${v}%`,
-              background: `linear-gradient(90deg, ${fillFrom}, ${fillTo})`,
-              boxShadow: `0 0 6px ${fillTo}66`,
-            }}
-          />
-          {/* Glossy highlight running across the top */}
-          {v > 1 ? (
-            <div
-              className="pointer-events-none absolute left-0 top-0 h-[3px] rounded-t-full transition-[width] duration-500"
-              style={{ width: `${v}%`, background: "rgba(255,255,255,0.55)" }}
-            />
-          ) : null}
-        </div>
-        {subLabel ? (
-          <div className="mt-0.5 font-serif text-[9px] text-[#9b8fb8]">{subLabel}</div>
-        ) : null}
       </div>
+      <div className="flex items-center gap-1">
+        <PixelIconView icon={icon} size={11} />
+        <span className="font-serif text-[10px] font-medium text-[#9b8fb8]">{label}</span>
+      </div>
+      {subText ? (
+        <span
+          className="text-center font-serif text-[9px] text-[#9b8fb8]"
+          style={{ whiteSpace: "pre-line" }}
+        >
+          {subText}
+        </span>
+      ) : null}
     </div>
   );
 }
