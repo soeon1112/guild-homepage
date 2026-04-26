@@ -6,12 +6,6 @@ import { collection, getDocs, Timestamp } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
 import { MemberCard, type MemberCardData } from "@/app/components/redesign/MemberCard";
 
-const MEMBER_SLOTS: string[] = [
-  "a", "1", "1-2",
-  "2", "3", "4", "6", "7", "8", "9",
-  "12", "13", "14", "14-1", "15", "16", "17", "17-1", "18", "19", "20", "21", "22",
-];
-
 // Nicknames that have a real users doc but should never appear in the
 // members list (test/staff accounts). Edit here to add or restore.
 const HIDDEN_NICKNAMES = new Set<string>(["테스트"]);
@@ -77,97 +71,68 @@ export default function MembersPage() {
         };
         type UserData = {
           lastAttendance?: Timestamp;
-          bodySelected?: boolean;
           password?: string;
         };
 
-        const memberById = new Map<string, MemberData>();
+        // Build a nickname-keyed lookup over members so we can find both
+        // legacy slot-keyed docs (id="14", nickname="언쏘") and any
+        // future nickname-keyed docs in one shot. If duplicates exist for
+        // the same nickname (shouldn't, after cleanup), prefer the doc
+        // whose profile data is more populated.
+        type MemberHit = { id: string; data: MemberData };
+        const memberByNickname = new Map<string, MemberHit>();
+        const score = (d: MemberData) =>
+          [d.statusMessage, d.mood, d.profileImage, d.bio]
+            .filter((v) => typeof v === "string" && v.trim().length > 0).length;
         membersSnap.forEach((d) => {
-          memberById.set(d.id, d.data() as MemberData);
+          const data = d.data() as MemberData;
+          const nick = (data.nickname ?? "").trim();
+          if (!nick) return;
+          const existing = memberByNickname.get(nick);
+          if (!existing || score(data) > score(existing.data)) {
+            memberByNickname.set(nick, { id: d.id, data });
+          }
         });
 
-        const userByNickname = new Map<string, UserData>();
+        // Drive the list off users (every real signup), and join with
+        // members by nickname. Having a members doc = pressed "프로필
+        // 등록" / claim button at some point → 빛나는 별. No members
+        // doc = 잠든 별. The legacy `members/{slot_id}` schema is dead
+        // — there's no MEMBER_SLOTS list anymore; we just look the doc
+        // up by its nickname field.
+        const cards: MemberCardData[] = [];
         usersSnap.forEach((u) => {
-          userByNickname.set(u.id, u.data() as UserData);
-        });
-
-        // Profile is "filled" — i.e. user belongs in 빛나는 별들 — once
-        // any actual profile content has been written. Picking an avatar
-        // body alone (`bodySelected`) is intentionally NOT enough: a fresh
-        // signup who only chose a body silhouette but never wrote a bio /
-        // status / mood should stay in 잠든 별들 until they fill the
-        // profile itself.
-        const isProfileFilled = (
-          data: MemberData,
-          _user: UserData | undefined,
-        ) =>
-          !!(
-            data.statusMessage?.trim() ||
-            data.profileImage ||
-            data.mood ||
-            data.bio?.trim()
-          );
-
-        const slotIds = new Set(MEMBER_SLOTS);
-
-        // Only render slot cards that have a real member behind them.
-        // Empty slots (no doc, or doc with blank nickname) used to render
-        // as a "미등록된 새벽" placeholder card — we drop those entirely.
-        const slotList: MemberCardData[] = MEMBER_SLOTS.flatMap((id) => {
-          const data = memberById.get(id);
-          if (!data) return [];
-          const nickname = (data.nickname ?? "").trim();
-          if (!nickname) return [];
-          if (HIDDEN_NICKNAMES.has(nickname)) return [];
-          const user = userByNickname.get(nickname);
-          const last = user?.lastAttendance;
-          const lastSeenHours = last
-            ? (now - last.toMillis()) / (1000 * 60 * 60)
-            : undefined;
-          return [
-            {
-              id,
-              nickname,
-              bio: data.bio || data.statusMessage || "",
-              profileImage: data.profileImage || "",
-              registered: isProfileFilled(data, user),
-              lastSeenHours,
-            },
-          ];
-        });
-
-        // Members not on the fixed slot list (= signed up via the new
-        // auto-registration in AuthProvider). Sorted into the same two
-        // sections by the same isProfileFilled rule. Skip docs without a
-        // real nickname or without a matching users doc — those are
-        // leftover/scratch member docs (e.g. "기타" placeholders) that
-        // shouldn't appear in the list.
-        const extras: MemberCardData[] = [];
-        memberById.forEach((data, id) => {
-          if (slotIds.has(id)) return;
-          const nickname = (data.nickname ?? "").trim();
-          if (!nickname) return;
+          const userData = u.data() as UserData;
+          if (typeof userData.password !== "string") return; // junk doc
+          const nickname = u.id;
           if (HIDDEN_NICKNAMES.has(nickname)) return;
-          const user = userByNickname.get(nickname);
-          // Require a real signup (= users doc with password). Filters
-          // out non-signup junk docs like "기타" (taggedPhotoCount-only
-          // placeholder) that happen to share a name with a member doc.
-          if (!user || typeof user.password !== "string") return;
-          const last = user?.lastAttendance;
+          const hit = memberByNickname.get(nickname);
+          const last = userData.lastAttendance;
           const lastSeenHours = last
             ? (now - last.toMillis()) / (1000 * 60 * 60)
             : undefined;
-          extras.push({
-            id,
-            nickname,
-            bio: data.bio || data.statusMessage || "",
-            profileImage: data.profileImage || "",
-            registered: isProfileFilled(data, user),
-            lastSeenHours,
-          });
+          if (hit) {
+            cards.push({
+              id: hit.id, // preserve legacy slot id for routing
+              nickname,
+              bio: hit.data.bio || hit.data.statusMessage || "",
+              profileImage: hit.data.profileImage || "",
+              registered: true,
+              lastSeenHours,
+            });
+          } else {
+            cards.push({
+              id: nickname,
+              nickname,
+              bio: "",
+              profileImage: "",
+              registered: false,
+              lastSeenHours,
+            });
+          }
         });
 
-        setMembers([...slotList, ...extras]);
+        setMembers(cards);
         setLoaded(true);
       } catch (e) {
         console.error(e);
