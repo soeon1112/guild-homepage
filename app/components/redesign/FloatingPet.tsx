@@ -546,26 +546,16 @@ export default function FloatingPet() {
         style={{ pointerEvents: open ? "none" : "auto" }}
       >
         <span
-          className="pointer-events-none absolute inset-0 rounded-full"
-          style={{
-            background: pet
-              ? "radial-gradient(circle, rgba(216,150,200,0.45) 0%, transparent 70%)"
-              : "radial-gradient(circle, rgba(180,180,180,0.35) 0%, transparent 70%)",
-          }}
-        />
-        <span
           className="relative flex h-12 w-12 items-center justify-center rounded-full transition-transform group-hover:scale-105"
           style={{
-            // 보라 우주 톤 — 별빛 하이라이트 → 성운 보라 → 딥 네뷸라.
-            // 채팅 아이콘(스타더스트 → 피치 → 성운 핑크)과 같은 우주
-            // 팔레트 안에서 확실히 구분됨.
-            background: pet
-              ? "radial-gradient(circle at 30% 30%, #FFE5C4 0%, #6b4ba8 55%, #3d2e6b 100%)"
-              : "radial-gradient(circle at 30% 30%, #E8E5DE 0%, rgba(216,150,200,0.18) 60%, #8E8B85 100%)",
-            boxShadow: pet
-              ? "0 8px 20px rgba(107,75,168,0.45), 0 0 24px rgba(216,150,200,0.35), inset 0 1px 2px rgba(255,229,196,0.25)"
-              : "0 4px 12px rgba(0,0,0,0.2), inset 0 1px 2px rgba(255,255,255,0.3)",
-            filter: pet ? "none" : "grayscale(0.6)",
+            // 납작한 단색 보라 + 펫 픽셀 얼굴. 라디얼 그라디언트/광택/
+            // 베벨/헤일로 다 빼고 깔끔한 평면 디자인. 펫 없을 때는
+            // 채도 낮춘 회색 비활성 톤.
+            background: pet ? "#6b4ba8" : "rgba(61,46,107,0.55)",
+            border: pet
+              ? "1px solid rgba(216,150,200,0.45)"
+              : "1px solid rgba(155,143,184,0.40)",
+            opacity: pet ? 1 : 0.85,
           }}
         >
           <PetButtonIcon size={22} />
