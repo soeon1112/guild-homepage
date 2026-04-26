@@ -144,10 +144,11 @@ function PetRoomInner({
   // ── State machine ──
   const [mode, setMode] = useState<Mode>("idle");
   const [posPct, setPosPct] = useState(0); // -1..1 within walking range
-  // Pet y depth in [0, 1] (0 = back wall, 1 = front of floor). Defaults
-  // to 0.65 (front-mid). Picked alongside posPct when walking so pet
-  // can naturally pass behind/in-front of furniture.
-  const [posY, setPosY] = useState(0.65);
+  // Pet y depth in [0, 1] (0 = back wall, 1 = front of floor).
+  // Initial 0.55 (mid floor) — raised from 0.65 to keep clear of the
+  // park scene's front fence. Picked alongside posPct when walking
+  // so the pet naturally passes behind/in-front of furniture.
+  const [posY, setPosY] = useState(0.55);
   const [facing, setFacing] = useState<"left" | "right">("right");
   const [blink, setBlink] = useState(false);
   const [activeAction, setActiveAction] = useState<SpecialAction>("none");
@@ -267,9 +268,9 @@ function PetRoomInner({
             const newSign = -lastSign;
             const magnitude = 0.3 + Math.random() * 0.55; // 0.3..0.85
             const next = newSign * magnitude;
-            // Also pick a new depth y in [0.45, 0.85] so the pet
-            // wanders forward/backward and the z-sort animates.
-            const nextY = 0.45 + Math.random() * 0.4;
+            // Pick depth y in [0.40, 0.70] — keeps the pet above the
+            // front fence in the park scene while still varying depth.
+            const nextY = 0.40 + Math.random() * 0.30;
             const distance = Math.abs(next - posPct);
             const dur = Math.max(behavior.walkDurMin, distance * behavior.walkDurPerUnit);
             walkDurRef.current = dur;
@@ -696,14 +697,15 @@ function PetRoomInner({
                 />
               ))}
 
-              {/* Bathtub back rim — visible behind pet's body */}
+              {/* Bathtub back rim — visible behind pet's body
+                  (raised to match new pet position posY=0.80) */}
               <div
                 aria-hidden
                 style={{
                   position: "absolute",
                   left: "16%",
                   right: "16%",
-                  bottom: 38,
+                  bottom: 54,
                   height: 12,
                   borderRadius: "50%",
                   background: "linear-gradient(180deg, #FFFFFF 0%, #DCE7F0 100%)",
@@ -715,10 +717,10 @@ function PetRoomInner({
 
               {/* Foam bubbles on the back rim */}
               {[
-                { left: "22%", bottom: 40, w: 6 },
-                { left: "30%", bottom: 44, w: 5 },
-                { left: "70%", bottom: 42, w: 6 },
-                { left: "78%", bottom: 40, w: 5 },
+                { left: "22%", bottom: 56, w: 6 },
+                { left: "30%", bottom: 60, w: 5 },
+                { left: "70%", bottom: 58, w: 6 },
+                { left: "78%", bottom: 56, w: 5 },
               ].map((b, i) => (
                 <div
                   key={`foam-back-${i}`}
@@ -739,17 +741,17 @@ function PetRoomInner({
                 />
               ))}
 
-              {/* Bathtub front — must be ABOVE pet (pet zIndex ~921 with
-                  posY=0.92), so use 1500 to guarantee it covers the
-                  pet's lower body. */}
+              {/* Bathtub front — covers pet's lower body. Raised to
+                  bottom 18 (was 4) so it sits in front of pet at
+                  posY=0.80 (pet bottom ≈ 25). zIndex 1500 > pet 801. */}
               <div
                 aria-hidden
                 style={{
                   position: "absolute",
                   left: "16%",
                   right: "16%",
-                  bottom: 4,
-                  height: 38,
+                  bottom: 18,
+                  height: 40,
                   background: "linear-gradient(180deg, #FFFFFF 0%, #E0EEFA 35%, #B5C8D8 100%)",
                   border: "2px solid #8FA8BC",
                   borderTopLeftRadius: "8% 12%",
@@ -763,13 +765,13 @@ function PetRoomInner({
 
               {/* Foam on top of water (in front of pet's lower body) */}
               {[
-                { left: "20%", bottom: 34, w: 7 },
-                { left: "28%", bottom: 38, w: 8 },
-                { left: "38%", bottom: 36, w: 7 },
-                { left: "48%", bottom: 38, w: 6 },
-                { left: "58%", bottom: 36, w: 8 },
-                { left: "68%", bottom: 38, w: 7 },
-                { left: "76%", bottom: 34, w: 6 },
+                { left: "20%", bottom: 50, w: 7 },
+                { left: "28%", bottom: 54, w: 8 },
+                { left: "38%", bottom: 52, w: 7 },
+                { left: "48%", bottom: 54, w: 6 },
+                { left: "58%", bottom: 52, w: 8 },
+                { left: "68%", bottom: 54, w: 7 },
+                { left: "76%", bottom: 50, w: 6 },
               ].map((f, i) => (
                 <div
                   key={`foam-front-${i}`}

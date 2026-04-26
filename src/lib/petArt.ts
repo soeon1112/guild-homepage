@@ -1966,7 +1966,7 @@ export const SCENES: Record<SceneId, Scene> = {
     // shows water streams from the shower head.
     particle: "sparkle",
     petAnchor: 0,
-    petAnchorY: 0.92, // very front so pet sits inside the bathtub
+    petAnchorY: 0.80, // sits inside the bathtub, slightly raised
   },
   walk: {
     id: "walk",
