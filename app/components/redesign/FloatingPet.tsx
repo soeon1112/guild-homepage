@@ -10,7 +10,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   collection,
   doc,
@@ -39,11 +39,14 @@ import {
   ITEMS,
   loadPet,
   loadPetItems,
+  loadPlaygroundPets,
   PET_DYE_COLORS,
   PET_STAGES,
   PET_TYPES,
   applyDyeColor,
   projectStatus,
+  setInPlayground,
+  type PlaygroundPet,
   refreshDecaySnapshot,
   releasePet,
   renamePet,
@@ -651,7 +654,31 @@ export default function FloatingPet() {
                   onEquip={handleEquip}
                 />
               ) : tab === "playground" ? (
-                <PlaygroundPanel members={members} self={nickname!} />
+                <PlaygroundPanel
+                  myNickname={nickname!}
+                  myPetInPlayground={!!pet?.inPlayground}
+                  busy={busy}
+                  inventory={items.inventory}
+                  onEnter={async () => {
+                    if (!nickname) return;
+                    setBusy(true);
+                    try {
+                      await setInPlayground(nickname, true);
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                  onExit={async () => {
+                    if (!nickname) return;
+                    setBusy(true);
+                    try {
+                      await setInPlayground(nickname, false);
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                  onGiftTreat={handleGiftTreat}
+                />
               ) : tab === "visit" ? (
                 <VisitPanel
                   members={members}
@@ -1411,28 +1438,260 @@ function WardrobePanel({
   );
 }
 
-function PlaygroundPanel({ members, self }: { members: MemberInfo[]; self: string }) {
-  const others = members.filter((m) => m.nickname !== self);
+function PlaygroundPanel({
+  myNickname,
+  myPetInPlayground,
+  busy,
+  onEnter,
+  onExit,
+  onGiftTreat,
+  inventory,
+}: {
+  myNickname: string;
+  myPetInPlayground: boolean;
+  busy: boolean;
+  onEnter: () => void;
+  onExit: () => void;
+  onGiftTreat: (to: string, item: ItemId) => void;
+  inventory: PetItemsDoc["inventory"];
+}) {
+  const [pets, setPets] = useState<PlaygroundPet[] | null>(null);
+  const [count, setCount] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [selected, setSelected] = useState<PlaygroundPet | null>(null);
+
+  // Load pets — when entering, refresh; when on entry screen, also count.
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    loadPlaygroundPets()
+      .then((list) => {
+        if (cancelled) return;
+        setPets(list);
+        setCount(list.length);
+      })
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [myPetInPlayground]);
+
+  if (!myPetInPlayground) {
+    return (
+      <div className="flex flex-col gap-3">
+        <div className="rounded-xl p-4 text-center" style={{ background: "rgba(155,200,140,0.18)", border: "1px solid #BDD8B0" }}>
+          <div className="font-serif text-[14px] font-medium text-[#3A2818]">펫 놀이터</div>
+          <div className="mt-2 font-serif text-[11px] text-[#7A5A3C]">
+            길드원의 펫들과 한 공간에서 자유롭게 놀 수 있어요.
+            <br />다른 펫에게 다가가서 인사하거나 간식을 선물해보세요.
+          </div>
+          <div className="mt-3 inline-block rounded-full bg-white/70 px-3 py-1 font-serif text-[11px] text-[#5B3A1F]">
+            {loading ? "확인 중..." : `현재 ${count ?? 0}마리가 놀고 있어요`}
+          </div>
+        </div>
+        <button
+          onClick={onEnter}
+          disabled={busy}
+          className="rounded-xl py-3 font-serif text-[13px] font-medium text-white disabled:opacity-50"
+          style={{ background: "linear-gradient(180deg, #7AC270, #5DAB5A)", boxShadow: "0 2px 0 rgba(46,107,38,0.35)" }}
+        >
+          🌿 입장하기
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-2">
-      <div className="font-serif text-[11px] text-[#7A5A3C]">
-        길드원들의 펫이 한 자리에 모였어요!
-      </div>
-      {others.length === 0 ? (
-        <Empty>아직 다른 펫이 없네요.</Empty>
-      ) : (
-        <div className="grid grid-cols-3 gap-2">
-          {others.map((m) => (
-            <div key={m.nickname} className="flex flex-col items-center rounded-lg bg-white/70 p-2">
-              <PetSvg type={m.petType!} stage={m.petStage!} size={56} />
-              <div className="mt-1 truncate font-serif text-[10px] text-[#3A2818]" style={{ maxWidth: 80 }}>
-                {m.petName}
-              </div>
-              <div className="font-serif text-[9px] text-[#7A5A3C]">@{m.nickname}</div>
-            </div>
-          ))}
+      <div className="flex items-center justify-between">
+        <div className="font-serif text-[11px] text-[#5B3A1F]">
+          현재 {pets?.length ?? 0}마리가 놀고 있어요
         </div>
-      )}
+        <button
+          onClick={onExit}
+          disabled={busy}
+          className="rounded-full px-3 py-1 font-serif text-[11px] disabled:opacity-50"
+          style={{ background: "rgba(255,255,255,0.85)", border: "1px solid #C68748", color: "#5B3A1F" }}
+        >
+          나가기
+        </button>
+      </div>
+      <div
+        className="relative -mx-4 overflow-hidden"
+        style={{
+          height: 280,
+          background: "linear-gradient(180deg, #BFE6FA 0%, #BFE6FA 35%, #76C172 35%, #5DAB5A 100%)",
+          borderTop: "1px solid #E0CFB8",
+          borderBottom: "1px solid #E0CFB8",
+        }}
+      >
+        {/* Grass blades */}
+        <svg viewBox="0 0 320 280" width="100%" height="100%" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+          {Array.from({ length: 30 }).map((_, i) => (
+            <rect key={`g-${i}`} x={(i * 11) + (i % 2 ? 2 : 0)} y={120 + (i % 6) * 22} width={2} height={5} fill="#4A8E47" />
+          ))}
+        </svg>
+
+        {(pets ?? []).map((p) => (
+          <WanderingPet
+            key={p.nickname}
+            pet={p}
+            isMine={p.nickname === myNickname}
+            onTap={() => setSelected(p)}
+          />
+        ))}
+
+        {selected ? (
+          <div
+            onClick={() => setSelected(null)}
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "rgba(0,0,0,0.35)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 9000,
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="rounded-xl px-3 py-3"
+              style={{ background: "#FFFAF0", border: "1px solid #E0CFB8", maxWidth: 220 }}
+            >
+              <div className="flex flex-col items-center gap-1">
+                <PetSvg
+                  type={selected.petType}
+                  stage={selected.petStage}
+                  size={64}
+                  bodyColor={selected.petBodyColor}
+                  glow={selected.glow}
+                  hue={selected.hue}
+                  accessories={selected.accessories}
+                />
+                <div className="font-serif text-[13px] font-medium text-[#3A2818]">{selected.petName}</div>
+                <div className="font-serif text-[10px] text-[#7A5A3C]">@{selected.nickname}</div>
+              </div>
+              {selected.nickname !== myNickname ? (
+                <div className="mt-2 flex flex-col gap-1">
+                  <div className="text-center font-serif text-[10px] text-[#5B3A1F]">간식 선물하기</div>
+                  <div className="flex justify-center gap-1.5">
+                    {(["treat", "cake"] as ItemId[]).map((id) => {
+                      const c = inventory?.[id] ?? 0;
+                      return (
+                        <button
+                          key={id}
+                          onClick={() => {
+                            onGiftTreat(selected.nickname, id);
+                            setSelected(null);
+                          }}
+                          disabled={c < 1 || busy}
+                          className="flex items-center gap-1 rounded-lg px-2 py-1 font-serif text-[10px] disabled:opacity-40"
+                          style={{ background: "rgba(255,255,255,0.7)", border: "1px solid #E0CFB8" }}
+                        >
+                          <ItemIconSvg id={id} size={18} />
+                          <span className="text-[#5B3A1F]">×{c}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-2 text-center font-serif text-[10px] text-[#7A5A3C]">내 펫</div>
+              )}
+              <button
+                onClick={() => setSelected(null)}
+                className="mt-2 w-full rounded-md py-1 font-serif text-[10px] text-[#5B3A1F]"
+                style={{ border: "1px solid #E0CFB8" }}
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </div>
+      <div className="font-serif text-[10px] text-[#7A5A3C]">펫을 탭해서 인사하거나 간식을 선물하세요.</div>
+    </div>
+  );
+}
+
+function WanderingPet({
+  pet,
+  isMine,
+  onTap,
+}: {
+  pet: PlaygroundPet;
+  isMine: boolean;
+  onTap: () => void;
+}) {
+  // Random per-pet starting position + speed/cadence so they don't
+  // all move in lockstep. Bounded inside the grass band [40%..90% top].
+  const initialRef = useRef({
+    x: 8 + Math.random() * 84,
+    y: 45 + Math.random() * 45,
+    period: 2800 + Math.random() * 3200,
+  });
+  const [pos, setPos] = useState({ x: initialRef.current.x, y: initialRef.current.y });
+
+  useEffect(() => {
+    let cancelled = false;
+    const tick = () => {
+      if (cancelled) return;
+      setPos((cur) => {
+        const dx = (Math.random() - 0.5) * 35;
+        const dy = (Math.random() - 0.5) * 25;
+        return {
+          x: Math.max(5, Math.min(95, cur.x + dx)),
+          y: Math.max(42, Math.min(92, cur.y + dy)),
+        };
+      });
+      setTimeout(tick, initialRef.current.period);
+    };
+    const t = setTimeout(tick, 800 + Math.random() * 1500);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, []);
+
+  return (
+    <div
+      onClick={onTap}
+      style={{
+        position: "absolute",
+        left: `${pos.x}%`,
+        top: `${pos.y}%`,
+        transform: "translate(-50%, -100%)",
+        transition: `left ${initialRef.current.period - 400}ms ease-in-out, top ${initialRef.current.period - 400}ms ease-in-out`,
+        cursor: "pointer",
+        zIndex: Math.round(pos.y * 10),
+      }}
+    >
+      <PetSvg
+        type={pet.petType}
+        stage={pet.petStage}
+        size={48}
+        bodyColor={pet.petBodyColor}
+        glow={pet.glow}
+        hue={pet.hue}
+        accessories={pet.accessories}
+      />
+      <div
+        className="mx-auto rounded-full px-1.5 py-0.5 font-serif text-[9px]"
+        style={{
+          background: isMine ? "rgba(244,192,122,0.95)" : "rgba(255,255,255,0.92)",
+          border: "1px solid #C68748",
+          color: "#5B3A1F",
+          maxWidth: 70,
+          marginTop: -4,
+          textAlign: "center",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+      >
+        {isMine ? "나" : pet.petName}
+      </div>
     </div>
   );
 }

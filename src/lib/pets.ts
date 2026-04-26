@@ -14,6 +14,7 @@ import {
   deleteDoc,
   doc,
   getDoc,
+  getDocs,
   increment,
   serverTimestamp,
   setDoc,
@@ -331,6 +332,10 @@ export type PetDoc = {
   // pet's primary palette color while leaving all other detail
   // pixels (eyes, nose, mouth, cheek, etc.) untouched.
   petBodyColor?: string | null;
+  // Whether this pet is currently visiting the shared playground.
+  // Other guild members' playground views render only pets with
+  // inPlayground === true. Toggled by the entry/exit buttons.
+  inPlayground?: boolean;
 };
 
 export type PetItemsDoc = {
@@ -613,6 +618,61 @@ export async function setFurniturePosition(
 
 export async function applyDye(nickname: string, hue: number): Promise<void> {
   await setDoc(petDocRef(nickname), { hue }, { merge: true });
+}
+
+// Set the playground presence flag.
+export async function setInPlayground(
+  nickname: string,
+  value: boolean,
+): Promise<void> {
+  await setDoc(petDocRef(nickname), { inPlayground: value }, { merge: true });
+}
+
+// Snapshot of every pet currently in the playground (inPlayground=true).
+// Returns lightweight info needed by the playground view.
+export type PlaygroundPet = {
+  nickname: string;
+  petName: string;
+  petType: PetType;
+  petStage: PetStage;
+  exp: number;
+  happiness: number;
+  petBodyColor?: string | null;
+  glow?: boolean;
+  hue?: number;
+  accessories: ItemId[];
+};
+
+export async function loadPlaygroundPets(): Promise<PlaygroundPet[]> {
+  const snap = await getDocs(collection(db, "users"));
+  const out: PlaygroundPet[] = [];
+  const now = Date.now();
+  for (const u of snap.docs) {
+    const nick = u.id;
+    const petSnap = await getDoc(doc(db, "users", nick, "pet", "current"));
+    if (!petSnap.exists()) continue;
+    const p = petSnap.data() as PetDoc;
+    if (!p.inPlayground) continue;
+    out.push({
+      nickname: nick,
+      petName: p.name,
+      petType: p.type,
+      petStage: computeStage(p.createdAt?.toMillis?.() ?? now, p.exp ?? 0, now),
+      exp: p.exp ?? 0,
+      happiness: p.happiness ?? 0,
+      petBodyColor: p.petBodyColor ?? null,
+      glow: !!p.glow,
+      hue: p.hue ?? 0,
+      accessories: p.accessories ?? [],
+    });
+  }
+  return out;
+}
+
+// Count of pets currently in the playground (for the entry screen).
+export async function countPlaygroundPets(): Promise<number> {
+  const list = await loadPlaygroundPets();
+  return list.length;
 }
 
 // Body-only dye. Pass `null` to reset to the pet type's natural color.
