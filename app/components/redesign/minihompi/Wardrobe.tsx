@@ -13,12 +13,24 @@ import {
   getFashionItem,
   parseOwned,
 } from "@/src/lib/fashion";
-import { type AvatarData, isBodyType } from "@/app/components/Avatar";
+import {
+  BODY_TYPES,
+  type AvatarData,
+  isBodyType,
+} from "@/app/components/Avatar";
 
 // Renders the user's owned fashion (collection-based) — equipped items
 // at the top, then categorized sections of all owned items. Click to
 // toggle equip/unequip; non-fashion parts (eyes/mouth/cheeks/hair) are
 // replacement-based and not shown here.
+//
+// Items bought for OTHER body types stay visible (clothes are a collection
+// the user keeps across reincarnations) but render disabled with a body-type
+// label so it's clear they can't be worn until the user changes back.
+
+const BODY_LABEL: Record<FashionSubTab, string> = Object.fromEntries(
+  BODY_TYPES.map((b) => [b.value, b.label]),
+) as Record<FashionSubTab, string>;
 
 export default function Wardrobe({
   nickname,
@@ -31,10 +43,11 @@ export default function Wardrobe({
   if (!isBodyType(rawBody)) return null;
   const body: FashionSubTab = rawBody;
 
+  // Show ALL owned items regardless of body — clothes are a collection,
+  // not gated by current silhouette. Wearability is decided per-card below.
   const owned: OwnedEntry[] = (data.ownedFashion ?? [])
     .map(parseOwned)
-    .filter((e): e is OwnedEntry => e !== null)
-    .filter((e) => e.body === body);
+    .filter((e): e is OwnedEntry => e !== null);
 
   const equippedByCat: Record<FashionCategoryKey, string> = {
     tops: data.avatarTop ?? "",
@@ -125,46 +138,59 @@ export default function Wardrobe({
               ) : (
                 <div className="shop-grid">
                   {items.map((entry) => {
+                    // Items bought for the user's current body are wearable;
+                    // anything else stays in the collection but is disabled.
+                    const wearable = entry.body === body;
                     const meta = getFashionItem(
-                      body,
+                      entry.body,
                       entry.category,
                       entry.id,
                     );
                     const name = meta?.name ?? entry.id;
                     const equipped =
-                      equippedByCat[entry.category] === entry.id;
+                      wearable && equippedByCat[entry.category] === entry.id;
                     const cardClass = [
                       "shop-card",
-                      "shop-card-clickable",
+                      wearable ? "shop-card-clickable" : "shop-card-locked",
                       equipped ? "shop-card-equipped" : "",
                     ]
                       .filter(Boolean)
                       .join(" ");
+                    const previewSrc = partUrl(
+                      entry.body,
+                      entry.category,
+                      fashionPreviewFilename(
+                        entry.body,
+                        entry.category,
+                        entry.id,
+                      ),
+                    );
                     return (
                       <div
-                        key={entry.id}
+                        key={`${entry.body}/${entry.category}/${entry.id}`}
                         className={cardClass}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => toggle(entry.category, entry.id)}
-                        onKeyDown={(ev) => {
-                          if (ev.key === "Enter" || ev.key === " ") {
-                            ev.preventDefault();
-                            toggle(entry.category, entry.id);
-                          }
-                        }}
+                        role={wearable ? "button" : undefined}
+                        tabIndex={wearable ? 0 : -1}
+                        aria-disabled={!wearable}
+                        onClick={
+                          wearable
+                            ? () => toggle(entry.category, entry.id)
+                            : undefined
+                        }
+                        onKeyDown={
+                          wearable
+                            ? (ev) => {
+                                if (ev.key === "Enter" || ev.key === " ") {
+                                  ev.preventDefault();
+                                  toggle(entry.category, entry.id);
+                                }
+                              }
+                            : undefined
+                        }
                       >
                         <div className="shop-fashion-preview-wrap">
                           <img
-                            src={partUrl(
-                              body,
-                              entry.category,
-                              fashionPreviewFilename(
-                                body,
-                                entry.category,
-                                entry.id,
-                              ),
-                            )}
+                            src={previewSrc}
                             alt=""
                             className="shop-fashion-preview"
                             draggable={false}
@@ -172,7 +198,11 @@ export default function Wardrobe({
                         </div>
                         <div className="shop-card-word">{name}</div>
                         <div className="shop-card-status">
-                          {equipped ? "착용 중" : ""}
+                          {!wearable
+                            ? `${BODY_LABEL[entry.body]} 전용`
+                            : equipped
+                              ? "착용 중"
+                              : ""}
                         </div>
                       </div>
                     );

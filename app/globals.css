@@ -5462,6 +5462,21 @@ select {
   box-shadow: 0 0 0 1px #4a90d9 inset;
 }
 
+/* Wardrobe items bought for a different body — kept visible (clothes are
+   a collection) but unequippable until the user reincarnates back. */
+.shop-card-locked {
+  cursor: not-allowed;
+  opacity: 0.55;
+  outline: none;
+}
+.shop-card-locked .shop-fashion-preview {
+  filter: grayscale(0.7);
+}
+.shop-card-locked .shop-card-status {
+  color: rgba(200, 168, 233, 0.7);
+  font-size: 0.7rem;
+}
+
 .shop-card-taken {
   opacity: 0.6;
 }
