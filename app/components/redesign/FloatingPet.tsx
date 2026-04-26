@@ -549,18 +549,21 @@ export default function FloatingPet() {
           className="pointer-events-none absolute inset-0 rounded-full"
           style={{
             background: pet
-              ? "radial-gradient(circle, rgba(180,220,170,0.55) 0%, transparent 70%)"
+              ? "radial-gradient(circle, rgba(216,150,200,0.45) 0%, transparent 70%)"
               : "radial-gradient(circle, rgba(180,180,180,0.35) 0%, transparent 70%)",
           }}
         />
         <span
           className="relative flex h-12 w-12 items-center justify-center rounded-full transition-transform group-hover:scale-105"
           style={{
+            // 보라 우주 톤 — 별빛 하이라이트 → 성운 보라 → 딥 네뷸라.
+            // 채팅 아이콘(스타더스트 → 피치 → 성운 핑크)과 같은 우주
+            // 팔레트 안에서 확실히 구분됨.
             background: pet
-              ? "radial-gradient(circle at 30% 30%, #FFF1D4 0%, #F4C07A 60%, #d896c8 100%)"
+              ? "radial-gradient(circle at 30% 30%, #FFE5C4 0%, #6b4ba8 55%, #3d2e6b 100%)"
               : "radial-gradient(circle at 30% 30%, #E8E5DE 0%, rgba(216,150,200,0.18) 60%, #8E8B85 100%)",
             boxShadow: pet
-              ? "0 8px 20px rgba(196,140,80,0.45), inset 0 1px 2px rgba(26,15,61,0.30)"
+              ? "0 8px 20px rgba(107,75,168,0.45), 0 0 24px rgba(216,150,200,0.35), inset 0 1px 2px rgba(255,229,196,0.25)"
               : "0 4px 12px rgba(0,0,0,0.2), inset 0 1px 2px rgba(255,255,255,0.3)",
             filter: pet ? "none" : "grayscale(0.6)",
           }}
