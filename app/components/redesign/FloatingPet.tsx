@@ -791,9 +791,6 @@ export default function FloatingPet() {
                   members={members}
                   visiting={visiting}
                   setVisiting={setVisiting}
-                  inventory={items.inventory}
-                  onGiftTreat={handleGiftTreat}
-                  busy={busy}
                   now={now}
                 />
               ) : (
@@ -2560,53 +2557,124 @@ function VisitPanel({
   members,
   visiting,
   setVisiting,
-  inventory,
-  onGiftTreat,
-  busy,
   now,
 }: {
   members: MemberInfo[];
   visiting: MemberInfo | null;
   setVisiting: (m: MemberInfo | null) => void;
-  inventory: PetItemsDoc["inventory"];
-  onGiftTreat: (to: string, item: ItemId) => void;
-  busy: boolean;
   now: number;
 }) {
+  // Lazy-load the visited pet's full doc so we get furniture, accessories,
+  // background, glow, body color — same fields the owner sees in their
+  // own room. The members list only carries summary fields.
+  const [visitPet, setVisitPet] = useState<PetDoc | null>(null);
+  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    if (!visiting) {
+      setVisitPet(null);
+      return;
+    }
+    let alive = true;
+    setLoading(true);
+    loadPet(visiting.nickname)
+      .then((p) => {
+        if (!alive) return;
+        setVisitPet(p);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setVisitPet(null);
+        setLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [visiting]);
+
   if (visiting) {
+    const visitedStage = visitPet
+      ? computeStage(
+          visitPet.createdAt?.toMillis?.() ?? now,
+          visitPet.exp ?? 0,
+          now,
+        )
+      : (visiting.petStage ?? "egg");
+    const projected = visitPet
+      ? projectStatus(
+          { hunger: visitPet.hunger, happiness: visitPet.happiness, clean: visitPet.clean },
+          visitPet.lastDecayAt?.toMillis?.() ?? now,
+          now,
+        )
+      : null;
+    const visitedMood = projected ? computeMood(projected) : "happy";
+
     return (
       <div className="flex flex-col gap-3">
-        <button
-          onClick={() => setVisiting(null)}
-          className="self-start font-serif text-[10px] text-[#9b8fb8] underline"
-        >
-          ← 목록으로
-        </button>
-        <div className="flex flex-col items-center rounded-xl bg-abyss-deep/45 p-3">
-          <PetSvg type={visiting.petType!} stage={visiting.petStage!} size={100} />
-          <div className="mt-2 font-serif text-[13px] text-[#f4efff]">{visiting.petName}</div>
-          <div className="font-serif text-[10px] text-[#9b8fb8]">@{visiting.nickname}</div>
+        <div className="flex items-center justify-between gap-2">
+          <span
+            className="truncate font-serif text-[13px] font-bold text-stardust"
+            style={{ flex: 1, minWidth: 0 }}
+          >
+            {visiting.nickname}의 펫 방
+          </span>
+          <button
+            type="button"
+            onClick={() => setVisiting(null)}
+            className="shrink-0 rounded-lg px-2.5 py-1 font-serif text-[10px] font-semibold text-[#f4efff]"
+            style={{
+              background: "rgba(26,15,61,0.45)",
+              border: "1px solid rgba(216,150,200,0.30)",
+            }}
+          >
+            ← 돌아가기
+          </button>
         </div>
-        <div className="font-serif text-[11px] text-[#f4efff]">간식 선물하기</div>
-        <div className="flex flex-wrap gap-2">
-          {(["treat", "cake"] as ItemId[]).map((id) => {
-            const count = inventory?.[id] ?? 0;
-            return (
-              <button
-                key={id}
-                onClick={() => onGiftTreat(visiting.nickname, id)}
-                disabled={count < 1 || busy}
-                className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 font-serif text-[10px] disabled:opacity-40"
-                style={{ background: "rgba(26,15,61,0.45)", border: "1px solid rgba(216,150,200,0.25)" }}
+        {loading || !visitPet ? (
+          <div className="py-16 text-center font-serif text-[11px] text-[#9b8fb8]">
+            방을 불러오는 중…
+          </div>
+        ) : (
+          <div className="relative">
+            <PetRoom
+              type={visitPet.type}
+              stage={visitedStage}
+              accessories={visitPet.accessories ?? []}
+              furniture={visitPet.furniture ?? []}
+              furniturePositions={visitPet.furniturePositions}
+              background={visitPet.background ?? "none"}
+              mood={visitedMood}
+              glow={!!visitPet.glow}
+              hue={visitPet.hue ?? 0}
+              bodyColor={visitPet.petBodyColor ?? null}
+              reaction={null}
+              height={280}
+              activeScene={null}
+              onSceneEnd={() => {}}
+              placementMode={false}
+              selectedFurniture={null}
+              onSelectFurniture={() => {}}
+              onMoveFurniture={() => {}}
+            />
+            <div
+              className="pointer-events-none absolute right-2 top-2 flex items-center gap-1 rounded-full px-2 py-1 backdrop-blur-sm"
+              style={{
+                background: "rgba(11,8,33,0.7)",
+                border: "1px solid rgba(216,150,200,0.30)",
+              }}
+            >
+              <span className="font-serif text-[11px] font-bold text-stardust">
+                {visitPet.name}
+              </span>
+              <span
+                className="rounded-md px-1 py-[1px] font-serif text-[9px] font-bold text-stardust"
+                style={{ background: "rgba(216,150,200,0.30)" }}
               >
-                <ItemIconSvg id={id} size={20} />
-                <span className="text-[#f4efff]">
-                  {findItem(id)?.name} ×{count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+                {PET_STAGES.find((s) => s.id === visitedStage)?.label ?? ""}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
