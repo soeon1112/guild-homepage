@@ -224,12 +224,19 @@ export default function FloatingPet() {
   // Auto-exit the playground whenever the user navigates away — closes
   // the pet panel, switches to a non-playground tab, or signs out.
   // Single source of truth so we don't need a "나가기" button anymore.
+  //
+  // Defensive: deps exclude `pet?.inPlayground` — we only react to
+  // navigation events (open/tab/nickname), not to the playground state
+  // itself flipping. Without this guard, the entry-flip from false → true
+  // re-fires the effect and (under transient state mismatches) could
+  // tear down the playground right after the user enters.
   useEffect(() => {
     if (!nickname) return;
-    if (!pet?.inPlayground) return;
     if (open && tab === "playground") return;
+    if (!pet?.inPlayground) return;
     setInPlayground(nickname, false).catch(() => {});
-  }, [open, tab, nickname, pet?.inPlayground]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, tab, nickname]);
 
   // Live ticker for status decay + cooldown countdowns.
   useEffect(() => {
@@ -1994,7 +2001,7 @@ function PlaygroundPanel({
           triggerAnimation(r.kind, r.from, r.to);
           refreshLog();
         } else if (r.status === "rejected") {
-          showPgToast("다음에 놀아달래요 ㅠ");
+          showPgToast("지금은 안 된대요 ㅠ");
         } else if (r.status === "expired") {
           showPgToast("응답이 없어요...");
         }
