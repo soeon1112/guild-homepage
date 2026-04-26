@@ -40,10 +40,22 @@ import {
   ITEMS,
   loadPet,
   loadPetItems,
+  expirePlaygroundRequest,
+  loadPlaygroundLogToday,
   loadPlaygroundPets,
+  PLAYGROUND_REQUEST_TIMEOUT_MS,
+  playgroundTreat,
+  respondPlaygroundRequest,
   sendPlaygroundChat,
+  sendPlaygroundRequest,
+  subscribeIncomingPlaygroundRequests,
+  subscribeOutgoingPlaygroundRequests,
   subscribePlaygroundChat,
   type PlaygroundChatMessage,
+  type PlaygroundInteractionKind,
+  type PlaygroundLog,
+  type PlaygroundRequest,
+  type PlaygroundRequestKind,
   PET_DYE_COLORS,
   PET_STAGES,
   PET_TYPES,
@@ -1799,6 +1811,186 @@ function PlaygroundPanel({
   const [chatDraft, setChatDraft] = useState("");
   const [chatBusy, setChatBusy] = useState(false);
 
+  // ── Playground social interactions (greet / play / treat) ──
+  // Today's playground log → drives "오늘 완료" badges + 30★ daily cap.
+  const [pgLog, setPgLog] = useState<PlaygroundLog | null>(null);
+  type ActiveInteraction = {
+    id: string;
+    kind: PlaygroundInteractionKind;
+    from: string;
+    to: string;
+    reward: number;
+    durationMs: number;
+  };
+  const [activeInteraction, setActiveInteraction] = useState<ActiveInteraction | null>(null);
+  const [interactBusy, setInteractBusy] = useState(false);
+  const [pgToast, setPgToast] = useState<string | null>(null);
+  const [incomingReq, setIncomingReq] = useState<PlaygroundRequest | null>(null);
+  const seenOutgoingRef = useRef<Set<string>>(new Set());
+
+  const refreshLog = useCallback(async () => {
+    if (!myNickname) return;
+    const log = await loadPlaygroundLogToday(myNickname);
+    setPgLog(log);
+  }, [myNickname]);
+  useEffect(() => {
+    if (myPetInPlayground) refreshLog();
+  }, [myPetInPlayground, refreshLog]);
+
+  const alreadyToday = useCallback(
+    (kind: PlaygroundInteractionKind, otherNick: string) => {
+      if (!pgLog) return false;
+      const fieldByKind = {
+        greet: "greetedWith",
+        play: "playedWith",
+        treat: "treatedWith",
+      } as const;
+      return !!(pgLog[fieldByKind[kind]] as Record<string, unknown>)[otherNick];
+    },
+    [pgLog],
+  );
+
+  const showPgToast = useCallback((msg: string) => {
+    setPgToast(msg);
+    setTimeout(() => setPgToast((c) => (c === msg ? null : c)), 1800);
+  }, []);
+
+  const triggerAnimation = useCallback(
+    (kind: PlaygroundInteractionKind, from: string, to: string) => {
+      const durationMs = kind === "play" ? 3500 : 2500;
+      setActiveInteraction({
+        id: `${Date.now()}-${kind}-${to}`,
+        kind,
+        from,
+        to,
+        reward: 3,
+        durationMs,
+      });
+      setTimeout(() => setActiveInteraction(null), durationMs);
+    },
+    [],
+  );
+
+  const sendInteractionRequest = useCallback(
+    async (kind: PlaygroundRequestKind, target: PlaygroundPet, myPetName: string) => {
+      if (interactBusy) return;
+      if (target.nickname === myNickname) return;
+      setInteractBusy(true);
+      try {
+        const res = await sendPlaygroundRequest(myNickname, myPetName, target.nickname, kind);
+        if (!res.ok) {
+          if (res.reason === "already_today") showPgToast("오늘은 이미 했어요.");
+          else if (res.reason === "daily_cap") showPgToast("오늘 별빛 한도(30★)에 도달했어요.");
+          else showPgToast("실패했어요.");
+          return;
+        }
+        showPgToast(kind === "greet" ? "인사 요청을 보냈어요..." : "같이 놀자고 요청했어요...");
+        setSelected(null);
+        setTimeout(async () => {
+          try {
+            await expirePlaygroundRequest({
+              id: res.id,
+              from: myNickname,
+              fromPetName: myPetName,
+              to: target.nickname,
+              kind,
+              status: "pending",
+              createdAtMs: Date.now(),
+            });
+          } catch {}
+        }, PLAYGROUND_REQUEST_TIMEOUT_MS);
+      } finally {
+        setInteractBusy(false);
+      }
+    },
+    [interactBusy, myNickname, showPgToast],
+  );
+
+  const giveTreat = useCallback(
+    async (target: PlaygroundPet, treatItem: ItemId) => {
+      if (interactBusy) return;
+      if (target.nickname === myNickname) return;
+      setInteractBusy(true);
+      try {
+        const res = await playgroundTreat(myNickname, target.nickname, treatItem);
+        if (!res.ok) {
+          if (res.reason === "already_today") showPgToast("오늘은 이미 선물했어요.");
+          else if (res.reason === "daily_cap") showPgToast("오늘 별빛 한도에 도달했어요.");
+          else if (res.reason === "no_item") showPgToast("간식이 없어요.");
+          else showPgToast("실패했어요.");
+          return;
+        }
+        triggerAnimation("treat", myNickname, target.nickname);
+        setSelected(null);
+        refreshLog();
+      } finally {
+        setInteractBusy(false);
+      }
+    },
+    [interactBusy, myNickname, triggerAnimation, refreshLog, showPgToast],
+  );
+
+  // Incoming request subscription — pop the accept/reject UI.
+  useEffect(() => {
+    if (!myPetInPlayground || !myNickname) return;
+    const unsub = subscribeIncomingPlaygroundRequests(myNickname, (reqs) => {
+      const now = Date.now();
+      const fresh = reqs.find((r) => now - r.createdAtMs < PLAYGROUND_REQUEST_TIMEOUT_MS);
+      setIncomingReq(fresh ?? null);
+    });
+    return () => unsub();
+  }, [myPetInPlayground, myNickname]);
+
+  // Outgoing-request status watcher.
+  useEffect(() => {
+    if (!myPetInPlayground || !myNickname) return;
+    const unsub = subscribeOutgoingPlaygroundRequests(myNickname, (reqs) => {
+      for (const r of reqs) {
+        if (r.status === "pending") continue;
+        if (seenOutgoingRef.current.has(r.id)) continue;
+        seenOutgoingRef.current.add(r.id);
+        if (r.status === "accepted") {
+          triggerAnimation(r.kind, r.from, r.to);
+          refreshLog();
+        } else if (r.status === "rejected") {
+          showPgToast("다음에 놀아달래요 ㅠ");
+        } else if (r.status === "expired") {
+          showPgToast("응답이 없어요...");
+        }
+      }
+    });
+    return () => unsub();
+  }, [myPetInPlayground, myNickname, triggerAnimation, refreshLog, showPgToast]);
+
+  const acceptIncoming = useCallback(async () => {
+    if (!incomingReq || !myNickname || interactBusy) return;
+    setInteractBusy(true);
+    try {
+      const res = await respondPlaygroundRequest(incomingReq, true, myNickname);
+      if (!res.ok) {
+        if (res.reason === "already_today") showPgToast("오늘은 이미 했어요.");
+        else if (res.reason === "daily_cap") showPgToast("오늘 별빛 한도에 도달했어요.");
+        else showPgToast("응답 실패");
+        setIncomingReq(null);
+        return;
+      }
+      triggerAnimation(incomingReq.kind, incomingReq.from, incomingReq.to);
+      refreshLog();
+      setIncomingReq(null);
+    } finally {
+      setInteractBusy(false);
+    }
+  }, [incomingReq, myNickname, interactBusy, triggerAnimation, refreshLog, showPgToast]);
+
+  const rejectIncoming = useCallback(async () => {
+    if (!incomingReq || !myNickname) return;
+    try {
+      await respondPlaygroundRequest(incomingReq, false, myNickname);
+    } finally {
+      setIncomingReq(null);
+    }
+  }, [incomingReq, myNickname]);
+
   // Load pets — when entering, refresh; when on entry screen, also count.
   useEffect(() => {
     let cancelled = false;
@@ -1904,9 +2096,74 @@ function PlaygroundPanel({
             pet={p}
             isMine={p.nickname === myNickname}
             chatMessage={chatByNickname[p.nickname] ?? null}
+            interaction={
+              activeInteraction &&
+              (activeInteraction.from === p.nickname || activeInteraction.to === p.nickname)
+                ? activeInteraction
+                : null
+            }
             onTap={() => setSelected(p)}
           />
         ))}
+        {pgToast ? (
+          <div
+            className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-full px-3 py-1 font-serif text-[11px] font-semibold text-stardust"
+            style={{
+              background: "rgba(11,8,33,0.92)",
+              border: "1px solid rgba(216,150,200,0.40)",
+              zIndex: 9500,
+            }}
+          >
+            {pgToast}
+          </div>
+        ) : null}
+        {/* Incoming-request popup — appears for the target. */}
+        {incomingReq && incomingReq.from !== myNickname ? (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "rgba(11,8,33,0.65)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 9000,
+            }}
+          >
+            <div
+              className="rounded-xl px-4 py-3 text-center"
+              style={{ background: "#0b0821", border: "1px solid #FFE5C4", maxWidth: 240 }}
+            >
+              <div className="font-serif text-[14px] font-bold text-stardust">
+                {incomingReq.kind === "greet" ? "🤝 인사 요청" : "🎉 같이 놀자!"}
+              </div>
+              <div className="mt-2 font-serif text-[11px] text-[#f4efff]">
+                {incomingReq.fromPetName || incomingReq.from}
+                {incomingReq.kind === "greet"
+                  ? "이(가) 인사를 하고 싶어해요!"
+                  : "이(가) 같이 놀자고 해요!"}
+              </div>
+              <div className="mt-3 flex justify-center gap-2">
+                <button
+                  onClick={rejectIncoming}
+                  disabled={interactBusy}
+                  className="rounded-md px-3 py-1.5 font-serif text-[11px] text-[#f4efff] disabled:opacity-50"
+                  style={{ border: "1px solid rgba(216,150,200,0.30)", background: "rgba(26,15,61,0.55)" }}
+                >
+                  거절
+                </button>
+                <button
+                  onClick={acceptIncoming}
+                  disabled={interactBusy}
+                  className="rounded-md px-3 py-1.5 font-serif text-[11px] font-bold text-stardust disabled:opacity-50"
+                  style={{ background: "#6b4ba8", border: "1px solid rgba(216,150,200,0.50)" }}
+                >
+                  수락 +3 ★
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {selected ? (
           <div
@@ -1940,28 +2197,78 @@ function PlaygroundPanel({
                 <div className="font-serif text-[10px] text-[#9b8fb8]">@{selected.nickname}</div>
               </div>
               {selected.nickname !== myNickname ? (
-                <div className="mt-2 flex flex-col gap-1">
-                  <div className="text-center font-serif text-[10px] text-[#f4efff]">간식 선물하기</div>
-                  <div className="flex justify-center gap-1.5">
-                    {(["treat", "cake"] as ItemId[]).map((id) => {
-                      const c = inventory?.[id] ?? 0;
-                      return (
-                        <button
-                          key={id}
-                          onClick={() => {
-                            onGiftTreat(selected.nickname, id);
-                            setSelected(null);
-                          }}
-                          disabled={c < 1 || busy}
-                          className="flex items-center gap-1 rounded-lg px-2 py-1 font-serif text-[10px] disabled:opacity-40"
-                          style={{ background: "rgba(26,15,61,0.45)", border: "1px solid rgba(216,150,200,0.25)" }}
+                <div className="mt-3 flex flex-col gap-2">
+                  {/* Greet / play go through the consent flow. */}
+                  {(["greet", "play"] as PlaygroundRequestKind[]).map((k) => {
+                    const done = alreadyToday(k, selected.nickname);
+                    const label = k === "greet" ? "인사하기" : "같이 놀기";
+                    const myPet = pets?.find((p) => p.nickname === myNickname);
+                    return (
+                      <button
+                        key={k}
+                        onClick={() =>
+                          sendInteractionRequest(k, selected, myPet?.petName ?? myNickname)
+                        }
+                        disabled={done || interactBusy}
+                        className="flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 font-serif text-[12px] font-bold disabled:opacity-50"
+                        style={{
+                          background: done ? "rgba(26,15,61,0.45)" : "rgba(61,46,107,0.55)",
+                          border: `1px solid ${done ? "rgba(216,150,200,0.20)" : "rgba(216,150,200,0.45)"}`,
+                          color: "#FFE5C4",
+                        }}
+                      >
+                        <span style={{ opacity: done ? 0.6 : 1 }}>
+                          {label} {done ? "" : "+3 ★"}
+                        </span>
+                        {done ? (
+                          <span
+                            className="rounded-md px-1.5 py-0.5 text-[9px] font-semibold"
+                            style={{ background: "rgba(155,143,184,0.25)", color: "#9b8fb8" }}
+                          >
+                            오늘 완료
+                          </span>
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                  {/* Treat is unilateral. */}
+                  <div>
+                    <div className="flex items-center justify-between font-serif text-[10px]">
+                      <span className="text-[#f4efff]">간식 선물하기 +3 ★</span>
+                      {alreadyToday("treat", selected.nickname) ? (
+                        <span
+                          className="rounded-md px-1.5 py-0.5 text-[9px] font-semibold"
+                          style={{ background: "rgba(155,143,184,0.25)", color: "#9b8fb8" }}
                         >
-                          <ItemIconSvg id={id} size={18} />
-                          <span className="text-[#f4efff]">×{c}</span>
-                        </button>
-                      );
-                    })}
+                          오늘 완료
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="mt-1.5 flex justify-center gap-1.5">
+                      {(["treat", "cake"] as ItemId[]).map((id) => {
+                        const c = inventory?.[id] ?? 0;
+                        const done = alreadyToday("treat", selected.nickname);
+                        const disabled = c < 1 || interactBusy || done;
+                        return (
+                          <button
+                            key={id}
+                            onClick={() => giveTreat(selected, id)}
+                            disabled={disabled}
+                            className="flex items-center gap-1 rounded-lg px-2 py-1 font-serif text-[10px] disabled:opacity-40"
+                            style={{ background: "rgba(26,15,61,0.45)", border: "1px solid rgba(216,150,200,0.25)" }}
+                          >
+                            <ItemIconSvg id={id} size={18} />
+                            <span className="text-[#f4efff]">×{c}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
+                  {pgLog ? (
+                    <div className="text-center font-serif text-[10px] text-[#9b8fb8]">
+                      오늘 놀이터 별빛: {pgLog.totalEarned} / 30
+                    </div>
+                  ) : null}
                 </div>
               ) : (
                 <div className="mt-2 text-center font-serif text-[10px] text-[#9b8fb8]">내 펫</div>
@@ -2015,15 +2322,26 @@ function PlaygroundPanel({
   );
 }
 
+type WanderingInteraction = {
+  id: string;
+  kind: PlaygroundInteractionKind;
+  from: string;
+  to: string;
+  reward: number;
+  durationMs: number;
+};
+
 function WanderingPet({
   pet,
   isMine,
   chatMessage,
+  interaction,
   onTap,
 }: {
   pet: PlaygroundPet;
   isMine: boolean;
   chatMessage: PlaygroundChatMessage | null;
+  interaction: WanderingInteraction | null;
   onTap: () => void;
 }) {
   // Random per-pet starting position + speed/cadence so they don't
@@ -2067,6 +2385,27 @@ function WanderingPet({
     return () => clearTimeout(t);
   }, [chatMessage?.id]);
 
+  // Playground interaction overlay — "+3 ★" rises and fades; a small
+  // particle char (heart/star/treat) rises alongside it. The wandering
+  // walk is paused for the duration.
+  const [interactionVisible, setInteractionVisible] = useState(false);
+  useEffect(() => {
+    if (!interaction) {
+      setInteractionVisible(false);
+      return;
+    }
+    setInteractionVisible(true);
+    const t = setTimeout(() => setInteractionVisible(false), interaction.durationMs);
+    return () => clearTimeout(t);
+  }, [interaction?.id]);
+  const partChar = interaction
+    ? interaction.kind === "greet"
+      ? "💕"
+      : interaction.kind === "play"
+        ? "⭐"
+        : "🍪"
+    : "";
+
   return (
     <div
       onClick={onTap}
@@ -2083,6 +2422,37 @@ function WanderingPet({
         alignItems: "center",
       }}
     >
+      {/* Playground reward "+3 ★" — animates up and fades out. */}
+      {interactionVisible && interaction ? (
+        <span
+          className="pointer-events-none absolute font-serif text-[14px] font-extrabold text-stardust"
+          style={{
+            top: -28,
+            left: "50%",
+            transform: "translateX(-50%)",
+            textShadow: "0 1px 3px rgba(11,8,33,0.85)",
+            animation: `pet-pg-bonus ${interaction.durationMs}ms ease-out forwards`,
+            zIndex: 50,
+          }}
+        >
+          +{interaction.reward} ★
+        </span>
+      ) : null}
+      {interactionVisible && interaction ? (
+        <span
+          className="pointer-events-none absolute"
+          style={{
+            top: -16,
+            left: "50%",
+            transform: "translateX(-50%)",
+            fontSize: 18,
+            animation: `pet-pg-particle ${interaction.durationMs}ms ease-out forwards`,
+            zIndex: 49,
+          }}
+        >
+          {partChar}
+        </span>
+      ) : null}
       {bubbleText ? (
         <div
           className="relative mb-1 max-w-[140px] rounded-lg px-2 py-1 font-serif text-[11px] text-[#1F2937]"

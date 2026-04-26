@@ -23,6 +23,8 @@ import {
   serverTimestamp,
   setDoc,
   Timestamp,
+  updateDoc,
+  where,
 } from "firebase/firestore";
 import { db } from "./firebase";
 
@@ -695,6 +697,340 @@ export async function loadPlaygroundPets(): Promise<PlaygroundPet[]> {
 export async function countPlaygroundPets(): Promise<number> {
   const list = await loadPlaygroundPets();
   return list.length;
+}
+
+// ── Playground social interactions ────────────────────────────
+// Players can greet / play with / give a treat to another pet in the
+// playground. Each interaction:
+//   - awards +3 ★ to BOTH parties (the gift-treat path also uses up a
+//     consumable for the giver and applies pet-status effects)
+//   - is rate-limited per pair per day (one of each kind per pair) so
+//     spamming the same friend can't farm points
+//   - is capped at 30 ★ earned per playground per day TOTAL for the
+//     initiator (the receiver isn't capped — they passively receive)
+//
+// Schema:
+//   users/{nickname}/playgroundLog/{YYYY-MM-DD KST}
+//     {
+//       totalEarned: number,        // points I earned today via playground
+//       greetedWith:  { [other]: ts },
+//       playedWith:   { [other]: ts },
+//       treatedWith:  { [other]: ts },
+//     }
+//
+// Date key uses Asia/Seoul-equivalent rollover (start of day at UTC+9)
+// computed client-side; see `playgroundLogDateKey()`.
+export type PlaygroundInteractionKind = "greet" | "play" | "treat";
+
+const PLAYGROUND_DAILY_CAP = 30;
+const PLAYGROUND_REWARD_PER_INTERACTION = 3;
+
+const KIND_LABEL: Record<PlaygroundInteractionKind, string> = {
+  greet: "인사",
+  play: "같이 놀기",
+  treat: "간식 선물",
+};
+
+export type PlaygroundLog = {
+  totalEarned: number;
+  greetedWith: Record<string, unknown>;
+  playedWith: Record<string, unknown>;
+  treatedWith: Record<string, unknown>;
+};
+
+// Today's date key in KST (UTC+9). Server timestamps in Firestore are
+// UTC; bucketing into a Korean-local day matches when users see "today
+// reset" at midnight KST.
+export function playgroundLogDateKey(nowMs: number = Date.now()): string {
+  const kst = new Date(nowMs + 9 * 60 * 60 * 1000);
+  const y = kst.getUTCFullYear();
+  const m = String(kst.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(kst.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+export async function loadPlaygroundLogToday(
+  nickname: string,
+): Promise<PlaygroundLog> {
+  const key = playgroundLogDateKey();
+  const snap = await getDoc(doc(db, "users", nickname, "playgroundLog", key));
+  if (!snap.exists()) {
+    return { totalEarned: 0, greetedWith: {}, playedWith: {}, treatedWith: {} };
+  }
+  const data = snap.data() as Partial<PlaygroundLog>;
+  return {
+    totalEarned: data.totalEarned ?? 0,
+    greetedWith: data.greetedWith ?? {},
+    playedWith: data.playedWith ?? {},
+    treatedWith: data.treatedWith ?? {},
+  };
+}
+
+export type PlaygroundInteractResult =
+  | { ok: true; gainedFromMe: number; gainedTo: number }
+  | { ok: false; reason: "self" | "no_target" | "already_today" | "daily_cap" | "no_item" | "not_giftable" };
+
+// Unified interaction handler — kind is one of greet/play/treat. The
+// "treat" kind goes through `giftTreat` for the consumable + pet-status
+// effects, then layers the playground points on top.
+export async function playgroundInteract(
+  from: string,
+  to: string,
+  kind: PlaygroundInteractionKind,
+  treatItem?: ItemId,
+): Promise<PlaygroundInteractResult> {
+  if (!from || !to) return { ok: false, reason: "no_target" };
+  if (from === to) return { ok: false, reason: "self" };
+
+  const today = playgroundLogDateKey();
+  const log = await loadPlaygroundLogToday(from);
+  const fieldByKind: Record<PlaygroundInteractionKind, keyof PlaygroundLog> = {
+    greet: "greetedWith",
+    play: "playedWith",
+    treat: "treatedWith",
+  };
+  const field = fieldByKind[kind];
+  if ((log[field] as Record<string, unknown>)[to]) {
+    return { ok: false, reason: "already_today" };
+  }
+  if (log.totalEarned + PLAYGROUND_REWARD_PER_INTERACTION > PLAYGROUND_DAILY_CAP) {
+    return { ok: false, reason: "daily_cap" };
+  }
+
+  if (kind === "treat") {
+    if (!treatItem) return { ok: false, reason: "no_item" };
+    const giftRes = await giftTreat(from, to, treatItem);
+    if (!giftRes.ok) {
+      return { ok: false, reason: (giftRes.reason as "no_item") ?? "no_item" };
+    }
+  }
+
+  const reward = PLAYGROUND_REWARD_PER_INTERACTION;
+  const reasonText = `놀이터 ${KIND_LABEL[kind]} (+${reward})`;
+  await setDoc(
+    doc(db, "users", from),
+    { points: increment(reward) },
+    { merge: true },
+  );
+  await setDoc(
+    doc(db, "users", to),
+    { points: increment(reward) },
+    { merge: true },
+  );
+  await addDoc(collection(db, "users", from, "pointHistory"), {
+    type: "펫",
+    points: reward,
+    description: reasonText,
+    createdAt: serverTimestamp(),
+  });
+  await addDoc(collection(db, "users", to, "pointHistory"), {
+    type: "펫",
+    points: reward,
+    description: `놀이터에서 ${KIND_LABEL[kind]} 받음 (+${reward})`,
+    createdAt: serverTimestamp(),
+  });
+  await setDoc(
+    doc(db, "users", from, "playgroundLog", today),
+    {
+      totalEarned: increment(reward),
+      [field]: { [to]: serverTimestamp() },
+    },
+    { merge: true },
+  );
+  return { ok: true, gainedFromMe: reward, gainedTo: reward };
+}
+
+// ── Playground interaction requests (consent flow) ────────────
+// Greet / play interactions require the target to opt in. The
+// initiator writes a `playgroundRequests/{id}` doc; the target sees it
+// via the incoming-request subscription, accepts or rejects, and on
+// accept the reward (points + history + log) is written for BOTH
+// parties by the accepter's client. Treat gifting bypasses this flow
+// (treats are unilateral) — see `playgroundTreat` below.
+export type PlaygroundRequestKind = "greet" | "play";
+export type PlaygroundRequestStatus = "pending" | "accepted" | "rejected" | "expired";
+export type PlaygroundRequest = {
+  id: string;
+  from: string;
+  fromPetName: string;
+  to: string;
+  kind: PlaygroundRequestKind;
+  status: PlaygroundRequestStatus;
+  createdAtMs: number;
+};
+
+export const PLAYGROUND_REQUEST_TIMEOUT_MS = 30_000;
+
+export type SendPlaygroundRequestResult =
+  | { ok: true; id: string }
+  | { ok: false; reason: "self" | "no_target" | "already_today" | "daily_cap" };
+
+export async function sendPlaygroundRequest(
+  from: string,
+  fromPetName: string,
+  to: string,
+  kind: PlaygroundRequestKind,
+): Promise<SendPlaygroundRequestResult> {
+  if (!from || !to) return { ok: false, reason: "no_target" };
+  if (from === to) return { ok: false, reason: "self" };
+  const log = await loadPlaygroundLogToday(from);
+  const fieldByKind: Record<PlaygroundRequestKind, keyof PlaygroundLog> = {
+    greet: "greetedWith",
+    play: "playedWith",
+  };
+  if ((log[fieldByKind[kind]] as Record<string, unknown>)[to]) {
+    return { ok: false, reason: "already_today" };
+  }
+  if (log.totalEarned + PLAYGROUND_REWARD_PER_INTERACTION > PLAYGROUND_DAILY_CAP) {
+    return { ok: false, reason: "daily_cap" };
+  }
+  const ref = await addDoc(collection(db, "playgroundRequests"), {
+    from,
+    fromPetName,
+    to,
+    kind,
+    status: "pending",
+    createdAt: serverTimestamp(),
+  });
+  return { ok: true, id: ref.id };
+}
+
+export type RespondPlaygroundRequestResult =
+  | { ok: true }
+  | { ok: false; reason: "not_yours" | "not_pending" | "already_today" | "daily_cap" };
+
+export async function respondPlaygroundRequest(
+  req: PlaygroundRequest,
+  accept: boolean,
+  me: string,
+): Promise<RespondPlaygroundRequestResult> {
+  if (req.to !== me) return { ok: false, reason: "not_yours" };
+  if (req.status !== "pending") return { ok: false, reason: "not_pending" };
+  const reqRef = doc(db, "playgroundRequests", req.id);
+  if (!accept) {
+    await updateDoc(reqRef, { status: "rejected", resolvedAt: serverTimestamp() });
+    return { ok: true };
+  }
+  const myLog = await loadPlaygroundLogToday(me);
+  const fieldByKind: Record<PlaygroundRequestKind, keyof PlaygroundLog> = {
+    greet: "greetedWith",
+    play: "playedWith",
+  };
+  const field = fieldByKind[req.kind];
+  if ((myLog[field] as Record<string, unknown>)[req.from]) {
+    await updateDoc(reqRef, { status: "rejected", resolvedAt: serverTimestamp() });
+    return { ok: false, reason: "already_today" };
+  }
+  if (myLog.totalEarned + PLAYGROUND_REWARD_PER_INTERACTION > PLAYGROUND_DAILY_CAP) {
+    await updateDoc(reqRef, { status: "rejected", resolvedAt: serverTimestamp() });
+    return { ok: false, reason: "daily_cap" };
+  }
+  await updateDoc(reqRef, { status: "accepted", resolvedAt: serverTimestamp() });
+
+  const reward = PLAYGROUND_REWARD_PER_INTERACTION;
+  const reasonMine = `놀이터 ${KIND_LABEL[req.kind]} (+${reward})`;
+  const reasonOther = `놀이터에서 ${KIND_LABEL[req.kind]} 받음 (+${reward})`;
+  const today = playgroundLogDateKey();
+  await Promise.all([
+    setDoc(doc(db, "users", me), { points: increment(reward) }, { merge: true }),
+    setDoc(doc(db, "users", req.from), { points: increment(reward) }, { merge: true }),
+    addDoc(collection(db, "users", me, "pointHistory"), {
+      type: "펫",
+      points: reward,
+      description: reasonMine,
+      createdAt: serverTimestamp(),
+    }),
+    addDoc(collection(db, "users", req.from, "pointHistory"), {
+      type: "펫",
+      points: reward,
+      description: reasonOther,
+      createdAt: serverTimestamp(),
+    }),
+    setDoc(
+      doc(db, "users", me, "playgroundLog", today),
+      { totalEarned: increment(reward), [field]: { [req.from]: serverTimestamp() } },
+      { merge: true },
+    ),
+    setDoc(
+      doc(db, "users", req.from, "playgroundLog", today),
+      { totalEarned: increment(reward), [field]: { [me]: serverTimestamp() } },
+      { merge: true },
+    ),
+  ]);
+  return { ok: true };
+}
+
+export async function expirePlaygroundRequest(req: PlaygroundRequest): Promise<void> {
+  if (req.status !== "pending") return;
+  await updateDoc(doc(db, "playgroundRequests", req.id), {
+    status: "expired",
+    resolvedAt: serverTimestamp(),
+  });
+}
+
+export async function playgroundTreat(
+  from: string,
+  to: string,
+  treatItem: ItemId,
+): Promise<PlaygroundInteractResult> {
+  return playgroundInteract(from, to, "treat", treatItem);
+}
+
+function snapToRequest(d: { id: string; data: () => unknown }): PlaygroundRequest {
+  const data = d.data() as {
+    from?: string;
+    fromPetName?: string;
+    to?: string;
+    kind?: PlaygroundRequestKind;
+    status?: PlaygroundRequestStatus;
+    createdAt?: { toMillis?: () => number };
+  };
+  return {
+    id: d.id,
+    from: data.from ?? "",
+    fromPetName: data.fromPetName ?? "",
+    to: data.to ?? "",
+    kind: (data.kind as PlaygroundRequestKind) ?? "greet",
+    status: (data.status as PlaygroundRequestStatus) ?? "pending",
+    createdAtMs: data.createdAt?.toMillis?.() ?? Date.now(),
+  };
+}
+
+export function subscribeIncomingPlaygroundRequests(
+  me: string,
+  cb: (reqs: PlaygroundRequest[]) => void,
+): () => void {
+  // Single-field where uses Firestore's auto-index — no composite
+  // index needed. We sort + filter client-side.
+  const q = query(
+    collection(db, "playgroundRequests"),
+    where("to", "==", me),
+    fsLimit(50),
+  );
+  return onSnapshot(q, (snap) => {
+    const list = snap.docs
+      .map(snapToRequest)
+      .filter((r) => r.status === "pending")
+      .sort((a, b) => b.createdAtMs - a.createdAtMs);
+    cb(list);
+  });
+}
+
+export function subscribeOutgoingPlaygroundRequests(
+  me: string,
+  cb: (reqs: PlaygroundRequest[]) => void,
+): () => void {
+  const q = query(
+    collection(db, "playgroundRequests"),
+    where("from", "==", me),
+    fsLimit(50),
+  );
+  return onSnapshot(q, (snap) => {
+    const list = snap.docs
+      .map(snapToRequest)
+      .sort((a, b) => b.createdAtMs - a.createdAtMs);
+    cb(list);
+  });
 }
 
 // ── Playground chat ───────────────────────────────────────────
