@@ -2059,15 +2059,29 @@ function PlaygroundPanel({
   // anchor position so other clients see the pet wander. Owner-side only —
   // other clients just read from the subscription. ~4s cadence keeps
   // Firestore writes cheap (≈ 15/min per occupant).
+  //
+  // Range covers the full field (X 10–90, Y 10–90) so pets actually
+  // explore the whole playground instead of clumping near a wall. 30%
+  // of ticks pick a completely fresh random anchor (prevents random-walk
+  // drift toward an edge); the other 70% take a wider delta step from
+  // the current position so motion still reads as a stroll, not random
+  // teleporting.
   useEffect(() => {
     if (!myPetInPlayground || !myNickname) return;
     let cancelled = false;
-    let curX = 8 + Math.random() * 84;
-    let curY = 45 + Math.random() * 45;
+    let curX = 15 + Math.random() * 70;
+    let curY = 15 + Math.random() * 70;
     const tick = () => {
       if (cancelled) return;
-      const nextX = Math.max(5, Math.min(95, curX + (Math.random() - 0.5) * 35));
-      const nextY = Math.max(42, Math.min(92, curY + (Math.random() - 0.5) * 25));
+      let nextX: number;
+      let nextY: number;
+      if (Math.random() < 0.3) {
+        nextX = 10 + Math.random() * 80;
+        nextY = 10 + Math.random() * 80;
+      } else {
+        nextX = Math.max(10, Math.min(90, curX + (Math.random() - 0.5) * 50));
+        nextY = Math.max(10, Math.min(90, curY + (Math.random() - 0.5) * 40));
+      }
       curX = nextX;
       curY = nextY;
       updatePlaygroundPosition(myNickname, nextX, nextY).catch(() => {});
@@ -2152,21 +2166,33 @@ function PlaygroundPanel({
           ))}
         </svg>
 
-        {(pets ?? []).map((p) => (
-          <WanderingPet
-            key={p.nickname}
-            pet={p}
-            isMine={p.nickname === myNickname}
-            chatMessage={chatByNickname[p.nickname] ?? null}
-            interaction={
-              activeInteraction &&
-              (activeInteraction.from === p.nickname || activeInteraction.to === p.nickname)
-                ? activeInteraction
-                : null
-            }
-            onTap={() => setSelected(p)}
-          />
-        ))}
+        {(pets ?? []).map((p) => {
+          // If this pet is in the active interaction, find its partner
+          // (the other pet) so the renderer can compute an approach
+          // position toward them.
+          const involved =
+            activeInteraction &&
+            (activeInteraction.from === p.nickname || activeInteraction.to === p.nickname);
+          const partnerNick = involved
+            ? activeInteraction!.from === p.nickname
+              ? activeInteraction!.to
+              : activeInteraction!.from
+            : null;
+          const partner = partnerNick
+            ? (pets ?? []).find((q) => q.nickname === partnerNick) ?? null
+            : null;
+          return (
+            <WanderingPet
+              key={p.nickname}
+              pet={p}
+              partner={partner}
+              isMine={p.nickname === myNickname}
+              chatMessage={chatByNickname[p.nickname] ?? null}
+              interaction={involved ? activeInteraction : null}
+              onTap={() => setSelected(p)}
+            />
+          );
+        })}
         {pgToast ? (
           <div
             className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-full px-3 py-1 font-serif text-[11px] font-semibold text-stardust"
@@ -2404,23 +2430,35 @@ type WanderingInteraction = {
 
 function WanderingPet({
   pet,
+  partner,
   isMine,
   chatMessage,
   interaction,
   onTap,
 }: {
   pet: PlaygroundPet;
+  partner: PlaygroundPet | null;
   isMine: boolean;
   chatMessage: PlaygroundChatMessage | null;
   interaction: WanderingInteraction | null;
   onTap: () => void;
 }) {
-  // Position is owner-driven and synced via Firestore (the parent's
-  // updatePlaygroundPosition tick writes new anchors every ~4 s). Every
-  // client — including the owner — reads pet.posX/posY from the
-  // subscription so all viewers see the same scene. CSS transition on
-  // `left`/`top` smooths the anchor change so motion reads as a wander.
-  const pos = { x: pet.posX, y: pet.posY };
+  // Position is owner-driven and synced via Firestore. During an active
+  // interaction, the FROM pet animates over to the TO pet's position
+  // (with a small horizontal offset so they sit side-by-side). The TO
+  // pet stays put. When the interaction ends, the next 4s position tick
+  // scatters the FROM pet to a new random anchor — so "approach → react
+  // → scatter" reads naturally without an extra exit animation.
+  let pos: { x: number; y: number };
+  if (interaction && partner && interaction.from === pet.nickname) {
+    const goLeft = pet.posX > partner.posX;
+    pos = {
+      x: Math.max(5, Math.min(95, partner.posX + (goLeft ? 8 : -8))),
+      y: partner.posY,
+    };
+  } else {
+    pos = { x: pet.posX, y: pet.posY };
+  }
 
   // Chat bubble — show for 5 s on each new chatMessage. Keyed by id so
   // a fresh repeat from the same user re-shows the bubble.

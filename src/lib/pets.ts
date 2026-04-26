@@ -695,10 +695,12 @@ export type PlaygroundPet = {
 
 const playgroundPetRef = (nickname: string) => doc(db, "playgroundPets", nickname);
 
+// Initial anchor on entry. Range mirrors the wander tick (X 10–90,
+// Y 10–90) so newcomers can spawn anywhere in the field.
 function randomFieldPosition(): { posX: number; posY: number } {
   return {
-    posX: 8 + Math.random() * 84,
-    posY: 45 + Math.random() * 45,
+    posX: 10 + Math.random() * 80,
+    posY: 10 + Math.random() * 80,
   };
 }
 
