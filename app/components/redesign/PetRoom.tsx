@@ -203,6 +203,9 @@ function PetRoomInner({
       walkDurRef.current = 600;
       setPosPct(scene.petAnchor);
     }
+    if (scene.petAnchorY !== undefined) {
+      setPosY(scene.petAnchorY);
+    }
     const t = window.setTimeout(() => {
       setMode("idle");
       onSceneEndRef.current?.();
@@ -624,18 +627,191 @@ function PetRoomInner({
           }}
         >
           {SCENES[activeScene].overlay === "bath" ? (
-            // Simple white-on-blue tile pattern.
-            <svg viewBox="0 0 320 200" width="100%" height="100%" preserveAspectRatio="none" style={{ display: "block" }}>
-              {Array.from({ length: 9 }).map((_, i) => (
-                <line key={`bv-${i}`} x1={(i + 1) * 32} y1={0} x2={(i + 1) * 32} y2={200} stroke="#FFFFFF" strokeWidth={1.5} opacity={0.55} />
+            <>
+              {/* Wall tile pattern */}
+              <svg viewBox="0 0 320 200" width="100%" height="100%" preserveAspectRatio="none" style={{ display: "block" }}>
+                {Array.from({ length: 9 }).map((_, i) => (
+                  <line key={`bv-${i}`} x1={(i + 1) * 32} y1={0} x2={(i + 1) * 32} y2={200} stroke="#FFFFFF" strokeWidth={1.5} opacity={0.55} />
+                ))}
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <line key={`bh-${i}`} x1={0} y1={(i + 1) * 28} x2={320} y2={(i + 1) * 28} stroke="#FFFFFF" strokeWidth={1.5} opacity={0.55} />
+                ))}
+              </svg>
+
+              {/* Pipe coming down from ceiling to shower head */}
+              <div
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  left: "50%",
+                  top: 0,
+                  width: 4,
+                  height: 18,
+                  marginLeft: -2,
+                  background: "#7C9DB4",
+                  borderRadius: 1,
+                  pointerEvents: "none",
+                  zIndex: 5,
+                }}
+              />
+              {/* Shower head */}
+              <div
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  left: "calc(50% - 16px)",
+                  top: 14,
+                  width: 32,
+                  height: 14,
+                  pointerEvents: "none",
+                  zIndex: 5,
+                }}
+              >
+                <svg viewBox="0 0 32 14" width="100%" height="100%" style={{ display: "block" }}>
+                  <rect x={0} y={0} width={32} height={6} rx={3} fill="#A8C4D8" stroke="#4A6378" strokeWidth={0.8} />
+                  <rect x={0} y={6} width={32} height={7} rx={2} fill="#7C9DB4" stroke="#4A6378" strokeWidth={0.8} />
+                  {[3, 9, 16, 23, 29].map((cx, i) => (
+                    <circle key={i} cx={cx} cy={11} r={0.9} fill="#4A6378" />
+                  ))}
+                </svg>
+              </div>
+
+              {/* Water streams (5 thin animated lines) */}
+              {[-12, -6, 0, 6, 12].map((offset, i) => (
+                <div
+                  key={`stream-${i}`}
+                  aria-hidden
+                  style={{
+                    position: "absolute",
+                    left: `calc(50% + ${offset}px)`,
+                    top: 28,
+                    width: 1.5,
+                    height: 60,
+                    background: "linear-gradient(180deg, #5BAEEA, rgba(176,224,250,0.4))",
+                    borderRadius: 1,
+                    animation: `water-stream 0.7s ease-in infinite ${i * 0.12}s`,
+                    pointerEvents: "none",
+                    zIndex: 5,
+                  }}
+                />
               ))}
-              {Array.from({ length: 6 }).map((_, i) => (
-                <line key={`bh-${i}`} x1={0} y1={(i + 1) * 28} x2={320} y2={(i + 1) * 28} stroke="#FFFFFF" strokeWidth={1.5} opacity={0.55} />
+
+              {/* Bathtub back rim — visible behind pet's body */}
+              <div
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  left: "16%",
+                  right: "16%",
+                  bottom: 38,
+                  height: 12,
+                  borderRadius: "50%",
+                  background: "linear-gradient(180deg, #FFFFFF 0%, #DCE7F0 100%)",
+                  border: "2px solid #8FA8BC",
+                  pointerEvents: "none",
+                  zIndex: 40,
+                }}
+              />
+
+              {/* Foam bubbles on the back rim */}
+              {[
+                { left: "22%", bottom: 40, w: 6 },
+                { left: "30%", bottom: 44, w: 5 },
+                { left: "70%", bottom: 42, w: 6 },
+                { left: "78%", bottom: 40, w: 5 },
+              ].map((b, i) => (
+                <div
+                  key={`foam-back-${i}`}
+                  aria-hidden
+                  style={{
+                    position: "absolute",
+                    left: b.left,
+                    bottom: b.bottom,
+                    width: b.w,
+                    height: b.w,
+                    borderRadius: "50%",
+                    background: "#FFFFFF",
+                    border: "1px solid #C5D5E0",
+                    pointerEvents: "none",
+                    zIndex: 41,
+                    animation: `foam-bob 1.6s ease-in-out infinite ${i * 0.3}s`,
+                  }}
+                />
               ))}
-              {/* shower head silhouette */}
-              <rect x={150} y={4} width={20} height={6} fill="#7C9DB4" />
-              <rect x={154} y={10} width={12} height={3} fill="#7C9DB4" />
-            </svg>
+
+              {/* Bathtub front (high zIndex — covers pet's lower body) */}
+              <div
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  left: "16%",
+                  right: "16%",
+                  bottom: 4,
+                  height: 38,
+                  background: "linear-gradient(180deg, #FFFFFF 0%, #E0EEFA 35%, #B5C8D8 100%)",
+                  border: "2px solid #8FA8BC",
+                  borderTopLeftRadius: "8% 12%",
+                  borderTopRightRadius: "8% 12%",
+                  borderBottomLeftRadius: "50% 60%",
+                  borderBottomRightRadius: "50% 60%",
+                  pointerEvents: "none",
+                  zIndex: 800,
+                }}
+              />
+
+              {/* Foam on top of water (in front of pet's lower body) */}
+              {[
+                { left: "20%", bottom: 34, w: 7 },
+                { left: "28%", bottom: 38, w: 8 },
+                { left: "38%", bottom: 36, w: 7 },
+                { left: "48%", bottom: 38, w: 6 },
+                { left: "58%", bottom: 36, w: 8 },
+                { left: "68%", bottom: 38, w: 7 },
+                { left: "76%", bottom: 34, w: 6 },
+              ].map((f, i) => (
+                <div
+                  key={`foam-front-${i}`}
+                  aria-hidden
+                  style={{
+                    position: "absolute",
+                    left: f.left,
+                    bottom: f.bottom,
+                    width: f.w,
+                    height: f.w,
+                    borderRadius: "50%",
+                    background: "#FFFFFF",
+                    border: "1px solid #C5D5E0",
+                    pointerEvents: "none",
+                    zIndex: 801,
+                    animation: `foam-bob 1.4s ease-in-out infinite ${i * 0.2}s`,
+                  }}
+                />
+              ))}
+
+              {/* Floor water puddles (small ovals at bottom corners) */}
+              {[
+                { left: 4, bottom: 1, w: 22, h: 5 },
+                { left: "auto", right: 4, bottom: 1, w: 18, h: 5 },
+              ].map((p, i) => (
+                <div
+                  key={`puddle-${i}`}
+                  aria-hidden
+                  style={{
+                    position: "absolute",
+                    left: p.left as any,
+                    right: (p.right as any) ?? "auto",
+                    bottom: p.bottom,
+                    width: p.w,
+                    height: p.h,
+                    borderRadius: "50%",
+                    background: "#87BDDA",
+                    opacity: 0.55,
+                    pointerEvents: "none",
+                    zIndex: 30,
+                  }}
+                />
+              ))}
+            </>
           ) : null}
           {SCENES[activeScene].overlay === "park" ? (
             <>

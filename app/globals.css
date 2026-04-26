@@ -6574,3 +6574,13 @@ body.has-redesigned-header .bg-scene {
   0%   { transform: translateX(0); }
   100% { transform: translateX(8px); }
 }
+
+@keyframes water-stream {
+  0%   { transform: translateY(-12px); opacity: 0; }
+  20%  { opacity: 0.75; }
+  100% { transform: translateY(48px); opacity: 0; }
+}
+@keyframes foam-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-1.5px); }
+}

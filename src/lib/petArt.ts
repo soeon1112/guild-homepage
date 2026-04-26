@@ -1930,6 +1930,10 @@ export type Scene = {
   petAnim: "eat" | "chase" | "shake" | "run" | "happy" | "sleep" | "jump";
   particle: "heart" | "star" | "drop" | "zzz" | "leaf" | "sparkle";
   petAnchor?: number;
+  // Pet's vertical anchor (depth, 0 = back, 1 = front). When set, the
+  // pet is positioned at this y for the duration of the scene — used
+  // by wash to put the pet *inside* the bathtub at the very front.
+  petAnchorY?: number;
   // hand prop floats above the pet
   handAbovePet?: boolean;
 };
@@ -1959,6 +1963,7 @@ export const SCENES: Record<SceneId, Scene> = {
     petAnim: "shake",
     particle: "drop",
     petAnchor: 0,
+    petAnchorY: 0.92, // very front so pet sits inside the bathtub
   },
   walk: {
     id: "walk",
