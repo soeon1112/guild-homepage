@@ -2584,17 +2584,18 @@ export type FurniturePlacement = {
 // y now means depth in the floor area (0 = back near wall, 100 = front
 // near viewer). Z-sort against the pet uses this same axis. size is %
 // of room width.
-// Sizes calibrated against pet width (~30% of room width). User spec:
-//   bowl ≈ 25–30% of pet, premium ≈ 30–35%, cushion 50–60%, bed 70–80%,
-//   house 100–120%, small toys 15–20%.
+// Sizes calibrated against pet width (~30% of room width). User-tuned
+// dimensions (post-feedback): toys are now 2× the original (so the pet
+// can visually "play" with them), and the basic bowl matches the
+// premium bowl size — basic shouldn't read as a tiny dish.
 export const FURNITURE_PLACEMENTS: Partial<Record<ItemId, FurniturePlacement>> = {
   cushion:     { x: 22, y: 70, size: 18 }, // ~60% of pet
   bed:         { x: 78, y: 25, size: 24 }, // ~80%
   house:       { x: 50, y: 18, size: 32 }, // ~105%
-  toyBall:     { x: 12, y: 75, size: 6  }, // ~20%
-  toyYarn:     { x: 35, y: 80, size: 6  },
-  toyBone:     { x: 90, y: 80, size: 6  },
-  bowlBasic:   { x: 60, y: 65, size: 9  }, // ~30%
+  toyBall:     { x: 12, y: 75, size: 12 }, // 2× (was 6) — pet-sized plaything
+  toyYarn:     { x: 35, y: 80, size: 12 },
+  toyBone:     { x: 90, y: 80, size: 12 },
+  bowlBasic:   { x: 60, y: 65, size: 11 }, // matches premium so basic isn't tiny
   bowlPremium: { x: 60, y: 65, size: 11 }, // ~35%
 };
 
