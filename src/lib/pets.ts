@@ -787,80 +787,6 @@ export type PlaygroundInteractResult =
   | { ok: true; gainedFromMe: number; gainedTo: number }
   | { ok: false; reason: "self" | "no_target" | "already_today" | "daily_cap" | "no_item" | "not_giftable" };
 
-// Unified interaction handler — kind is one of greet/play/treat. The
-// "treat" kind goes through `giftTreat` for the consumable + pet-status
-// effects, then layers the playground points on top. Pet names are
-// included so the MY-page history entries read naturally (e.g.
-// "놀이터 간식 선물 (상대: 언쏘의 별이)").
-export async function playgroundInteract(
-  from: string,
-  fromPetName: string,
-  to: string,
-  toPetName: string,
-  kind: PlaygroundInteractionKind,
-  treatItem?: ItemId,
-): Promise<PlaygroundInteractResult> {
-  if (!from || !to) return { ok: false, reason: "no_target" };
-  if (from === to) return { ok: false, reason: "self" };
-
-  const today = playgroundLogDateKey();
-  const log = await loadPlaygroundLogToday(from);
-  const fieldByKind: Record<PlaygroundInteractionKind, keyof PlaygroundLog> = {
-    greet: "greetedWith",
-    play: "playedWith",
-    treat: "treatedWith",
-  };
-  const field = fieldByKind[kind];
-  if ((log[field] as Record<string, unknown>)[to]) {
-    return { ok: false, reason: "already_today" };
-  }
-  if (log.totalEarned + PLAYGROUND_REWARD_PER_INTERACTION > PLAYGROUND_DAILY_CAP) {
-    return { ok: false, reason: "daily_cap" };
-  }
-
-  if (kind === "treat") {
-    if (!treatItem) return { ok: false, reason: "no_item" };
-    const giftRes = await giftTreat(from, to, treatItem);
-    if (!giftRes.ok) {
-      return { ok: false, reason: (giftRes.reason as "no_item") ?? "no_item" };
-    }
-  }
-
-  const reward = PLAYGROUND_REWARD_PER_INTERACTION;
-  const action = KIND_LABEL[kind];
-  await setDoc(
-    doc(db, "users", from),
-    { points: increment(reward) },
-    { merge: true },
-  );
-  await setDoc(
-    doc(db, "users", to),
-    { points: increment(reward) },
-    { merge: true },
-  );
-  await addDoc(collection(db, "users", from, "pointHistory"), {
-    type: "펫",
-    points: reward,
-    description: `놀이터 ${action} (상대: ${to}의 ${toPetName || "펫"})`,
-    createdAt: serverTimestamp(),
-  });
-  await addDoc(collection(db, "users", to, "pointHistory"), {
-    type: "펫",
-    points: reward,
-    description: `놀이터 ${action} (상대: ${from}의 ${fromPetName || "펫"})`,
-    createdAt: serverTimestamp(),
-  });
-  await setDoc(
-    doc(db, "users", from, "playgroundLog", today),
-    {
-      totalEarned: increment(reward),
-      [field]: { [to]: serverTimestamp() },
-    },
-    { merge: true },
-  );
-  return { ok: true, gainedFromMe: reward, gainedTo: reward };
-}
-
 // ── Playground interaction requests (consent flow) ────────────
 // Greet / play interactions require the target to opt in. The
 // initiator writes a `playgroundRequests/{id}` doc; the target sees it
@@ -995,14 +921,26 @@ export async function expirePlaygroundRequest(req: PlaygroundRequest): Promise<v
   });
 }
 
+// Treat is unilateral — no consent, no 별빛 reward, no daily/per-pair
+// limit. Just consumes one of sender's items and applies that item's
+// effect to the recipient pet. (fromPetName/toPetName retained for
+// signature stability with prior callers; unused now.)
 export async function playgroundTreat(
   from: string,
-  fromPetName: string,
+  _fromPetName: string,
   to: string,
-  toPetName: string,
+  _toPetName: string,
   treatItem: ItemId,
 ): Promise<PlaygroundInteractResult> {
-  return playgroundInteract(from, fromPetName, to, toPetName, "treat", treatItem);
+  if (!from || !to) return { ok: false, reason: "no_target" };
+  if (from === to) return { ok: false, reason: "self" };
+  const giftRes = await giftTreat(from, to, treatItem);
+  if (!giftRes.ok) {
+    if (giftRes.reason === "not_giftable") return { ok: false, reason: "not_giftable" };
+    if (giftRes.reason === "no_target_pet") return { ok: false, reason: "no_target" };
+    return { ok: false, reason: "no_item" };
+  }
+  return { ok: true, gainedFromMe: 0, gainedTo: 0 };
 }
 
 function snapToRequest(d: { id: string; data: () => unknown }): PlaygroundRequest {
@@ -1155,8 +1093,13 @@ export async function applySparkle(nickname: string): Promise<void> {
   await setDoc(petDocRef(nickname), { glow: true }, { merge: true });
 }
 
-// Send a treat from `from` to `to`'s pet. Consumes one of `from`'s
-// treat items and adds +happiness / +hunger to `to`'s pet directly.
+// Send a treat or cake from `from` to `to`'s pet. Consumes one of
+// `from`'s items and applies that item's `consumeEffect` to the
+// recipient's pet directly:
+//   - 고급 간식 (treat) → recipient hunger +15, happiness +10
+//   - 특별 케이크 (cake) → recipient expBoostRemaining = 5
+// No 별빛/points are exchanged; this is a pure gift mechanic gated only
+// by sender's inventory (no daily/per-pair limit).
 export async function giftTreat(
   from: string,
   to: string,
@@ -1168,9 +1111,9 @@ export async function giftTreat(
   if (have < 1) return { ok: false, reason: "no_item" };
   const target = await loadPet(to);
   if (!target) return { ok: false, reason: "no_target_pet" };
-  // Apply effect to target pet using consume logic, then deduct from
-  // sender's inventory.
+
   const item = findItem(itemId)!;
+  const fx = item.consumeEffect ?? {};
   const now = Date.now();
   const baseAt = target.lastDecayAt?.toMillis?.() ?? now;
   const projected = projectStatus(
@@ -1178,17 +1121,22 @@ export async function giftTreat(
     baseAt,
     now,
   );
-  const fx = item.consumeEffect ?? {};
-  const next = {
-    hunger: clamp(projected.hunger + (fx.hunger ?? 0)),
-    happiness: clamp(projected.happiness + (fx.happiness ?? 0) + 5), // +5 bonus from being gifted
-    clean: projected.clean,
+  const patch: Record<string, unknown> = {
+    lastDecayAt: Timestamp.fromMillis(now),
   };
-  await setDoc(
-    petDocRef(to),
-    { ...next, lastDecayAt: Timestamp.fromMillis(now) },
-    { merge: true },
-  );
+  // Apply hunger/happiness restore (treat). For cake these are absent,
+  // so projected status is preserved as-is via the snapshot.
+  if (typeof fx.hunger === "number" || typeof fx.happiness === "number") {
+    patch.hunger = clamp(projected.hunger + (fx.hunger ?? 0));
+    patch.happiness = clamp(projected.happiness + (fx.happiness ?? 0));
+    patch.clean = projected.clean;
+  }
+  // Apply EXP boost charges (cake). Set, not increment — a fresh cake
+  // gives a full new boost rather than topping up.
+  if (fx.expBoostCount && fx.expBoostCount > 0) {
+    patch.expBoostRemaining = fx.expBoostCount;
+  }
+  await setDoc(petDocRef(to), patch, { merge: true });
   await setDoc(
     itemsDocRef(from),
     { inventory: { [itemId]: have - 1 } } as Partial<PetItemsDoc>,

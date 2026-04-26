@@ -1935,9 +1935,7 @@ function PlaygroundPanel({
           treatItem,
         );
         if (!res.ok) {
-          if (res.reason === "already_today") showPgToast("오늘은 이미 선물했어요.");
-          else if (res.reason === "daily_cap") showPgToast("오늘 별빛 한도에 도달했어요.");
-          else if (res.reason === "no_item") showPgToast("간식이 없어요.");
+          if (res.reason === "no_item") showPgToast("간식이 없어요.");
           else showPgToast("실패했어요.");
           return;
         }
@@ -2267,24 +2265,15 @@ function PlaygroundPanel({
                       );
                     })}
                   </div>
-                  {/* Treat row — title inline + 2 icon buttons. */}
+                  {/* Treat row — pure gift, gated only by sender's inventory. */}
                   <div>
-                    <div className="flex items-center justify-between font-serif text-[10px]">
-                      <span className="font-semibold text-stardust">간식 선물 +3 ★</span>
-                      {alreadyToday("treat", selected.nickname) ? (
-                        <span
-                          className="rounded-md px-1.5 py-0.5 text-[9px] font-semibold"
-                          style={{ background: "rgba(155,143,184,0.25)", color: "#9b8fb8" }}
-                        >
-                          오늘 완료
-                        </span>
-                      ) : null}
+                    <div className="font-serif text-[10px] font-semibold text-stardust">
+                      간식 선물
                     </div>
                     <div className="mt-1 flex justify-center gap-1.5">
                       {(["treat", "cake"] as ItemId[]).map((id) => {
                         const c = inventory?.[id] ?? 0;
-                        const done = alreadyToday("treat", selected.nickname);
-                        const disabled = c < 1 || interactBusy || done;
+                        const disabled = c < 1 || interactBusy;
                         return (
                           <button
                             key={id}
