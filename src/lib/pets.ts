@@ -202,7 +202,7 @@ export type PetMood = "happy" | "normal" | "sad" | "severe";
 export function computeMood(s: { hunger: number; happiness: number; clean: number }): PetMood {
   if (s.hunger <= 10 || s.happiness <= 10 || s.clean <= 10) return "severe";
   if (s.hunger <= 30 || s.happiness <= 30 || s.clean <= 30) return "sad";
-  if (s.hunger >= 91 && s.happiness >= 91 && s.clean >= 91) return "happy";
+  if (s.hunger >= 96 && s.happiness >= 96 && s.clean >= 96) return "happy";
   return "normal";
 }
 
