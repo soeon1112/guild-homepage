@@ -475,312 +475,188 @@ function PetRoomInner({
           </linearGradient>
         </defs>
 
+        {/* === Wall (classic — same for both variants) === */}
+        <rect x={0} y={0} width={W} height={wallEnd} fill={theme.wall} />
+        {Array.from({ length: 8 }).map((_, i) => (
+          <rect
+            key={`stripe-${i}`}
+            x={(i + 0.5) * (W / 8) - 0.5}
+            y={0}
+            width={1}
+            height={wallEnd}
+            fill={theme.wallDecor}
+            opacity={0.3}
+          />
+        ))}
+        {theme.wallExtras === "stars"
+          ? Array.from({ length: 14 }).map((_, i) => (
+              <rect
+                key={`star-${i}`}
+                x={((i * 53) % W) + 4}
+                y={((i * 27) % wallEnd) + 4}
+                width={2}
+                height={2}
+                fill="#FFE873"
+                opacity={0.9}
+              />
+            ))
+          : null}
+
+        {/* === Window — admin gets a bigger window with sky scenery
+                (no distant hills, no potted plant); others see the classic
+                small window === */}
         {experimental ? (
-          // ============ ADMIN CUTE ROOM (opt-in, soft launch) ===========
-          <>
-            {/* Wall base */}
-            <rect x={0} y={0} width={W} height={wallEnd} fill={theme.wall} />
-            {/* Soft polka dots — staggered so rows don't align */}
-            {Array.from({ length: 30 }).map((_, i) => {
-              const cols = 6;
-              const row = Math.floor(i / cols);
-              const cx = ((i % cols) + 0.5) * (W / cols) + (row % 2 === 0 ? 0 : W / (cols * 2));
-              const cy = (row + 0.5) * (wallEnd / 5);
-              return (
-                <circle key={`wp-${i}`} cx={cx} cy={cy} r={1.5} fill={theme.wallDecor} opacity={0.18} />
-              );
-            })}
-            {/* Faint vertical stripes for subtle wallpaper texture */}
-            {Array.from({ length: 8 }).map((_, i) => (
-              <rect
-                key={`stripe-${i}`}
-                x={(i + 0.5) * (W / 8) - 0.5}
-                y={0}
-                width={1}
-                height={wallEnd}
-                fill={theme.wallDecor}
-                opacity={0.13}
-              />
-            ))}
-            {theme.wallExtras === "stars"
-              ? Array.from({ length: 14 }).map((_, i) => (
-                  <rect
-                    key={`star-${i}`}
-                    x={((i * 53) % W) + 4}
-                    y={((i * 27) % wallEnd) + 4}
-                    width={2}
-                    height={2}
-                    fill="#FFE873"
-                    opacity={0.9}
-                  />
-                ))
-              : null}
-
-            {/* === Big window with sky scenery (per theme) === */}
-            {(() => {
-              const wx = W * 0.13;
-              const wy = wallEnd * 0.18;
-              const ww = 64;
-              const wh = 50;
-              const isSpace = theme.windowKind === "space";
-              const isOcean = theme.windowKind === "ocean";
-              const isForest = theme.windowKind === "forest";
-              return (
-                <g>
-                  {/* Sky base */}
-                  <rect x={wx} y={wy} width={ww} height={wh} fill={isSpace ? "#0E0B25" : "url(#sky-grad-exp)"} />
-                  {/* Default house theme: sun, clouds, distant hills */}
-                  {!isSpace && !isOcean && !isForest && (
-                    <>
-                      <circle cx={wx + ww * 0.78} cy={wy + wh * 0.3} r={6.5} fill="#FFE873" opacity={0.4} />
-                      <circle cx={wx + ww * 0.78} cy={wy + wh * 0.3} r={4.5} fill="#FFE085" />
-                      <g opacity={0.92}>
-                        <ellipse cx={wx + ww * 0.3} cy={wy + wh * 0.42} rx={9} ry={3.2} fill="#FFFFFF" />
-                        <ellipse cx={wx + ww * 0.36} cy={wy + wh * 0.38} rx={5.5} ry={2.8} fill="#FFFFFF" />
-                      </g>
-                      <g opacity={0.78}>
-                        <ellipse cx={wx + ww * 0.55} cy={wy + wh * 0.65} rx={6.5} ry={2.4} fill="#FFFFFF" />
-                        <ellipse cx={wx + ww * 0.5} cy={wy + wh * 0.62} rx={3.5} ry={2} fill="#FFFFFF" />
-                      </g>
-                      <ellipse cx={wx + ww * 0.5} cy={wy + wh * 1.05} rx={ww * 0.6} ry={wh * 0.18} fill="#7DA86C" opacity={0.72} />
-                      <ellipse cx={wx + ww * 0.85} cy={wy + wh * 1.0} rx={ww * 0.32} ry={wh * 0.14} fill="#5B8A4C" opacity={0.7} />
-                    </>
-                  )}
-                  {isForest && (
-                    <>
-                      <rect x={wx + ww * 0.35} y={wy + wh * 0.55} width={3} height={wh * 0.42} fill="#4A2D14" />
-                      <ellipse cx={wx + ww * 0.37} cy={wy + wh * 0.45} rx={ww * 0.22} ry={wh * 0.22} fill="#3F7D3F" />
-                      <rect x={wx + ww * 0.78} y={wy + wh * 0.65} width={2} height={wh * 0.32} fill="#5B3A1F" />
-                      <ellipse cx={wx + ww * 0.79} cy={wy + wh * 0.58} rx={ww * 0.13} ry={wh * 0.13} fill="#5BA653" />
-                      <circle cx={wx + ww * 0.85} cy={wy + wh * 0.18} r={3} fill="#FFE873" opacity={0.9} />
-                    </>
-                  )}
-                  {isOcean && (
-                    <>
-                      <circle cx={wx + ww * 0.78} cy={wy + wh * 0.2} r={5} fill="#FFE0A8" />
-                      <rect x={wx} y={wy + wh * 0.55} width={ww} height={wh * 0.45} fill="#3F86C0" />
-                      <rect x={wx + 4} y={wy + wh * 0.65} width={5} height={1} fill="#FFFFFF" opacity={0.6} />
-                      <rect x={wx + 22} y={wy + wh * 0.75} width={5} height={1} fill="#FFFFFF" opacity={0.55} />
-                      <rect x={wx + 40} y={wy + wh * 0.7} width={5} height={1} fill="#FFFFFF" opacity={0.55} />
-                      <rect x={wx + 50} y={wy + wh * 0.83} width={4} height={1} fill="#FFFFFF" opacity={0.5} />
-                    </>
-                  )}
-                  {isSpace && (
-                    <>
-                      <circle cx={wx + ww * 0.78} cy={wy + wh * 0.25} r={5} fill="#F0E8B8" />
-                      <circle cx={wx + ww * 0.78 - 1.6} cy={wy + wh * 0.25 - 0.8} r={1.2} fill="#0E0B25" opacity={0.4} />
-                      <rect x={wx + ww * 0.18} y={wy + wh * 0.18} width={2} height={2} fill="#FFE873" />
-                      <rect x={wx + ww * 0.32} y={wy + wh * 0.6} width={2} height={2} fill="#FFFFFF" />
-                      <rect x={wx + ww * 0.5} y={wy + wh * 0.4} width={2} height={2} fill="#FFFFFF" />
-                      <rect x={wx + ww * 0.6} y={wy + wh * 0.78} width={2} height={2} fill="#FFE873" />
-                      <rect x={wx + ww * 0.42} y={wy + wh * 0.85} width={2} height={2} fill="#FFFFFF" />
-                    </>
-                  )}
-                  {/* Window frame (thicker) + cross divider for 4 panes */}
-                  <rect x={wx} y={wy} width={ww} height={wh} fill="none" stroke="#7B5234" strokeWidth={3} />
-                  <line x1={wx + ww / 2} y1={wy} x2={wx + ww / 2} y2={wy + wh} stroke="#7B5234" strokeWidth={2} />
-                  <line x1={wx} y1={wy + wh / 2} x2={wx + ww} y2={wy + wh / 2} stroke="#7B5234" strokeWidth={2} />
-                  {/* Window sill + tiny potted plant */}
-                  <rect x={wx - 4} y={wy + wh + 1} width={ww + 8} height={4} fill="#8B5E37" />
-                  <rect x={wx - 4} y={wy + wh + 5} width={ww + 8} height={1} fill="#5C3D24" opacity={0.6} />
-                  <rect x={wx + ww - 17} y={wy + wh - 7} width={8} height={1} fill="#7B4A28" />
-                  <rect x={wx + ww - 16} y={wy + wh - 6} width={6} height={5} fill="#A3623F" />
-                  <ellipse cx={wx + ww - 13} cy={wy + wh - 9} rx={4} ry={3} fill="#5BA653" />
-                  <ellipse cx={wx + ww - 11} cy={wy + wh - 11} rx={2} ry={1.5} fill="#7BC569" />
-                </g>
-              );
-            })()}
-
-            {/* Heart pixel-art picture frame */}
-            <g>
-              <rect x={W * 0.72} y={wallEnd * 0.34} width={26} height={22} fill="#FFFEFA" />
-              <rect x={W * 0.72} y={wallEnd * 0.34} width={26} height={22} fill="none" stroke="#7B5234" strokeWidth={2} />
-              {([
-                [1, 1], [2, 1], [4, 1], [5, 1],
-                [0, 2], [1, 2], [2, 2], [3, 2], [4, 2], [5, 2], [6, 2],
-                [0, 3], [1, 3], [2, 3], [3, 3], [4, 3], [5, 3], [6, 3],
-                [1, 4], [2, 4], [3, 4], [4, 4], [5, 4],
-                [2, 5], [3, 5], [4, 5],
-                [3, 6],
-              ] as const).map(([cx, cy], idx) => (
-                <rect
-                  key={`heart-${idx}`}
-                  x={W * 0.72 + 5 + cx * 2.3}
-                  y={wallEnd * 0.34 + 4 + cy * 2}
-                  width={2.3}
-                  height={2}
-                  fill="#F08FA9"
-                />
-              ))}
-            </g>
-
-            {/* Tiny round wall clock */}
-            <g>
-              <circle cx={W * 0.86} cy={wallEnd * 0.2} r={6} fill="#F4E3C2" stroke="#7B5234" strokeWidth={1.5} />
-              <circle cx={W * 0.86} cy={wallEnd * 0.2} r={0.7} fill="#7B5234" />
-              <line x1={W * 0.86} y1={wallEnd * 0.2} x2={W * 0.86} y2={wallEnd * 0.2 - 3.5} stroke="#7B5234" strokeWidth={1} />
-              <line x1={W * 0.86} y1={wallEnd * 0.2} x2={W * 0.86 + 2.5} y2={wallEnd * 0.2} stroke="#7B5234" strokeWidth={1} />
-            </g>
-
-            {/* Baseboard with light highlight line */}
-            <rect x={0} y={wallEnd - 6} width={W} height={6} fill={theme.wallTrim} />
-            <rect x={0} y={wallEnd - 8} width={W} height={2} fill={theme.floorLine} opacity={0.55} />
-            <rect x={0} y={wallEnd - 6} width={W} height={1} fill="#FFFFFF" opacity={0.22} />
-
-            {/* === Floor: vertical wooden planks with grain + knots === */}
-            <rect x={0} y={wallEnd} width={W} height={floorEnd - wallEnd} fill={theme.floor} />
-            {/* Vertical plank dividers */}
-            {Array.from({ length: 5 }).map((_, i) => (
-              <line
-                key={`vplank-${i}`}
-                x1={(i + 1) * (W / 6)}
-                y1={wallEnd}
-                x2={(i + 1) * (W / 6)}
-                y2={floorEnd}
-                stroke={theme.floorLine}
-                strokeWidth={1}
-                opacity={0.55}
-              />
-            ))}
-            {/* Alternating plank shading */}
-            {Array.from({ length: 6 }).map((_, i) =>
-              i % 2 === 1 ? (
-                <rect
-                  key={`plank-shade-${i}`}
-                  x={i * (W / 6)}
-                  y={wallEnd}
-                  width={W / 6}
-                  height={floorEnd - wallEnd}
-                  fill="#000000"
-                  opacity={0.07}
-                />
-              ) : null,
-            )}
-            {/* Wood grain — short scattered horizontal lines */}
-            {Array.from({ length: 18 }).map((_, i) => {
-              const plank = i % 6;
-              const rowIdx = Math.floor(i / 6);
-              const plankW = W / 6;
-              const x = plank * plankW + 3 + ((i * 13) % Math.max(1, plankW - 14));
-              const y = wallEnd + 5 + rowIdx * ((floorEnd - wallEnd) / 4) + ((i * 7) % 5);
-              const len = 8 + ((i * 5) % 7);
-              return (
-                <rect
-                  key={`grain-${i}`}
-                  x={x}
-                  y={y}
-                  width={len}
-                  height={0.6}
-                  fill={theme.floorLine}
-                  opacity={0.28}
-                />
-              );
-            })}
-            {/* Plank knots */}
-            {[1, 3, 5].map((plank, i) => {
-              const cx = plank * (W / 6) + W / 12;
-              const cy = wallEnd + ((i + 1) / 4) * (floorEnd - wallEnd);
-              return (
-                <ellipse
-                  key={`knot-${i}`}
-                  cx={cx}
-                  cy={cy}
-                  rx={1.8}
-                  ry={1.2}
-                  fill={theme.floorLine}
-                  opacity={0.5}
-                />
-              );
-            })}
-            {/* Floor depth gradient overlay */}
-            <rect x={0} y={wallEnd} width={W} height={floorEnd - wallEnd} fill="url(#floor-grad)" opacity={0.18} />
-          </>
+          (() => {
+            const wx = W * 0.13;
+            const wy = wallEnd * 0.18;
+            const ww = 64;
+            const wh = 50;
+            const isSpace = theme.windowKind === "space";
+            const isOcean = theme.windowKind === "ocean";
+            const isForest = theme.windowKind === "forest";
+            return (
+              <g>
+                <rect x={wx} y={wy} width={ww} height={wh} fill={isSpace ? "#0E0B25" : "url(#sky-grad-exp)"} />
+                {!isSpace && !isOcean && !isForest && (
+                  <>
+                    <circle cx={wx + ww * 0.78} cy={wy + wh * 0.3} r={6.5} fill="#FFE873" opacity={0.4} />
+                    <circle cx={wx + ww * 0.78} cy={wy + wh * 0.3} r={4.5} fill="#FFE085" />
+                    <g opacity={0.92}>
+                      <ellipse cx={wx + ww * 0.3} cy={wy + wh * 0.42} rx={9} ry={3.2} fill="#FFFFFF" />
+                      <ellipse cx={wx + ww * 0.36} cy={wy + wh * 0.38} rx={5.5} ry={2.8} fill="#FFFFFF" />
+                    </g>
+                    <g opacity={0.78}>
+                      <ellipse cx={wx + ww * 0.55} cy={wy + wh * 0.65} rx={6.5} ry={2.4} fill="#FFFFFF" />
+                      <ellipse cx={wx + ww * 0.5} cy={wy + wh * 0.62} rx={3.5} ry={2} fill="#FFFFFF" />
+                    </g>
+                  </>
+                )}
+                {isForest && (
+                  <>
+                    <rect x={wx + ww * 0.35} y={wy + wh * 0.55} width={3} height={wh * 0.42} fill="#4A2D14" />
+                    <ellipse cx={wx + ww * 0.37} cy={wy + wh * 0.45} rx={ww * 0.22} ry={wh * 0.22} fill="#3F7D3F" />
+                    <rect x={wx + ww * 0.78} y={wy + wh * 0.65} width={2} height={wh * 0.32} fill="#5B3A1F" />
+                    <ellipse cx={wx + ww * 0.79} cy={wy + wh * 0.58} rx={ww * 0.13} ry={wh * 0.13} fill="#5BA653" />
+                    <circle cx={wx + ww * 0.85} cy={wy + wh * 0.18} r={3} fill="#FFE873" opacity={0.9} />
+                  </>
+                )}
+                {isOcean && (
+                  <>
+                    <circle cx={wx + ww * 0.78} cy={wy + wh * 0.2} r={5} fill="#FFE0A8" />
+                    <rect x={wx} y={wy + wh * 0.55} width={ww} height={wh * 0.45} fill="#3F86C0" />
+                    <rect x={wx + 4} y={wy + wh * 0.65} width={5} height={1} fill="#FFFFFF" opacity={0.6} />
+                    <rect x={wx + 22} y={wy + wh * 0.75} width={5} height={1} fill="#FFFFFF" opacity={0.55} />
+                    <rect x={wx + 40} y={wy + wh * 0.7} width={5} height={1} fill="#FFFFFF" opacity={0.55} />
+                    <rect x={wx + 50} y={wy + wh * 0.83} width={4} height={1} fill="#FFFFFF" opacity={0.5} />
+                  </>
+                )}
+                {isSpace && (
+                  <>
+                    <circle cx={wx + ww * 0.78} cy={wy + wh * 0.25} r={5} fill="#F0E8B8" />
+                    <circle cx={wx + ww * 0.78 - 1.6} cy={wy + wh * 0.25 - 0.8} r={1.2} fill="#0E0B25" opacity={0.4} />
+                    <rect x={wx + ww * 0.18} y={wy + wh * 0.18} width={2} height={2} fill="#FFE873" />
+                    <rect x={wx + ww * 0.32} y={wy + wh * 0.6} width={2} height={2} fill="#FFFFFF" />
+                    <rect x={wx + ww * 0.5} y={wy + wh * 0.4} width={2} height={2} fill="#FFFFFF" />
+                    <rect x={wx + ww * 0.6} y={wy + wh * 0.78} width={2} height={2} fill="#FFE873" />
+                    <rect x={wx + ww * 0.42} y={wy + wh * 0.85} width={2} height={2} fill="#FFFFFF" />
+                  </>
+                )}
+                {/* Frame + cross divider */}
+                <rect x={wx} y={wy} width={ww} height={wh} fill="none" stroke="#7B5234" strokeWidth={3} />
+                <line x1={wx + ww / 2} y1={wy} x2={wx + ww / 2} y2={wy + wh} stroke="#7B5234" strokeWidth={2} />
+                <line x1={wx} y1={wy + wh / 2} x2={wx + ww} y2={wy + wh / 2} stroke="#7B5234" strokeWidth={2} />
+                {/* Sill (no plant, clean) */}
+                <rect x={wx - 4} y={wy + wh + 1} width={ww + 8} height={4} fill="#8B5E37" />
+                <rect x={wx - 4} y={wy + wh + 5} width={ww + 8} height={1} fill="#5C3D24" opacity={0.6} />
+              </g>
+            );
+          })()
         ) : (
-          // ============ CLASSIC ROOM (existing — unchanged) =============
-          <>
-            <rect x={0} y={0} width={W} height={wallEnd} fill={theme.wall} />
-            {Array.from({ length: 8 }).map((_, i) => (
-              <rect
-                key={`stripe-${i}`}
-                x={(i + 0.5) * (W / 8) - 0.5}
-                y={0}
-                width={1}
-                height={wallEnd}
-                fill={theme.wallDecor}
-                opacity={0.3}
-              />
-            ))}
-            {theme.wallExtras === "stars"
-              ? Array.from({ length: 14 }).map((_, i) => (
-                  <rect
-                    key={`star-${i}`}
-                    x={((i * 53) % W) + 4}
-                    y={((i * 27) % wallEnd) + 4}
-                    width={2}
-                    height={2}
-                    fill="#FFE873"
-                    opacity={0.9}
-                  />
-                ))
-              : null}
-            <g>
-              <rect x={W * 0.18} y={wallEnd * 0.25} width={36} height={26} fill={theme.windowKind === "ocean" ? "#5BAEEA" : theme.windowKind === "forest" ? "#A8D08C" : theme.windowKind === "space" ? "#0E0B25" : "#9CC9E5"} />
-              {theme.windowKind === "house" ? (
-                <rect x={W * 0.18 + 4} y={wallEnd * 0.25 + 6} width={10} height={3} fill="#FFFFFF" opacity={0.8} />
-              ) : theme.windowKind === "forest" ? (
-                <>
-                  <rect x={W * 0.18 + 17} y={wallEnd * 0.25 + 14} width={2} height={10} fill="#5B3A1F" />
-                  <rect x={W * 0.18 + 13} y={wallEnd * 0.25 + 6} width={10} height={10} fill="#4A8E47" />
-                </>
-              ) : theme.windowKind === "ocean" ? (
-                <>
-                  <rect x={W * 0.18} y={wallEnd * 0.25 + 14} width={36} height={12} fill="#3F86C0" />
-                  <rect x={W * 0.18 + 24} y={wallEnd * 0.25 + 6} width={6} height={6} fill="#FFE873" />
-                </>
-              ) : (
-                <>
-                  <rect x={W * 0.18 + 6} y={wallEnd * 0.25 + 6} width={2} height={2} fill="#FFE873" />
-                  <rect x={W * 0.18 + 16} y={wallEnd * 0.25 + 12} width={2} height={2} fill="#FFE873" />
-                  <rect x={W * 0.18 + 26} y={wallEnd * 0.25 + 8} width={2} height={2} fill="#FFFFFF" />
-                </>
-              )}
-              <rect x={W * 0.18} y={wallEnd * 0.25} width={36} height={26} fill="none" stroke="#7B5234" strokeWidth={2} />
-              <line x1={W * 0.18 + 18} y1={wallEnd * 0.25} x2={W * 0.18 + 18} y2={wallEnd * 0.25 + 26} stroke="#7B5234" strokeWidth={1} />
-              <line x1={W * 0.18} y1={wallEnd * 0.25 + 13} x2={W * 0.18 + 36} y2={wallEnd * 0.25 + 13} stroke="#7B5234" strokeWidth={1} />
-            </g>
-            <g>
-              <rect x={W * 0.66} y={wallEnd * 0.28} width={28} height={20} fill="#FFFFFF" />
-              <rect x={W * 0.66} y={wallEnd * 0.28} width={28} height={20} fill="none" stroke="#7B5234" strokeWidth={2} />
-              <rect x={W * 0.66 + 4} y={wallEnd * 0.28 + 4} width={20} height={6} fill="#F2C84B" opacity={0.7} />
-              <rect x={W * 0.66 + 4} y={wallEnd * 0.28 + 12} width={12} height={4} fill="#F08FA9" opacity={0.7} />
-            </g>
-            <rect x={0} y={wallEnd - 6} width={W} height={6} fill={theme.wallTrim} />
-            <rect x={0} y={wallEnd - 8} width={W} height={2} fill={theme.floorLine} opacity={0.5} />
-            <rect x={0} y={wallEnd} width={W} height={floorEnd - wallEnd} fill={theme.floor} />
-            {Array.from({ length: 4 }).map((_, i) => (
-              <rect
-                key={`plank-${i}`}
-                x={0}
-                y={wallEnd + (i + 1) * ((floorEnd - wallEnd) / 5)}
-                width={W}
-                height={1}
-                fill={theme.floorLine}
-                opacity={0.42}
-              />
-            ))}
-            {Array.from({ length: 12 }).map((_, i) => {
-              const planks = 5;
-              const yi = (i % (planks - 1)) + 1;
-              const xi = Math.floor(i / (planks - 1)) + 1;
-              const y = wallEnd + yi * ((floorEnd - wallEnd) / planks);
-              const x = xi * (W / 5) + (yi % 2 ? 0 : W / 10);
-              return (
-                <rect key={`joint-${i}`} x={x} y={y - 7} width={1} height={7} fill={theme.floorLine} opacity={0.36} />
-              );
-            })}
-            <rect x={0} y={wallEnd} width={W} height={floorEnd - wallEnd} fill="url(#floor-grad)" opacity={0.18} />
-          </>
+          <g>
+            <rect x={W * 0.18} y={wallEnd * 0.25} width={36} height={26} fill={theme.windowKind === "ocean" ? "#5BAEEA" : theme.windowKind === "forest" ? "#A8D08C" : theme.windowKind === "space" ? "#0E0B25" : "#9CC9E5"} />
+            {theme.windowKind === "house" ? (
+              <rect x={W * 0.18 + 4} y={wallEnd * 0.25 + 6} width={10} height={3} fill="#FFFFFF" opacity={0.8} />
+            ) : theme.windowKind === "forest" ? (
+              <>
+                <rect x={W * 0.18 + 17} y={wallEnd * 0.25 + 14} width={2} height={10} fill="#5B3A1F" />
+                <rect x={W * 0.18 + 13} y={wallEnd * 0.25 + 6} width={10} height={10} fill="#4A8E47" />
+              </>
+            ) : theme.windowKind === "ocean" ? (
+              <>
+                <rect x={W * 0.18} y={wallEnd * 0.25 + 14} width={36} height={12} fill="#3F86C0" />
+                <rect x={W * 0.18 + 24} y={wallEnd * 0.25 + 6} width={6} height={6} fill="#FFE873" />
+              </>
+            ) : (
+              <>
+                <rect x={W * 0.18 + 6} y={wallEnd * 0.25 + 6} width={2} height={2} fill="#FFE873" />
+                <rect x={W * 0.18 + 16} y={wallEnd * 0.25 + 12} width={2} height={2} fill="#FFE873" />
+                <rect x={W * 0.18 + 26} y={wallEnd * 0.25 + 8} width={2} height={2} fill="#FFFFFF" />
+              </>
+            )}
+            <rect x={W * 0.18} y={wallEnd * 0.25} width={36} height={26} fill="none" stroke="#7B5234" strokeWidth={2} />
+            <line x1={W * 0.18 + 18} y1={wallEnd * 0.25} x2={W * 0.18 + 18} y2={wallEnd * 0.25 + 26} stroke="#7B5234" strokeWidth={1} />
+            <line x1={W * 0.18} y1={wallEnd * 0.25 + 13} x2={W * 0.18 + 36} y2={wallEnd * 0.25 + 13} stroke="#7B5234" strokeWidth={1} />
+          </g>
         )}
+
+        {/* === Picture frame — admin gets a bigger pixel-heart frame === */}
+        {experimental ? (
+          <g>
+            <rect x={W * 0.7} y={wallEnd * 0.30} width={34} height={28} fill="#FFFEFA" />
+            <rect x={W * 0.7} y={wallEnd * 0.30} width={34} height={28} fill="none" stroke="#7B5234" strokeWidth={2} />
+            {([
+              [1, 1], [2, 1], [4, 1], [5, 1],
+              [0, 2], [1, 2], [2, 2], [3, 2], [4, 2], [5, 2], [6, 2],
+              [0, 3], [1, 3], [2, 3], [3, 3], [4, 3], [5, 3], [6, 3],
+              [1, 4], [2, 4], [3, 4], [4, 4], [5, 4],
+              [2, 5], [3, 5], [4, 5],
+              [3, 6],
+            ] as ReadonlyArray<readonly [number, number]>).map(([cx, cy], idx) => (
+              <rect
+                key={`heart-${idx}`}
+                x={W * 0.7 + 8 + cx * 2.7}
+                y={wallEnd * 0.30 + 6 + cy * 2.4}
+                width={2.7}
+                height={2.4}
+                fill="#F08FA9"
+              />
+            ))}
+          </g>
+        ) : (
+          <g>
+            <rect x={W * 0.66} y={wallEnd * 0.28} width={28} height={20} fill="#FFFFFF" />
+            <rect x={W * 0.66} y={wallEnd * 0.28} width={28} height={20} fill="none" stroke="#7B5234" strokeWidth={2} />
+            <rect x={W * 0.66 + 4} y={wallEnd * 0.28 + 4} width={20} height={6} fill="#F2C84B" opacity={0.7} />
+            <rect x={W * 0.66 + 4} y={wallEnd * 0.28 + 12} width={12} height={4} fill="#F08FA9" opacity={0.7} />
+          </g>
+        )}
+
+        {/* === Baseboard + Floor (classic — same for both variants) === */}
+        <rect x={0} y={wallEnd - 6} width={W} height={6} fill={theme.wallTrim} />
+        <rect x={0} y={wallEnd - 8} width={W} height={2} fill={theme.floorLine} opacity={0.5} />
+        <rect x={0} y={wallEnd} width={W} height={floorEnd - wallEnd} fill={theme.floor} />
+        {Array.from({ length: 4 }).map((_, i) => (
+          <rect
+            key={`plank-${i}`}
+            x={0}
+            y={wallEnd + (i + 1) * ((floorEnd - wallEnd) / 5)}
+            width={W}
+            height={1}
+            fill={theme.floorLine}
+            opacity={0.42}
+          />
+        ))}
+        {Array.from({ length: 12 }).map((_, i) => {
+          const planks = 5;
+          const yi = (i % (planks - 1)) + 1;
+          const xi = Math.floor(i / (planks - 1)) + 1;
+          const y = wallEnd + yi * ((floorEnd - wallEnd) / planks);
+          const x = xi * (W / 5) + (yi % 2 ? 0 : W / 10);
+          return (
+            <rect key={`joint-${i}`} x={x} y={y - 7} width={1} height={7} fill={theme.floorLine} opacity={0.36} />
+          );
+        })}
+        <rect x={0} y={wallEnd} width={W} height={floorEnd - wallEnd} fill="url(#floor-grad)" opacity={0.18} />
       </svg>
 
       {/* Furniture HTML overlays — z-index from y, long-press drag in
