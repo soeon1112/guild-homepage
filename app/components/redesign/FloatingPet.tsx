@@ -1268,7 +1268,7 @@ function MainPanel({
         />
         {isDebugAdmin ? (
           <InteractButton
-            icon={INTERACTION_ICONS.wear}
+            icon={INTERACTION_ICONS.chat}
             label={chatOpen ? "대화 닫기" : "대화하기"}
             disabled={busy}
             onClick={() => setChatOpen((v) => !v)}

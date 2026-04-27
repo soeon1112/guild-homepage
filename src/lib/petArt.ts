@@ -2956,7 +2956,28 @@ const II_WEAR: ItemIconRender = {
   resolve: colorMap({ k: "#5B3A1F" }),
 };
 
-export const INTERACTION_ICONS: Record<InteractionId | "wear", ItemIconRender> = {
+// Chat — speech bubble with three dots inside, tail pointing
+// bottom-left at the pet. Used by the "대화하기" interaction button
+// so it's visually distinct from "이름표" (which shares the wear icon).
+const II_CHAT: ItemIconRender = {
+  grid: [
+    "............",
+    "..kkkkkkkk..",
+    ".kwwwwwwwwk.",
+    ".kwBwBwBwwk.",
+    ".kwwwwwwwwk.",
+    ".kwwwwwwwwk.",
+    "..kkkkkkkk..",
+    "....k.......",
+    "...k........",
+    "............",
+    "............",
+    "............",
+  ],
+  resolve: colorMap({ k: "#5B3A1F", w: "#FFFFFF", B: "#1A1A1A" }),
+};
+
+export const INTERACTION_ICONS: Record<InteractionId | "wear" | "chat", ItemIconRender> = {
   feed: II_FEED,
   play: II_PLAY,
   wash: II_WASH,
@@ -2966,6 +2987,7 @@ export const INTERACTION_ICONS: Record<InteractionId | "wear", ItemIconRender> =
   sleep: II_SLEEP,
   train: II_TRAIN,
   wear: II_WEAR,
+  chat: II_CHAT,
 };
 
 // ── Tab icons ────────────────────────────────────────────────
