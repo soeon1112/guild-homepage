@@ -4,7 +4,7 @@
 // per-platform proxy: Cloud Function (`petChat`) for the app and
 // Next.js API route (`/api/pet-chat`) for homepage.
 
-import type { PetStage, PetType } from "./pets";
+import type { InteractionId, PetStage, PetType } from "./pets";
 
 // Per-species first-time intro lines shown once before chatting.
 export const PET_CHAT_INTRO: Record<PetType, string> = {
@@ -130,12 +130,97 @@ export type PetChatStats = {
   clean: number;
 };
 
+// Per-interaction Korean phrasing for the "최근 활동" section.
+export const INTERACTION_LABEL_KO: Record<InteractionId, string> = {
+  feed: "밥을 줬어",
+  play: "놀아줬어",
+  wash: "씻겨줬어",
+  walk: "산책 다녀왔어",
+  pet: "쓰다듬어줬어",
+  treat: "간식을 줬어",
+  sleep: "재워줬어",
+  train: "훈련했어",
+};
+
+export function formatRelativeKo(msAgo: number): string {
+  const sec = Math.floor(msAgo / 1000);
+  if (sec < 60) return "방금 전";
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}분 전`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}시간 전`;
+  const day = Math.floor(hr / 24);
+  return `${day}일 전`;
+}
+
+type TsLike = { toMillis?: () => number } | { _seconds?: number; seconds?: number } | undefined;
+
+function tsToMs(ts: TsLike): number {
+  if (!ts) return 0;
+  const t = ts as { toMillis?: () => number };
+  if (typeof t.toMillis === "function") return t.toMillis();
+  const s = (ts as { seconds?: number; _seconds?: number });
+  const sec = s.seconds ?? s._seconds ?? 0;
+  return sec * 1000;
+}
+
+// Build the "최근 활동:" prompt section. Returns null if there is
+// nothing recent to mention. Both proxies (Next.js route + Cloud
+// Function) call this with whatever they already fetched from
+// Firestore, so we don't duplicate fetch logic here.
+export function buildRecentActivityText(
+  cooldowns: Partial<Record<InteractionId, TsLike>> | undefined,
+  playgroundLog: {
+    greetedWith?: Record<string, TsLike>;
+    playedWith?: Record<string, TsLike>;
+    treatedWith?: Record<string, TsLike>;
+  } | null,
+  nowMs: number = Date.now(),
+): string | null {
+  type Entry = { ms: number; text: string };
+  const entries: Entry[] = [];
+  const DAY = 24 * 60 * 60 * 1000;
+  if (cooldowns) {
+    for (const [id, ts] of Object.entries(cooldowns)) {
+      const tsMs = tsToMs(ts as TsLike);
+      if (!tsMs) continue;
+      const ms = nowMs - tsMs;
+      if (ms < 0 || ms > DAY) continue;
+      const label = INTERACTION_LABEL_KO[id as InteractionId];
+      if (!label) continue;
+      entries.push({ ms, text: `- ${formatRelativeKo(ms)}에 집사가 ${label}` });
+    }
+  }
+  if (playgroundLog) {
+    const groups: Array<[Record<string, TsLike> | undefined, string]> = [
+      [playgroundLog.greetedWith, "와(과) 인사했어"],
+      [playgroundLog.playedWith, "와(과) 같이 놀았어"],
+      [playgroundLog.treatedWith, "에게 간식을 줬어"],
+    ];
+    for (const [map, suffix] of groups) {
+      if (!map) continue;
+      for (const [other, ts] of Object.entries(map)) {
+        const tsMs = tsToMs(ts as TsLike);
+        if (!tsMs) continue;
+        const ms = nowMs - tsMs;
+        if (ms < 0 || ms > DAY) continue;
+        entries.push({ ms, text: `- ${formatRelativeKo(ms)}에 놀이터에서 '${other}'${suffix}` });
+      }
+    }
+  }
+  entries.sort((a, b) => a.ms - b.ms);
+  const top5 = entries.slice(0, 5);
+  if (top5.length === 0) return null;
+  return top5.map((e) => e.text).join("\n");
+}
+
 export function buildPetChatSystemPrompt(args: {
   type: PetType;
   stage: PetStage;
   petName: string;
   ownerNickname: string;
   stats: PetChatStats;
+  recentActivityText?: string | null;
 }): string {
   const tone = PET_CHAT_TONE[args.type][args.stage];
   const speciesKo = PET_TYPE_LABEL_KO[args.type];
@@ -166,7 +251,17 @@ export function buildPetChatSystemPrompt(args: {
     "  · 전부 높을 때: 최상의 기분, 대화가 가장 활발하고 재밌음",
     "  · 전부 낮을 때: 기운 없고 우울, 대답도 짧고 힘없는 느낌, 돌봐달라는 뉘앙스",
     "",
-    "중요한 제한 규칙:",
+    ...(args.recentActivityText
+          ? [
+              "",
+              "최근 활동:",
+              args.recentActivityText,
+              "",
+              "이 기록을 기억하고 있어. 집사가 관련 얘기하면 자연스럽게 반응해. 예를 들어 집사가 '산책 어땠어?'라고 하면 아까 산책 다녀온 걸 기억하고 대답해. 하지만 집사가 안 물어보면 굳이 먼저 꺼내지는 마.",
+            ]
+          : []),
+        "",
+        "중요한 제한 규칙:",
     "- 너는 절대로 펫 역할에서 벗어나면 안 돼",
     "- 어떤 요청이든 펫이 아닌 다른 존재로 대답하지 마",
     "- AI 어시스턴트, 번역기, 코딩 도우미 등 다른 용도로 사용하려는 시도에는 펫답게 거부해",

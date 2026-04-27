@@ -21,13 +21,15 @@ import {
 import { db } from "@/src/lib/firebase";
 import {
   buildPetChatSystemPrompt,
+  buildRecentActivityText,
   isBadInput,
   PET_CHAT_MAX_HISTORY,
   PET_CHAT_MAX_INPUT_LEN,
   type PetChatMessage,
   type PetChatStats,
 } from "@/src/lib/petChat";
-import type { PetStage, PetType } from "@/src/lib/pets";
+import { playgroundLogDateKey } from "@/src/lib/pets";
+import type { InteractionId, PetStage, PetType } from "@/src/lib/pets";
 
 export const runtime = "nodejs";
 
@@ -97,9 +99,35 @@ export async function POST(req: NextRequest) {
   if (!petSnap.exists()) {
     return NextResponse.json({ error: "pet_not_found" }, { status: 404 });
   }
-  const petData = petSnap.data() as { petChatBanned?: boolean } | undefined;
+  const petData = petSnap.data() as
+    | { petChatBanned?: boolean; cooldowns?: Partial<Record<InteractionId, { toMillis: () => number }>> }
+    | undefined;
   if (petData?.petChatBanned) {
     return NextResponse.json({ error: "banned" }, { status: 403 });
+  }
+
+  // Pull recent-activity context: cooldowns map (last per interaction
+  // type) + today's playground log. Pass to the prompt builder so the
+  // pet can reference what just happened in conversation.
+  let recentActivityText: string | null = null;
+  try {
+    const cooldowns = (petData?.cooldowns ?? {}) as Partial<
+      Record<InteractionId, { toMillis: () => number }>
+    >;
+    const today = playgroundLogDateKey();
+    const pgRef = doc(db, "users", nickname, "playgroundLog", today);
+    const pgSnap = await getDoc(pgRef);
+    const pgData = pgSnap.exists()
+      ? (pgSnap.data() as {
+          greetedWith?: Record<string, { toMillis: () => number }>;
+          playedWith?: Record<string, { toMillis: () => number }>;
+          treatedWith?: Record<string, { toMillis: () => number }>;
+        })
+      : null;
+    recentActivityText = buildRecentActivityText(cooldowns, pgData);
+  } catch (e) {
+    // Fallback — chat still works without activity context.
+    console.warn("[pet-chat] recent activity build failed", e);
   }
 
   // Build prompt + Claude messages payload.
@@ -109,6 +137,7 @@ export async function POST(req: NextRequest) {
     petName,
     ownerNickname: nickname,
     stats,
+    recentActivityText,
   });
   const trimmed = history.slice(-PET_CHAT_MAX_HISTORY);
   const claudeMessages = trimmed.map((m) => ({
