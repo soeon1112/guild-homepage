@@ -1179,7 +1179,7 @@ function MainPanel({
       {/* Chat panel — sits between the pet room and the gauge grid so
           the head bubble (above the pet) and the input land together
           in the user's gaze. */}
-      {isDebugAdmin && chatOpen ? (
+      {chatOpen ? (
         <PetChatBox
           ownerNickname={ownerNickname}
           petType={pet.type}
@@ -1266,14 +1266,12 @@ function MainPanel({
             setPendingName(pet.name);
           }}
         />
-        {isDebugAdmin ? (
-          <InteractButton
-            icon={INTERACTION_ICONS.chat}
-            label={chatOpen ? "대화 닫기" : "대화하기"}
-            disabled={busy}
-            onClick={() => setChatOpen((v) => !v)}
-          />
-        ) : null}
+        <InteractButton
+          icon={INTERACTION_ICONS.chat}
+          label={chatOpen ? "대화 닫기" : "대화하기"}
+          disabled={busy}
+          onClick={() => setChatOpen((v) => !v)}
+        />
       </div>
 
       {/* Quick consumables */}
