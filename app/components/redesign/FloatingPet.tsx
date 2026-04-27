@@ -824,7 +824,7 @@ export default function FloatingPet() {
                   visiting={visiting}
                   setVisiting={setVisiting}
                   now={now}
-                  experimental={canDebugPet(nickname)}
+                  experimental={true}
                 />
               ) : (
                 <RankingPanel members={members} myNickname={nickname ?? null} />
@@ -1048,7 +1048,7 @@ function MainPanel({
             selectedFurniture={selectedFurniture}
             onSelectFurniture={setSelectedFurniture}
             onMoveFurniture={onMoveFurniture}
-            experimental={isDebugAdmin}
+            experimental={true}
           />
           {bubble ? (
             <div
