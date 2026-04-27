@@ -39,6 +39,7 @@ import {
   type PetStage,
   type PetType,
 } from "@/src/lib/pets";
+import { EggHappySparkles } from "./PetSvg";
 
 const SPRITE_GRID = 16;
 
@@ -1057,10 +1058,13 @@ function PetRoomInner({
                 if (!grid) return null;
                 return <g key={id}>{gridRects(grid, accessoryColor, 1, 0, 0, `acc-${id}`)}</g>;
               })}
-            {/* Egg-stage mood overlay (4-level). Baby+ keeps its legacy
-                frown — fires only on the original any-0% condition (now
-                = "severe"). */}
-            {isEgg ? (
+            {/* Egg-stage mood overlay. Happy → animated sparkles;
+                sad/severe → static grids. Baby+ keeps its legacy frown
+                — fires only on the original any-0% condition (now =
+                "severe"). */}
+            {isEgg && mood === "happy" ? (
+              <EggHappySparkles overlayPx={1} />
+            ) : isEgg ? (
               (() => {
                 const overlay = eggMoodOverlay(mood);
                 if (!overlay) return null;

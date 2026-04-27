@@ -1149,24 +1149,8 @@ export function eggMoodOverlayColor(code: string): string | null {
   }
 }
 
-const EGG_HAPPY: string[] = [
-  "..s..........s..",
-  ".s.s........s.s.",
-  "..s..........s..",
-  "................",
-  "................",
-  "................",
-  "................",
-  "................",
-  "................",
-  "................",
-  "................",
-  "................",
-  "..s..........s..",
-  ".s.s........s.s.",
-  "..s..........s..",
-  "................",
-];
+// (egg-happy is rendered as 3 staggered animated sparkles by the
+// EggHappySparkles component in PetSvg/PetRoom — not a static grid.)
 
 const EGG_SAD: string[] = [
   "................",
@@ -1207,7 +1191,8 @@ const EGG_SEVERE: string[] = [
 ];
 
 export function eggMoodOverlay(mood: PetMood): string[] | null {
-  if (mood === "happy") return EGG_HAPPY;
+  // "happy" is handled separately by an animated sparkle component
+  // (3 staggered + clusters); only sad/severe are static grids.
   if (mood === "sad") return EGG_SAD;
   if (mood === "severe") return EGG_SEVERE;
   return null;

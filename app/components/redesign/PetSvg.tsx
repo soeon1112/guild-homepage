@@ -39,6 +39,37 @@ import {
 const ACCESSORY_CANVAS = 16; // overlay sprites are still 16×16
 const SPARKLE_INTERVAL_MS = 420;
 
+// Three staggered "+ shape" sparkles — egg-stage happy effect. CSS
+// keyframe `egg-sparkle-blink` handles each sparkle's opacity cycle;
+// per-element `animation-delay` shifts them so the screen always has
+// 1–2 visible sparkles instead of all blinking in lockstep.
+export function EggHappySparkles({ overlayPx }: { overlayPx: number }) {
+  return (
+    <>
+      <g className="egg-sparkle" style={{ animationDelay: "0s" }}>
+        {plusShape(3, 2, overlayPx, "a")}
+      </g>
+      <g className="egg-sparkle" style={{ animationDelay: "0.5s" }}>
+        {plusShape(13, 7, overlayPx, "b")}
+      </g>
+      <g className="egg-sparkle" style={{ animationDelay: "1s" }}>
+        {plusShape(9, 1, overlayPx, "c")}
+      </g>
+    </>
+  );
+}
+
+function plusShape(cx: number, cy: number, px: number, key: string) {
+  const fill = "#FFD56B";
+  return [
+    <rect key={`s-${key}-c`} x={cx * px} y={cy * px} width={px} height={px} fill={fill} />,
+    <rect key={`s-${key}-u`} x={cx * px} y={(cy - 1) * px} width={px} height={px} fill={fill} />,
+    <rect key={`s-${key}-d`} x={cx * px} y={(cy + 1) * px} width={px} height={px} fill={fill} />,
+    <rect key={`s-${key}-l`} x={(cx - 1) * px} y={cy * px} width={px} height={px} fill={fill} />,
+    <rect key={`s-${key}-r`} x={(cx + 1) * px} y={cy * px} width={px} height={px} fill={fill} />,
+  ];
+}
+
 type PetSvgProps = {
   type: PetType;
   stage: PetStage;
@@ -186,10 +217,13 @@ function PetSvgInner({
           );
         })}
 
-      {/* Egg-stage mood overlay (sparkle / sweat / crack + dark aura).
-          Baby+ keeps the legacy frown — only fires when the legacy
-          "any-0%" condition is met (= new "severe" level). */}
-      {stage === "egg"
+      {/* Egg-stage mood overlay. Happy → animated sparkles (separate
+          component); sad/severe → static grids. Baby+ keeps the legacy
+          frown — only fires on the legacy "any-0%" condition (= new
+          "severe" level). */}
+      {stage === "egg" && mood === "happy" ? (
+        <EggHappySparkles overlayPx={overlayPx} />
+      ) : stage === "egg"
         ? (() => {
             const overlay = eggMoodOverlay(mood);
             if (!overlay) return null;

@@ -6457,6 +6457,20 @@ body.has-redesigned-header .bg-scene {
   30%, 80% { opacity: 1; transform: scale(1); }
   100% { opacity: 0; transform: scale(1.05); }
 }
+/* Egg-stage happy sparkle — three "+" clusters blink staggered so
+   the screen always has 1–2 sparkles visible (never all-on or all-off
+   at the same instant). Each .egg-sparkle gets its own animationDelay
+   inline (0s, 0.5s, 1s) for the phase offset. */
+@keyframes egg-sparkle-blink {
+  0%, 100% { opacity: 0; }
+  20%      { opacity: 1; }
+  50%      { opacity: 1; }
+  70%      { opacity: 0; }
+}
+.egg-sparkle {
+  animation: egg-sparkle-blink 1.5s ease-in-out infinite;
+}
+
 /* Playground walking bounce — gentle vertical bob on every pet. The
    pet div is anchored at bottom-center via translate(-50%, -100%); the
    keyframe re-applies that anchor and adds a small upward offset at
