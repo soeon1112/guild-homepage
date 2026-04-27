@@ -224,9 +224,14 @@ export default function FloatingPet() {
   const [debugType, setDebugType] = useState<PetType | null>(null);
   const [debugMood, setDebugMood] = useState<PetMood | null>(null);
   const [debugPicker, setDebugPicker] = useState<"stage" | "type" | "mood" | null>(null);
-  // Pet chat state — chatOpen toggles bottom panel, chatBubble overrides
-  // the head bubble while a chat session is active.
+  // Pet chat state — chatOpen toggles the chat panel, chatBubble
+  // overrides the head bubble during a session. Auto-closes on tab
+  // switch / panel close so the input never lingers under another
+  // panel's UI.
   const [chatOpen, setChatOpen] = useState(false);
+  useEffect(() => {
+    if (tab !== "main" || !open) setChatOpen(false);
+  }, [tab, open]);
   const [chatBubble, setChatBubbleState] = useState<string | null>(null);
   const setChatBubble = useCallback((s: string | null) => setChatBubbleState(s), []);
   useEffect(() => {
@@ -1174,6 +1179,21 @@ function MainPanel({
         </div>
       ) : null}
 
+      {/* Chat panel — sits between the pet room and the gauge grid so
+          the head bubble (above the pet) and the input land together
+          in the user's gaze. */}
+      {isDebugAdmin && chatOpen ? (
+        <PetChatBox
+          ownerNickname={ownerNickname}
+          petType={pet.type}
+          petStage={stage}
+          petName={pet.name}
+          stats={projected}
+          petChatStarted={!!pet.petChatStarted}
+          onSetPetBubble={setChatBubble}
+        />
+      ) : null}
+
       {/* ── HUD circular gauges (4 in a row) ── */}
       <div className="flex flex-row items-start gap-2">
         <CircleGauge
@@ -1258,18 +1278,6 @@ function MainPanel({
           />
         ) : null}
       </div>
-
-      {isDebugAdmin && chatOpen ? (
-        <PetChatBox
-          ownerNickname={ownerNickname}
-          petType={pet.type}
-          petStage={stage}
-          petName={pet.name}
-          stats={projected}
-          petChatStarted={!!pet.petChatStarted}
-          onSetPetBubble={setChatBubble}
-        />
-      ) : null}
 
       {/* Quick consumables */}
       <div>
