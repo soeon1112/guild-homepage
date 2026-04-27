@@ -39,7 +39,7 @@ import {
   type PetStage,
   type PetType,
 } from "@/src/lib/pets";
-import { EggHappySparkles } from "./PetSvg";
+import { EggHappySparkles, EggSadTear } from "./PetSvg";
 
 const SPRITE_GRID = 16;
 
@@ -1064,6 +1064,8 @@ function PetRoomInner({
                 "severe"). */}
             {isEgg && mood === "happy" ? (
               <EggHappySparkles overlayPx={1} />
+            ) : isEgg && mood === "sad" ? (
+              <EggSadTear overlayPx={1} />
             ) : isEgg ? (
               (() => {
                 const overlay = eggMoodOverlay(mood);

@@ -1150,50 +1150,36 @@ export function eggMoodOverlayColor(code: string): string | null {
 }
 
 // (egg-happy is rendered as 3 staggered animated sparkles by the
-// EggHappySparkles component in PetSvg/PetRoom — not a static grid.)
+// EggHappySparkles component in PetSvg/PetRoom — not a static grid.
+// egg-sad is rendered as a falling blue tear by EggSadTear — also not
+// a static grid.)
 
-const EGG_SAD: string[] = [
-  "................",
-  ".....B.B.B......",
-  ".....B.B.B......",
-  ".....B.B.B......",
-  "................",
-  "................",
-  "................",
-  "................",
-  "................",
-  "................",
-  "................",
-  "................",
-  "................",
-  "................",
-  "................",
-  "................",
-];
-
+// Three vertical depression lines above the egg's head, biased to the
+// right (||| pattern, manga-style "thinking dark thoughts"). Replaces
+// the prior cracked-egg sprite for severe mood.
 const EGG_SEVERE: string[] = [
-  "aa............aa",
-  "a..............a",
+  "................",
+  ".........B.B.B..",
+  ".........B.B.B..",
+  ".........B.B.B..",
   "................",
   "................",
   "................",
-  ".......B........",
-  "......BB........",
-  ".....BBB........",
-  "......B.........",
-  ".....BB.........",
-  "....BBB.........",
-  ".....B..........",
   "................",
   "................",
-  "a..............a",
-  "aa............aa",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
 ];
 
 export function eggMoodOverlay(mood: PetMood): string[] | null {
-  // "happy" is handled separately by an animated sparkle component
-  // (3 staggered + clusters); only sad/severe are static grids.
-  if (mood === "sad") return EGG_SAD;
+  // "happy" → animated sparkles (separate component).
+  // "sad"   → animated tear drop (separate component).
+  // "severe" → static ||| lines.
   if (mood === "severe") return EGG_SEVERE;
   return null;
 }

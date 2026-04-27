@@ -70,6 +70,38 @@ function plusShape(cx: number, cy: number, px: number, key: string) {
   ];
 }
 
+// Egg-stage sad effect — single blue tear that fades in beside the
+// egg, slowly drips down ~5 grid cells, fades out, and loops. Uses
+// SMIL <animateTransform> + <animate> so the translation is in SVG
+// user units (independent of CSS pixel size, works in both PetSvg's
+// size-matching viewBox and PetRoom's 16-unit viewBox).
+export function EggSadTear({ overlayPx }: { overlayPx: number }) {
+  const px = overlayPx;
+  const tearColor = "#4FB3FF";
+  return (
+    <g>
+      <animateTransform
+        attributeName="transform"
+        type="translate"
+        values={`0 0; 0 ${5 * px}; 0 ${5 * px}`}
+        keyTimes="0;0.88;1"
+        dur="2.5s"
+        repeatCount="indefinite"
+      />
+      <animate
+        attributeName="opacity"
+        values="0;1;1;0;0"
+        keyTimes="0;0.12;0.76;0.88;1"
+        dur="2.5s"
+        repeatCount="indefinite"
+      />
+      <rect x={13 * px} y={5 * px} width={px} height={px} fill={tearColor} />
+      <rect x={13 * px} y={6 * px} width={px} height={px} fill={tearColor} />
+      <rect x={13 * px} y={7 * px} width={px} height={px} fill={tearColor} />
+    </g>
+  );
+}
+
 type PetSvgProps = {
   type: PetType;
   stage: PetStage;
@@ -223,6 +255,8 @@ function PetSvgInner({
           "severe" level). */}
       {stage === "egg" && mood === "happy" ? (
         <EggHappySparkles overlayPx={overlayPx} />
+      ) : stage === "egg" && mood === "sad" ? (
+        <EggSadTear overlayPx={overlayPx} />
       ) : stage === "egg"
         ? (() => {
             const overlay = eggMoodOverlay(mood);
