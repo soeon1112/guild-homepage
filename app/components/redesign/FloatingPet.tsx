@@ -2086,22 +2086,35 @@ function PlaygroundPanel({
     const X_MAX = 92;
     const Y_MIN = 50;
     const Y_MAX = 85;
+    // 30% of the grass-band X width (= 84 units) = ~25 units. Capped
+    // as a Euclidean distance so neither axis can ship the pet across
+    // the field in one move.
+    const MAX_STEP = 25;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
-    const pickRandom = () => ({
-      x: X_MIN + Math.random() * (X_MAX - X_MIN),
-      y: Y_MIN + Math.random() * (Y_MAX - Y_MIN),
-    });
-    const initial = pickRandom();
+    let curX = X_MIN + Math.random() * (X_MAX - X_MIN);
+    let curY = Y_MIN + Math.random() * (Y_MAX - Y_MIN);
+    const pickClamped = () => {
+      const tx = X_MIN + Math.random() * (X_MAX - X_MIN);
+      const ty = Y_MIN + Math.random() * (Y_MAX - Y_MIN);
+      const dx = tx - curX;
+      const dy = ty - curY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist <= MAX_STEP) return { x: tx, y: ty };
+      const scale = MAX_STEP / dist;
+      return { x: curX + dx * scale, y: curY + dy * scale };
+    };
     if (process.env.NODE_ENV !== "production") {
       console.log(
-        `[playground] my-pet wander range: X ${X_MIN}–${X_MAX}, Y ${Y_MIN}–${Y_MAX} | initial: (${initial.x.toFixed(1)}, ${initial.y.toFixed(1)})`,
+        `[playground] my-pet wander range: X ${X_MIN}–${X_MAX}, Y ${Y_MIN}–${Y_MAX}, max step ${MAX_STEP} | initial: (${curX.toFixed(1)}, ${curY.toFixed(1)})`,
       );
     }
-    updatePlaygroundPosition(myNickname, initial.x, initial.y).catch(() => {});
+    updatePlaygroundPosition(myNickname, curX, curY).catch(() => {});
     const tick = () => {
       if (cancelled) return;
-      const next = pickRandom();
+      const next = pickClamped();
+      curX = next.x;
+      curY = next.y;
       updatePlaygroundPosition(myNickname, next.x, next.y).catch(() => {});
       timer = setTimeout(tick, 5000 + Math.random() * 5000);
     };
