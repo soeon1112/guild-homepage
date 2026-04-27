@@ -2071,28 +2071,41 @@ function PlaygroundPanel({
   // While my pet is in the playground, periodically write a new anchor
   // position so other clients see the pet wander. Owner-side only.
   //
-  // Y stays in 50–90 (grass band) so the pet's feet sit on the grass —
-  // never floats in the sky portion of the field. X stays in 15–85 so
-  // pets don't hug the side walls. Each step is a small delta (±12 X /
-  // ±8 Y) so motion reads as a slow stroll, not a teleport. Cadence
-  // randomizes per tick (8–15 s) so different pets don't all move on
-  // the same beat.
+  // EVERY tick picks a brand-new random target across the full grass
+  // band — no delta-walk, no drift. Random walks were causing pets to
+  // cluster on one side over time (fixed multiple times now; pure
+  // random sampling is the only fix that's actually drift-proof).
+  //
+  // Range: X 8–92 (full visual width), Y 50–85 (grass band so feet
+  // stay on grass). Interval: 5–10 s random per tick (different pets
+  // step on different beats). Slide duration is 1800 ms — midway
+  // between earlier "too fast" and "too slow" feels.
   useEffect(() => {
     if (!myPetInPlayground || !myNickname) return;
+    const X_MIN = 8;
+    const X_MAX = 92;
+    const Y_MIN = 50;
+    const Y_MAX = 85;
     let cancelled = false;
-    let curX = 30 + Math.random() * 40;
-    let curY = 60 + Math.random() * 25;
     let timer: ReturnType<typeof setTimeout> | null = null;
+    const pickRandom = () => ({
+      x: X_MIN + Math.random() * (X_MAX - X_MIN),
+      y: Y_MIN + Math.random() * (Y_MAX - Y_MIN),
+    });
+    const initial = pickRandom();
+    if (process.env.NODE_ENV !== "production") {
+      console.log(
+        `[playground] my-pet wander range: X ${X_MIN}–${X_MAX}, Y ${Y_MIN}–${Y_MAX} | initial: (${initial.x.toFixed(1)}, ${initial.y.toFixed(1)})`,
+      );
+    }
+    updatePlaygroundPosition(myNickname, initial.x, initial.y).catch(() => {});
     const tick = () => {
       if (cancelled) return;
-      const nextX = Math.max(15, Math.min(85, curX + (Math.random() - 0.5) * 24));
-      const nextY = Math.max(50, Math.min(90, curY + (Math.random() - 0.5) * 16));
-      curX = nextX;
-      curY = nextY;
-      updatePlaygroundPosition(myNickname, nextX, nextY).catch(() => {});
-      timer = setTimeout(tick, 8000 + Math.random() * 7000);
+      const next = pickRandom();
+      updatePlaygroundPosition(myNickname, next.x, next.y).catch(() => {});
+      timer = setTimeout(tick, 5000 + Math.random() * 5000);
     };
-    timer = setTimeout(tick, 2000 + Math.random() * 3000);
+    timer = setTimeout(tick, 5000 + Math.random() * 5000);
     return () => {
       cancelled = true;
       if (timer) clearTimeout(timer);
@@ -2506,10 +2519,10 @@ function WanderingPet({
         left: `${pos.x}%`,
         top: `${pos.y}%`,
         transform: "translate(-50%, -100%)",
-        // Slower 2.5s slide between anchors so motion reads as a stroll,
-        // not a slide. The continuous bobbing animation below adds a
-        // walking feel on top.
-        transition: "left 2500ms ease-in-out, top 2500ms ease-in-out",
+        // 1800ms slide between anchors — the midway pace between
+        // earlier "too fast" (1400ms) and "too slow" (2500ms) feels.
+        // The continuous bobbing animation adds a walking feel on top.
+        transition: "left 1800ms ease-in-out, top 1800ms ease-in-out",
         animation: "pet-walk-bob 0.7s ease-in-out infinite",
         cursor: "pointer",
         zIndex: Math.round(pos.y * 10),
