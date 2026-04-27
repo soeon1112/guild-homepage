@@ -155,7 +155,9 @@ function PetRoomInner({
   const floorDepth = floorEnd - wallEnd;
 
   // Pet sizing — 70% of previous (140 → 98) so furniture has room.
-  const petSize = Math.min(98, Math.max(68, Math.round(H * 0.35)));
+  // Adult bumps another 12% so it visibly outranks teen on the floor.
+  const adultScale = stage === "adult" ? 1.12 : 1;
+  const petSize = Math.round(Math.min(98, Math.max(68, Math.round(H * 0.35))) * adultScale);
   const isEgg = stage === "egg";
   const behavior = effectiveBehavior(type, stage);
 
