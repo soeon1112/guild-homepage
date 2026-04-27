@@ -1070,28 +1070,32 @@ function MainPanel({
         </div>
       </div>
 
-      {/* Rename row */}
+      {/* Rename row — single line. Input narrow (max 150px), buttons
+          fixed 60px each so vertical char-wrap is structurally
+          impossible. Input shrinks first if the row is tight (flex-1
+          + min-w-0 + shrink); buttons can't shrink (shrink-0). */}
       {renaming ? (
-        <div className="flex w-full items-center gap-2">
+        <div className="flex w-full items-center gap-1.5">
           <input
             value={pendingName}
             onChange={(e) => setPendingName(e.target.value)}
             placeholder="새 이름"
             maxLength={6}
-            className="flex-1 rounded-lg border border-[rgba(216,150,200,0.25)] bg-abyss-deep/80 px-2 py-1 font-serif text-[12px] outline-none focus:border-[#d896c8]"
+            className="min-w-0 flex-1 shrink rounded-lg border border-[rgba(216,150,200,0.25)] bg-abyss-deep/80 px-2 py-1 font-serif text-[12px] outline-none focus:border-[#d896c8]"
+            style={{ maxWidth: 150 }}
           />
           <button
             onClick={onRename}
             disabled={busy}
-            className="rounded-lg px-2 py-1 font-serif text-[11px] font-medium text-white"
-            style={{ background: "#d896c8" }}
+            className="shrink-0 whitespace-nowrap rounded-lg py-1 text-center font-serif text-[11px] font-medium text-white"
+            style={{ width: 60, background: "#d896c8" }}
           >
             변경
           </button>
           <button
             onClick={() => setRenaming(false)}
-            className="rounded-lg px-2 py-1 font-serif text-[11px] text-[#f4efff]"
-            style={{ border: "1px solid rgba(216,150,200,0.25)" }}
+            className="shrink-0 whitespace-nowrap rounded-lg py-1 text-center font-serif text-[11px] text-[#f4efff]"
+            style={{ width: 60, border: "1px solid rgba(216,150,200,0.25)" }}
           >
             취소
           </button>
