@@ -31,6 +31,20 @@ import type { PetStage, PetType } from "@/src/lib/pets";
 
 export const runtime = "nodejs";
 
+// GET /api/pet-chat → diagnostic. Returns whether the env var is
+// present (without leaking the value). Hit this URL from a browser
+// to confirm Vercel env config before debugging the chat itself.
+export async function GET() {
+  const has = !!process.env.ANTHROPIC_API_KEY;
+  return NextResponse.json({
+    apiKeyConfigured: has,
+    hint: has
+      ? "OK"
+      : "Add ANTHROPIC_API_KEY to Vercel project Settings → Environment Variables, then redeploy.",
+  });
+}
+
+
 type ChatRequestBody = {
   nickname: string;
   petType: PetType;
@@ -43,8 +57,12 @@ type ChatRequestBody = {
 export async function POST(req: NextRequest) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
+    console.error("[pet-chat] ANTHROPIC_API_KEY not in process.env");
     return NextResponse.json(
-      { error: "ANTHROPIC_API_KEY not configured on server" },
+      {
+        error: "ANTHROPIC_API_KEY not configured on server",
+        hint: "Add ANTHROPIC_API_KEY to Vercel project Settings → Environment Variables, then redeploy.",
+      },
       { status: 500 },
     );
   }
@@ -117,7 +135,10 @@ export async function POST(req: NextRequest) {
     if (!r.ok) {
       const errText = await r.text();
       console.error("[pet-chat] Anthropic API error", r.status, errText);
-      return NextResponse.json({ error: "api_error", status: r.status }, { status: 502 });
+      return NextResponse.json(
+        { error: "api_error", status: r.status, detail: errText.slice(0, 500) },
+        { status: 502 },
+      );
     }
     const data = await r.json();
     assistantText = data?.content?.[0]?.text ?? "";
@@ -126,7 +147,8 @@ export async function POST(req: NextRequest) {
     }
   } catch (e) {
     console.error("[pet-chat] fetch error", e);
-    return NextResponse.json({ error: "fetch_failed" }, { status: 502 });
+    const detail = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ error: "fetch_failed", detail }, { status: 502 });
   }
 
   // Persist last user msg + pet response for admin log viewer.

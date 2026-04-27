@@ -89,11 +89,22 @@ export const PetChatBox = memo(function PetChatBox({
           history: nextHistory,
         }),
       });
-      const data = (await r.json()) as { ok?: boolean; reply?: string; error?: string };
+      const data = (await r.json()) as {
+        ok?: boolean;
+        reply?: string;
+        error?: string;
+        detail?: string;
+        hint?: string;
+      };
       if (!r.ok || !data.ok) {
         if (data.error === "banned") setErrorMsg("대화 기능이 제한되었습니다");
         else if (data.error === "bad_input") setErrorMsg("펫이 이해할 수 없는 말이에요");
-        else setErrorMsg("잠시 후 다시 시도해주세요");
+        else if (data.error?.includes("ANTHROPIC_API_KEY"))
+          setErrorMsg(data.hint || "Vercel에 ANTHROPIC_API_KEY 환경변수 추가 + 재배포 필요");
+        else
+          setErrorMsg(
+            `오류 (${r.status}): ${data.error || ""} ${data.detail ? "— " + data.detail : ""}`,
+          );
         onSetPetBubble(null);
         return;
       }
