@@ -14,6 +14,8 @@ import {
   BACKGROUND_SPRITES,
   backgroundColor,
   EGG_SPRITE,
+  eggMoodOverlay,
+  eggMoodOverlayColor,
   ITEM_ICONS,
   pixelColor,
   SPARKLE_FRAMES,
@@ -184,33 +186,40 @@ function PetSvgInner({
           );
         })}
 
-      {/* Sad mouth overlay if mood is sad */}
-      {mood === "sad"
-        ? renderGrid(
-            // Inline tiny sad mouth grid to avoid pulling another export.
-            [
-              "................",
-              "................",
-              "................",
-              "................",
-              "................",
-              "................",
-              "................",
-              "................",
-              "................",
-              "................",
-              ".....BBB........",
-              "....B...B.......",
-              "................",
-              "................",
-              "................",
-              "................",
-            ],
-            (c) => (c === "B" ? "#1A1A1A" : null),
-            overlayPx,
-            "sad",
-          )
-        : null}
+      {/* Egg-stage mood overlay (sparkle / sweat / crack + dark aura).
+          Baby+ keeps the legacy frown — only fires when the legacy
+          "any-0%" condition is met (= new "severe" level). */}
+      {stage === "egg"
+        ? (() => {
+            const overlay = eggMoodOverlay(mood);
+            if (!overlay) return null;
+            return renderGrid(overlay, eggMoodOverlayColor, overlayPx, `egg-${mood}`);
+          })()
+        : mood === "severe"
+          ? renderGrid(
+              [
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                ".....BBB........",
+                "....B...B.......",
+                "................",
+                "................",
+                "................",
+                "................",
+              ],
+              (c) => (c === "B" ? "#1A1A1A" : null),
+              overlayPx,
+              "sad",
+            )
+          : null}
 
       {/* Adult-only sparkle decoration */}
       {stage === "adult" && SPARKLE_FRAMES[sparkleFrame]

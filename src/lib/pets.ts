@@ -187,13 +187,23 @@ function clamp(n: number): number {
 }
 
 // ── Mood ──────────────────────────────────────────────────────
-// "sad" face when ANY status is at 0; "happy" otherwise. Bubble alerts
-// whenever any status drops below 30 (lowest first).
-export type PetMood = "happy" | "sad";
+// Four-level mood drives the egg-stage overlay (sparkle / sweat / crack
+// + dark aura) and the bubble. Thresholds (per user spec):
+//   - severe: 0–10   (any status ≤ 10)
+//   - sad:    11–30  (any status ≤ 30, but min > 10)
+//   - normal: 31–95
+//   - happy:  96–100 (ALL statuses ≥ 96)
+//
+// Baby/child/teen/adult rendering continues to use only `severe` for the
+// frown — adding richer faces for baby+ is a later pass; for now only
+// the egg overlays differentiate happy/sad/severe.
+export type PetMood = "happy" | "normal" | "sad" | "severe";
 
 export function computeMood(s: { hunger: number; happiness: number; clean: number }): PetMood {
-  if (s.hunger <= 0 || s.happiness <= 0 || s.clean <= 0) return "sad";
-  return "happy";
+  if (s.hunger <= 10 || s.happiness <= 10 || s.clean <= 10) return "severe";
+  if (s.hunger <= 30 || s.happiness <= 30 || s.clean <= 30) return "sad";
+  if (s.hunger >= 96 && s.happiness >= 96 && s.clean >= 96) return "happy";
+  return "normal";
 }
 
 export type PetBubble = {

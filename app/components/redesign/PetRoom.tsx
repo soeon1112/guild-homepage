@@ -13,6 +13,8 @@ import {
   blinkOverlayFor,
   effectiveBehavior,
   EGG_SPRITE,
+  eggMoodOverlay,
+  eggMoodOverlayColor,
   FURNITURE_PLACEMENTS,
   ITEM_ICONS,
   pixelColor,
@@ -1055,7 +1057,16 @@ function PetRoomInner({
                 if (!grid) return null;
                 return <g key={id}>{gridRects(grid, accessoryColor, 1, 0, 0, `acc-${id}`)}</g>;
               })}
-            {mood === "sad" ? (
+            {/* Egg-stage mood overlay (4-level). Baby+ keeps its legacy
+                frown — fires only on the original any-0% condition (now
+                = "severe"). */}
+            {isEgg ? (
+              (() => {
+                const overlay = eggMoodOverlay(mood);
+                if (!overlay) return null;
+                return <g>{gridRects(overlay, eggMoodOverlayColor, 1, 0, 0, `egg-${mood}`)}</g>;
+              })()
+            ) : mood === "severe" ? (
               <g>
                 <rect x={5} y={11} width={1} height={1} fill="#1A1A1A" />
                 <rect x={6} y={11} width={1} height={1} fill="#1A1A1A" />

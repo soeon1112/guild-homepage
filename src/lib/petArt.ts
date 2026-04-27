@@ -18,7 +18,7 @@
 // (small round head-only), child (small body appears), teen (taller,
 // tail/wings emerge), adult (full sprite).
 
-import type { ItemId, PetStage, PetType, BackgroundId, InteractionId } from "./pets";
+import type { ItemId, PetMood, PetStage, PetType, BackgroundId, InteractionId } from "./pets";
 
 export type PixelGrid = string[]; // 16 strings of length 16
 
@@ -1132,6 +1132,85 @@ export function sparkleColor(code: string): string | null {
     case "Y": return "#FFFFFF";
     default: return null;
   }
+}
+
+// ── Egg-only mood overlay ─────────────────────────────────────
+// 16×16 grids painted on top of the egg sprite. Codes:
+//   s = sparkle (gold), B = dark line/crack, a = dark aura (semi-soft).
+// Returns null for "normal" mood and for non-egg stages (baby+ keep
+// their legacy frown rendering, untouched by this layer).
+export function eggMoodOverlayColor(code: string): string | null {
+  switch (code) {
+    case ".": return null;
+    case "s": return "#FFD56B";
+    case "B": return "#1A1A1A";
+    case "a": return "#2A1830";
+    default: return null;
+  }
+}
+
+const EGG_HAPPY: string[] = [
+  "..s..........s..",
+  ".s.s........s.s.",
+  "..s..........s..",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "..s..........s..",
+  ".s.s........s.s.",
+  "..s..........s..",
+  "................",
+];
+
+const EGG_SAD: string[] = [
+  "................",
+  ".....B.B.B......",
+  ".....B.B.B......",
+  ".....B.B.B......",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+];
+
+const EGG_SEVERE: string[] = [
+  "aa............aa",
+  "a..............a",
+  "................",
+  "................",
+  "................",
+  ".......B........",
+  "......BB........",
+  ".....BBB........",
+  "......B.........",
+  ".....BB.........",
+  "....BBB.........",
+  ".....B..........",
+  "................",
+  "................",
+  "a..............a",
+  "aa............aa",
+];
+
+export function eggMoodOverlay(mood: PetMood): string[] | null {
+  if (mood === "happy") return EGG_HAPPY;
+  if (mood === "sad") return EGG_SAD;
+  if (mood === "severe") return EGG_SEVERE;
+  return null;
 }
 
 export const SPARKLE_FRAMES: PixelGrid[] = [

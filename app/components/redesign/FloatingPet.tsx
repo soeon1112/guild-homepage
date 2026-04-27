@@ -79,6 +79,7 @@ import {
   type ItemId,
   type PetDoc,
   type PetItemsDoc,
+  type PetMood,
   type PetStage,
   type PetType,
 } from "@/src/lib/pets";
@@ -166,6 +167,14 @@ const TAB_LABELS: Record<Tab, string> = {
   ranking: "랭킹",
 };
 
+// Korean labels for the admin "상태 테스트" picker.
+const MOOD_LABELS: Record<PetMood, string> = {
+  happy: "행복",
+  normal: "보통",
+  sad: "슬픔",
+  severe: "극도 불행",
+};
+
 const CATEGORY_LABELS: Record<ItemCategory, string> = {
   consumable: "소모품",
   accessory: "악세서리",
@@ -207,7 +216,8 @@ export default function FloatingPet() {
   // ── Admin-only debug overrides (visual only, never persisted) ──
   const [debugStage, setDebugStage] = useState<PetStage | null>(null);
   const [debugType, setDebugType] = useState<PetType | null>(null);
-  const [debugPicker, setDebugPicker] = useState<"stage" | "type" | null>(null);
+  const [debugMood, setDebugMood] = useState<PetMood | null>(null);
+  const [debugPicker, setDebugPicker] = useState<"stage" | "type" | "mood" | null>(null);
   // Level-up celebration banner — fires once when stage advances.
   const [levelUpBanner, setLevelUpBanner] = useState<string | null>(null);
   const prevStageRef = useRef<PetStage | null>(null);
@@ -302,8 +312,17 @@ export default function FloatingPet() {
     return computeStageProgress(pet.createdAt?.toMillis?.() ?? now, pet.exp ?? 0, now);
   }, [pet, now]);
 
-  const mood = projected ? computeMood(projected) : "happy";
-  const bubble = projected ? computeBubble(projected) : null;
+  const realMood = projected ? computeMood(projected) : "happy";
+  // Admin debug override (visual-only, no Firestore writes). When set,
+  // the pet renders as if its status matched the picked mood — bubble
+  // text is overridden to match too so the message stays consistent.
+  const mood: PetMood = debugMood ?? realMood;
+  const realBubble = projected ? computeBubble(projected) : null;
+  const bubble = debugMood
+    ? debugMood === "severe" || debugMood === "sad"
+      ? { status: "hunger" as const, message: "배고파요..." }
+      : null
+    : realBubble;
 
   // ── Level-up celebration ──
   // Detect stage advance (egg → baby → … → adult) and surface a banner.
@@ -759,6 +778,8 @@ export default function FloatingPet() {
                   setDebugStage={setDebugStage}
                   debugType={debugType}
                   setDebugType={setDebugType}
+                  debugMood={debugMood}
+                  setDebugMood={setDebugMood}
                   debugPicker={debugPicker}
                   setDebugPicker={setDebugPicker}
                   isDebugAdmin={canDebugPet(nickname)}
@@ -954,6 +975,8 @@ function MainPanel({
   setDebugStage,
   debugType,
   setDebugType,
+  debugMood,
+  setDebugMood,
   debugPicker,
   setDebugPicker,
   isDebugAdmin,
@@ -962,7 +985,7 @@ function MainPanel({
   stage: ReturnType<typeof computeStage>;
   stageProgress: number;
   projected: { hunger: number; happiness: number; clean: number };
-  mood: "happy" | "sad";
+  mood: PetMood;
   bubble: ReturnType<typeof computeBubble>;
   levelUpBanner: string | null;
   inventory: PetItemsDoc["inventory"];
@@ -991,8 +1014,10 @@ function MainPanel({
   setDebugStage: (s: PetStage | null) => void;
   debugType: PetType | null;
   setDebugType: (t: PetType | null) => void;
-  debugPicker: "stage" | "type" | null;
-  setDebugPicker: (p: "stage" | "type" | null) => void;
+  debugMood: PetMood | null;
+  setDebugMood: (m: PetMood | null) => void;
+  debugPicker: "stage" | "type" | "mood" | null;
+  setDebugPicker: (p: "stage" | "type" | "mood" | null) => void;
   isDebugAdmin: boolean;
 }) {
   const stageLabel = PET_STAGES.find((s) => s.id === stage)?.label ?? "";
@@ -1296,11 +1321,12 @@ function MainPanel({
       >
         <div className="flex items-center justify-between">
           <span className="font-serif text-[10px] text-[#3730A3]">🛠 디버그 (관리자)</span>
-          {debugStage || debugType ? (
+          {debugStage || debugType || debugMood ? (
             <button
               onClick={() => {
                 setDebugStage(null);
                 setDebugType(null);
+                setDebugMood(null);
                 setDebugPicker(null);
               }}
               className="rounded-full px-2 py-0.5 font-serif text-[10px] text-white"
@@ -1332,6 +1358,17 @@ function MainPanel({
             }}
           >
             펫 종류 테스트{debugType ? ` · ${PET_TYPES.find((t) => t.id === debugType)?.label}` : ""}
+          </button>
+          <button
+            onClick={() => setDebugPicker(debugPicker === "mood" ? null : "mood")}
+            className="rounded-md px-2 py-1 font-serif text-[10px]"
+            style={{
+              background: debugPicker === "mood" ? "rgba(96,165,250,0.5)" : "rgba(26,15,61,0.45)",
+              border: "1px solid #60A5FA",
+              color: "#3730A3",
+            }}
+          >
+            상태 테스트{debugMood ? ` · ${MOOD_LABELS[debugMood]}` : ""}
           </button>
         </div>
         {debugPicker === "stage" ? (
@@ -1372,6 +1409,27 @@ function MainPanel({
                 }}
               >
                 {t.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {debugPicker === "mood" ? (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {(["happy", "normal", "sad", "severe"] as PetMood[]).map((m) => (
+              <button
+                key={m}
+                onClick={() => {
+                  setDebugMood(m);
+                  setDebugPicker(null);
+                }}
+                className="rounded-md px-2 py-1 font-serif text-[10px]"
+                style={{
+                  background: debugMood === m ? "#3730A3" : "rgba(26,15,61,0.55)",
+                  color: debugMood === m ? "white" : "#3730A3",
+                  border: "1px solid #60A5FA",
+                }}
+              >
+                {MOOD_LABELS[m]}
               </button>
             ))}
           </div>
