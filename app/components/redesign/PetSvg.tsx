@@ -223,7 +223,10 @@ function PetSvgInner({
 export const PetSvg = memo(PetSvgInner);
 
 // ── Item icon (shop grid) ────────────────────────────────────
-export function ItemIconSvg({
+// Memoized — `id` and `size` are stable in nearly all call sites
+// (literal props), so the rect-grid renders once per item icon and
+// skip on subsequent parent re-renders.
+export const ItemIconSvg = memo(function ItemIconSvg({
   id,
   size = 36,
 }: {
@@ -247,4 +250,4 @@ export function ItemIconSvg({
       {renderGrid(grid, data.resolve, px, `item-${id}`)}
     </svg>
   );
-}
+});
