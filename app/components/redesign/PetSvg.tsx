@@ -151,7 +151,7 @@ function PetSvgInner({
   size = 96,
   accessories = [],
   background = "none",
-  mood = "happy",
+  mood = "normal",
   glow = false,
   hue = 0,
   bodyColor = null,
@@ -255,7 +255,9 @@ function PetSvgInner({
           component); sad/severe → static grids. Baby+ keeps the legacy
           frown — only fires on the legacy "any-0%" condition (= new
           "severe" level). */}
-      {stage === "egg" && mood === "sad" ? (
+      {stage === "egg" && mood === "happy" ? (
+        <EggHappySparkles overlayPx={overlayPx} />
+      ) : stage === "egg" && mood === "sad" ? (
         <EggSadTear overlayPx={overlayPx} />
       ) : stage === "egg" && mood === "severe" ? (
         (() => {
@@ -263,12 +265,6 @@ function PetSvgInner({
             if (!overlay) return null;
             return renderGrid(overlay, eggMoodOverlayColor, overlayPx, `egg-${mood}`);
           })()
-      ) : stage === "egg" ? (
-        // happy + normal both render sparkle so the egg always feels
-        // alive unless the pet is actively sad/severe. Matches the
-        // visit-list thumbnail behaviour (PetSvg without mood prop
-        // defaults to happy → sparkle).
-        <EggHappySparkles overlayPx={overlayPx} />
       ) : mood === "severe"
           ? renderGrid(
               [
