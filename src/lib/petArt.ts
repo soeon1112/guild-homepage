@@ -37,6 +37,7 @@ export function pixelColor(code: string, p: PaletteColors): string | null {
     case "3": return p.accent;
     case "w": return "#FFFFFF";
     case "p": return "#F4A6BC";
+    case "P": return "#FF4C8B";
     case "B": return "#1A1A1A";
     case "y": return "#FFD56B";
     case "g": return "#7E8895";
@@ -146,10 +147,10 @@ const CAT: Record<Exclude<PetStage, "egg">, PixelGrid> = {
     "..3111wBBBw111111111wBBBw113....",
     "..3111wwBww111111111wwBww113....",
     "..3111wwwww111111111wwwww113....",
-    "..31pp11111111111111111111pp13..",
-    "..311111111111ppp11111111111113.",
-    "..3111111111111p11111111111113..",
-    "..311111111111B1B111111111111113",
+    "..31PP11111111111111111111PP13..",
+    "..311111111111PPP11111111111113.",
+    "..3111111111111P11111111111113..",
+    "..311111111111111111111111111113",
     "..311111111111111111111111111113",
     "..31221111111111111111111122113.",
     "..31112222222222222222221111113.",
