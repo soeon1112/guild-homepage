@@ -824,6 +824,7 @@ export default function FloatingPet() {
                   visiting={visiting}
                   setVisiting={setVisiting}
                   now={now}
+                  experimental={canDebugPet(nickname)}
                 />
               ) : (
                 <RankingPanel members={members} myNickname={nickname ?? null} />
@@ -1047,6 +1048,7 @@ function MainPanel({
             selectedFurniture={selectedFurniture}
             onSelectFurniture={setSelectedFurniture}
             onMoveFurniture={onMoveFurniture}
+            experimental={isDebugAdmin}
           />
           {bubble ? (
             <div
@@ -2713,11 +2715,13 @@ function VisitPanel({
   visiting,
   setVisiting,
   now,
+  experimental,
 }: {
   members: MemberInfo[];
   visiting: MemberInfo | null;
   setVisiting: (m: MemberInfo | null) => void;
   now: number;
+  experimental: boolean;
 }) {
   // Lazy-load the visited pet's full doc so we get furniture, accessories,
   // background, glow, body color — same fields the owner sees in their
@@ -2810,6 +2814,7 @@ function VisitPanel({
               selectedFurniture={null}
               onSelectFurniture={() => {}}
               onMoveFurniture={() => {}}
+              experimental={experimental}
             />
             <div
               className="pointer-events-none absolute right-2 top-2 flex items-center gap-1 rounded-full px-2 py-1 backdrop-blur-sm"
