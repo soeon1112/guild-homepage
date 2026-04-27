@@ -75,7 +75,8 @@ export const PetChatBox = memo(function PetChatBox({
     const nextHistory: PetChatMessage[] = [...history, userMsg].slice(-PET_CHAT_MAX_HISTORY);
     setHistory(nextHistory);
     setBusy(true);
-    onSetPetBubble("...");
+    // No "..." typing indicator — leave the previous bubble (or nothing)
+    // until the reply lands. Cleaner per user feedback.
     try {
       const r = await fetch("/api/pet-chat", {
         method: "POST",
@@ -123,13 +124,8 @@ export const PetChatBox = memo(function PetChatBox({
 
   return (
     <>
-      <div
-        className="border-t px-3 py-2"
-        style={{
-          background: "rgba(11,8,33,0.55)",
-          borderColor: "rgba(216,150,200,0.30)",
-        }}
-      >
+      {/* Minimal — no container bg / border. Just bare input + button. */}
+      <div className="px-3 py-1.5">
         <div className="flex items-center gap-2">
           <input
             value={draft}

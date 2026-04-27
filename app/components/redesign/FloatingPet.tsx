@@ -1092,15 +1092,12 @@ function MainPanel({
             onSelectFurniture={setSelectedFurniture}
             onMoveFurniture={onMoveFurniture}
             experimental={true}
+            headBubble={chatBubble}
           />
-          {chatBubble ? (
-            <div
-              className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-abyss-deep/85 px-2 py-0.5 font-serif text-[10px] text-[#f4efff]"
-              style={{ border: "1px solid rgba(216,150,200,0.25)", boxShadow: "0 2px 6px rgba(0,0,0,0.1)" }}
-            >
-              {chatBubble}
-            </div>
-          ) : bubble ? (
+          {/* Chat bubble now renders inside PetRoom via headBubble prop,
+              positioned directly above the pet's head. The top-of-room
+              overlay below is reserved for stat-based bubbles only. */}
+          {bubble ? (
             <div
               className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-abyss-deep/85 px-2 py-0.5 font-serif text-[10px] text-[#f4efff]"
               style={{ border: "1px solid rgba(216,150,200,0.25)", boxShadow: "0 2px 6px rgba(0,0,0,0.1)" }}

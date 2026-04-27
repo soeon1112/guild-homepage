@@ -78,6 +78,8 @@ type Props = {
   // Gated upstream via canDebugPet(viewerNickname); other guildmates
   // see the classic backdrop.
   experimental?: boolean;
+  // Chat bubble shown directly above the pet's head.
+  headBubble?: string | null;
 };
 
 function gridRects(
@@ -131,6 +133,7 @@ function PetRoomInner({
   onMoveFurniture,
   bodyColor = null,
   experimental = false,
+  headBubble = null,
 }: Props) {
   const theme = ROOM_THEMES[background];
   const basePalette = PET_PALETTE[type];
@@ -1202,6 +1205,41 @@ function PetRoomInner({
           </svg>
         </div>
       </div>
+
+      {/* Chat head bubble — sits directly above the pet, follows its
+          horizontal walk via the same petLeftPct + transition. No
+          scaleX flip (text would render mirrored). */}
+      {headBubble ? (
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            left: `${petLeftPct}%`,
+            bottom: petBottom + petSize + 6,
+            transform: "translateX(-50%)",
+            maxWidth: 140,
+            padding: "4px 8px",
+            borderRadius: 10,
+            background: "#FFFFFF",
+            border: "1px solid #d896c8",
+            boxShadow: "0 2px 4px rgba(11,8,33,0.25)",
+            color: "#1F2937",
+            fontSize: 11,
+            lineHeight: "14px",
+            textAlign: "center",
+            wordBreak: "break-all",
+            overflowWrap: "anywhere",
+            whiteSpace: "normal",
+            transition: walkDuration > 0
+              ? `left ${walkDuration}ms ease-in-out, bottom ${walkDuration}ms ease-in-out`
+              : "bottom 400ms ease-out",
+            pointerEvents: "none",
+            zIndex: 9999,
+          }}
+        >
+          {headBubble}
+        </div>
+      ) : null}
 
       {/* ── Scene prop (bowl, ball, hand, cookie, hurdle) ── */}
       {activeScene && SCENES[activeScene].prop ? (
