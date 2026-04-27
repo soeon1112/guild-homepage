@@ -376,6 +376,12 @@ export type PetDoc = {
   // Other guild members' playground views render only pets with
   // inPlayground === true. Toggled by the entry/exit buttons.
   inPlayground?: boolean;
+  // Pet-chat onboarding flag — true once the owner saw the per-species
+  // intro popup and clicked "대화 시작". Subsequent opens skip the modal.
+  petChatStarted?: boolean;
+  // Admin-set chat ban — when true, the chat panel shows the disabled
+  // state and the API proxy refuses to call Anthropic.
+  petChatBanned?: boolean;
 };
 
 export type PetItemsDoc = {

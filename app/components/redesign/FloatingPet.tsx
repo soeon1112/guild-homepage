@@ -85,6 +85,7 @@ import {
   type PetType,
 } from "@/src/lib/pets";
 import { ItemIconSvg, PetSvg } from "./PetSvg";
+import { PetChatBox } from "./PetChatBox";
 import { PetRoom, type PetReaction } from "./PetRoom";
 import { getOpenPanel, setOpenPanel } from "@/src/lib/uiBus";
 import {
@@ -223,6 +224,16 @@ export default function FloatingPet() {
   const [debugType, setDebugType] = useState<PetType | null>(null);
   const [debugMood, setDebugMood] = useState<PetMood | null>(null);
   const [debugPicker, setDebugPicker] = useState<"stage" | "type" | "mood" | null>(null);
+  // Pet chat state — chatOpen toggles bottom panel, chatBubble overrides
+  // the head bubble while a chat session is active.
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatBubble, setChatBubbleState] = useState<string | null>(null);
+  const setChatBubble = useCallback((s: string | null) => setChatBubbleState(s), []);
+  useEffect(() => {
+    if (!chatBubble || chatBubble === "...") return;
+    const t = setTimeout(() => setChatBubbleState(null), 4500);
+    return () => clearTimeout(t);
+  }, [chatBubble]);
   // Level-up celebration banner — fires once when stage advances.
   const [levelUpBanner, setLevelUpBanner] = useState<string | null>(null);
   const prevStageRef = useRef<PetStage | null>(null);
@@ -795,6 +806,11 @@ export default function FloatingPet() {
                   debugPicker={debugPicker}
                   setDebugPicker={setDebugPicker}
                   isDebugAdmin={canDebugPet(nickname)}
+                  ownerNickname={nickname ?? ""}
+                  chatOpen={chatOpen}
+                  setChatOpen={setChatOpen}
+                  chatBubble={chatBubble}
+                  setChatBubble={setChatBubble}
                 />
               ) : tab === "shop" ? (
                 <ShopPanel
@@ -993,6 +1009,11 @@ function MainPanel({
   debugPicker,
   setDebugPicker,
   isDebugAdmin,
+  ownerNickname,
+  chatOpen,
+  setChatOpen,
+  chatBubble,
+  setChatBubble,
 }: {
   pet: PetDoc;
   stage: ReturnType<typeof computeStage>;
@@ -1032,6 +1053,11 @@ function MainPanel({
   debugPicker: "stage" | "type" | "mood" | null;
   setDebugPicker: (p: "stage" | "type" | "mood" | null) => void;
   isDebugAdmin: boolean;
+  ownerNickname: string;
+  chatOpen: boolean;
+  setChatOpen: (v: boolean | ((prev: boolean) => boolean)) => void;
+  chatBubble: string | null;
+  setChatBubble: (s: string | null) => void;
 }) {
   const stageLabel = PET_STAGES.find((s) => s.id === stage)?.label ?? "";
   return (
@@ -1062,7 +1088,14 @@ function MainPanel({
             onMoveFurniture={onMoveFurniture}
             experimental={true}
           />
-          {bubble ? (
+          {chatBubble ? (
+            <div
+              className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-abyss-deep/85 px-2 py-0.5 font-serif text-[10px] text-[#f4efff]"
+              style={{ border: "1px solid rgba(216,150,200,0.25)", boxShadow: "0 2px 6px rgba(0,0,0,0.1)" }}
+            >
+              {chatBubble}
+            </div>
+          ) : bubble ? (
             <div
               className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-abyss-deep/85 px-2 py-0.5 font-serif text-[10px] text-[#f4efff]"
               style={{ border: "1px solid rgba(216,150,200,0.25)", boxShadow: "0 2px 6px rgba(0,0,0,0.1)" }}
@@ -1216,7 +1249,27 @@ function MainPanel({
             setPendingName(pet.name);
           }}
         />
+        {isDebugAdmin ? (
+          <InteractButton
+            icon={INTERACTION_ICONS.wear}
+            label={chatOpen ? "대화 닫기" : "대화하기"}
+            disabled={busy}
+            onClick={() => setChatOpen((v) => !v)}
+          />
+        ) : null}
       </div>
+
+      {isDebugAdmin && chatOpen ? (
+        <PetChatBox
+          ownerNickname={ownerNickname}
+          petType={pet.type}
+          petStage={stage}
+          petName={pet.name}
+          stats={projected}
+          petChatStarted={!!pet.petChatStarted}
+          onSetPetBubble={setChatBubble}
+        />
+      ) : null}
 
       {/* Quick consumables */}
       <div>
