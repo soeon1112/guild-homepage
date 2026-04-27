@@ -1238,6 +1238,35 @@ function PetRoomInner({
           }}
         >
           {headBubble}
+          {/* Speech-bubble tail — outer triangle (border color) +
+              inner triangle (white) layered to point DOWN at the
+              pet's head. */}
+          <span
+            style={{
+              position: "absolute",
+              bottom: -7,
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: 0,
+              height: 0,
+              borderLeft: "6px solid transparent",
+              borderRight: "6px solid transparent",
+              borderTop: "7px solid #d896c8",
+            }}
+          />
+          <span
+            style={{
+              position: "absolute",
+              bottom: -5,
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: 0,
+              height: 0,
+              borderLeft: "5px solid transparent",
+              borderRight: "5px solid transparent",
+              borderTop: "6px solid #FFFFFF",
+            }}
+          />
         </div>
       ) : null}
 
