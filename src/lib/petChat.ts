@@ -105,6 +105,17 @@ export const PET_TYPE_LABEL_KO: Record<PetType, string> = {
 };
 
 // Per-stage response length hint baked into the system prompt.
+// Per-stage self-awareness — what the pet "knows" about its own
+// growth stage without saying it out loud. Combined with the
+// species tone, drives subtle in-character behaviour.
+const STAGE_AWARENESS: Record<PetStage, string> = {
+  egg: "아직 세상에 나오지 않은 상태인 걸 알고 있어. 바깥이 궁금하고, 뭔가에 둘러싸여 있는 느낌. 태어나고 싶다는 느낌을 간접적으로 표현해",
+  baby: "세상에 막 나온 느낌. 모든 게 새롭고 신기하고, 아직 잘 모르는 게 많다는 걸 알고 있어",
+  child: "좀 자란 걸 알고 있어. 예전보다 많이 알게 됐다는 느낌. 더 크고 싶다는 느낌",
+  teen: "거의 다 컸다는 걸 알고 있어. 어른이 되고 싶은 느낌. 자기주장 생김",
+  adult: "다 큰 걸 알고 있어. 여유롭고 성숙한 느낌",
+};
+
 const STAGE_LENGTH_HINT: Record<PetStage, string> = {
   egg: "1문장",
   baby: "1문장",
@@ -129,6 +140,7 @@ export function buildPetChatSystemPrompt(args: {
   const tone = PET_CHAT_TONE[args.type][args.stage];
   const speciesKo = PET_TYPE_LABEL_KO[args.type];
   const lengthHint = STAGE_LENGTH_HINT[args.stage];
+  const stageAware = STAGE_AWARENESS[args.stage];
   return [
     `너는 ${speciesKo} 펫이야. 이름은 ${args.petName}이야. 주인은 ${args.ownerNickname}이야.`,
     `${tone}`,
@@ -141,6 +153,7 @@ export function buildPetChatSystemPrompt(args: {
     "- '~' 남발 금지. 자연스러운 구어체로",
     "- 대화 패턴 반복 금지. 매번 다른 반응",
     "- 이전 대화 맥락 기억해서 자연스럽게 이어가기",
+        `- 자기 성장 단계 인지: ${stageAware}. 단계 이름('알', '아기', '어린이', '청소년', '성체')을 직접 말하지 말고 태도와 반응으로 자연스럽게 드러나게 해`,
     "- 주인을 부를 때 절대 오빠/언니/형/누나 같은 호칭 쓰지 마. 무조건 '집사'라고 불러",
     "- 주인이 하는 말에 맞춰서 자연스럽게 대화해. 질문하면 답하고, 얘기하면 반응하고. 대화가 자연스럽게 이어지게",
     "- 집사(유저)가 하는 말의 맥락을 파악해서 자연스럽게 반응해. 정해진 대답 패턴 없이 상황에 맞게. 맥락 없이 갑자기 하는 말이면 되물어봐도 돼",
