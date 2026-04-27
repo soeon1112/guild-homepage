@@ -759,232 +759,167 @@ function PetRoomInner({
         >
           {SCENES[activeScene].overlay === "bath" && bathV2 ? (
             <>
-              {/* Wall tile pattern (kept) */}
-              <svg viewBox="0 0 320 200" width="100%" height="100%" preserveAspectRatio="none" style={{ display: "block" }}>
-                {Array.from({ length: 9 }).map((_, i) => (
-                  <line key={`bv-${i}`} x1={(i + 1) * 32} y1={0} x2={(i + 1) * 32} y2={200} stroke="#FFFFFF" strokeWidth={1.5} opacity={0.55} />
+              {/* === BATH V3 — game-quality clawfoot tub + rain shower === */}
+              {/* Tile wall background (full canvas, checkered pale blue + grout) */}
+              <svg viewBox="0 0 320 200" width="100%" height="100%" preserveAspectRatio="none" shapeRendering="crispEdges" style={{ display: "block", position: "absolute", inset: 0 }}>
+                {Array.from({ length: 9 }).flatMap((_, col) =>
+                  Array.from({ length: 7 }).map((__, row) => {
+                    const isAlt = (col + row) % 2 === 0;
+                    return (
+                      <rect key={`tile-${col}-${row}`} x={col * (320 / 9)} y={row * (200 / 7)} width={320 / 9 + 0.5} height={200 / 7 + 0.5} fill={isAlt ? "#D8EAF1" : "#C2D8E2"} />
+                    );
+                  }),
+                )}
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <rect key={`gv-${i}`} x={i * (320 / 9) - 0.5} y={0} width={1} height={200} fill="#FFFFFF" opacity={0.78} />
                 ))}
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <line key={`bh-${i}`} x1={0} y1={(i + 1) * 28} x2={320} y2={(i + 1) * 28} stroke="#FFFFFF" strokeWidth={1.5} opacity={0.55} />
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <rect key={`gh-${i}`} x={0} y={i * (200 / 7) - 0.5} width={320} height={1} fill="#FFFFFF" opacity={0.78} />
                 ))}
-              </svg>
-
-              {/* Pipe + round shower head — single SVG covering top area */}
-              <svg
-                viewBox="0 0 320 60"
-                width="100%"
-                height="60"
-                preserveAspectRatio="none"
-                style={{ position: "absolute", top: 0, left: 0, pointerEvents: "none", zIndex: 5 }}
-              >
-                {/* Horizontal pipe from right wall toward center */}
-                <rect x={161} y={6} width={159} height={4} fill="#9DA8B0" />
-                <rect x={161} y={6} width={159} height={1} fill="#E8ECEF" />
-                {/* Elbow */}
-                <rect x={158} y={6} width={6} height={5} fill="#7B8690" />
-                {/* Vertical pipe */}
-                <rect x={158} y={6} width={4} height={20} fill="#9DA8B0" />
-                <rect x={158} y={6} width={1} height={20} fill="#E8ECEF" />
-                {/* Round shower head */}
-                <circle cx={160} cy={31} r={11} fill="#D4DCE2" stroke="#5A6878" strokeWidth={1.5} />
-                <ellipse cx={156.5} cy={28} rx={3} ry={2} fill="#FFFFFF" opacity={0.6} />
-                {/* Bottom plate with holes */}
-                <ellipse cx={160} cy={39} rx={11.5} ry={3} fill="#7B8690" stroke="#5A6878" strokeWidth={0.8} />
-                {[-9, -6, -3, 0, 3, 6, 9].map((dx, i) => (
-                  <circle key={`hole-${i}`} cx={160 + dx} cy={40} r={0.7} fill="#3A4858" />
+                {Array.from({ length: 7 }).map((_, row) => (
+                  <rect key={`tshadow-${row}`} x={0} y={row * (200 / 7) + (200 / 7) - 2.5} width={320} height={1} fill="#A8BAC4" opacity={0.18} />
                 ))}
               </svg>
 
-              {/* 7 fanning water streams */}
-              {[-9, -6, -3, 0, 3, 6, 9].map((offset, i) => (
-                <div
-                  key={`stream-${i}`}
-                  aria-hidden
-                  style={{
-                    position: "absolute",
-                    left: `calc(50% + ${offset}px)`,
-                    top: 42,
-                    width: 1.4,
-                    height: 60,
-                    background: "linear-gradient(180deg, #5BAEEA 0%, #92CDE8 60%, rgba(176,224,250,0) 100%)",
-                    borderRadius: 1,
-                    animation: `water-stream 0.8s ease-in infinite ${i * 0.11}s`,
-                    pointerEvents: "none",
-                    zIndex: 5,
-                  }}
-                />
-              ))}
+              {/* Floor tile band */}
+              <div aria-hidden style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 9, zIndex: 25, pointerEvents: "none" }}>
+                <svg viewBox="0 0 320 9" width="100%" height="100%" preserveAspectRatio="none" shapeRendering="crispEdges" style={{ display: "block" }}>
+                  <rect x={0} y={0} width={320} height={9} fill="#D6C5AC" />
+                  <rect x={0} y={0} width={320} height={1} fill="#E8DCC8" />
+                  <rect x={0} y={8} width={320} height={1} fill="#A89070" />
+                  {Array.from({ length: 7 }).map((_, i) => (
+                    <rect key={`fv-${i}`} x={i * (320 / 6) - 0.5} y={0} width={1} height={9} fill="#A89070" opacity={0.65} />
+                  ))}
+                </svg>
+              </div>
 
-              {/* Tub back rim — visible behind pet */}
-              <div
-                aria-hidden
-                style={{
-                  position: "absolute",
-                  left: "14%",
-                  right: "14%",
-                  bottom: 78,
-                  height: 14,
-                  borderRadius: "50%",
-                  background: "#FFFFFF",
-                  border: "2.5px solid #B0B8BD",
-                  pointerEvents: "none",
-                  zIndex: 40,
-                }}
-              />
-              {/* Foam on back rim */}
-              {[
-                { left: "20%", w: 7 },
-                { left: "27%", w: 6 },
-                { left: "35%", w: 8 },
-                { left: "65%", w: 7 },
-                { left: "74%", w: 6 },
-                { left: "80%", w: 7 },
-              ].map((b, i) => (
-                <div
-                  key={`foam-back-v2-${i}`}
-                  aria-hidden
-                  style={{
-                    position: "absolute",
-                    left: b.left,
-                    bottom: 84,
-                    width: b.w,
-                    height: b.w,
-                    borderRadius: "50%",
-                    background: "#FFFFFF",
-                    border: "1px solid #C5D5E0",
-                    pointerEvents: "none",
-                    zIndex: 41,
-                    animation: `foam-bob 1.6s ease-in-out infinite ${i * 0.3}s`,
-                  }}
-                />
-              ))}
+              {/* Shower assembly (chrome pipe + rain head with 25 holes) */}
+              <svg viewBox="0 0 320 64" width="100%" height="64" preserveAspectRatio="none" shapeRendering="crispEdges" style={{ position: "absolute", top: 0, left: 0, pointerEvents: "none", zIndex: 5 }}>
+                <rect x={163} y={5} width={157} height={5} fill="#7B8690" />
+                <rect x={163} y={4} width={157} height={1} fill="#ECF0F2" />
+                <rect x={163} y={9} width={157} height={1} fill="#4A5460" />
+                <rect x={156} y={4} width={9} height={7} fill="#5A6470" />
+                <rect x={156} y={4} width={9} height={1} fill="#A8B0B8" />
+                <rect x={156} y={10} width={9} height={1} fill="#3A4450" />
+                <rect x={159} y={6} width={2} height={2} fill="#3A4450" />
+                <rect x={157} y={11} width={6} height={16} fill="#7B8690" />
+                <rect x={157} y={11} width={1} height={16} fill="#ECF0F2" />
+                <rect x={162} y={11} width={1} height={16} fill="#4A5460" />
+                <circle cx={160} cy={38} r={15} fill="#3A4450" />
+                <circle cx={160} cy={38} r={14} fill="#5A6470" />
+                <circle cx={160} cy={38} r={12} fill="#B0B8BD" />
+                <path d="M 151 34 A 10 10 0 0 1 161 28" stroke="#ECF0F2" strokeWidth={1.5} fill="none" />
+                <path d="M 169 42 A 10 10 0 0 1 159 48" stroke="#5A6470" strokeWidth={1.2} fill="none" />
+                {[
+                  [0, 0],
+                  [-3, -2], [3, -2], [-3, 2], [3, 2],
+                  [-6, 0], [6, 0], [0, -5], [0, 5],
+                  [-5, -4], [5, -4], [-5, 4], [5, 4],
+                  [-9, 0], [9, 0], [0, -8], [0, 8],
+                  [-8, -3], [8, -3], [-8, 3], [8, 3],
+                  [-3, -7], [3, -7], [-3, 7], [3, 7],
+                  [-7, -6], [7, -6],
+                ].map(([dx, dy], i) => (
+                  <rect key={`hole-${i}`} x={160 + dx - 0.5} y={38 + dy - 0.5} width={1} height={1} fill="#3A4450" />
+                ))}
+                <ellipse cx={155.5} cy={31} rx={2.5} ry={1.2} fill="#FFFFFF" opacity={0.75} />
+              </svg>
 
-              {/* Tub front body — covers pet's lower body */}
-              <div
-                aria-hidden
-                style={{
-                  position: "absolute",
-                  left: "14%",
-                  right: "14%",
-                  bottom: 14,
-                  height: 78,
-                  background: "#FFFFFF",
-                  border: "2.5px solid #B0B8BD",
-                  borderTopLeftRadius: "14% 18%",
-                  borderTopRightRadius: "14% 18%",
-                  borderBottomLeftRadius: "44% 56%",
-                  borderBottomRightRadius: "44% 56%",
-                  pointerEvents: "none",
-                  zIndex: 1500,
-                }}
-              />
-              {/* Inner highlight strip (faux 3D rim sheen) */}
-              <div
-                aria-hidden
-                style={{
-                  position: "absolute",
-                  left: "calc(14% + 6px)",
-                  right: "calc(14% + 6px)",
-                  bottom: 74,
-                  height: 3,
-                  borderRadius: 2,
-                  background: "#E8ECEF",
-                  opacity: 0.65,
-                  pointerEvents: "none",
-                  zIndex: 1501,
-                }}
-              />
-
-              {/* 4 clawfoot legs (2 pairs at the corners) — drawn behind tub
-                  body so the rounded bottom corners cleanly hide leg tops. */}
-              {([
-                { side: "left", inset: 4 },
-                { side: "left", inset: 18 },
-                { side: "right", inset: 18 },
-                { side: "right", inset: 4 },
-              ] as const).map((leg, i) => (
-                <div
-                  key={`leg-v2-${i}`}
-                  aria-hidden
-                  style={{
-                    position: "absolute",
-                    [leg.side]: `calc(14% + ${leg.inset - 6}px)`,
-                    bottom: 0,
-                    width: 12,
-                    height: 22,
-                    pointerEvents: "none",
-                    zIndex: 1499,
-                  }}
-                >
-                  <svg viewBox="0 0 12 22" width="100%" height="100%" style={{ display: "block" }}>
-                    <rect x={4} y={0} width={4} height={12} fill="#E0E4E8" stroke="#7B8690" strokeWidth={1} />
-                    <circle cx={6} cy={16} r={5.5} fill="#E0E4E8" stroke="#7B8690" strokeWidth={1} />
-                    <ellipse cx={4} cy={14.5} rx={1.5} ry={1} fill="#FFFFFF" opacity={0.7} />
+              {/* 6 animated water streams (thicker top, tapering down) */}
+              {[-9, -5, -2, 2, 5, 9].map((offset, i) => (
+                <div key={`stream-${i}`} aria-hidden style={{ position: "absolute", left: `calc(50% + ${offset}px)`, top: 54, width: 2, height: 56, pointerEvents: "none", zIndex: 5, animation: `water-stream 0.85s ease-in infinite ${i * 0.13}s` }}>
+                  <svg viewBox="0 0 2 56" width="100%" height="100%" shapeRendering="crispEdges" style={{ display: "block" }}>
+                    <rect x={0} y={0} width={2} height={6} fill="#5BAEEA" />
+                    <rect x={0.25} y={6} width={1.5} height={14} fill="#5BAEEA" />
+                    <rect x={0.5} y={20} width={1} height={20} fill="#92CDE8" />
+                    <rect x={0.75} y={40} width={0.5} height={16} fill="#B8E0F0" />
                   </svg>
                 </div>
               ))}
 
-              {/* Bubble overflow cluster — sits on top edge of tub front */}
+              {/* Splash droplets near tub */}
               {[
-                { left: "17%", dy: 0, w: 9 },
-                { left: "23%", dy: 4, w: 8 },
-                { left: "30%", dy: 2, w: 11 },
-                { left: "37%", dy: 6, w: 9 },
-                { left: "44%", dy: 4, w: 10 },
-                { left: "51%", dy: 6, w: 9 },
-                { left: "58%", dy: 4, w: 10 },
-                { left: "65%", dy: 2, w: 9 },
-                { left: "71%", dy: 4, w: 10 },
-                { left: "77%", dy: 2, w: 8 },
-                { left: "82%", dy: 0, w: 7 },
-                { left: "21%", dy: -8, w: 5 },
-                { left: "34%", dy: -6, w: 6 },
-                { left: "46%", dy: -8, w: 5 },
-                { left: "62%", dy: -6, w: 6 },
-                { left: "74%", dy: -8, w: 5 },
-              ].map((f, i) => (
-                <div
-                  key={`foam-front-v2-${i}`}
-                  aria-hidden
-                  style={{
-                    position: "absolute",
-                    left: f.left,
-                    bottom: 92 + f.dy - f.w / 2,
-                    width: f.w,
-                    height: f.w,
-                    borderRadius: "50%",
-                    background: "#FFFFFF",
-                    border: "1px solid #C5D5E0",
-                    pointerEvents: "none",
-                    zIndex: 1505,
-                    animation: `foam-bob ${1.4 + (i % 3) * 0.3}s ease-in-out infinite ${i * 0.18}s`,
-                  }}
-                />
+                { left: "calc(50% - 16px)", top: 96 },
+                { left: "calc(50% + 14px)", top: 100 },
+                { left: "calc(50% - 6px)", top: 84 },
+              ].map((d, i) => (
+                <div key={`drop-${i}`} aria-hidden style={{ position: "absolute", left: d.left, top: d.top, width: 2, height: 2.5, background: "#5BAEEA", borderRadius: 1, opacity: 0.7, pointerEvents: "none", zIndex: 4 }} />
               ))}
 
-              {/* Floor puddles (kept) */}
-              {[
-                { left: 4, bottom: 1, w: 22, h: 5 },
-                { left: "auto", right: 4, bottom: 1, w: 18, h: 5 },
-              ].map((p, i) => (
-                <div
-                  key={`puddle-v2-${i}`}
-                  aria-hidden
-                  style={{
-                    position: "absolute",
-                    left: p.left as any,
-                    right: (p.right as any) ?? "auto",
-                    bottom: p.bottom,
-                    width: p.w,
-                    height: p.h,
-                    borderRadius: "50%",
-                    background: "#87BDDA",
-                    opacity: 0.55,
-                    pointerEvents: "none",
-                    zIndex: 30,
-                  }}
-                />
-              ))}
+              {/* Back rim — interior wall above water (zIndex 40, behind pet) */}
+              <svg viewBox="0 0 320 200" width="100%" height="100%" preserveAspectRatio="none" shapeRendering="crispEdges" style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 40 }}>
+                <ellipse cx={160} cy={108} rx={114} ry={6} fill="#A89C84" />
+                <ellipse cx={160} cy={109} rx={106} ry={3.5} fill="#7B6B50" />
+                <ellipse cx={117} cy={108} rx={42} ry={1} fill="#B8E0F0" opacity={0.55} />
+              </svg>
+
+              {/* Front tub body + 4 clawfoot legs + foam cluster (zIndex 1500) */}
+              <svg viewBox="0 0 320 200" width="100%" height="100%" preserveAspectRatio="none" shapeRendering="crispEdges" style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 1500 }}>
+                {[51, 70, 250, 269].map((legX, i) => {
+                  const ballR = 6;
+                  const ballCy = 193;
+                  const shaftTop = 187;
+                  const shaftBottom = ballCy - 4;
+                  return (
+                    <g key={`leg-v3-${i}`}>
+                      <rect x={legX - 2.5} y={shaftTop} width={5} height={shaftBottom - shaftTop} fill="#3A4450" />
+                      <rect x={legX - 2} y={shaftTop} width={4} height={shaftBottom - shaftTop} fill="#B0B8BD" />
+                      <rect x={legX - 2} y={shaftTop} width={1} height={shaftBottom - shaftTop} fill="#ECF0F2" />
+                      <rect x={legX + 1} y={shaftTop} width={1} height={shaftBottom - shaftTop} fill="#7B8690" />
+                      <circle cx={legX} cy={ballCy} r={ballR + 0.6} fill="#3A4450" />
+                      <circle cx={legX} cy={ballCy} r={ballR} fill="#B0B8BD" />
+                      <ellipse cx={legX - 2} cy={ballCy - 2} rx={2.2} ry={1.5} fill="#ECF0F2" />
+                      <circle cx={legX - 2.5} cy={ballCy - 2.5} r={0.7} fill="#FFFFFF" />
+                      <path d={`M ${legX + ballR - 0.5} ${ballCy + 1.5} A ${ballR} ${ballR} 0 0 1 ${legX - 1.5} ${ballCy + ballR - 0.4}`} stroke="#7B8690" strokeWidth={1.2} fill="none" />
+                    </g>
+                  );
+                })}
+
+                <rect x={40} y={108} width={240} height={78} rx={32} ry={32} fill="#6B4F36" />
+                <rect x={42} y={110} width={236} height={76} rx={30} ry={30} fill="#F5EFE3" />
+                <rect x={50} y={111} width={220} height={2.5} fill="#FFFFFF" />
+                <rect x={272} y={118} width={4} height={56} fill="#E8E0D0" opacity={0.7} />
+                <rect x={274} y={118} width={2} height={56} fill="#D6CCB6" opacity={0.55} />
+                <rect x={44} y={118} width={2} height={56} fill="#FFFFFF" opacity={0.45} />
+                <path d="M 56 180 Q 160 185 264 180" stroke="#D6CCB6" strokeWidth={3} fill="none" opacity={0.55} />
+
+                <ellipse cx={160} cy={105} rx={119} ry={5.5} fill="#6B4F36" />
+                <ellipse cx={160} cy={105} rx={117} ry={4} fill="#F5EFE3" />
+                <path d="M 46 103 Q 160 101 274 103" stroke="#FFFFFF" strokeWidth={1.5} fill="none" />
+                <ellipse cx={160} cy={106} rx={114} ry={2.2} fill="#A89C84" />
+                <ellipse cx={160} cy={106.5} rx={112} ry={1.2} fill="#7B6B50" />
+
+                {[
+                  { cx: 76, cy: 103, r: 7 },
+                  { cx: 95, cy: 100, r: 8 },
+                  { cx: 117, cy: 102, r: 9 },
+                  { cx: 141, cy: 99, r: 8 },
+                  { cx: 165, cy: 101, r: 10 },
+                  { cx: 189, cy: 99, r: 8 },
+                  { cx: 213, cy: 101, r: 9 },
+                  { cx: 237, cy: 103, r: 7 },
+                  { cx: 105, cy: 93, r: 5 },
+                  { cx: 152, cy: 92, r: 6 },
+                  { cx: 200, cy: 94, r: 5 },
+                  { cx: 83, cy: 95, r: 4 },
+                  { cx: 130, cy: 95, r: 4 },
+                  { cx: 178, cy: 95, r: 4 },
+                  { cx: 225, cy: 95, r: 4 },
+                ].map((b, i) => (
+                  <g key={`bubble-v3-${i}`}>
+                    <circle cx={b.cx} cy={b.cy} r={b.r + 0.5} fill="#A89C84" />
+                    <circle cx={b.cx} cy={b.cy} r={b.r} fill="#FFFFFF" />
+                    <circle cx={b.cx - b.r * 0.32} cy={b.cy - b.r * 0.32} r={b.r * 0.36} fill="#FFFFFF" />
+                    <path d={`M ${b.cx + b.r * 0.7} ${b.cy + b.r * 0.2} A ${b.r} ${b.r} 0 0 1 ${b.cx - b.r * 0.4} ${b.cy + b.r * 0.85}`} stroke="#D4E5EE" strokeWidth={0.8} fill="none" />
+                    <circle cx={b.cx - b.r * 0.5} cy={b.cy - b.r * 0.5} r={Math.max(0.5, b.r * 0.15)} fill="#FFFFFF" />
+                  </g>
+                ))}
+
+                <ellipse cx={22} cy={195} rx={12} ry={2.5} fill="#87BDDA" opacity={0.65} />
+                <ellipse cx={22} cy={194} rx={9} ry={1.2} fill="#B8E0F0" opacity={0.6} />
+                <ellipse cx={300} cy={195} rx={10} ry={2.2} fill="#87BDDA" opacity={0.65} />
+                <ellipse cx={300} cy={194} rx={7} ry={1.1} fill="#B8E0F0" opacity={0.6} />
+              </svg>
             </>
           ) : SCENES[activeScene].overlay === "bath" ? (
             <>
