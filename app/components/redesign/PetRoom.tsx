@@ -180,18 +180,28 @@ function PetRoomInner({
   const [facing, setFacing] = useState<"left" | "right">("right");
   const [blink, setBlink] = useState(false);
   const [activeAction, setActiveAction] = useState<SpecialAction>("none");
+  // First-paint deferral mirroring the RN side: SVG renders immediately,
+  // but interval/timer-based animation startup is delayed one frame so
+  // the modal-open paint stays cheap on slow mobile browsers. The
+  // initial visual state (idle, no walk, no blink) is what the user
+  // sees in the first frame anyway, so this is imperceptible.
+  const [animReady, setAnimReady] = useState(false);
+  useEffect(() => {
+    const id = window.requestAnimationFrame(() => setAnimReady(true));
+    return () => window.cancelAnimationFrame(id);
+  }, []);
   // Adult-only twinkle: cycle SPARKLE_FRAMES so a small star occasionally
   // appears in different corners around the pet.
   const [sparkleFrame, setSparkleFrame] = useState(() =>
     Math.floor(Math.random() * SPARKLE_FRAMES.length),
   );
   useEffect(() => {
-    if (stage !== "adult") return;
+    if (!animReady || stage !== "adult") return;
     const id = setInterval(() => {
       setSparkleFrame((f) => (f + 1) % SPARKLE_FRAMES.length);
     }, 420);
     return () => clearInterval(id);
-  }, [stage]);
+  }, [animReady, stage]);
   const walkDurRef = useRef(0);
 
   // ── Long-press drag for furniture (placement mode) ──
@@ -257,6 +267,7 @@ function PetRoomInner({
   // Behaviour scheduler — every stage moves now. Position picker
   // alternates sides so the pet keeps crossing through center.
   useEffect(() => {
+    if (!animReady) return;
     if (mode === "scene") return; // suspended during cutscenes
     let cancelled = false;
 
@@ -332,10 +343,11 @@ function PetRoomInner({
       cancelled = true;
       cleanup?.();
     };
-  }, [mode, posPct, behavior]);
+  }, [animReady, mode, posPct, behavior]);
 
   // Blink scheduler — independent of behaviour.
   useEffect(() => {
+    if (!animReady) return;
     let cancelled = false;
     const schedule = () => {
       const wait = 1800 + Math.random() * 1800;
@@ -353,7 +365,7 @@ function PetRoomInner({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [animReady]);
 
   // Reaction overlay (heart/sparkle/zZ) — replays per event.
   const [reactionShown, setReactionShown] = useState<{ kind: NonNullable<PetReaction>["kind"]; id: number } | null>(null);
