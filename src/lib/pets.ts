@@ -859,6 +859,32 @@ export async function loadPlaygroundLogToday(
   };
 }
 
+// Live subscription to the current user's playgroundLog/{today} doc.
+// Required because the OTHER party of a greet/play interaction writes
+// to my log (both sides recorded by the accepter). Without a listener
+// my UI stays stale and the button never grays out on the side that
+// didn't trigger the response.
+export function subscribePlaygroundLog(
+  nickname: string,
+  callback: (log: PlaygroundLog) => void,
+): () => void {
+  const key = playgroundLogDateKey();
+  const ref = doc(db, "users", nickname, "playgroundLog", key);
+  return onSnapshot(ref, (snap) => {
+    if (!snap.exists()) {
+      callback({ totalEarned: 0, greetedWith: {}, playedWith: {}, treatedWith: {} });
+      return;
+    }
+    const data = snap.data() as Partial<PlaygroundLog>;
+    callback({
+      totalEarned: data.totalEarned ?? 0,
+      greetedWith: data.greetedWith ?? {},
+      playedWith: data.playedWith ?? {},
+      treatedWith: data.treatedWith ?? {},
+    });
+  });
+}
+
 export type PlaygroundInteractResult =
   | { ok: true; gainedFromMe: number; gainedTo: number }
   | { ok: false; reason: "self" | "no_target" | "already_today" | "daily_cap" | "no_item" | "not_giftable" };

@@ -44,6 +44,7 @@ import {
   exitPlayground,
   expirePlaygroundRequest,
   loadPlaygroundLogToday,
+  subscribePlaygroundLog,
   PLAYGROUND_REQUEST_TIMEOUT_MS,
   playgroundTreat,
   respondPlaygroundRequest,
@@ -1940,14 +1941,21 @@ function PlaygroundPanel({
   const [incomingReq, setIncomingReq] = useState<PlaygroundRequest | null>(null);
   const seenOutgoingRef = useRef<Set<string>>(new Set());
 
+  // Refresh kept for places that explicitly want to re-pull (e.g.
+  // immediately after my own request resolves). The live subscription
+  // below is what makes the OTHER side of a greet/play interaction
+  // disable my button without me reloading.
   const refreshLog = useCallback(async () => {
     if (!myNickname) return;
     const log = await loadPlaygroundLogToday(myNickname);
     setPgLog(log);
   }, [myNickname]);
   useEffect(() => {
-    if (myPetInPlayground) refreshLog();
-  }, [myPetInPlayground, refreshLog]);
+    if (!myPetInPlayground || !myNickname) return;
+    // onSnapshot delivers an immediate first read, so no separate
+    // refreshLog() call needed on entry.
+    return subscribePlaygroundLog(myNickname, setPgLog);
+  }, [myPetInPlayground, myNickname]);
 
   const alreadyToday = useCallback(
     (kind: PlaygroundInteractionKind, otherNick: string) => {
