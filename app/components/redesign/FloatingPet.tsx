@@ -103,6 +103,10 @@ type MemberInfo = {
   petStage?: ReturnType<typeof computeStage>;
   exp?: number;
   happiness?: number;
+  // Mood snapshot at load time — visit list / ranking thumbnails pass
+  // this to <PetSvg mood={...}> so they render the same status effects
+  // (sparkle / tear / severe lines) the pet's owner sees in the room.
+  petMood?: PetMood;
 };
 
 // Memoized — `size` rarely changes; skips re-render on the FAB's
@@ -357,13 +361,20 @@ export default function FloatingPet() {
           const petSnap = await getDoc(doc(db, "users", nick, "pet", "current"));
           if (!petSnap.exists()) continue;
           const p = petSnap.data() as PetDoc;
+          const nowMs = Date.now();
+          const projected = projectStatus(
+            { hunger: p.hunger ?? 100, happiness: p.happiness ?? 100, clean: p.clean ?? 100 },
+            p.lastDecayAt?.toMillis?.() ?? nowMs,
+            nowMs,
+          );
           list.push({
             nickname: nick,
             petName: p.name,
             petType: p.type,
-            petStage: computeStage(p.createdAt?.toMillis?.() ?? Date.now(), p.exp ?? 0, Date.now()),
+            petStage: computeStage(p.createdAt?.toMillis?.() ?? nowMs, p.exp ?? 0, nowMs),
             exp: p.exp ?? 0,
             happiness: p.happiness ?? 0,
+            petMood: computeMood(projected),
           });
         }
         if (!cancelled) setMembers(list);
@@ -2853,7 +2864,7 @@ function VisitPanel({
               onClick={() => setVisiting(m)}
               className="flex flex-col items-center rounded-lg bg-abyss-deep/45 p-2 transition-colors hover:bg-abyss-deep/70"
             >
-              <PetSvg type={m.petType!} stage={m.petStage!} size={48} />
+              <PetSvg type={m.petType!} stage={m.petStage!} mood={m.petMood ?? "normal"} size={48} />
               <div className="mt-1 truncate font-serif text-[10px] text-[#f4efff]" style={{ maxWidth: 100 }}>
                 {m.petName}
               </div>
@@ -2925,7 +2936,7 @@ function RankList({
             <span className="flex w-6 justify-center font-serif text-[11px]" style={{ color: badge.fg }}>
               {badge.emoji ? <span style={{ fontSize: 16 }}>{badge.emoji}</span> : <span>{i + 1}</span>}
             </span>
-            <PetSvg type={m.petType!} stage={m.petStage!} size={26} />
+            <PetSvg type={m.petType!} stage={m.petStage!} mood={m.petMood ?? "normal"} size={26} />
             <div className="flex-1">
               <div className="font-serif text-[11px]" style={{ color: badge.fg }}>
                 {m.petName}
