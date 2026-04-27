@@ -11,6 +11,7 @@ import {
   ACCESSORY_SPRITES,
   accessoryColor,
   blinkOverlayFor,
+  sleepOverlayFor,
   effectiveBehavior,
   EGG_SPRITE,
   eggMoodOverlay,
@@ -141,6 +142,8 @@ function PetRoomInner({
   const bodyPx = SPRITE_GRID / spriteCols(sprite);
   const blinkGrid = blinkOverlayFor(sprite);
   const blinkPx = SPRITE_GRID / spriteCols(blinkGrid);
+  const sleepGrid = sleepOverlayFor(sprite);
+  const sleepPx = SPRITE_GRID / spriteCols(sleepGrid);
   const sparkleGrid = SPARKLE_FRAMES[0]!;
   const sparklePx = SPRITE_GRID / spriteCols(sparkleGrid);
   const useFilter = hue !== 0 || glow;
@@ -1147,9 +1150,16 @@ function PetRoomInner({
               })}
             <g filter={useFilter ? `url(#pf-${type}-${stage}-${hue}-${glow ? 1 : 0})` : undefined}>
               {gridRects(sprite, (c) => pixelColor(c, palette), bodyPx, 0, 0, "pet-body")}
-              {/* Blink overlay — paints over the eye band with primary color */}
-              {blink && !isEgg
+              {/* Blink overlay — paints over the eye band with primary color.
+                  Suppressed during sleep so the sleep overlay below paints
+                  the closed-eye dash without competing with a blink frame. */}
+              {blink && !isEgg && activeScene !== "sleep"
                 ? gridRects(blinkGrid, (c) => pixelColor(c, palette), blinkPx, 0, 0, "blink")
+                : null}
+              {/* Sleep overlay — closed-eye "─" dash for the duration of
+                  the sleep scene. Egg has no eyes so it's gated out. */}
+              {activeScene === "sleep" && !isEgg
+                ? gridRects(sleepGrid, (c) => pixelColor(c, palette), sleepPx, 0, 0, "sleep-eyes")
                 : null}
             </g>
             {/* Front-pet accessories (head/neck). */}
