@@ -1120,7 +1120,7 @@ export async function sendPlaygroundChat(
   nickname: string,
   message: string,
 ): Promise<{ ok: boolean; reason?: string }> {
-  const trimmed = message.trim().slice(0, 80);
+  const trimmed = message.trim().slice(0, 50);
   if (!trimmed) return { ok: false, reason: "empty" };
   await addDoc(collection(db, "playgroundChat"), {
     nickname,

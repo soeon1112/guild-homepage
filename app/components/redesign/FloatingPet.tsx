@@ -2507,9 +2507,9 @@ function PlaygroundPanel({
       >
         <input
           value={chatDraft}
-          onChange={(e) => setChatDraft(e.target.value.slice(0, 80))}
+          onChange={(e) => setChatDraft(e.target.value.slice(0, 50))}
           placeholder="놀이터 채팅..."
-          maxLength={80}
+          maxLength={50}
           disabled={chatBusy}
           className="flex-1 rounded-full px-3 py-1.5 font-serif text-[12px] outline-none"
           style={{
@@ -2660,13 +2660,18 @@ function WanderingPet({
       ) : null}
       {bubbleText ? (
         <div
-          className="relative mb-1 max-w-[140px] rounded-lg px-2 py-1 font-serif text-[11px] text-[#1F2937]"
+          className="relative mb-1 max-w-[120px] rounded-lg px-2 py-1 font-serif text-[11px] text-[#1F2937]"
           style={{
             background: "#FFFFFF",
             border: "1px solid #d896c8",
             boxShadow: "0 2px 4px rgba(11,8,33,0.25)",
             textAlign: "center",
-            wordBreak: "keep-all",
+            // Long unbroken text (e.g. ㅋㅋㅋㅋㅋ) must wrap to keep the
+            // bubble within ~40% of the playground width — break-all
+            // is fine for CJK syllable-by-syllable wrapping.
+            wordBreak: "break-all",
+            overflowWrap: "anywhere",
+            whiteSpace: "normal",
           }}
         >
           {bubbleText}
