@@ -22,6 +22,7 @@ import { db } from "@/src/lib/firebase";
 import { useAuth } from "@/app/components/AuthProvider";
 import {
   buyItem,
+  canAccessExperiment,
   canDebugPet,
   canSeePets,
   computeBubble,
@@ -783,6 +784,7 @@ export default function FloatingPet() {
                   debugPicker={debugPicker}
                   setDebugPicker={setDebugPicker}
                   isDebugAdmin={canDebugPet(nickname)}
+                  bathExperimentEnabled={canAccessExperiment(nickname)}
                 />
               ) : tab === "shop" ? (
                 <ShopPanel
@@ -825,6 +827,7 @@ export default function FloatingPet() {
                   setVisiting={setVisiting}
                   now={now}
                   experimental={true}
+                  bathV2={canAccessExperiment(nickname)}
                 />
               ) : (
                 <RankingPanel members={members} myNickname={nickname ?? null} />
@@ -981,6 +984,7 @@ function MainPanel({
   debugPicker,
   setDebugPicker,
   isDebugAdmin,
+  bathExperimentEnabled,
 }: {
   pet: PetDoc;
   stage: ReturnType<typeof computeStage>;
@@ -1020,6 +1024,7 @@ function MainPanel({
   debugPicker: "stage" | "type" | "mood" | null;
   setDebugPicker: (p: "stage" | "type" | "mood" | null) => void;
   isDebugAdmin: boolean;
+  bathExperimentEnabled: boolean;
 }) {
   const stageLabel = PET_STAGES.find((s) => s.id === stage)?.label ?? "";
   return (
@@ -1049,6 +1054,7 @@ function MainPanel({
             onSelectFurniture={setSelectedFurniture}
             onMoveFurniture={onMoveFurniture}
             experimental={true}
+            bathV2={bathExperimentEnabled}
           />
           {bubble ? (
             <div
@@ -2716,12 +2722,14 @@ function VisitPanel({
   setVisiting,
   now,
   experimental,
+  bathV2,
 }: {
   members: MemberInfo[];
   visiting: MemberInfo | null;
   setVisiting: (m: MemberInfo | null) => void;
   now: number;
   experimental: boolean;
+  bathV2: boolean;
 }) {
   // Lazy-load the visited pet's full doc so we get furniture, accessories,
   // background, glow, body color — same fields the owner sees in their
@@ -2815,6 +2823,7 @@ function VisitPanel({
               onSelectFurniture={() => {}}
               onMoveFurniture={() => {}}
               experimental={experimental}
+              bathV2={bathV2}
             />
             <div
               className="pointer-events-none absolute right-2 top-2 flex items-center gap-1 rounded-full px-2 py-1 backdrop-blur-sm"

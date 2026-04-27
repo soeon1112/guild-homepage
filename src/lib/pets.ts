@@ -36,6 +36,10 @@ import { db } from "./firebase";
 // regular gameplay.
 export const PET_ADMIN_NICKNAME: string | null = null;
 export const PET_DEBUG_ADMIN_NICKNAME = "언쏘";
+// Soft-launch slot for non-debug experimental redesigns (e.g. revamped
+// scene art). Limited to this nickname until the change graduates to
+// everyone — same shape as PET_DEBUG_ADMIN_NICKNAME.
+export const PET_EXPERIMENT_NICKNAME = "테스트";
 
 export function canSeePets(nickname: string | null | undefined): boolean {
   if (!nickname) return false;
@@ -46,6 +50,11 @@ export function canSeePets(nickname: string | null | undefined): boolean {
 export function canDebugPet(nickname: string | null | undefined): boolean {
   if (!nickname) return false;
   return nickname === PET_DEBUG_ADMIN_NICKNAME;
+}
+
+export function canAccessExperiment(nickname: string | null | undefined): boolean {
+  if (!nickname) return false;
+  return nickname === PET_EXPERIMENT_NICKNAME;
 }
 
 // ── Pet types ─────────────────────────────────────────────────
