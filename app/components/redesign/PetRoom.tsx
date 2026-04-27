@@ -1062,16 +1062,18 @@ function PetRoomInner({
                 sad/severe → static grids. Baby+ keeps its legacy frown
                 — fires only on the original any-0% condition (now =
                 "severe"). */}
-            {isEgg && mood === "happy" ? (
-              <EggHappySparkles overlayPx={1} />
-            ) : isEgg && mood === "sad" ? (
+            {isEgg && mood === "sad" ? (
               <EggSadTear overlayPx={1} />
-            ) : isEgg ? (
+            ) : isEgg && mood === "severe" ? (
               (() => {
                 const overlay = eggMoodOverlay(mood);
                 if (!overlay) return null;
                 return <g>{gridRects(overlay, eggMoodOverlayColor, 1, 0, 0, `egg-${mood}`)}</g>;
               })()
+            ) : isEgg ? (
+              // happy + normal both render sparkle (matches visit-list
+              // thumbnail behaviour where PetSvg defaults to happy).
+              <EggHappySparkles overlayPx={1} />
             ) : mood === "severe" ? (
               <g>
                 <rect x={5} y={11} width={1} height={1} fill="#1A1A1A" />
