@@ -70,11 +70,13 @@ function plusShape(cx: number, cy: number, px: number, key: string) {
   ];
 }
 
-// Egg-stage sad effect — single blue tear that fades in beside the
-// egg, slowly drips down ~5 grid cells, fades out, and loops. Uses
-// SMIL <animateTransform> + <animate> so the translation is in SVG
-// user units (independent of CSS pixel size, works in both PetSvg's
-// size-matching viewBox and PetRoom's 16-unit viewBox).
+// Egg-stage sad effect — single blue tear that fades in just below
+// the egg's right "eye" highlight pixel (EGG_SPRITE row 5 col 10),
+// slides ~4 grid cells down the egg's surface, fades out before the
+// bottom shell, and loops. SMIL <animateTransform> + <animate> so the
+// translation is in SVG user units (independent of CSS pixel size,
+// works in both PetSvg's size-matching viewBox and PetRoom's
+// 16-unit viewBox).
 export function EggSadTear({ overlayPx }: { overlayPx: number }) {
   const px = overlayPx;
   const tearColor = "#4FB3FF";
@@ -83,7 +85,7 @@ export function EggSadTear({ overlayPx }: { overlayPx: number }) {
       <animateTransform
         attributeName="transform"
         type="translate"
-        values={`0 0; 0 ${5 * px}; 0 ${5 * px}`}
+        values={`0 0; 0 ${4 * px}; 0 ${4 * px}`}
         keyTimes="0;0.88;1"
         dur="2.5s"
         repeatCount="indefinite"
@@ -95,9 +97,9 @@ export function EggSadTear({ overlayPx }: { overlayPx: number }) {
         dur="2.5s"
         repeatCount="indefinite"
       />
-      <rect x={13 * px} y={5 * px} width={px} height={px} fill={tearColor} />
-      <rect x={13 * px} y={6 * px} width={px} height={px} fill={tearColor} />
-      <rect x={13 * px} y={7 * px} width={px} height={px} fill={tearColor} />
+      <rect x={10 * px} y={6 * px} width={px} height={px} fill={tearColor} />
+      <rect x={10 * px} y={7 * px} width={px} height={px} fill={tearColor} />
+      <rect x={10 * px} y={8 * px} width={px} height={px} fill={tearColor} />
     </g>
   );
 }
