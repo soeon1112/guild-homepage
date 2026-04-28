@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/app/components/AuthProvider";
 import { db, storage } from "@/src/lib/firebase";
 import {
   collection,
   addDoc,
+  getDocs,
   updateDoc,
   deleteDoc,
   doc,
@@ -104,13 +105,10 @@ export default function AlbumPage() {
   const [photos, setPhotos] = useState<AlbumPhoto[]>([]);
   const [viewer, setViewer] = useState<AlbumPhoto | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
-  const [pwInput, setPwInput] = useState("");
-  const [pwVerified, setPwVerified] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [caption, setCaption] = useState("");
-  const [photographer, setPhotographer] = useState("");
   const [people, setPeople] = useState<string[]>([]);
-  const [peopleInput, setPeopleInput] = useState("");
   const [photoDate, setPhotoDate] = useState<string>(todayISO());
   const [uploading, setUploading] = useState(false);
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
@@ -236,42 +234,27 @@ export default function AlbumPage() {
   }, []);
 
   const openUpload = () => {
-    setUploadOpen(true);
-    setPwInput("");
-    setPwVerified(false);
-    setFile(null);
-    setCaption("");
-    setPhotographer("");
-    setPeople([]);
-    setPeopleInput("");
-    setPhotoDate(todayISO());
-  };
-
-  const addPerson = () => {
-    const v = peopleInput.trim();
-    if (!v) return;
-    if (people.includes(v)) {
-      setPeopleInput("");
+    if (!loginNick) {
+      alert("로그인이 필요합니다.");
       return;
     }
-    setPeople((p) => [...p, v]);
-    setPeopleInput("");
+    setUploadOpen(true);
+    setFile(null);
+    setCaption("");
+    setPeople([]);
+    setPhotoDate(todayISO());
   };
 
   const removePerson = (v: string) => {
     setPeople((p) => p.filter((n) => n !== v));
   };
 
-  const confirmPw = () => {
-    if (pwInput !== ADMIN_PASSWORD) {
-      alert("관리자 비밀번호가 일치하지 않습니다.");
-      return;
-    }
-    setPwVerified(true);
-  };
-
   const handleUpload = async () => {
     if (!file) return;
+    if (!loginNick) {
+      alert("로그인이 필요합니다.");
+      return;
+    }
     setUploading(true);
     try {
       const ext = file.name.includes(".")
@@ -281,10 +264,14 @@ export default function AlbumPage() {
       const storageRef = ref(storage, `album/${filename}`);
       await uploadBytes(storageRef, file);
       const url = await getDownloadURL(storageRef);
+      // photographer auto-set to login nickname (per 2026-04-29 redesign).
+      // Existing badge dispatch (`handleEvent` below) keys off this field
+      // so the shape stays identical — just sourced from auth instead of
+      // a manual input.
       const newRef = await addDoc(collection(db, "album"), {
         imageUrl: url,
         caption: caption.trim(),
-        photographer: photographer.trim(),
+        photographer: loginNick,
         people,
         photoDate: photoDate || todayISO(),
         fileType: detectFileType(file),
@@ -299,17 +286,14 @@ export default function AlbumPage() {
       //   `/album?photo=${newRef.id}`,
       //   `album/${newRef.id}`,
       // );
-      const photographerNick = photographer.trim();
-      if (photographerNick) {
-        handleEvent({
-          type: "photo",
-          nickname: photographerNick,
-          people,
-          photographer: photographerNick,
-          when: new Date(),
-          source: "album",
-        });
-      }
+      handleEvent({
+        type: "photo",
+        nickname: loginNick,
+        people,
+        photographer: loginNick,
+        when: new Date(),
+        source: "album",
+      });
     } catch (e) {
       console.error(e);
       alert("업로드 실패");
@@ -415,113 +399,84 @@ export default function AlbumPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="minihome-modal-title">사진 업로드</h3>
-            {!pwVerified ? (
-              <>
-                <input
-                  type="password"
-                  className="minihome-input"
-                  placeholder="관리자 비밀번호"
-                  value={pwInput}
-                  onChange={(e) => setPwInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") confirmPw();
-                  }}
-                  autoFocus
-                />
-                <div className="minihome-modal-actions">
-                  <button className="minihome-btn" onClick={confirmPw}>확인</button>
-                  <button
-                    className="minihome-btn minihome-btn-cancel"
-                    onClick={() => setUploadOpen(false)}
-                  >
-                    취소
-                  </button>
+            <input
+              type="file"
+              accept="image/*,video/mp4,.gif"
+              className="minihome-file"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            />
+            <label className="album-date-label">
+              <span className="album-date-label-text">촬영 날짜</span>
+              <input
+                type="date"
+                className="minihome-input"
+                value={photoDate}
+                onChange={(e) => setPhotoDate(e.target.value)}
+                max={todayISO()}
+              />
+            </label>
+            <input
+              className="minihome-input"
+              placeholder="설명 (선택)"
+              value={caption}
+              onChange={(e) => setCaption(e.target.value)}
+              maxLength={120}
+            />
+            <div className="album-people-input">
+              {people.length > 0 && (
+                <div className="album-tags">
+                  {people.map((p) => (
+                    <span key={p} className="album-tag">
+                      {p}
+                      <button
+                        type="button"
+                        className="album-tag-remove"
+                        onClick={() => removePerson(p)}
+                        aria-label={`${p} 제거`}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
                 </div>
-              </>
-            ) : (
-              <>
-                <input
-                  type="file"
-                  accept="image/*,video/mp4,.gif"
-                  className="minihome-file"
-                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                />
-                <label className="album-date-label">
-                  <span className="album-date-label-text">촬영 날짜</span>
-                  <input
-                    type="date"
-                    className="minihome-input"
-                    value={photoDate}
-                    onChange={(e) => setPhotoDate(e.target.value)}
-                    max={todayISO()}
-                  />
-                </label>
-                <input
-                  className="minihome-input"
-                  placeholder="설명 (선택)"
-                  value={caption}
-                  onChange={(e) => setCaption(e.target.value)}
-                  maxLength={120}
-                />
-                <input
-                  className="minihome-input"
-                  placeholder="촬영자 (선택)"
-                  value={photographer}
-                  onChange={(e) => setPhotographer(e.target.value)}
-                  maxLength={30}
-                />
-                <div className="album-people-input">
-                  {people.length > 0 && (
-                    <div className="album-tags">
-                      {people.map((p) => (
-                        <span key={p} className="album-tag">
-                          {p}
-                          <button
-                            type="button"
-                            className="album-tag-remove"
-                            onClick={() => removePerson(p)}
-                            aria-label={`${p} 제거`}
-                          >
-                            ×
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  <input
-                    className="minihome-input"
-                    placeholder="출연자 (엔터로 추가)"
-                    value={peopleInput}
-                    onChange={(e) => setPeopleInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.nativeEvent.isComposing) {
-                        e.preventDefault();
-                        addPerson();
-                      }
-                    }}
-                    maxLength={30}
-                  />
-                </div>
-                <div className="minihome-modal-actions">
-                  <button
-                    className="minihome-btn"
-                    onClick={handleUpload}
-                    disabled={!file || uploading}
-                  >
-                    {uploading ? "업로드 중..." : "업로드"}
-                  </button>
-                  <button
-                    className="minihome-btn minihome-btn-cancel"
-                    onClick={() => setUploadOpen(false)}
-                    disabled={uploading}
-                  >
-                    취소
-                  </button>
-                </div>
-              </>
-            )}
+              )}
+              <button
+                type="button"
+                className="minihome-btn minihome-btn-cancel"
+                onClick={() => setPickerOpen(true)}
+              >
+                + 출연자 추가
+              </button>
+            </div>
+            <div className="minihome-modal-actions">
+              <button
+                className="minihome-btn"
+                onClick={handleUpload}
+                disabled={!file || uploading}
+              >
+                {uploading ? "업로드 중..." : "업로드"}
+              </button>
+              <button
+                className="minihome-btn minihome-btn-cancel"
+                onClick={() => setUploadOpen(false)}
+                disabled={uploading}
+              >
+                취소
+              </button>
+            </div>
           </div>
         </div>
+      )}
+
+      {pickerOpen && (
+        <MemberPickerModal
+          initial={people}
+          onClose={() => setPickerOpen(false)}
+          onDone={(sel) => {
+            setPeople(sel);
+            setPickerOpen(false);
+          }}
+        />
       )}
 
       {viewer && (
@@ -531,6 +486,150 @@ export default function AlbumPage() {
           onClose={() => setViewer(null)}
         />
       )}
+    </div>
+  );
+}
+
+// Member picker — search-filtered, multi-select list of guild member
+// nicknames pulled from `users/*` (filter by `password` field per the
+// users-schema convention: signups have a password, placeholders don't).
+// Includes the special "우리 길원들" / "기타" entries so users can tag
+// the whole guild or "other" without picking individual members.
+const SPECIAL_TAGS = ["우리 길원들", "기타"];
+
+function MemberPickerModal({
+  initial,
+  onClose,
+  onDone,
+}: {
+  initial: string[];
+  onClose: () => void;
+  onDone: (selected: string[]) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set(initial));
+  const [members, setMembers] = useState<string[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const snap = await getDocs(collection(db, "users"));
+        const nicks = snap.docs
+          .filter((d) => typeof d.data().password === "string")
+          .map((d) => d.id);
+        const all = [...nicks, ...SPECIAL_TAGS];
+        // Korean-aware sort — Hangul sorts naturally before ASCII letters,
+        // so 가나다… leads, "기타" / "우리 길원들" land in their natural
+        // alphabetical position alongside other nicknames.
+        all.sort((a, b) => a.localeCompare(b, "ko-KR"));
+        if (!cancelled) setMembers(all);
+      } catch (e) {
+        console.error(e);
+        if (!cancelled) setMembers([...SPECIAL_TAGS]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return members;
+    return members.filter((m) => m.toLowerCase().includes(q));
+  }, [members, search]);
+
+  const toggle = (n: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(n)) next.delete(n);
+      else next.add(n);
+      return next;
+    });
+  };
+
+  return (
+    <div className="minihome-modal" onClick={onClose}>
+      <div
+        className="minihome-modal-content"
+        onClick={(e) => e.stopPropagation()}
+        style={{ maxHeight: "85vh", display: "flex", flexDirection: "column" }}
+      >
+        <h3 className="minihome-modal-title">출연자 선택</h3>
+        <input
+          className="minihome-input"
+          placeholder="닉네임 검색"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          autoFocus
+        />
+        <div
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            margin: "8px 0",
+            border: "1px solid rgba(216,150,200,0.18)",
+            borderRadius: 8,
+          }}
+        >
+          {filtered.length === 0 ? (
+            <p
+              style={{
+                padding: 24,
+                textAlign: "center",
+                fontStyle: "italic",
+                fontSize: 12,
+                color: "rgba(200,168,233,0.7)",
+              }}
+            >
+              일치하는 닉네임이 없어요
+            </p>
+          ) : (
+            filtered.map((n) => {
+              const checked = selected.has(n);
+              return (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => toggle(n)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    width: "100%",
+                    padding: "10px 12px",
+                    background: checked
+                      ? "rgba(255,181,167,0.12)"
+                      : "transparent",
+                    border: "none",
+                    borderBottom: "1px solid rgba(216,150,200,0.08)",
+                    cursor: "pointer",
+                    color: checked ? "#FFE5C4" : "rgba(200,168,233,0.85)",
+                    fontFamily: "inherit",
+                    fontSize: 13,
+                    textAlign: "left",
+                  }}
+                >
+                  <span style={{ width: 18 }}>{checked ? "☑" : "☐"}</span>
+                  <span style={{ flex: 1 }}>{n}</span>
+                </button>
+              );
+            })
+          )}
+        </div>
+        <div className="minihome-modal-actions">
+          <button
+            className="minihome-btn"
+            onClick={() => onDone(Array.from(selected))}
+          >
+            완료{selected.size > 0 ? ` (${selected.size})` : ""}
+          </button>
+          <button className="minihome-btn minihome-btn-cancel" onClick={onClose}>
+            취소
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
