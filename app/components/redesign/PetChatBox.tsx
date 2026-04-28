@@ -4,7 +4,7 @@
 
 "use client";
 
-import { memo, useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
 import {
@@ -42,6 +42,7 @@ export const PetChatBox = memo(function PetChatBox({
   const [history, setHistory] = useState<PetChatMessage[]>([]);
   const [busy, setBusy] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => () => onSetPetBubble(null), [onSetPetBubble]);
 
@@ -119,6 +120,9 @@ export const PetChatBox = memo(function PetChatBox({
       onSetPetBubble(null);
     } finally {
       setBusy(false);
+      // disabled={busy} blurs the input while busy=true; refocus after
+      // the re-render so the cursor stays in the input.
+      setTimeout(() => inputRef.current?.focus(), 0);
     }
   }, [draft, busy, history, ownerNickname, petType, petStage, petName, stats, onSetPetBubble]);
 
@@ -128,6 +132,7 @@ export const PetChatBox = memo(function PetChatBox({
       <div className="px-3 py-1.5">
         <div className="flex items-center gap-2">
           <input
+            ref={inputRef}
             value={draft}
             onChange={(e) => setDraft(e.target.value.slice(0, PET_CHAT_MAX_INPUT_LEN))}
             placeholder="펫에게 말을 걸어보세요..."
