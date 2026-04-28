@@ -28,8 +28,6 @@ import NicknameLink from "@/app/components/NicknameLink";
 import { formatSmart } from "@/src/lib/formatSmart";
 import { handleEvent } from "@/src/lib/badgeCheck";
 
-const ADMIN_PASSWORD = "dawnlight2024";
-
 type MediaKind = "image" | "video" | "gif";
 
 type AlbumPhoto = {
@@ -650,9 +648,6 @@ function AlbumPhotoViewer({
   loginNick: string | null;
   onClose: () => void;
 }) {
-  const [pwInput, setPwInput] = useState("");
-  const [adminVerified, setAdminVerified] = useState(false);
-  const [pwPrompt, setPwPrompt] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editCaption, setEditCaption] = useState(photo.caption);
   const [editPhotographer, setEditPhotographer] = useState(photo.photographer);
@@ -664,21 +659,12 @@ function AlbumPhotoViewer({
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const confirmPw = () => {
-    if (pwInput !== ADMIN_PASSWORD) {
-      alert("관리자 비밀번호가 일치하지 않습니다.");
-      return;
-    }
-    setAdminVerified(true);
-    setPwPrompt(false);
-    setPwInput("");
-  };
+  // Owner check — edit/delete only available to the original uploader.
+  // Admins can still delete via the Firebase console; the in-app
+  // password gate has been retired (2026-04-29).
+  const isOwner = !!loginNick && photo.photographer === loginNick;
 
   const startEdit = () => {
-    if (!adminVerified) {
-      setPwPrompt(true);
-      return;
-    }
     setEditCaption(photo.caption);
     setEditPhotographer(photo.photographer);
     setEditPeople(photo.people ?? []);
@@ -725,10 +711,6 @@ function AlbumPhotoViewer({
   };
 
   const handleDelete = async () => {
-    if (!adminVerified) {
-      setPwPrompt(true);
-      return;
-    }
     if (!confirm("이 사진을 삭제하시겠습니까?")) return;
     setDeleting(true);
     try {
@@ -870,38 +852,7 @@ function AlbumPhotoViewer({
           </>
         )}
 
-        {pwPrompt && !adminVerified && (
-          <div className="minihome-form minihome-form-inline">
-            <input
-              type="password"
-              className="minihome-input"
-              placeholder="관리자 비밀번호"
-              value={pwInput}
-              onChange={(e) => setPwInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") confirmPw();
-              }}
-              autoFocus
-            />
-            <button
-              className="minihome-btn minihome-btn-small"
-              onClick={confirmPw}
-            >
-              확인
-            </button>
-            <button
-              className="minihome-btn minihome-btn-small minihome-btn-cancel"
-              onClick={() => {
-                setPwPrompt(false);
-                setPwInput("");
-              }}
-            >
-              취소
-            </button>
-          </div>
-        )}
-
-        {!editMode && (
+        {!editMode && isOwner && (
           <div className="minihome-modal-actions">
             <button
               className="minihome-btn minihome-btn-small"
