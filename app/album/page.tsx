@@ -114,8 +114,19 @@ export default function AlbumPage() {
   const [photoDate, setPhotoDate] = useState<string>(todayISO());
   const [uploading, setUploading] = useState(false);
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
+  const [page, setPage] = useState(0);
   const photoIdsKey = photos.map((p) => p.id).sort().join(",");
   const autoOpenedRef = useRef(false);
+
+  // Pagination — same prev/next + "current / total" pattern as
+  // GuestbookSection / AdventureLogSection. 20 photos per page.
+  const PAGE_SIZE = 20;
+  const totalPages = Math.max(1, Math.ceil(photos.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages - 1);
+  const paged = photos.slice(
+    currentPage * PAGE_SIZE,
+    currentPage * PAGE_SIZE + PAGE_SIZE,
+  );
 
   useEffect(() => {
     if (autoOpenedRef.current) return;
@@ -319,7 +330,7 @@ export default function AlbumPage() {
         <p className="minihome-hint">아직 사진이 없습니다.</p>
       ) : (
         <div className="album-grid">
-          {photos.map((p) => {
+          {paged.map((p) => {
             const count = commentCounts[p.id] ?? 0;
             return (
               <div key={p.id} className="album-photo-card">
@@ -367,6 +378,33 @@ export default function AlbumPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Pagination — verbatim copy of Guestbook/AdventureLog. */}
+      {totalPages > 1 && (
+        <div className="mt-6 flex items-center justify-center gap-5 font-serif text-[11px] tracking-wider text-text-sub">
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            disabled={currentPage === 0}
+            className="transition-colors hover:text-stardust disabled:cursor-not-allowed disabled:opacity-30"
+            aria-label="이전 페이지"
+          >
+            ← 이전
+          </button>
+          <span className="text-stardust">
+            {currentPage + 1} / {totalPages}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+            disabled={currentPage >= totalPages - 1}
+            className="transition-colors hover:text-stardust disabled:cursor-not-allowed disabled:opacity-30"
+            aria-label="다음 페이지"
+          >
+            다음 →
+          </button>
         </div>
       )}
 

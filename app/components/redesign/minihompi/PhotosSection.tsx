@@ -101,7 +101,19 @@ export function PhotosSection({
   const [photos, setPhotos] = useState<PhotoEntry[]>([]);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [viewer, setViewer] = useState<PhotoEntry | null>(null);
+  const [page, setPage] = useState(0);
   const autoOpenedRef = useRef(false);
+
+  // Pagination — 12 photos per page (3 cols × 4 rows on sm+, scales
+  // 2 cols × 6 rows on mobile / 4 cols × 3 rows on lg). Same prev/next
+  // pattern as Guestbook / AdventureLog.
+  const PAGE_SIZE = 12;
+  const totalPages = Math.max(1, Math.ceil(photos.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages - 1);
+  const paged = photos.slice(
+    currentPage * PAGE_SIZE,
+    currentPage * PAGE_SIZE + PAGE_SIZE,
+  );
 
   useEffect(() => {
     const q = query(
@@ -261,17 +273,46 @@ export function PhotosSection({
               : "아직 사진이 없습니다."}
           </p>
         ) : (
-          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
-            {photos.map((p, i) => (
-              <PhotoTile
-                key={p.id}
-                photo={p}
-                index={i}
-                commentCount={commentCounts[p.id] ?? 0}
-                onOpen={() => setViewer(p)}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
+              {paged.map((p, i) => (
+                <PhotoTile
+                  key={p.id}
+                  photo={p}
+                  index={i}
+                  commentCount={commentCounts[p.id] ?? 0}
+                  onOpen={() => setViewer(p)}
+                />
+              ))}
+            </div>
+
+            {/* Pagination — verbatim copy of Guestbook/AdventureLog. */}
+            {totalPages > 1 && (
+              <div className="mt-6 flex items-center justify-center gap-5 font-serif text-[11px] tracking-wider text-text-sub">
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  disabled={currentPage === 0}
+                  className="transition-colors hover:text-stardust disabled:cursor-not-allowed disabled:opacity-30"
+                  aria-label="이전 페이지"
+                >
+                  ← 이전
+                </button>
+                <span className="text-stardust">
+                  {currentPage + 1} / {totalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                  disabled={currentPage >= totalPages - 1}
+                  className="transition-colors hover:text-stardust disabled:cursor-not-allowed disabled:opacity-30"
+                  aria-label="다음 페이지"
+                >
+                  다음 →
+                </button>
+              </div>
+            )}
+          </>
         )}
       </CollapsibleSection>
 
