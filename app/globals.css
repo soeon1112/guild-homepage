@@ -68,10 +68,19 @@
    tall cards because flex centring doesn't allow scrolling past the
    start. */
 .modal-safe-frame {
-  top: var(--modal-top-offset);
+  /* User-requested change (2026-04-29): the BACKDROP must cover the
+     entire viewport — including the area behind TopHeader and BottomNav
+     — so the chrome no longer "shines through" while a modal is open.
+     We keep the safe band as PADDING so the inner card still sits
+     between the chrome bars (visually identical card position); the
+     box itself extends to the screen edges so its tint dims the
+     chrome too. */
+  top: 0;
   right: 0;
-  bottom: var(--modal-bottom-offset);
+  bottom: 0;
   left: 0;
+  padding-top: var(--modal-top-offset);
+  padding-bottom: var(--modal-bottom-offset);
   padding-left: 1rem;
   padding-right: 1rem;
   overflow-y: auto;
@@ -2178,13 +2187,17 @@ select {
 /* ── Modal ── */
 .minihome-modal {
   position: fixed;
-  /* Inset between TopHeader and BottomNav so the chrome stays visible
-     and tappable while the modal is open. The backdrop only dims the
-     middle of the screen — same pattern as .modal-safe-frame. */
-  top: var(--modal-top-offset);
+  /* Backdrop spans the full viewport so the dim covers the chrome bars
+     too (user request 2026-04-29 — previously inset-to-safe-band like
+     .modal-safe-frame, leaving BottomNav and TopHeader undimmed). The
+     safe band is kept via padding so the centered card sits between
+     the chrome — visually identical card position. */
+  top: 0;
   right: 0;
-  bottom: var(--modal-bottom-offset);
+  bottom: 0;
   left: 0;
+  padding-top: var(--modal-top-offset);
+  padding-bottom: var(--modal-bottom-offset);
   z-index: 100;
   background: rgba(11, 8, 33, 0.75);
   backdrop-filter: blur(8px);
@@ -3552,11 +3565,16 @@ select {
 
 .comment-image-lightbox {
   position: fixed;
-  /* Inset between TopHeader and BottomNav, matching .minihome-modal. */
-  top: var(--modal-top-offset);
+  /* Backdrop spans the full viewport so the dim covers the chrome bars
+     too (user request 2026-04-29 — was inset-to-safe-band like
+     .minihome-modal). Safe band moved to padding to preserve image
+     centering position. */
+  top: 0;
   right: 0;
-  bottom: var(--modal-bottom-offset);
+  bottom: 0;
   left: 0;
+  padding-top: var(--modal-top-offset);
+  padding-bottom: var(--modal-bottom-offset);
   z-index: 200;
   background: rgba(0, 0, 0, 0.9);
   display: flex;
@@ -6064,13 +6082,18 @@ body.has-redesigned-header .bg-scene {
 /* ── Modal — backdrop + stage container ── */
 .rebirth-backdrop {
   position: fixed;
-  /* Inset between TopHeader and BottomNav so the chrome stays visible
-     while the rebirth event modal is open — same pattern as
-     .minihome-modal / .modal-safe-frame. */
-  top: var(--modal-top-offset);
+  /* Backdrop spans the full viewport (user request 2026-04-29). The
+     rebirth backdrop is intentionally transparent so the page stays
+     visible behind it; extending the bounds to the screen edges
+     doesn't change visible behaviour, but does mean the modal box's
+     centring is computed against full viewport — padding pushes it
+     back into the safe band so the card position stays put. */
+  top: 0;
   right: 0;
-  bottom: var(--modal-bottom-offset);
+  bottom: 0;
   left: 0;
+  padding-top: var(--modal-top-offset);
+  padding-bottom: var(--modal-bottom-offset);
   z-index: 200;
   display: flex;
   align-items: center;
