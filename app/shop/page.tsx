@@ -125,6 +125,22 @@ const EYE_GROUPS: {
     price: EYE_PRICE,
     items: [{ id: "eye12", src: avatarUrl("eyes", "eye12") }],
   },
+  {
+    group: 14,
+    price: EYE_PRICE,
+    items: [1, 2, 3].map((v) => {
+      const id = `eye14_${v}`;
+      return { id, src: avatarUrl("eyes", id) };
+    }),
+  },
+  {
+    group: 15,
+    price: EYE_PRICE,
+    items: [1, 2, 3].map((v) => {
+      const id = `eye15_${v}`;
+      return { id, src: avatarUrl("eyes", id) };
+    }),
+  },
 ];
 
 const CHEEK_PRICE = 20;
