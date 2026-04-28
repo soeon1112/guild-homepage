@@ -519,10 +519,18 @@ function MemberPickerModal({
           .filter((d) => typeof d.data().password === "string")
           .map((d) => d.id);
         const all = [...nicks, ...SPECIAL_TAGS];
-        // Korean-aware sort — Hangul sorts naturally before ASCII letters,
-        // so 가나다… leads, "기타" / "우리 길원들" land in their natural
-        // alphabetical position alongside other nicknames.
-        all.sort((a, b) => a.localeCompare(b, "ko-KR"));
+        // Sort: English block first (a-z), then Korean (가나다…). Within
+        // each block we use the matching locale collator so case and
+        // jamo composition follow standard alphabet order. "기타" /
+        // "우리 길원들" fall into the Korean block at their natural
+        // alphabetical positions.
+        const isKorean = (s: string) => /^[ㄱ-ㆎ가-힯]/.test(s);
+        all.sort((a, b) => {
+          const aK = isKorean(a);
+          const bK = isKorean(b);
+          if (aK !== bK) return aK ? 1 : -1;
+          return a.localeCompare(b, aK ? "ko-KR" : "en");
+        });
         if (!cancelled) setMembers(all);
       } catch (e) {
         console.error(e);
