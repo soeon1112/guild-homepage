@@ -1096,12 +1096,24 @@ export default function ShopPage() {
                       <div className="shop-hair-preview-wrap">
                         <img
                           src={avatarUrl(
-                            "hair",
+                            "hair_back",
                             `${hairSubTab}_hair${grp.group}_preview`,
                           )}
                           alt=""
                           className="shop-hair-preview"
                           draggable={false}
+                        />
+                        <img
+                          src={avatarUrl(
+                            "hair_front",
+                            `${hairSubTab}_hair${grp.group}_preview`,
+                          )}
+                          alt=""
+                          className="shop-hair-preview-front"
+                          draggable={false}
+                          onError={(e) => {
+                            e.currentTarget.style.visibility = "hidden";
+                          }}
                         />
                       </div>
                       <div className="shop-hair-name">

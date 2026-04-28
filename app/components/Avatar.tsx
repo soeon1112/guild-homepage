@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { type SyntheticEvent, useEffect, useState } from "react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
 import { avatarUrl, partUrl } from "@/src/lib/avatarAssets";
@@ -105,10 +105,11 @@ export default function Avatar({
   //   case 2 (hair, no clothes):    bald_<body>  — stock outfit, no hair
   //   case 3 (no hair, clothes):    noclothes_<body> — stock hair, undies only
   //   case 4 (hair + clothes):      undressed_<body> — bald + undies
-  // Render order: body → shoes → bottom → top → accessories → face
-  // features (eyes/cheeks/mouth) → hair on top, so a fringe can cover
-  // the eyes/eyebrows. Shoes go below bottoms so trousers cover the
-  // ankle, bottoms below tops so a shirt can hang over a waistband.
+  // Render order: body → shoes → bottom → accessories → face features
+  // (eyes/cheeks/mouth) → hair_back → top → hair_front. Hair is split
+  // so a long ponytail (back) sits behind the shirt while the fringe
+  // (front) still covers the eyes/eyebrows. Short hair only ships a
+  // back PNG and the front layer 404s silently.
   const hasClothes = !!(top || bottom || shoes || accessories);
   const bodyId = hair
     ? hasClothes
@@ -124,12 +125,17 @@ export default function Avatar({
   const accessoriesSrc = accessories
     ? partUrl(body, "accessories", accessories)
     : "";
-  const hairSrc = hair
-    ? avatarUrl("hair", `${genderPrefix}_${hair}_${agePrefix}`)
-    : "";
+  const hairFile = hair ? `${genderPrefix}_${hair}_${agePrefix}` : "";
+  const hairBackSrc = hairFile ? avatarUrl("hair_back", hairFile) : "";
+  const hairFrontSrc = hairFile ? avatarUrl("hair_front", hairFile) : "";
   const eyesSrc = eyesName ? avatarUrl("eyes", eyesName) : "";
   const mouthSrc = mouthName ? avatarUrl("mouths", mouthName) : "";
   const cheeksSrc = cheeksName ? avatarUrl("cheeks", cheeksName) : "";
+  // hair_front PNG is optional (short hair has back-only). Hide the
+  // broken-image icon if the front layer 404s.
+  const hideOnError = (e: SyntheticEvent<HTMLImageElement, Event>) => {
+    e.currentTarget.style.visibility = "hidden";
+  };
 
   const bodyClass = `avatar-${body}`;
   const classes =
@@ -155,14 +161,6 @@ export default function Avatar({
         {bottomSrc && (
           <img
             src={bottomSrc}
-            alt=""
-            className="avatar-layer avatar-layer-full"
-            draggable={false}
-          />
-        )}
-        {topSrc && (
-          <img
-            src={topSrc}
             alt=""
             className="avatar-layer avatar-layer-full"
             draggable={false}
@@ -218,12 +216,30 @@ export default function Avatar({
             }}
           />
         )}
-        {hairSrc && (
+        {hairBackSrc && (
           <img
-            src={hairSrc}
+            src={hairBackSrc}
             alt=""
             className="avatar-layer avatar-layer-full"
             draggable={false}
+            onError={hideOnError}
+          />
+        )}
+        {topSrc && (
+          <img
+            src={topSrc}
+            alt=""
+            className="avatar-layer avatar-layer-full"
+            draggable={false}
+          />
+        )}
+        {hairFrontSrc && (
+          <img
+            src={hairFrontSrc}
+            alt=""
+            className="avatar-layer avatar-layer-full"
+            draggable={false}
+            onError={hideOnError}
           />
         )}
       </div>

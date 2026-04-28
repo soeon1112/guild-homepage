@@ -17,7 +17,8 @@ export type AvatarCategory =
   | "eyes"
   | "mouths"
   | "cheeks"
-  | "hair"
+  | "hair_back"
+  | "hair_front"
   | "parts";
 
 export function avatarUrl(category: AvatarCategory, filename: string): string {
