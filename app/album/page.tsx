@@ -1114,27 +1114,47 @@ function AlbumCommentItem({
   return (
     <div className="minihome-photo-comment-block">
       <div className="minihome-photo-comment">
-        <NicknameLink nickname={comment.nickname} className="minihome-gb-nick" />
-        <span className="minihome-gb-msg">: {comment.content}</span>
-        <span className="minihome-gb-time">{formatTime(comment.createdAt)}</span>
-        {loginNick && (
-          <button
-            type="button"
-            className="minihome-reply-btn"
-            onClick={onToggleReply}
-          >
-            답글
-          </button>
-        )}
-        {loginNick === comment.nickname && (
-          <button
-            type="button"
-            className="minihome-reply-btn"
-            onClick={handleDeleteComment}
-          >
-            삭제
-          </button>
-        )}
+        <div>
+          <NicknameLink nickname={comment.nickname} className="minihome-gb-nick" />
+        </div>
+        <div className="minihome-gb-msg" style={{ marginTop: "0.2rem", wordBreak: "break-word" }}>
+          {comment.content}
+        </div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginTop: "0.3rem",
+            gap: "0.5rem",
+          }}
+        >
+          <span className="minihome-gb-time" style={{ marginLeft: 0 }}>
+            {formatTime(comment.createdAt)}
+          </span>
+          <div style={{ display: "flex", gap: "0.25rem", alignItems: "center" }}>
+            {loginNick && (
+              <button
+                type="button"
+                className="minihome-reply-btn"
+                onClick={onToggleReply}
+                style={{ marginLeft: 0 }}
+              >
+                답글
+              </button>
+            )}
+            {loginNick === comment.nickname && (
+              <button
+                type="button"
+                className="minihome-reply-btn"
+                onClick={handleDeleteComment}
+                style={{ marginLeft: 0 }}
+              >
+                삭제
+              </button>
+            )}
+          </div>
+        </div>
       </div>
       {comment.imageUrl && <CommentImageView url={comment.imageUrl} />}
       {(replies.length > 0 || replyOpen) && (
@@ -1142,18 +1162,35 @@ function AlbumCommentItem({
           {replies.map((r) => (
             <div key={r.id} className="minihome-gb-reply">
               <div>
-                <NicknameLink nickname={r.nickname} className="minihome-gb-nick" prefix="↳ " />
-                <span className="minihome-gb-msg">: {r.content}</span>
-                <span className="minihome-gb-time">{formatTime(r.createdAt)}</span>
-                {loginNick === r.nickname && (
-                  <button
-                    type="button"
-                    className="minihome-reply-btn"
-                    onClick={() => handleDeleteReply(r.id)}
-                  >
-                    삭제
-                  </button>
-                )}
+                <div>
+                  <NicknameLink nickname={r.nickname} className="minihome-gb-nick" prefix="↳ " />
+                </div>
+                <div className="minihome-gb-msg" style={{ marginTop: "0.2rem", wordBreak: "break-word" }}>
+                  {r.content}
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginTop: "0.3rem",
+                    gap: "0.5rem",
+                  }}
+                >
+                  <span className="minihome-gb-time" style={{ marginLeft: 0 }}>
+                    {formatTime(r.createdAt)}
+                  </span>
+                  {loginNick === r.nickname && (
+                    <button
+                      type="button"
+                      className="minihome-reply-btn"
+                      onClick={() => handleDeleteReply(r.id)}
+                      style={{ marginLeft: 0 }}
+                    >
+                      삭제
+                    </button>
+                  )}
+                </div>
               </div>
               {r.imageUrl && <CommentImageView url={r.imageUrl} />}
             </div>

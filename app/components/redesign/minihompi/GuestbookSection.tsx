@@ -394,18 +394,19 @@ function GuestbookItem({
       transition={{ duration: 0.25 }}
     >
       <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <p className="wrap-anywhere min-w-0 flex-1 font-serif text-[13px] leading-relaxed text-text-primary">
-            <NicknameLink
-              nickname={entry.nickname}
-              className="font-medium text-stardust"
-            />
-            <span className="ml-2 text-[10px] tracking-wider text-text-sub">
-              {formatTime(entry.createdAt)}
-            </span>
-            <span className="text-text-sub"> : </span>
-            {entry.message}
-          </p>
+        <div className="font-serif text-[13px] leading-relaxed text-text-primary">
+          <NicknameLink
+            nickname={entry.nickname}
+            className="font-medium text-stardust"
+          />
+        </div>
+        <p className="wrap-anywhere mt-1 font-serif text-[13px] leading-relaxed text-text-primary">
+          {entry.message}
+        </p>
+        <div className="mt-1.5 flex items-center justify-between gap-2">
+          <span className="font-serif text-[10px] tracking-wider text-text-sub">
+            {formatTime(entry.createdAt)}
+          </span>
           {(loginNick || loginNick === entry.nickname) && (
             <div className="flex shrink-0 items-center gap-2 font-serif text-[11px] tracking-wider">
               {loginNick && (
@@ -448,18 +449,19 @@ function GuestbookItem({
                 └
               </span>
               <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <p className="wrap-anywhere min-w-0 flex-1 font-serif text-[12px] leading-relaxed text-text-primary">
-                    <NicknameLink
-                      nickname={r.nickname}
-                      className="font-medium text-stardust"
-                    />
-                    <span className="ml-2 text-[10px] tracking-wider text-text-sub">
-                      {formatTime(r.createdAt)}
-                    </span>
-                    <span className="text-text-sub"> : </span>
-                    {r.message}
-                  </p>
+                <div className="font-serif text-[12px] leading-relaxed text-text-primary">
+                  <NicknameLink
+                    nickname={r.nickname}
+                    className="font-medium text-stardust"
+                  />
+                </div>
+                <p className="wrap-anywhere mt-1 font-serif text-[12px] leading-relaxed text-text-primary">
+                  {r.message}
+                </p>
+                <div className="mt-1.5 flex items-center justify-between gap-2">
+                  <span className="font-serif text-[10px] tracking-wider text-text-sub">
+                    {formatTime(r.createdAt)}
+                  </span>
                   {loginNick === r.nickname && (
                     <button
                       type="button"
