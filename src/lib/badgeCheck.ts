@@ -111,6 +111,16 @@ async function updateUser(nickname: string, patch: Record<string, unknown>) {
   await setDoc(doc(db, "users", nickname), patch, { merge: true });
 }
 
+// 앨범 촬영자/출연자 자유 입력으로 인한 phantom users 문서 생성을 막기 위한 가드.
+// 진짜 가입 회원만 카운터/배지 부여 대상으로 인정한다. (placeholder doc은 password 없음 — 회원 판별은 password 필드)
+async function isRegisteredUser(nickname: string): Promise<boolean> {
+  if (!nickname) return false;
+  const snap = await getDoc(doc(db, "users", nickname));
+  if (!snap.exists()) return false;
+  const data = snap.data() ?? {};
+  return typeof data.password === "string" && data.password.length > 0;
+}
+
 function isNightHour(h: number): boolean {
   return h >= 3 && h < 5;
 }
@@ -339,7 +349,10 @@ async function dispatch(ev: BadgeEvent) {
         await trackNightActivity(nickname, ev.when, user);
         await recordDailyActivity(nickname, ev.when, "photo", user);
       } else {
-        if (ev.photographer) {
+        // 앨범 촬영자/출연자는 자유 입력. 가입 회원이 아닌 닉네임에 대해
+        // updateUser/awardBadge를 호출하면 phantom users 문서가 생기고
+        // 최신현황(activity)에도 떠버린다. 등록된 회원만 카운터/배지 대상.
+        if (ev.photographer && (await isRegisteredUser(ev.photographer))) {
           await updateUser(ev.photographer, { photographerCount: increment(1) });
           const p = await loadUser(ev.photographer);
           if ((p.photographerCount ?? 0) >= 5) {
@@ -348,6 +361,7 @@ async function dispatch(ev: BadgeEvent) {
         }
         for (const person of ev.people ?? []) {
           if (!person) continue;
+          if (!(await isRegisteredUser(person))) continue;
           await updateUser(person, { taggedPhotoCount: increment(1) });
           const p = await loadUser(person);
           if ((p.taggedPhotoCount ?? 0) >= 5) {
