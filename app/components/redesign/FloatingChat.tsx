@@ -6,11 +6,13 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import {
   addDoc,
   collection,
+  doc,
   limit,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
+  setDoc,
   Timestamp,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -32,8 +34,6 @@ type ChatMessage = {
   fileType?: ChatFileType;
   createdAt: Timestamp | null;
 };
-
-const LAST_READ_KEY = "chat:lastRead";
 
 function formatTime(ts: Timestamp | null): string {
   if (!ts) return "";
@@ -190,14 +190,37 @@ export default function FloatingChat() {
   const [draft, setDraft] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [sending, setSending] = useState(false);
-  const [lastReadMs, setLastReadMs] = useState<number>(() => {
-    if (typeof window === "undefined") return 0;
-    try {
-      return Number(localStorage.getItem(LAST_READ_KEY)) || 0;
-    } catch {
-      return 0;
-    }
-  });
+  // null = subscription hasn't delivered yet — keeps the badge dark while
+  // Firestore loads on cold start instead of flashing every historical
+  // message as unread for a few hundred ms.
+  const [lastReadMs, setLastReadMs] = useState<number | null>(null);
+
+  // Last-read time, account-scoped via users/{nickname}/lastChatRead.
+  // Subscribing means reading on the phone instantly clears the unread
+  // badge in the browser too — same account, same source of truth.
+  useEffect(() => {
+    if (!nickname) return;
+    const unsub = onSnapshot(doc(db, "users", nickname), (snap) => {
+      const data = snap.data() as { lastChatRead?: Timestamp } | undefined;
+      const ts = data?.lastChatRead;
+      if (ts && typeof ts.toMillis === "function") {
+        // Monotonic: only ever raise lastReadMs. A pending serverTimestamp()
+        // write briefly resolves to null on the local snapshot before the
+        // server confirms — without the prev guard, that fall-through
+        // would downgrade an optimistic value back below recent messages
+        // and re-light the badge on close→reopen.
+        const serverMs = ts.toMillis();
+        setLastReadMs((prev) =>
+          prev === null ? serverMs : Math.max(prev, serverMs),
+        );
+      } else {
+        // Field missing (brand-new account) OR pending write. Seed only
+        // when nothing is set — never overwrite a higher optimistic value.
+        setLastReadMs((prev) => (prev === null ? Date.now() : prev));
+      }
+    });
+    return unsub;
+  }, [nickname]);
 
   const filePreview = useMemo(
     () => (file ? URL.createObjectURL(file) : null),
@@ -265,16 +288,36 @@ export default function FloatingChat() {
   }, []);
 
   const markRead = () => {
-    const now = Date.now();
-    setLastReadMs(now);
-    try {
-      localStorage.setItem(LAST_READ_KEY, String(now));
-    } catch {}
+    if (!nickname) return;
+    // Optimistic local update so the badge clears the moment the user
+    // opens the panel. Date.now() alone is unsafe: messages carry
+    // serverTimestamp() which can be ahead of the device clock, so
+    // `Date.now() < latestMsg` and recent messages stay marked unread
+    // on close→reopen. Ceiling the optimistic value above every message
+    // we've already loaded.
+    const latestSeenMs = messages.reduce((max, m) => {
+      const c = m.createdAt;
+      if (!c || typeof c.toMillis !== "function") return max;
+      const ms = c.toMillis();
+      return ms > max ? ms : max;
+    }, 0);
+    const optimistic = Math.max(Date.now(), latestSeenMs);
+    setLastReadMs((prev) =>
+      prev === null ? optimistic : Math.max(prev, optimistic),
+    );
+    setDoc(
+      doc(db, "users", nickname),
+      { lastChatRead: serverTimestamp() },
+      { merge: true },
+    ).catch(() => {
+      // Subscription will reconcile on the next snapshot.
+    });
   };
 
   // Unread count — excludes own messages, only counted when panel is closed
   const unreadCount = useMemo(() => {
     if (open) return 0;
+    if (lastReadMs === null) return 0;
     return messages.filter((m) => {
       if (!m.createdAt) return false;
       if (nickname && m.nickname === nickname) return false;
