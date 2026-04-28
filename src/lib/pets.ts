@@ -152,7 +152,7 @@ export function computeStageProgress(
 // ── Decay rates ───────────────────────────────────────────────
 // Per spec (2026-04-28 redesign):
 //   - hunger    -10% per 3h   (independent)
-//   - clean     -10% per 12h  (independent)
+//   - clean     -10% per 8h   (independent)
 //   - happiness -10% per 8h   BASE rate, multiplied by:
 //       × 2   when hunger ≤ 30%
 //       × 1.5 when clean ≤ 30%
@@ -161,7 +161,7 @@ export function computeStageProgress(
 const DECAY_PER_MS = {
   hunger: 10 / (3 * 60 * 60 * 1000),
   happiness: 10 / (8 * 60 * 60 * 1000),
-  clean: 10 / (12 * 60 * 60 * 1000),
+  clean: 10 / (8 * 60 * 60 * 1000),
 };
 const HAPPINESS_PENALTY_THRESHOLD = 30;
 function happinessMultiplier(hungerLow: boolean, cleanLow: boolean): number {
@@ -306,9 +306,9 @@ const HOUR = 60 * 60 * 1000;
 export const INTERACTIONS: Interaction[] = [
   { id: "feed",  label: "밥주기",    cooldownMs: 1 * HOUR,        effects: { hunger: 30, expGain: 5 } },
   { id: "play",  label: "놀아주기",  cooldownMs: 2 * HOUR,        effects: { happiness: 20, expGain: 10 } },
-  { id: "wash",  label: "씻기기",    cooldownMs: 6 * HOUR,        effects: { clean: 50, expGain: 5 } },
+  { id: "wash",  label: "씻기기",    cooldownMs: 6 * HOUR,        effects: { clean: 30, expGain: 5 } },
   { id: "walk",  label: "산책",      cooldownMs: 3 * HOUR,        effects: { happiness: 15, expGain: 15 } },
-  { id: "pet",   label: "쓰다듬기",  cooldownMs: 0.5 * HOUR,      effects: { happiness: 10, expGain: 3 } },
+  { id: "pet",   label: "쓰다듬기",  cooldownMs: 1 * HOUR,        effects: { happiness: 5, expGain: 3 } },
   { id: "treat", label: "간식주기",  cooldownMs: 2 * HOUR,        effects: { hunger: 15, happiness: 10, expGain: 5 }, consumesItem: "treat" },
   { id: "sleep", label: "잠재우기",  cooldownMs: 8 * HOUR,        effects: { hunger: 5, happiness: 5, clean: 5, expGain: 5 } },
   { id: "train", label: "훈련",      cooldownMs: 4 * HOUR,        effects: { expGain: 20 } },
@@ -611,6 +611,11 @@ export async function doInteraction(
 
 // Use a consumable directly from inventory (food / cake). Treat is
 // applied via the `treat` interaction so it's gated by cooldown too.
+//
+// 일반 사료(food)는 밥주기(feed) 상호작용과 쿨타임 슬롯을 공유한다 —
+// food를 직접 써도 feed 쿨타임이 찍히고, feed를 한 직후엔 food도
+// 1시간 동안 사용할 수 없다. 둘 다 포만감 +30이라 우회 수단이 되면
+// 곤란하기 때문.
 export async function consumeItem(
   nickname: string,
   pet: PetDoc,
@@ -623,6 +628,11 @@ export async function consumeItem(
   if (have < 1) return { ok: false, reason: "no_item" };
 
   const now = Date.now();
+  if (itemId === "food") {
+    const last = pet.cooldowns?.feed?.toMillis?.() ?? 0;
+    const feedCd = INTERACTIONS.find((i) => i.id === "feed")?.cooldownMs ?? 0;
+    if (now - last < feedCd) return { ok: false, reason: "cooldown" };
+  }
   const baseAt = pet.lastDecayAt?.toMillis?.() ?? now;
   const projected = projectStatus(
     { hunger: pet.hunger, happiness: pet.happiness, clean: pet.clean },
@@ -643,6 +653,9 @@ export async function consumeItem(
     // Set (not increment) — matches prior behavior of using a fresh
     // cake giving you a full new boost rather than topping up.
     patch.expBoostRemaining = fx.expBoostCount;
+  }
+  if (itemId === "food") {
+    patch.cooldowns = { ...(pet.cooldowns ?? {}), feed: Timestamp.fromMillis(now) };
   }
   await setDoc(petDocRef(nickname), patch, { merge: true });
   await setDoc(
