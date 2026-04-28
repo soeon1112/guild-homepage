@@ -170,6 +170,18 @@ const HAIR_GROUPS: {
     colors: [1, 2, 3],
     names: { male: "내추럴 쉐도우 컷", female: "시스루 웨이브 단발" },
   },
+  {
+    group: 2,
+    price: HAIR_PRICE,
+    colors: [1, 2, 3],
+    names: { male: "내추럴 댄디컷", female: "소프트 하이 포니테일" },
+  },
+  {
+    group: 3,
+    price: HAIR_PRICE,
+    colors: [1, 2, 3],
+    names: { male: "소프트 스파이키 컷", female: "내추럴 롱 웨이브" },
+  },
 ];
 
 
