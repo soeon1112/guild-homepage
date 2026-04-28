@@ -150,13 +150,26 @@ export function computeStageProgress(
 }
 
 // ── Decay rates ───────────────────────────────────────────────
-// Per spec: hunger -10% per 3h, happiness -10% per 6h, clean -10% per 12h.
+// Per spec (2026-04-28 redesign):
+//   - hunger    -10% per 3h   (independent)
+//   - clean     -10% per 12h  (independent)
+//   - happiness -10% per 8h   BASE rate, multiplied by:
+//       × 2   when hunger ≤ 30%
+//       × 1.5 when clean ≤ 30%
+//       × 3   when both ≤ 30%
 // Stored as percent-points lost per millisecond. Status is bounded to [0, 100].
 const DECAY_PER_MS = {
   hunger: 10 / (3 * 60 * 60 * 1000),
-  happiness: 10 / (6 * 60 * 60 * 1000),
+  happiness: 10 / (8 * 60 * 60 * 1000),
   clean: 10 / (12 * 60 * 60 * 1000),
 };
+const HAPPINESS_PENALTY_THRESHOLD = 30;
+function happinessMultiplier(hungerLow: boolean, cleanLow: boolean): number {
+  if (hungerLow && cleanLow) return 3;
+  if (hungerLow) return 2;
+  if (cleanLow) return 1.5;
+  return 1;
+}
 
 export type PetStatus = "hunger" | "happiness" | "clean";
 export const STATUS_LABELS: Record<PetStatus, string> = {
@@ -168,16 +181,59 @@ export const STATUS_LABELS: Record<PetStatus, string> = {
 // Compute live status values from the last-decay snapshot.
 // Pet docs store the decaying values + a `lastDecayAt` timestamp;
 // callers project forward from there.
+//
+// Hunger and clean decay linearly and independently. Happiness's rate
+// depends on whether hunger/clean are ≤ 30% AT THE TIME of decay, so
+// we integrate piecewise — each stat decays monotonically, so within
+// `dt` each stat crosses 30% at most once. We compute the crossing
+// times, sort them, then apply the (constant) happiness rate over each
+// segment with the correct multiplier.
 export function projectStatus(
   base: { hunger: number; happiness: number; clean: number },
   baseAtMs: number,
   nowMs: number,
 ): { hunger: number; happiness: number; clean: number } {
   const dt = Math.max(0, nowMs - baseAtMs);
+
+  // Independent linear decay for hunger and clean.
+  const hungerEnd = clamp(base.hunger - DECAY_PER_MS.hunger * dt);
+  const cleanEnd = clamp(base.clean - DECAY_PER_MS.clean * dt);
+
+  // Find ms-offsets within [0, dt] where hunger / clean fall through 30%.
+  // If a stat is already below 30 at t=0, no crossing event is needed —
+  // its multiplier contribution is "low" for the entire span.
+  const hungerCross =
+    base.hunger > HAPPINESS_PENALTY_THRESHOLD
+      ? (base.hunger - HAPPINESS_PENALTY_THRESHOLD) / DECAY_PER_MS.hunger
+      : -1;
+  const cleanCross =
+    base.clean > HAPPINESS_PENALTY_THRESHOLD
+      ? (base.clean - HAPPINESS_PENALTY_THRESHOLD) / DECAY_PER_MS.clean
+      : -1;
+
+  const events: { t: number; kind: "hunger" | "clean" }[] = [];
+  if (hungerCross >= 0 && hungerCross < dt) events.push({ t: hungerCross, kind: "hunger" });
+  if (cleanCross >= 0 && cleanCross < dt) events.push({ t: cleanCross, kind: "clean" });
+  events.sort((a, b) => a.t - b.t);
+
+  let happiness = base.happiness;
+  let hungerLow = base.hunger <= HAPPINESS_PENALTY_THRESHOLD;
+  let cleanLow = base.clean <= HAPPINESS_PENALTY_THRESHOLD;
+  let prev = 0;
+  for (const ev of events) {
+    const span = ev.t - prev;
+    happiness -= DECAY_PER_MS.happiness * happinessMultiplier(hungerLow, cleanLow) * span;
+    if (ev.kind === "hunger") hungerLow = true;
+    else cleanLow = true;
+    prev = ev.t;
+  }
+  happiness -=
+    DECAY_PER_MS.happiness * happinessMultiplier(hungerLow, cleanLow) * (dt - prev);
+
   return {
-    hunger: clamp(base.hunger - DECAY_PER_MS.hunger * dt),
-    happiness: clamp(base.happiness - DECAY_PER_MS.happiness * dt),
-    clean: clamp(base.clean - DECAY_PER_MS.clean * dt),
+    hunger: hungerEnd,
+    happiness: clamp(happiness),
+    clean: cleanEnd,
   };
 }
 
@@ -188,11 +244,15 @@ function clamp(n: number): number {
 
 // ── Mood ──────────────────────────────────────────────────────
 // Four-level mood drives the egg-stage overlay (sparkle / sweat / crack
-// + dark aura) and the bubble. Thresholds (per user spec):
-//   - severe: 0–10   (any status ≤ 10)
-//   - sad:    11–30  (any status ≤ 30, but min > 10)
+// + dark aura) and the visual reaction. Per the 2026-04-28 redesign,
+// mood is driven SOLELY by the happiness stat — hunger and clean now
+// only feed into mood indirectly via their multiplier on happiness's
+// decay rate (see DECAY_PER_MS / projectStatus above).
+//
+//   - happy:  96–100
 //   - normal: 31–95
-//   - happy:  96–100 (ALL statuses ≥ 96)
+//   - sad:    11–30
+//   - severe: 0–10
 //
 // Baby/child/teen/adult rendering continues to use only `severe` for the
 // frown — adding richer faces for baby+ is a later pass; for now only
@@ -200,9 +260,9 @@ function clamp(n: number): number {
 export type PetMood = "happy" | "normal" | "sad" | "severe";
 
 export function computeMood(s: { hunger: number; happiness: number; clean: number }): PetMood {
-  if (s.hunger <= 10 || s.happiness <= 10 || s.clean <= 10) return "severe";
-  if (s.hunger <= 30 || s.happiness <= 30 || s.clean <= 30) return "sad";
-  if (s.hunger >= 96 && s.happiness >= 96 && s.clean >= 96) return "happy";
+  if (s.happiness <= 10) return "severe";
+  if (s.happiness <= 30) return "sad";
+  if (s.happiness >= 96) return "happy";
   return "normal";
 }
 

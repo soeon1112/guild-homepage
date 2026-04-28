@@ -1201,18 +1201,18 @@ function MainPanel({
           centerText={`${Math.round(projected.hunger)}%`}
         />
         <CircleGauge
-          icon={STATUS_ICONS.happiness}
-          label="행복"
-          value={projected.happiness}
-          color="#EC4899"
-          centerText={`${Math.round(projected.happiness)}%`}
-        />
-        <CircleGauge
           icon={STATUS_ICONS.clean}
           label="청결"
           value={projected.clean}
           color="#38BDF8"
           centerText={`${Math.round(projected.clean)}%`}
+        />
+        <CircleGauge
+          icon={STATUS_ICONS.happiness}
+          label="행복"
+          value={projected.happiness}
+          color="#EC4899"
+          centerText={`${Math.round(projected.happiness)}%`}
         />
         <CircleGauge
           icon={STATUS_ICONS.exp}
