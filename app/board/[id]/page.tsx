@@ -463,21 +463,17 @@ function BoardCommentItem({
 
   return (
     <div className="board-comment-item">
-      <div style={{ marginBottom: "0.3rem" }}>
+      <div className="board-comment-header">
         <NicknameLink nickname={comment.nickname} className="board-comment-nick" />
-      </div>
-      <p className="board-comment-body">{comment.content}</p>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginTop: "0.4rem",
-          gap: "0.5rem",
-        }}
-      >
-        <span className="board-comment-date">{formatDate(comment.createdAt)}</span>
-        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+        <div
+          style={{
+            marginLeft: "auto",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.6rem",
+          }}
+        >
+          <span className="board-comment-date">{formatDate(comment.createdAt)}</span>
           {loginNick && (
             <button
               type="button"
@@ -500,36 +496,36 @@ function BoardCommentItem({
           )}
         </div>
       </div>
+      <p className="board-comment-body">{comment.content}</p>
       {comment.imageUrl && <CommentImageView url={comment.imageUrl} />}
       {(replies.length > 0 || replyOpen) && (
         <div className="board-reply-list">
           {replies.map((r) => (
             <div key={r.id} className="board-reply-item">
-              <div style={{ marginBottom: "0.3rem" }}>
+              <div className="board-comment-header">
                 <NicknameLink nickname={r.nickname} className="board-comment-nick" prefix="↳ " />
+                <div
+                  style={{
+                    marginLeft: "auto",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.6rem",
+                  }}
+                >
+                  <span className="board-comment-date">{formatDate(r.createdAt)}</span>
+                  {loginNick === r.nickname && (
+                    <button
+                      type="button"
+                      className="board-reply-btn"
+                      onClick={() => handleDeleteReply(r.id)}
+                      style={{ marginLeft: 0 }}
+                    >
+                      삭제
+                    </button>
+                  )}
+                </div>
               </div>
               <p className="board-comment-body">{r.content}</p>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginTop: "0.4rem",
-                  gap: "0.5rem",
-                }}
-              >
-                <span className="board-comment-date">{formatDate(r.createdAt)}</span>
-                {loginNick === r.nickname && (
-                  <button
-                    type="button"
-                    className="board-reply-btn"
-                    onClick={() => handleDeleteReply(r.id)}
-                    style={{ marginLeft: 0 }}
-                  >
-                    삭제
-                  </button>
-                )}
-              </div>
               {r.imageUrl && <CommentImageView url={r.imageUrl} />}
             </div>
           ))}

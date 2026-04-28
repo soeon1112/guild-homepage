@@ -1114,47 +1114,42 @@ function AlbumCommentItem({
   return (
     <div className="minihome-photo-comment-block">
       <div className="minihome-photo-comment">
-        <div>
-          <NicknameLink nickname={comment.nickname} className="minihome-gb-nick" />
-        </div>
-        <div className="minihome-gb-msg" style={{ marginTop: "0.2rem", wordBreak: "break-word" }}>
-          {comment.content}
-        </div>
-        <div
+        <span
           style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginTop: "0.3rem",
-            gap: "0.5rem",
+            float: "right",
+            display: "inline-flex",
+            alignItems: "baseline",
+            gap: "0.25rem",
+            whiteSpace: "nowrap",
+            marginLeft: "0.5rem",
           }}
         >
           <span className="minihome-gb-time" style={{ marginLeft: 0 }}>
             {formatTime(comment.createdAt)}
           </span>
-          <div style={{ display: "flex", gap: "0.25rem", alignItems: "center" }}>
-            {loginNick && (
-              <button
-                type="button"
-                className="minihome-reply-btn"
-                onClick={onToggleReply}
-                style={{ marginLeft: 0 }}
-              >
-                답글
-              </button>
-            )}
-            {loginNick === comment.nickname && (
-              <button
-                type="button"
-                className="minihome-reply-btn"
-                onClick={handleDeleteComment}
-                style={{ marginLeft: 0 }}
-              >
-                삭제
-              </button>
-            )}
-          </div>
-        </div>
+          {loginNick && (
+            <button
+              type="button"
+              className="minihome-reply-btn"
+              onClick={onToggleReply}
+              style={{ marginLeft: 0 }}
+            >
+              답글
+            </button>
+          )}
+          {loginNick === comment.nickname && (
+            <button
+              type="button"
+              className="minihome-reply-btn"
+              onClick={handleDeleteComment}
+              style={{ marginLeft: 0 }}
+            >
+              삭제
+            </button>
+          )}
+        </span>
+        <NicknameLink nickname={comment.nickname} className="minihome-gb-nick" />
+        <span className="minihome-gb-msg">: {comment.content}</span>
       </div>
       {comment.imageUrl && <CommentImageView url={comment.imageUrl} />}
       {(replies.length > 0 || replyOpen) && (
@@ -1162,19 +1157,14 @@ function AlbumCommentItem({
           {replies.map((r) => (
             <div key={r.id} className="minihome-gb-reply">
               <div>
-                <div>
-                  <NicknameLink nickname={r.nickname} className="minihome-gb-nick" prefix="↳ " />
-                </div>
-                <div className="minihome-gb-msg" style={{ marginTop: "0.2rem", wordBreak: "break-word" }}>
-                  {r.content}
-                </div>
-                <div
+                <span
                   style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginTop: "0.3rem",
-                    gap: "0.5rem",
+                    float: "right",
+                    display: "inline-flex",
+                    alignItems: "baseline",
+                    gap: "0.25rem",
+                    whiteSpace: "nowrap",
+                    marginLeft: "0.5rem",
                   }}
                 >
                   <span className="minihome-gb-time" style={{ marginLeft: 0 }}>
@@ -1190,7 +1180,9 @@ function AlbumCommentItem({
                       삭제
                     </button>
                   )}
-                </div>
+                </span>
+                <NicknameLink nickname={r.nickname} className="minihome-gb-nick" prefix="↳ " />
+                <span className="minihome-gb-msg">: {r.content}</span>
               </div>
               {r.imageUrl && <CommentImageView url={r.imageUrl} />}
             </div>
