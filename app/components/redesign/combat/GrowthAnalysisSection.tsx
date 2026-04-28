@@ -655,14 +655,14 @@ function CharacterSelect({
         <>
           <div
             aria-hidden
-            className="fixed inset-0 z-20"
+            className="fixed inset-0 z-[50]"
             onClick={() => setOpen(false)}
           />
           <motion.ul
             initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
             role="listbox"
-            className="absolute right-0 top-full z-30 mt-2 flex min-w-[180px] flex-col gap-0.5 rounded-xl border border-nebula-pink/25 bg-abyss-deep/95 p-1 backdrop-blur-xl"
+            className="absolute right-0 top-full z-[50] mt-2 flex min-w-[180px] flex-col gap-0.5 rounded-xl border border-nebula-pink/25 bg-abyss-deep/95 p-1 backdrop-blur-xl"
             style={{
               boxShadow:
                 "0 8px 24px rgba(0, 0, 0, 0.4), 0 0 18px rgba(216, 150, 200, 0.2)",
