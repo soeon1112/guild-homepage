@@ -280,13 +280,14 @@ export default function AlbumPage() {
         createdAt: serverTimestamp(),
       });
       setUploadOpen(false);
-      await logActivity(
-        "album",
-        "",
-        "새 앨범 사진이 업로드되었습니다",
-        `/album?photo=${newRef.id}`,
-        `album/${newRef.id}`,
-      );
+      // BULK-UPLOAD-PAUSE: 대량 업로드 동안 최신현황 도배 방지. 다 올리면 아래 주석 풀기.
+      // await logActivity(
+      //   "album",
+      //   "",
+      //   "새 앨범 사진이 업로드되었습니다",
+      //   `/album?photo=${newRef.id}`,
+      //   `album/${newRef.id}`,
+      // );
       const photographerNick = photographer.trim();
       if (photographerNick) {
         handleEvent({
