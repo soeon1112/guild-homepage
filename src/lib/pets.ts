@@ -117,13 +117,13 @@ export const PET_STAGES: {
   { id: "adult", label: "성체",   dayMin: 35, expMin: 10500 },
 ];
 
-export function computeStage(createdAtMs: number, exp: number, nowMs: number): PetStage {
-  const days = Math.max(0, (nowMs - createdAtMs) / (1000 * 60 * 60 * 24));
-  // Walk from highest to lowest. Both day AND exp must be met — no
-  // exp fast-track that lets a player skip calendar time.
+export function computeStage(_createdAtMs: number, exp: number, _nowMs: number): PetStage {
+  // EXP-only advancement. dayMin is retained on PET_STAGES for reference
+  // but no longer gates progression — pets evolve as soon as they reach
+  // the EXP threshold for the next stage.
   for (let i = PET_STAGES.length - 1; i >= 0; i--) {
     const s = PET_STAGES[i];
-    if (days >= s.dayMin && exp >= s.expMin) return s.id;
+    if (exp >= s.expMin) return s.id;
   }
   return "egg";
 }
