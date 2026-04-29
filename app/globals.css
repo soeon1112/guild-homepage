@@ -6729,11 +6729,12 @@ body.has-redesigned-header .bg-scene {
   50%      { transform: translateY(-1.5px); }
 }
 
-/* Custom-PNG room scenes — slow cloud sweep, falling shower drops,
-   gentle flower sway. Only used when customRoomBg is enabled. */
-@keyframes custom-cloud-drift {
-  0%   { transform: translateX(-15%); }
-  100% { transform: translateX(15%); }
+/* Custom-PNG room scenes — synthetic clouds drift over fixed cloud PNG,
+   falling shower drops, gentle flower sway. Only used when customRoomBg
+   is enabled. */
+@keyframes custom-cloud-sweep {
+  0%   { left: -20%; }
+  100% { left: 120%; }
 }
 @keyframes custom-water-fall {
   0%   { transform: translateY(-8px); opacity: 0; }

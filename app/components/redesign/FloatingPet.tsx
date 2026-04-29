@@ -2360,10 +2360,34 @@ function PlaygroundPanel({
                 height: "auto",
                 pointerEvents: "none",
                 userSelect: "none",
-                animation: "custom-cloud-drift 18s linear infinite",
                 zIndex: 1,
               }}
             />
+            {/* Synthetic drifting clouds on top of the static cloud PNG. */}
+            {[
+              { top: "10%", w: 38, h: 11, dur: 24, delay: 0, opacity: 0.85 },
+              { top: "22%", w: 26, h: 9, dur: 32, delay: 6, opacity: 0.75 },
+              { top: "5%",  w: 22, h: 8, dur: 20, delay: 12, opacity: 0.70 },
+            ].map((c, i) => (
+              <div
+                key={`pgsky-cloud-${i}`}
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  top: c.top,
+                  left: 0,
+                  width: c.w,
+                  height: c.h,
+                  borderRadius: c.h,
+                  background: "#FFFFFF",
+                  opacity: c.opacity,
+                  pointerEvents: "none",
+                  zIndex: 1,
+                  animation: `custom-cloud-sweep ${c.dur}s linear infinite`,
+                  animationDelay: `-${c.delay}s`,
+                }}
+              />
+            ))}
             <img
               src="/images/pets/rooms/playground_ground.png"
               alt=""

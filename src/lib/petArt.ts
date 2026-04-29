@@ -993,11 +993,19 @@ export function effectiveBehavior(type: PetType, stage: PetStage): StageBehavior
 
 export const STAGE_BEHAVIOR: Record<PetStage, StageBehavior> = {
   egg: {
-    // Eggs walk more, bounce less in place — user said the in-place
-    // bounce was too much. Slow side-to-side roll dominates.
+    // Eggs stay put — bob in place only, no walking. Mirror of the
+    // app's egg config (kept in sync; see
+    // dawnlight-app/src/lib/petArt.ts for the original explanation:
+    // historically walkChance was 0.95 but no platform actually showed
+    // walking eggs because of a render-cycle race in the state-machine
+    // useEffect; the iOS pet-judder fix indirectly broke that race and
+    // eggs started walking — which the user had never seen and didn't
+    // want. Setting walkChance to 0 makes the visual "통통 in place"
+    // explicit at the data level so future changes can't reintroduce
+    // walking eggs).
     idleWaitMin: 1200, idleWaitMax: 2400,
     walkDurPerUnit: 2600, walkDurMin: 2000,
-    sitChance: 0, walkChance: 0.95,
+    sitChance: 0, walkChance: 0,
     bobAmplitude: 3, bobDuration: 700,
     swayAmplitude: 14, swayDuration: 420,
   },

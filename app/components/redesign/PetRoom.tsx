@@ -283,14 +283,20 @@ function PetRoomInner({
       setPosPct(scene.petAnchor);
     }
     if (scene.petAnchorY !== undefined) {
-      setPosY(scene.petAnchorY);
+      // Custom PNG bath uses a different tub silhouette — anchor the
+      // pet higher so the upper body stays visible above shower_front.
+      // Without this override the pet ends up mostly occluded by the
+      // PNG tub front (which sits at zIndex above the pet).
+      const anchorY =
+        customRoomBg && activeScene === "wash" ? 0.55 : scene.petAnchorY;
+      setPosY(anchorY);
     }
     const t = window.setTimeout(() => {
       setMode("idle");
       onSceneEndRef.current?.();
     }, scene.durationMs);
     return () => window.clearTimeout(t);
-  }, [activeScene]);
+  }, [activeScene, customRoomBg]);
 
   // Behaviour scheduler — every non-egg stage walks. Recursion-based
   // chain (mirroring the RN app version): each behaviour outcome ends
@@ -977,10 +983,37 @@ function PetRoomInner({
                   height: "auto",
                   pointerEvents: "none",
                   userSelect: "none",
-                  animation: "custom-cloud-drift 18s linear infinite",
                   zIndex: 2,
                 }}
               />
+              {/* Synthetic clouds drifting across the sky band — the
+                  walk_cloud PNG itself stays still (it's the painted
+                  sky region). These three small white puffs loop L→R
+                  on top so the scene feels alive. */}
+              {[
+                { top: "12%", w: 36, h: 11, dur: 22, delay: 0, opacity: 0.85 },
+                { top: "20%", w: 28, h: 9, dur: 28, delay: 4, opacity: 0.75 },
+                { top: "8%",  w: 22, h: 8, dur: 18, delay: 9, opacity: 0.70 },
+              ].map((c, i) => (
+                <div
+                  key={`pngwalk-cloud-${i}`}
+                  aria-hidden
+                  style={{
+                    position: "absolute",
+                    top: c.top,
+                    left: 0,
+                    width: c.w,
+                    height: c.h,
+                    borderRadius: c.h,
+                    background: "#FFFFFF",
+                    opacity: c.opacity,
+                    pointerEvents: "none",
+                    zIndex: 2,
+                    animation: `custom-cloud-sweep ${c.dur}s linear infinite`,
+                    animationDelay: `-${c.delay}s`,
+                  }}
+                />
+              ))}
               <img
                 src={CUSTOM_BG.walkGround}
                 alt=""
