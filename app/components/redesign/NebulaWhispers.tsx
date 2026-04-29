@@ -23,7 +23,7 @@ type ActivityItem = {
   createdAt: Timestamp | null;
 };
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 const PAGE_STORAGE_KEY = "activityPage";
 const LIVE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
 
