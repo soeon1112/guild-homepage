@@ -24,6 +24,9 @@ type ActivityItem = {
 };
 
 const PAGE_SIZE = 10;
+// 최신현황은 최대 30페이지(=300개)까지만. 그 이상은 서버에서 자동 정리되지만
+// 잠깐의 race window 동안 더 보일 수 있어 UI 차원에서도 잘라낸다.
+const MAX_PAGES = 30;
 const PAGE_STORAGE_KEY = "activityPage";
 const LIVE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -109,7 +112,10 @@ export function NebulaWhispers() {
     return () => unsub();
   }, []);
 
-  const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+  const totalPages = Math.min(
+    MAX_PAGES,
+    Math.max(1, Math.ceil(items.length / PAGE_SIZE)),
+  );
 
   // Clamp currentPage after items change (e.g., deletion shrinking total)
   useEffect(() => {
