@@ -2358,47 +2358,9 @@ function PlaygroundPanel({
               draggable={false}
               style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none", userSelect: "none", zIndex: 1 }}
             />
-            {/* Synthetic drifting clouds on top of the static cloud PNG.
-                Container clips to the painted sky region (~top 15% of
-                canvas — playground_cloud has a thinner sky band than
-                walk_cloud). */}
-            <div
-              aria-hidden
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                width: "100%",
-                height: "15%",
-                overflow: "hidden",
-                pointerEvents: "none",
-                zIndex: 1,
-              }}
-            >
-              {[
-                { top: "30%", w: 30, h: 8, dur: 24, delay: 0, opacity: 0.85 },
-                { top: "60%", w: 22, h: 7, dur: 32, delay: 6, opacity: 0.75 },
-                { top: "10%", w: 18, h: 6, dur: 20, delay: 12, opacity: 0.70 },
-              ].map((c, i) => (
-                <div
-                  key={`pgsky-cloud-${i}`}
-                  aria-hidden
-                  style={{
-                    position: "absolute",
-                    top: c.top,
-                    left: 0,
-                    width: c.w,
-                    height: c.h,
-                    borderRadius: c.h,
-                    background: "#FFFFFF",
-                    opacity: c.opacity,
-                    pointerEvents: "none",
-                    animation: `custom-cloud-sweep ${c.dur}s linear infinite`,
-                    animationDelay: `-${c.delay}s`,
-                  }}
-                />
-              ))}
-            </div>
+            {/* playground_cloud stays as-is (a static painted sky band).
+                Butterflies + flowers used to live here; they now render
+                AFTER the wandering pets below so they sit on top. */}
             <img
               src="/images/pets/rooms/playground_ground.png"
               alt=""
@@ -2406,58 +2368,6 @@ function PlaygroundPanel({
               draggable={false}
               style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none", userSelect: "none", zIndex: 2 }}
             />
-            {/* Butterfly drifts L→R across the field. */}
-            <div
-              style={{
-                position: "absolute",
-                left: "-8%",
-                top: "45%",
-                width: 11,
-                height: 9,
-                pointerEvents: "none",
-                zIndex: 3,
-                animation: "butterfly-fly 9s linear infinite",
-              }}
-            >
-              <div style={{ animation: "butterfly-wings 0.18s ease-in-out infinite" }}>
-                <svg viewBox="0 0 16 12" width="11" height="9" style={{ display: "block" }}>
-                  <ellipse cx="5" cy="5" rx="3.5" ry="3" fill="#F4A6BC" stroke="#A03B5A" strokeWidth="0.4" />
-                  <ellipse cx="11" cy="5" rx="3.5" ry="3" fill="#F4A6BC" stroke="#A03B5A" strokeWidth="0.4" />
-                  <ellipse cx="5" cy="9" rx="2.5" ry="2" fill="#F4A6BC" stroke="#A03B5A" strokeWidth="0.4" />
-                  <ellipse cx="11" cy="9" rx="2.5" ry="2" fill="#F4A6BC" stroke="#A03B5A" strokeWidth="0.4" />
-                  <rect x="7.5" y="3" width="1" height="7" fill="#3A1F1F" />
-                </svg>
-              </div>
-            </div>
-            {/* Tiny flowers near the bottom, gently sway. */}
-            {[
-              { left: "12%", bottom: 18, color: "#FFE873", delay: 0 },
-              { left: "55%", bottom: 14, color: "#F4A6BC", delay: 0.7 },
-              { left: "82%", bottom: 20, color: "#E76A6A", delay: 1.4 },
-            ].map((f, i) => (
-              <div
-                key={`pgflower-${i}`}
-                style={{
-                  position: "absolute",
-                  left: f.left,
-                  bottom: f.bottom,
-                  width: 5,
-                  pointerEvents: "none",
-                  zIndex: 3,
-                  transformOrigin: "bottom center",
-                  animation: `custom-flower-sway 3.4s ease-in-out infinite ${f.delay}s`,
-                }}
-              >
-                <div style={{ position: "relative", width: 5, height: 5 }}>
-                  <div style={{ position: "absolute", left: 1.25, top: 0, width: 2, height: 2, borderRadius: "50%", background: f.color }} />
-                  <div style={{ position: "absolute", left: 0, top: 1.25, width: 2, height: 2, borderRadius: "50%", background: f.color }} />
-                  <div style={{ position: "absolute", left: 2.5, top: 1.25, width: 2, height: 2, borderRadius: "50%", background: f.color }} />
-                  <div style={{ position: "absolute", left: 1.25, top: 2.5, width: 2, height: 2, borderRadius: "50%", background: f.color }} />
-                  <div style={{ position: "absolute", left: 1.25, top: 1.25, width: 2, height: 2, borderRadius: "50%", background: "#FFE873" }} />
-                </div>
-                <div style={{ width: 1, height: 4, background: "#3D8B3D", marginLeft: 2 }} />
-              </div>
-            ))}
           </>
         ) : (
           <svg viewBox="0 0 320 280" width="100%" height="100%" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
@@ -2494,6 +2404,74 @@ function PlaygroundPanel({
             />
           );
         })}
+        {/* ── Playground front decor (butterflies + flowers) ──
+            Custom-PNG-room viewers only. Renders after the wandering
+            pets so it sits on top of them (zIndex 2000 beats
+            WanderingPet's posY-based zIndex of ≤1000). Same flower
+            palette as the walk scene but smaller (5x5 stamen). */}
+        {customRoomBg ? (
+          <div aria-hidden style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 2000 }}>
+            {[
+              { top: "8%",  color: "#F4A6BC", stroke: "#A03B5A", dur: 10, delay: 0,    reverse: false, wing: 0.18 },
+              { top: "20%", color: "#FFE873", stroke: "#C49A1F", dur: 13, delay: -4,   reverse: true,  wing: 0.20 },
+              { top: "32%", color: "#C9A6E8", stroke: "#7B4DA1", dur: 8,  delay: -1.8, reverse: false, wing: 0.16 },
+            ].map((b, i) => (
+              <div
+                key={`pgdecor-bfly-${i}`}
+                style={{
+                  position: "absolute",
+                  top: b.top,
+                  width: 12,
+                  height: 9,
+                  pointerEvents: "none",
+                  animation: `butterfly-glide-h ${b.dur}s linear infinite${b.reverse ? " reverse" : ""}`,
+                  animationDelay: `${b.delay}s`,
+                }}
+              >
+                <div style={{ animation: `butterfly-wings ${b.wing}s ease-in-out infinite` }}>
+                  <svg viewBox="0 0 16 12" width="12" height="9" style={{ display: "block" }}>
+                    <ellipse cx="5" cy="5" rx="3.5" ry="3" fill={b.color} stroke={b.stroke} strokeWidth="0.4" />
+                    <ellipse cx="11" cy="5" rx="3.5" ry="3" fill={b.color} stroke={b.stroke} strokeWidth="0.4" />
+                    <ellipse cx="5" cy="9" rx="2.5" ry="2" fill={b.color} stroke={b.stroke} strokeWidth="0.4" />
+                    <ellipse cx="11" cy="9" rx="2.5" ry="2" fill={b.color} stroke={b.stroke} strokeWidth="0.4" />
+                    <rect x="7.5" y="3" width="1" height="7" fill="#3A1F1F" />
+                  </svg>
+                </div>
+              </div>
+            ))}
+            {[
+              { left: "8%",  bottom: 14, color: "#E76A6A", dur: 3.0, delay: 0 },
+              { left: "22%", bottom: 10, color: "#FFE873", dur: 3.6, delay: 0.4 },
+              { left: "37%", bottom: 16, color: "#A878D0", dur: 2.8, delay: 0.9 },
+              { left: "55%", bottom: 12, color: "#FFE873", dur: 3.4, delay: 1.5 },
+              { left: "72%", bottom: 14, color: "#E76A6A", dur: 3.2, delay: 0.7 },
+              { left: "88%", bottom: 10, color: "#A878D0", dur: 3.8, delay: 2.0 },
+            ].map((f, i) => (
+              <div
+                key={`pgdecor-flower-${i}`}
+                style={{
+                  position: "absolute",
+                  left: f.left,
+                  bottom: f.bottom,
+                  width: 5,
+                  pointerEvents: "none",
+                  transformOrigin: "bottom center",
+                  animation: `custom-flower-sway ${f.dur}s ease-in-out infinite`,
+                  animationDelay: `${f.delay}s`,
+                }}
+              >
+                <div style={{ position: "relative", width: 5, height: 5 }}>
+                  <div style={{ position: "absolute", left: 1.25, top: 0, width: 2, height: 2, borderRadius: "50%", background: f.color }} />
+                  <div style={{ position: "absolute", left: 0, top: 1.25, width: 2, height: 2, borderRadius: "50%", background: f.color }} />
+                  <div style={{ position: "absolute", left: 2.5, top: 1.25, width: 2, height: 2, borderRadius: "50%", background: f.color }} />
+                  <div style={{ position: "absolute", left: 1.25, top: 2.5, width: 2, height: 2, borderRadius: "50%", background: f.color }} />
+                  <div style={{ position: "absolute", left: 1.25, top: 1.25, width: 2, height: 2, borderRadius: "50%", background: "#FFE873" }} />
+                </div>
+                <div style={{ width: 1, height: 4, background: "#3D8B3D", marginLeft: 2 }} />
+              </div>
+            ))}
+          </div>
+        ) : null}
         {pgToast ? (
           <div
             className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-full px-3 py-1 font-serif text-[11px] font-semibold text-stardust"

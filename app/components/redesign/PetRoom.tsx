@@ -972,47 +972,11 @@ function PetRoomInner({
                 draggable={false}
                 style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none", userSelect: "none", zIndex: 1 }}
               />
-              {/* Synthetic drifting clouds on top of the static cloud
-                  PNG band. Container clips to the painted sky region
-                  height (~top 30% of canvas) so puffs can never escape
-                  into the transparent area below the cloud PNG. */}
-              <div
-                aria-hidden
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  height: "30%",
-                  overflow: "hidden",
-                  pointerEvents: "none",
-                  zIndex: 2,
-                }}
-              >
-                {[
-                  { top: "40%", w: 36, h: 11, dur: 22, delay: 0, opacity: 0.85 },
-                  { top: "66%", w: 28, h: 9, dur: 28, delay: 4, opacity: 0.75 },
-                  { top: "20%", w: 22, h: 8, dur: 18, delay: 9, opacity: 0.70 },
-                ].map((c, i) => (
-                  <div
-                    key={`pngwalk-cloud-${i}`}
-                    aria-hidden
-                    style={{
-                      position: "absolute",
-                      top: c.top,
-                      left: 0,
-                      width: c.w,
-                      height: c.h,
-                      borderRadius: c.h,
-                      background: "#FFFFFF",
-                      opacity: c.opacity,
-                      pointerEvents: "none",
-                      animation: `custom-cloud-sweep ${c.dur}s linear infinite`,
-                      animationDelay: `-${c.delay}s`,
-                    }}
-                  />
-                ))}
-              </div>
+              {/* walk_cloud stays as-is (a static painted sky band).
+                  Butterflies + flowers used to live here too, but they
+                  now render outside this masked container as a sibling
+                  of the pet so they can sit on top of the pet (see the
+                  decor block after the pet div below). */}
               <img
                 src={CUSTOM_BG.walkGround}
                 alt=""
@@ -1020,58 +984,6 @@ function PetRoomInner({
                 draggable={false}
                 style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none", userSelect: "none", zIndex: 3 }}
               />
-              {/* Decorative flowers on the ground — small, gently sway. */}
-              {[
-                { left: "18%", bottom: 14, color: "#FFE873", delay: 0 },
-                { left: "42%", bottom: 10, color: "#F4A6BC", delay: 0.6 },
-                { left: "70%", bottom: 16, color: "#E76A6A", delay: 1.2 },
-              ].map((f, i) => (
-                <div
-                  key={`pngflower-${i}`}
-                  style={{
-                    position: "absolute",
-                    left: f.left,
-                    bottom: f.bottom,
-                    width: 6,
-                    pointerEvents: "none",
-                    zIndex: 8,
-                    transformOrigin: "bottom center",
-                    animation: `custom-flower-sway 3s ease-in-out infinite ${f.delay}s`,
-                  }}
-                >
-                  <div style={{ position: "relative", width: 6, height: 6 }}>
-                    <div style={{ position: "absolute", left: 1.5, top: 0, width: 2.5, height: 2.5, borderRadius: "50%", background: f.color }} />
-                    <div style={{ position: "absolute", left: 0, top: 1.5, width: 2.5, height: 2.5, borderRadius: "50%", background: f.color }} />
-                    <div style={{ position: "absolute", left: 3, top: 1.5, width: 2.5, height: 2.5, borderRadius: "50%", background: f.color }} />
-                    <div style={{ position: "absolute", left: 1.5, top: 3, width: 2.5, height: 2.5, borderRadius: "50%", background: f.color }} />
-                    <div style={{ position: "absolute", left: 1.5, top: 1.5, width: 2.5, height: 2.5, borderRadius: "50%", background: "#FFE873" }} />
-                  </div>
-                  <div style={{ width: 1, height: 5, background: "#3D8B3D", marginLeft: 2.5 }} />
-                </div>
-              ))}
-              {/* Butterfly — drifts L→R across the field. */}
-              <div
-                style={{
-                  position: "absolute",
-                  left: "-8%",
-                  top: "50%",
-                  width: 14,
-                  height: 11,
-                  pointerEvents: "none",
-                  zIndex: 9,
-                  animation: "butterfly-fly 7s linear infinite",
-                }}
-              >
-                <div style={{ animation: "butterfly-wings 0.18s ease-in-out infinite" }}>
-                  <svg viewBox="0 0 16 12" width="14" height="11" style={{ display: "block" }}>
-                    <ellipse cx="5" cy="5" rx="3.5" ry="3" fill="#F4A6BC" stroke="#A03B5A" strokeWidth="0.4" />
-                    <ellipse cx="11" cy="5" rx="3.5" ry="3" fill="#F4A6BC" stroke="#A03B5A" strokeWidth="0.4" />
-                    <ellipse cx="5" cy="9" rx="2.5" ry="2" fill="#F4A6BC" stroke="#A03B5A" strokeWidth="0.4" />
-                    <ellipse cx="11" cy="9" rx="2.5" ry="2" fill="#F4A6BC" stroke="#A03B5A" strokeWidth="0.4" />
-                    <rect x="7.5" y="3" width="1" height="7" fill="#3A1F1F" />
-                  </svg>
-                </div>
-              </div>
             </>
           ) : null}
 
@@ -1611,6 +1523,80 @@ function PetRoomInner({
           leftPct={petLeftPct}
           bottom={petBottom + petSize - 8}
         />
+      ) : null}
+
+      {/* ── Walk-scene front decor (butterflies + flowers) ──
+          Rendered AFTER the pet so they sit on top of it (zIndex 2000
+          beats the pet's max ~1001). Three butterflies on different
+          glide paths + six small flowers in three colors swaying at
+          different rates. Custom-PNG-room viewers only, walk only. */}
+      {customRoomBg && activeScene === "walk" ? (
+        <div aria-hidden style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 2000 }}>
+          {/* 3 butterflies — top, mid, lower paths; alternating
+              directions and durations for a natural mix. */}
+          {[
+            { top: "26%", color: "#F4A6BC", stroke: "#A03B5A", dur: 9,  delay: 0,    reverse: false, wing: 0.18 },
+            { top: "42%", color: "#FFE873", stroke: "#C49A1F", dur: 12, delay: -3,   reverse: true,  wing: 0.20 },
+            { top: "55%", color: "#C9A6E8", stroke: "#7B4DA1", dur: 7,  delay: -1.5, reverse: false, wing: 0.16 },
+          ].map((b, i) => (
+            <div
+              key={`walkdecor-bfly-${i}`}
+              style={{
+                position: "absolute",
+                top: b.top,
+                width: 14,
+                height: 11,
+                pointerEvents: "none",
+                animation: `butterfly-glide-h ${b.dur}s linear infinite${b.reverse ? " reverse" : ""}`,
+                animationDelay: `${b.delay}s`,
+              }}
+            >
+              <div style={{ animation: `butterfly-wings ${b.wing}s ease-in-out infinite` }}>
+                <svg viewBox="0 0 16 12" width="14" height="11" style={{ display: "block" }}>
+                  <ellipse cx="5" cy="5" rx="3.5" ry="3" fill={b.color} stroke={b.stroke} strokeWidth="0.4" />
+                  <ellipse cx="11" cy="5" rx="3.5" ry="3" fill={b.color} stroke={b.stroke} strokeWidth="0.4" />
+                  <ellipse cx="5" cy="9" rx="2.5" ry="2" fill={b.color} stroke={b.stroke} strokeWidth="0.4" />
+                  <ellipse cx="11" cy="9" rx="2.5" ry="2" fill={b.color} stroke={b.stroke} strokeWidth="0.4" />
+                  <rect x="7.5" y="3" width="1" height="7" fill="#3A1F1F" />
+                </svg>
+              </div>
+            </div>
+          ))}
+          {/* 6 flowers — three colors, varied sway timing + bottom
+              offset so they don't bob in sync. Walk uses the larger
+              size (8x8 stamen). */}
+          {[
+            { left: "10%", bottom: 16, color: "#E76A6A", dur: 3.0, delay: 0 },
+            { left: "24%", bottom: 10, color: "#FFE873", dur: 3.6, delay: 0.4 },
+            { left: "38%", bottom: 18, color: "#A878D0", dur: 2.8, delay: 0.9 },
+            { left: "55%", bottom: 12, color: "#FFE873", dur: 3.4, delay: 1.5 },
+            { left: "72%", bottom: 14, color: "#E76A6A", dur: 3.2, delay: 0.7 },
+            { left: "86%", bottom: 10, color: "#A878D0", dur: 3.8, delay: 2.0 },
+          ].map((f, i) => (
+            <div
+              key={`walkdecor-flower-${i}`}
+              style={{
+                position: "absolute",
+                left: f.left,
+                bottom: f.bottom,
+                width: 8,
+                pointerEvents: "none",
+                transformOrigin: "bottom center",
+                animation: `custom-flower-sway ${f.dur}s ease-in-out infinite`,
+                animationDelay: `${f.delay}s`,
+              }}
+            >
+              <div style={{ position: "relative", width: 8, height: 8 }}>
+                <div style={{ position: "absolute", left: 2, top: 0, width: 3, height: 3, borderRadius: "50%", background: f.color }} />
+                <div style={{ position: "absolute", left: 0, top: 2, width: 3, height: 3, borderRadius: "50%", background: f.color }} />
+                <div style={{ position: "absolute", left: 4, top: 2, width: 3, height: 3, borderRadius: "50%", background: f.color }} />
+                <div style={{ position: "absolute", left: 2, top: 4, width: 3, height: 3, borderRadius: "50%", background: f.color }} />
+                <div style={{ position: "absolute", left: 2, top: 2, width: 3, height: 3, borderRadius: "50%", background: "#FFE873" }} />
+              </div>
+              <div style={{ width: 1, height: 6, background: "#3D8B3D", marginLeft: 3.5 }} />
+            </div>
+          ))}
+        </div>
       ) : null}
     </div>
   );
