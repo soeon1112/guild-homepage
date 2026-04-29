@@ -78,9 +78,24 @@ type Props = {
   // Gated upstream via canDebugPet(viewerNickname); other guildmates
   // see the classic backdrop.
   experimental?: boolean;
+  // Custom hand-drawn PNG room/scene backgrounds. Replaces the SVG
+  // base room + bath/park overlays with PNG art. Gated upstream via
+  // canSeeCustomPetRoom(viewerNickname).
+  customRoomBg?: boolean;
   // Chat bubble shown directly above the pet's head.
   headBubble?: string | null;
 };
+
+const CUSTOM_BG = {
+  roomBg: "/images/pets/rooms/room_default_bg.png",
+  roomGround: "/images/pets/rooms/room_default_ground.png",
+  showerBg: "/images/pets/rooms/shower_bg.png",
+  showerFront: "/images/pets/rooms/shower_front.png",
+  showerWater: "/images/pets/rooms/shower_water.png",
+  walkBg: "/images/pets/rooms/walk_bg.png",
+  walkCloud: "/images/pets/rooms/walk_cloud.png",
+  walkGround: "/images/pets/rooms/walk_ground.png",
+} as const;
 
 function gridRects(
   grid: PixelGrid,
@@ -133,6 +148,7 @@ function PetRoomInner({
   onMoveFurniture,
   bodyColor = null,
   experimental = false,
+  customRoomBg = false,
   headBubble = null,
 }: Props) {
   const theme = ROOM_THEMES[background];
@@ -726,6 +742,50 @@ function PetRoomInner({
         <rect x={0} y={wallEnd} width={W} height={floorEnd - wallEnd} fill="url(#floor-grad)" opacity={0.18} />
       </svg>
 
+      {/* Custom PNG room — covers the SVG procedural room with hand-drawn
+          art for opted-in viewers. Pet still uses the same posY mapping
+          (floor 38% of height) so its walking range matches the painted
+          floor area. Hidden during scenes since each scene PNG-overlays
+          the room itself. */}
+      {customRoomBg && !activeScene ? (
+        <>
+          <img
+            src={CUSTOM_BG.roomBg}
+            alt=""
+            aria-hidden
+            draggable={false}
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              pointerEvents: "none",
+              userSelect: "none",
+              zIndex: 0,
+            }}
+          />
+          <img
+            src={CUSTOM_BG.roomGround}
+            alt=""
+            aria-hidden
+            draggable={false}
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              bottom: 0,
+              width: "100%",
+              height: `${(floorDepth / H) * 100}%`,
+              objectFit: "cover",
+              pointerEvents: "none",
+              userSelect: "none",
+              zIndex: 0,
+            }}
+          />
+        </>
+      ) : null}
+
       {/* Furniture HTML overlays — z-index from y, long-press drag in
           placement mode. The pet wrapper sets pointerEvents:none in
           placement mode so back-row furniture stays selectable. */}
@@ -808,8 +868,9 @@ function PetRoomInner({
             position: "absolute",
             inset: 0,
             pointerEvents: "none",
-            background:
-              SCENES[activeScene].overlay === "bath"
+            background: customRoomBg
+              ? "transparent"
+              : SCENES[activeScene].overlay === "bath"
                 ? "linear-gradient(180deg, #BDE5F4 0%, #BDE5F4 50%, #8BC8E0 50%, #8BC8E0 100%)"
                 : SCENES[activeScene].overlay === "park"
                 ? "linear-gradient(180deg, #8FC9F0 0%, #8FC9F0 60%, #76C172 60%, #5DAB5A 100%)"
@@ -819,7 +880,181 @@ function PetRoomInner({
             animation: "scene-fade-in 0.35s ease-out",
           }}
         >
-          {SCENES[activeScene].overlay === "bath" ? (
+          {/* Custom PNG bath overlay — replaces the SVG tile/tub procedural
+              art with hand-drawn shower scene. Water animation is the
+              same falling-stream feel but layered behind shower_water
+              (pipe/head) so drops appear to come out of it. */}
+          {customRoomBg && SCENES[activeScene].overlay === "bath" ? (
+            <>
+              <img
+                src={CUSTOM_BG.showerBg}
+                alt=""
+                aria-hidden
+                draggable={false}
+                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none", userSelect: "none" }}
+              />
+              {/* Water drops — fall from below the shower head, behind
+                  the shower_front overlay so they look like they're
+                  draining into the tub. */}
+              {[-10, -5, 0, 5, 10, -7, 7].map((offset, i) => (
+                <div
+                  key={`pngdrop-${i}`}
+                  aria-hidden
+                  style={{
+                    position: "absolute",
+                    left: `calc(50% + ${offset}px)`,
+                    top: "18%",
+                    width: 2,
+                    height: 60,
+                    background: "linear-gradient(180deg, rgba(176,224,250,0.85), rgba(91,174,234,0))",
+                    borderRadius: 1,
+                    pointerEvents: "none",
+                    zIndex: 1490,
+                    animation: `custom-water-fall 0.9s ease-in infinite ${i * 0.13}s`,
+                  }}
+                />
+              ))}
+              <img
+                src={CUSTOM_BG.showerWater}
+                alt=""
+                aria-hidden
+                draggable={false}
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  top: 0,
+                  width: "100%",
+                  height: "auto",
+                  pointerEvents: "none",
+                  userSelect: "none",
+                  zIndex: 1495,
+                }}
+              />
+              {/* shower_front sits in front of the pet (zIndex above
+                  pet's ~801) like the SVG tub front did. */}
+              <img
+                src={CUSTOM_BG.showerFront}
+                alt=""
+                aria-hidden
+                draggable={false}
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  bottom: 0,
+                  width: "100%",
+                  height: "auto",
+                  pointerEvents: "none",
+                  userSelect: "none",
+                  zIndex: 1500,
+                }}
+              />
+            </>
+          ) : null}
+
+          {/* Custom PNG park (산책) overlay. Cloud drifts slowly L→R on
+              loop. Butterfly + flowers reuse the same SVG art the
+              classic overlay uses, just placed on top of the new
+              ground PNG. */}
+          {customRoomBg && SCENES[activeScene].overlay === "park" ? (
+            <>
+              <img
+                src={CUSTOM_BG.walkBg}
+                alt=""
+                aria-hidden
+                draggable={false}
+                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none", userSelect: "none" }}
+              />
+              <img
+                src={CUSTOM_BG.walkCloud}
+                alt=""
+                aria-hidden
+                draggable={false}
+                style={{
+                  position: "absolute",
+                  top: "8%",
+                  left: 0,
+                  width: "100%",
+                  height: "auto",
+                  pointerEvents: "none",
+                  userSelect: "none",
+                  animation: "custom-cloud-drift 18s linear infinite",
+                  zIndex: 2,
+                }}
+              />
+              <img
+                src={CUSTOM_BG.walkGround}
+                alt=""
+                aria-hidden
+                draggable={false}
+                style={{
+                  position: "absolute",
+                  bottom: 0,
+                  left: 0,
+                  width: "100%",
+                  height: `${(floorDepth / H) * 100}%`,
+                  objectFit: "cover",
+                  pointerEvents: "none",
+                  userSelect: "none",
+                  zIndex: 3,
+                }}
+              />
+              {/* Decorative flowers on the ground — small, gently sway. */}
+              {[
+                { left: "18%", bottom: 14, color: "#FFE873", delay: 0 },
+                { left: "42%", bottom: 10, color: "#F4A6BC", delay: 0.6 },
+                { left: "70%", bottom: 16, color: "#E76A6A", delay: 1.2 },
+              ].map((f, i) => (
+                <div
+                  key={`pngflower-${i}`}
+                  style={{
+                    position: "absolute",
+                    left: f.left,
+                    bottom: f.bottom,
+                    width: 6,
+                    pointerEvents: "none",
+                    zIndex: 8,
+                    transformOrigin: "bottom center",
+                    animation: `custom-flower-sway 3s ease-in-out infinite ${f.delay}s`,
+                  }}
+                >
+                  <div style={{ position: "relative", width: 6, height: 6 }}>
+                    <div style={{ position: "absolute", left: 1.5, top: 0, width: 2.5, height: 2.5, borderRadius: "50%", background: f.color }} />
+                    <div style={{ position: "absolute", left: 0, top: 1.5, width: 2.5, height: 2.5, borderRadius: "50%", background: f.color }} />
+                    <div style={{ position: "absolute", left: 3, top: 1.5, width: 2.5, height: 2.5, borderRadius: "50%", background: f.color }} />
+                    <div style={{ position: "absolute", left: 1.5, top: 3, width: 2.5, height: 2.5, borderRadius: "50%", background: f.color }} />
+                    <div style={{ position: "absolute", left: 1.5, top: 1.5, width: 2.5, height: 2.5, borderRadius: "50%", background: "#FFE873" }} />
+                  </div>
+                  <div style={{ width: 1, height: 5, background: "#3D8B3D", marginLeft: 2.5 }} />
+                </div>
+              ))}
+              {/* Butterfly — same as the classic park overlay but lifted
+                  a bit so it stays above the painted ground. */}
+              <div
+                style={{
+                  position: "absolute",
+                  left: "-8%",
+                  top: "50%",
+                  width: 14,
+                  height: 11,
+                  pointerEvents: "none",
+                  zIndex: 9,
+                  animation: "butterfly-fly 7s linear infinite",
+                }}
+              >
+                <div style={{ animation: "butterfly-wings 0.18s ease-in-out infinite" }}>
+                  <svg viewBox="0 0 16 12" width="14" height="11" style={{ display: "block" }}>
+                    <ellipse cx="5" cy="5" rx="3.5" ry="3" fill="#F4A6BC" stroke="#A03B5A" strokeWidth="0.4" />
+                    <ellipse cx="11" cy="5" rx="3.5" ry="3" fill="#F4A6BC" stroke="#A03B5A" strokeWidth="0.4" />
+                    <ellipse cx="5" cy="9" rx="2.5" ry="2" fill="#F4A6BC" stroke="#A03B5A" strokeWidth="0.4" />
+                    <ellipse cx="11" cy="9" rx="2.5" ry="2" fill="#F4A6BC" stroke="#A03B5A" strokeWidth="0.4" />
+                    <rect x="7.5" y="3" width="1" height="7" fill="#3A1F1F" />
+                  </svg>
+                </div>
+              </div>
+            </>
+          ) : null}
+
+          {!customRoomBg && SCENES[activeScene].overlay === "bath" ? (
             <>
               {/* Wall tile pattern */}
               <svg viewBox="0 0 320 200" width="100%" height="100%" preserveAspectRatio="none" style={{ display: "block" }}>
@@ -1009,7 +1244,7 @@ function PetRoomInner({
               ))}
             </>
           ) : null}
-          {SCENES[activeScene].overlay === "park" ? (
+          {!customRoomBg && SCENES[activeScene].overlay === "park" ? (
             <>
               {/* ── Sun (just a circle, no rays) ── */}
               <div

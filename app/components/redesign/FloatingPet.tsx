@@ -74,6 +74,7 @@ import {
   setFurniturePlaced,
   setFurniturePosition,
   STATUS_LABELS,
+  canSeeCustomPetRoom,
   type BackgroundId,
   type InteractionId,
   type ItemCategory,
@@ -840,6 +841,7 @@ export default function FloatingPet() {
                   myPetInPlayground={!!pet?.inPlayground}
                   busy={busy}
                   inventory={items.inventory}
+                  customRoomBg={canSeeCustomPetRoom(nickname)}
                   onEnter={async () => {
                     if (!nickname || !pet) return;
                     setBusy(true);
@@ -858,6 +860,7 @@ export default function FloatingPet() {
                   setVisiting={setVisiting}
                   now={now}
                   experimental={true}
+                  customRoomBg={canSeeCustomPetRoom(nickname)}
                 />
               ) : (
                 <RankingPanel members={members} myNickname={nickname ?? null} />
@@ -1092,6 +1095,7 @@ function MainPanel({
             onSelectFurniture={setSelectedFurniture}
             onMoveFurniture={onMoveFurniture}
             experimental={true}
+            customRoomBg={canSeeCustomPetRoom(ownerNickname)}
             headBubble={chatBubble}
           />
           {/* Chat bubble now renders inside PetRoom via headBubble prop,
@@ -1962,6 +1966,7 @@ function PlaygroundPanel({
   onEnter,
   onGiftTreat,
   inventory,
+  customRoomBg,
 }: {
   myNickname: string;
   myPetInPlayground: boolean;
@@ -1969,6 +1974,7 @@ function PlaygroundPanel({
   onEnter: () => void;
   onGiftTreat: (to: string, item: ItemId) => void;
   inventory: PetItemsDoc["inventory"];
+  customRoomBg: boolean;
 }) {
   const [pets, setPets] = useState<PlaygroundPet[] | null>(null);
   const [count, setCount] = useState<number | null>(null);
@@ -2325,17 +2331,117 @@ function PlaygroundPanel({
         className="relative -mx-4 overflow-hidden"
         style={{
           height: 280,
-          background: "linear-gradient(180deg, #BFE6FA 0%, #BFE6FA 35%, #86EFAC 35%, #34D399 100%)",
+          background: customRoomBg
+            ? "transparent"
+            : "linear-gradient(180deg, #BFE6FA 0%, #BFE6FA 35%, #86EFAC 35%, #34D399 100%)",
           borderTop: "1px solid rgba(216,150,200,0.25)",
           borderBottom: "1px solid rgba(216,150,200,0.25)",
         }}
       >
-        {/* Grass blades */}
-        <svg viewBox="0 0 320 280" width="100%" height="100%" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
-          {Array.from({ length: 30 }).map((_, i) => (
-            <rect key={`g-${i}`} x={(i * 11) + (i % 2 ? 2 : 0)} y={120 + (i % 6) * 22} width={2} height={5} fill="#4A8E47" />
-          ))}
-        </svg>
+        {customRoomBg ? (
+          <>
+            <img
+              src="/images/pets/rooms/playground_bg.png"
+              alt=""
+              aria-hidden
+              draggable={false}
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none", userSelect: "none", zIndex: 0 }}
+            />
+            <img
+              src="/images/pets/rooms/playground_cloud.png"
+              alt=""
+              aria-hidden
+              draggable={false}
+              style={{
+                position: "absolute",
+                top: "6%",
+                left: 0,
+                width: "100%",
+                height: "auto",
+                pointerEvents: "none",
+                userSelect: "none",
+                animation: "custom-cloud-drift 18s linear infinite",
+                zIndex: 1,
+              }}
+            />
+            <img
+              src="/images/pets/rooms/playground_ground.png"
+              alt=""
+              aria-hidden
+              draggable={false}
+              style={{
+                position: "absolute",
+                bottom: 0,
+                left: 0,
+                width: "100%",
+                height: "65%",
+                objectFit: "cover",
+                pointerEvents: "none",
+                userSelect: "none",
+                zIndex: 2,
+              }}
+            />
+            {/* Tiny butterfly drifting across the top of the field. */}
+            <div
+              style={{
+                position: "absolute",
+                left: "-8%",
+                top: "45%",
+                width: 11,
+                height: 9,
+                pointerEvents: "none",
+                zIndex: 3,
+                animation: "butterfly-fly 9s linear infinite",
+              }}
+            >
+              <div style={{ animation: "butterfly-wings 0.18s ease-in-out infinite" }}>
+                <svg viewBox="0 0 16 12" width="11" height="9" style={{ display: "block" }}>
+                  <ellipse cx="5" cy="5" rx="3.5" ry="3" fill="#F4A6BC" stroke="#A03B5A" strokeWidth="0.4" />
+                  <ellipse cx="11" cy="5" rx="3.5" ry="3" fill="#F4A6BC" stroke="#A03B5A" strokeWidth="0.4" />
+                  <ellipse cx="5" cy="9" rx="2.5" ry="2" fill="#F4A6BC" stroke="#A03B5A" strokeWidth="0.4" />
+                  <ellipse cx="11" cy="9" rx="2.5" ry="2" fill="#F4A6BC" stroke="#A03B5A" strokeWidth="0.4" />
+                  <rect x="7.5" y="3" width="1" height="7" fill="#3A1F1F" />
+                </svg>
+              </div>
+            </div>
+            {/* A few small flowers near the bottom — smaller than walk
+                scene. Light sway. */}
+            {[
+              { left: "12%", bottom: 18, color: "#FFE873", delay: 0 },
+              { left: "55%", bottom: 14, color: "#F4A6BC", delay: 0.7 },
+              { left: "82%", bottom: 20, color: "#E76A6A", delay: 1.4 },
+            ].map((f, i) => (
+              <div
+                key={`pgflower-${i}`}
+                style={{
+                  position: "absolute",
+                  left: f.left,
+                  bottom: f.bottom,
+                  width: 5,
+                  pointerEvents: "none",
+                  zIndex: 3,
+                  transformOrigin: "bottom center",
+                  animation: `custom-flower-sway 3.4s ease-in-out infinite ${f.delay}s`,
+                }}
+              >
+                <div style={{ position: "relative", width: 5, height: 5 }}>
+                  <div style={{ position: "absolute", left: 1.25, top: 0, width: 2, height: 2, borderRadius: "50%", background: f.color }} />
+                  <div style={{ position: "absolute", left: 0, top: 1.25, width: 2, height: 2, borderRadius: "50%", background: f.color }} />
+                  <div style={{ position: "absolute", left: 2.5, top: 1.25, width: 2, height: 2, borderRadius: "50%", background: f.color }} />
+                  <div style={{ position: "absolute", left: 1.25, top: 2.5, width: 2, height: 2, borderRadius: "50%", background: f.color }} />
+                  <div style={{ position: "absolute", left: 1.25, top: 1.25, width: 2, height: 2, borderRadius: "50%", background: "#FFE873" }} />
+                </div>
+                <div style={{ width: 1, height: 4, background: "#3D8B3D", marginLeft: 2 }} />
+              </div>
+            ))}
+          </>
+        ) : (
+          <svg viewBox="0 0 320 280" width="100%" height="100%" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+            {Array.from({ length: 30 }).map((_, i) => (
+              <rect key={`g-${i}`} x={(i * 11) + (i % 2 ? 2 : 0)} y={120 + (i % 6) * 22} width={2} height={5} fill="#4A8E47" />
+            ))}
+          </svg>
+        )}
 
         {(pets ?? []).map((p) => {
           // If this pet is in the active interaction, find its partner
@@ -2796,12 +2902,14 @@ function VisitPanel({
   setVisiting,
   now,
   experimental,
+  customRoomBg,
 }: {
   members: MemberInfo[];
   visiting: MemberInfo | null;
   setVisiting: (m: MemberInfo | null) => void;
   now: number;
   experimental: boolean;
+  customRoomBg: boolean;
 }) {
   // Lazy-load the visited pet's full doc so we get furniture, accessories,
   // background, glow, body color — same fields the owner sees in their
@@ -2895,6 +3003,7 @@ function VisitPanel({
               onSelectFurniture={() => {}}
               onMoveFurniture={() => {}}
               experimental={experimental}
+              customRoomBg={customRoomBg}
             />
             <div
               className="pointer-events-none absolute right-2 top-2 flex items-center gap-1 rounded-full px-2 py-1 backdrop-blur-sm"
