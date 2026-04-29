@@ -167,7 +167,19 @@ function PetRoomInner({
   const adultScale = stage === "adult" ? (type === "owl" ? 1.2 : 1.12) : 1;
   const petSize = Math.round(Math.min(98, Math.max(68, Math.round(H * 0.35))) * adultScale);
   const isEgg = stage === "egg";
-  const behavior = effectiveBehavior(type, stage);
+  // Memoise behavior so the scheduler effect's deps stay stable across
+  // parent re-renders. effectiveBehavior returns a fresh object literal
+  // each call; without this memo, FloatingPet's 1Hz `now` ticker (which
+  // re-renders PetRoom because `accessories={pet.accessories ?? []}`
+  // creates a fresh array ref each render and busts memo()) would
+  // re-fire the scheduler effect every second — repeatedly cancelling
+  // the OUTER idle-wait setTimeout (1.8–3.5s for baby) before it could
+  // fire. Result: pet stays in mode="idle" forever, only bobbing in
+  // place. Stage and type are essentially constant per session.
+  const behavior = useMemo(
+    () => effectiveBehavior(type, stage),
+    [type, stage],
+  );
 
   // ── State machine ──
   const [mode, setMode] = useState<Mode>("idle");
@@ -264,86 +276,119 @@ function PetRoomInner({
     return () => window.clearTimeout(t);
   }, [activeScene]);
 
-  // Behaviour scheduler — every stage moves now. Position picker
-  // alternates sides so the pet keeps crossing through center.
+  // Behaviour scheduler — every non-egg stage walks. Recursion-based
+  // chain (mirroring the RN app version): each behaviour outcome ends
+  // by scheduling the NEXT idle-wait roll via a recursive `schedule()`
+  // call inside its own setTimeout, so the chain stays alive without
+  // depending on `mode`/`posPct` re-runs to advance.
+  //
+  // The previous version put `mode` and `posPct` in the effect deps and
+  // relied on those state changes to retrigger the next roll. That had
+  // two failure modes:
+  //   1. When walking started, the state change cancelled the Inner
+  //      "set mode back to idle" timer (its closure captured the now-
+  //      true `cancelled` flag), so mode stayed "walking" until another
+  //      roll happened to flip it.
+  //   2. With delay=0 when mode!="idle", the effect re-run fired a new
+  //      OUTER immediately. Each rapid roll either chained another
+  //      walk (state change → another re-run) or hit the "do nothing"
+  //      branch (~6%) and the chain died — leaving the pet stuck mid-
+  //      walking with no further timers pending.
+  // Combined with `behavior` being a fresh object on every render
+  // (parent's 1Hz `now` ticker), the OUTER idle-wait of 1.8–3.5s for
+  // baby never even fired in the first place. Net effect: pet looked
+  // like an egg, just bobbing in place. Recursion-based chain side-
+  // steps both issues.
+  // posRef holds the latest committed walk target so closures don't
+  // capture stale `posPct` state across recursive ticks.
+  const posPctSnapshotRef = useRef(posPct);
+  posPctSnapshotRef.current = posPct;
+  const isScene = mode === "scene";
   useEffect(() => {
     if (!animReady) return;
-    if (mode === "scene") return; // suspended during cutscenes
+    if (isScene) return; // suspended during cutscenes
     let cancelled = false;
+    const posRef = { current: posPctSnapshotRef.current };
 
-    const tick = () => {
+    const schedule = () => {
       if (cancelled) return;
-      const delay =
-        mode === "idle"
-          ? behavior.idleWaitMin + Math.random() * (behavior.idleWaitMax - behavior.idleWaitMin)
-          : 0;
-      const t = window.setTimeout(() => {
+      const wait =
+        behavior.idleWaitMin + Math.random() * (behavior.idleWaitMax - behavior.idleWaitMin);
+      window.setTimeout(() => {
         if (cancelled) return;
         const r = Math.random();
-        // Special action first (rolled before sit/walk to give it priority)
+
         if (r < behavior.specialChance && behavior.specialAction !== "none") {
           setActiveAction(behavior.specialAction);
           setMode("special");
-          // dash is implemented as a fast walk, not a hold-pose
           if (behavior.specialAction === "dash") {
-            const lastSign = posPct > 0.05 ? 1 : posPct < -0.05 ? -1 : (Math.random() < 0.5 ? 1 : -1);
+            const lastSign =
+              posRef.current > 0.05 ? 1 : posRef.current < -0.05 ? -1 : (Math.random() < 0.5 ? 1 : -1);
             const next = -lastSign * (0.5 + Math.random() * 0.35);
-            const dur = Math.max(500, Math.abs(next - posPct) * 700); // fast
+            const dur = Math.max(500, Math.abs(next - posRef.current) * 700);
             walkDurRef.current = dur;
-            setFacing(next > posPct ? "right" : "left");
+            setFacing(next > posRef.current ? "right" : "left");
+            posRef.current = next;
             setPosPct(next);
             window.setTimeout(() => {
-              if (!cancelled) {
-                setActiveAction("none");
-                setMode("idle");
-              }
+              if (cancelled) return;
+              setActiveAction("none");
+              setMode("idle");
+              schedule();
             }, dur + 80);
           } else {
             window.setTimeout(() => {
-              if (!cancelled) {
-                setActiveAction("none");
-                setMode("idle");
-              }
+              if (cancelled) return;
+              setActiveAction("none");
+              setMode("idle");
+              schedule();
             }, 1700);
           }
-        } else {
-          const r2 = (r - behavior.specialChance) / Math.max(0.0001, 1 - behavior.specialChance);
-          if (r2 < behavior.sitChance) {
-            setMode("sitting");
-            window.setTimeout(() => {
-              if (!cancelled) setMode("idle");
-            }, 3000 + Math.random() * 2000);
-          } else if (r2 < behavior.sitChance + behavior.walkChance) {
-            // Pick opposite side from current — cross through center.
-            const lastSign = posPct > 0.05 ? 1 : posPct < -0.05 ? -1 : (Math.random() < 0.5 ? 1 : -1);
-            const newSign = -lastSign;
-            const magnitude = 0.3 + Math.random() * 0.55; // 0.3..0.85
-            const next = newSign * magnitude;
-            // Pick depth y in [0.40, 0.70] — keeps the pet above the
-            // front fence in the park scene while still varying depth.
-            const nextY = 0.40 + Math.random() * 0.30;
-            const distance = Math.abs(next - posPct);
-            const dur = Math.max(behavior.walkDurMin, distance * behavior.walkDurPerUnit);
-            walkDurRef.current = dur;
-            setFacing(next > posPct ? "right" : "left");
-            setMode("walking");
-            setPosPct(next);
-            setPosY(nextY);
-            window.setTimeout(() => {
-              if (!cancelled) setMode("idle");
-            }, dur + 80);
-          }
+          return;
         }
-      }, delay);
-      return () => window.clearTimeout(t);
+
+        const r2 = (r - behavior.specialChance) / Math.max(0.0001, 1 - behavior.specialChance);
+        if (r2 < behavior.sitChance) {
+          setMode("sitting");
+          window.setTimeout(() => {
+            if (cancelled) return;
+            setMode("idle");
+            schedule();
+          }, 3000 + Math.random() * 2000);
+        } else if (r2 < behavior.sitChance + behavior.walkChance) {
+          const lastSign =
+            posRef.current > 0.05 ? 1 : posRef.current < -0.05 ? -1 : (Math.random() < 0.5 ? 1 : -1);
+          const newSign = -lastSign;
+          const magnitude = 0.3 + Math.random() * 0.55; // 0.3..0.85
+          const next = newSign * magnitude;
+          // Pick depth y in [0.40, 0.70] — keeps pet above the front
+          // fence in the park scene while still varying depth.
+          const nextY = 0.40 + Math.random() * 0.30;
+          const distance = Math.abs(next - posRef.current);
+          const dur = Math.max(behavior.walkDurMin, distance * behavior.walkDurPerUnit);
+          walkDurRef.current = dur;
+          setFacing(next > posRef.current ? "right" : "left");
+          setMode("walking");
+          posRef.current = next;
+          setPosPct(next);
+          setPosY(nextY);
+          window.setTimeout(() => {
+            if (cancelled) return;
+            setMode("idle");
+            schedule();
+          }, dur + 80);
+        } else {
+          // No-op roll — re-schedule the next idle wait immediately.
+          schedule();
+        }
+      }, wait);
     };
 
-    const cleanup = tick();
+    schedule();
     return () => {
       cancelled = true;
-      cleanup?.();
     };
-  }, [animReady, mode, posPct, behavior]);
+  }, [animReady, behavior, isScene]);
 
   // Blink scheduler — independent of behaviour.
   useEffect(() => {
