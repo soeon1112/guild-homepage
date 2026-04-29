@@ -205,6 +205,13 @@ function PetRoomInner({
   // park scene's front fence. Picked alongside posPct when walking
   // so the pet naturally passes behind/in-front of furniture.
   const [posY, setPosY] = useState(0.55);
+  // Refs that track the latest position state. Needed by the scene
+  // effect to save the pre-scene position without putting posPct/posY
+  // in its deps (which would re-fire the effect on every walk step).
+  const posPctRef = useRef(0);
+  const posYRef = useRef(0.55);
+  useEffect(() => { posPctRef.current = posPct; }, [posPct]);
+  useEffect(() => { posYRef.current = posY; }, [posY]);
   const [facing, setFacing] = useState<"left" | "right">("right");
   const [blink, setBlink] = useState(false);
   const [activeAction, setActiveAction] = useState<SpecialAction>("none");
@@ -277,6 +284,15 @@ function PetRoomInner({
   useEffect(() => {
     if (!activeScene) return;
     const scene = SCENES[activeScene];
+    // Snapshot pre-scene position so we can restore it when the scene
+    // ends. Without this the pet stays anchored at scene.petAnchor /
+    // scene.petAnchorY (e.g. wash sets posY to 0.20) and visibly jumps
+    // away from where the user last saw it.
+    const savedPosPct = posPctRef.current;
+    const savedPosY = posYRef.current;
+    const anchorPctSet = scene.petAnchor !== undefined;
+    const anchorYSet = scene.petAnchorY !== undefined;
+
     setMode("scene");
     if (scene.petAnchor !== undefined) {
       walkDurRef.current = 600;
@@ -296,7 +312,15 @@ function PetRoomInner({
       setMode("idle");
       onSceneEndRef.current?.();
     }, scene.durationMs);
-    return () => window.clearTimeout(t);
+    return () => {
+      window.clearTimeout(t);
+      // Restore pre-scene position only if the scene actually moved
+      // the pet (otherwise we'd clobber a fresh position picked by an
+      // intervening walk roll, though scenes block the scheduler so
+      // that shouldn't happen).
+      if (anchorPctSet) setPosPct(savedPosPct);
+      if (anchorYSet) setPosY(savedPosY);
+    };
   }, [activeScene, customRoomBg]);
 
   // Behaviour scheduler — every non-egg stage walks. Recursion-based
@@ -545,6 +569,10 @@ function PetRoomInner({
         userSelect: "none",
       }}
     >
+      {/* Classic SVG procedural room — wall, window, floor planks, etc.
+          Skipped entirely for customRoomBg viewers so the PNG room
+          art never has the SVG flashing under it on load/transitions. */}
+      {!customRoomBg ? (
       <svg
         viewBox={`0 0 ${W} ${H}`}
         width="100%"
@@ -748,14 +776,15 @@ function PetRoomInner({
         })}
         <rect x={0} y={wallEnd} width={W} height={floorEnd - wallEnd} fill="url(#floor-grad)" opacity={0.18} />
       </svg>
+      ) : null}
 
-      {/* Custom PNG room — covers the SVG procedural room with hand-drawn
-          art for opted-in viewers. All PNG layers share the same canvas
-          size and stack at inset:0 100%x100% — the painted images
-          themselves position the wall/floor/etc. via their transparent
-          regions, so we don't size or place them manually.
-          Hidden during scenes since each scene replaces the full room. */}
-      {customRoomBg && !activeScene ? (
+      {/* Custom PNG room — hand-drawn art for opted-in viewers. Always
+          rendered while customRoomBg is on. During scenes with overlay
+          ≠ none (bath/park) the scene PNGs cover this base. During
+          overlay=none scenes (feed/pet/play/train/treat/sleep) the
+          PNG base stays visible — exactly the same backdrop the user
+          had outside the scene. */}
+      {customRoomBg ? (
         <>
           <img
             src={CUSTOM_BG.roomBg}
@@ -939,31 +968,47 @@ function PetRoomInner({
                 draggable={false}
                 style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none", userSelect: "none", zIndex: 1 }}
               />
-              {/* Synthetic drifting clouds on top of the static cloud band. */}
-              {[
-                { top: "12%", w: 36, h: 11, dur: 22, delay: 0, opacity: 0.85 },
-                { top: "20%", w: 28, h: 9, dur: 28, delay: 4, opacity: 0.75 },
-                { top: "8%",  w: 22, h: 8, dur: 18, delay: 9, opacity: 0.70 },
-              ].map((c, i) => (
-                <div
-                  key={`pngwalk-cloud-${i}`}
-                  aria-hidden
-                  style={{
-                    position: "absolute",
-                    top: c.top,
-                    left: 0,
-                    width: c.w,
-                    height: c.h,
-                    borderRadius: c.h,
-                    background: "#FFFFFF",
-                    opacity: c.opacity,
-                    pointerEvents: "none",
-                    zIndex: 2,
-                    animation: `custom-cloud-sweep ${c.dur}s linear infinite`,
-                    animationDelay: `-${c.delay}s`,
-                  }}
-                />
-              ))}
+              {/* Synthetic drifting clouds on top of the static cloud
+                  PNG band. Container clips to the painted sky region
+                  height (~top 30% of canvas) so puffs can never escape
+                  into the transparent area below the cloud PNG. */}
+              <div
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: "100%",
+                  height: "30%",
+                  overflow: "hidden",
+                  pointerEvents: "none",
+                  zIndex: 2,
+                }}
+              >
+                {[
+                  { top: "40%", w: 36, h: 11, dur: 22, delay: 0, opacity: 0.85 },
+                  { top: "66%", w: 28, h: 9, dur: 28, delay: 4, opacity: 0.75 },
+                  { top: "20%", w: 22, h: 8, dur: 18, delay: 9, opacity: 0.70 },
+                ].map((c, i) => (
+                  <div
+                    key={`pngwalk-cloud-${i}`}
+                    aria-hidden
+                    style={{
+                      position: "absolute",
+                      top: c.top,
+                      left: 0,
+                      width: c.w,
+                      height: c.h,
+                      borderRadius: c.h,
+                      background: "#FFFFFF",
+                      opacity: c.opacity,
+                      pointerEvents: "none",
+                      animation: `custom-cloud-sweep ${c.dur}s linear infinite`,
+                      animationDelay: `-${c.delay}s`,
+                    }}
+                  />
+                ))}
+              </div>
               <img
                 src={CUSTOM_BG.walkGround}
                 alt=""

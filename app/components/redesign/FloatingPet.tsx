@@ -2358,31 +2358,46 @@ function PlaygroundPanel({
               draggable={false}
               style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none", userSelect: "none", zIndex: 1 }}
             />
-            {/* Synthetic drifting clouds on top of the static cloud PNG. */}
-            {[
-              { top: "10%", w: 38, h: 11, dur: 24, delay: 0, opacity: 0.85 },
-              { top: "22%", w: 26, h: 9, dur: 32, delay: 6, opacity: 0.75 },
-              { top: "5%",  w: 22, h: 8, dur: 20, delay: 12, opacity: 0.70 },
-            ].map((c, i) => (
-              <div
-                key={`pgsky-cloud-${i}`}
-                aria-hidden
-                style={{
-                  position: "absolute",
-                  top: c.top,
-                  left: 0,
-                  width: c.w,
-                  height: c.h,
-                  borderRadius: c.h,
-                  background: "#FFFFFF",
-                  opacity: c.opacity,
-                  pointerEvents: "none",
-                  zIndex: 1,
-                  animation: `custom-cloud-sweep ${c.dur}s linear infinite`,
-                  animationDelay: `-${c.delay}s`,
-                }}
-              />
-            ))}
+            {/* Synthetic drifting clouds on top of the static cloud PNG.
+                Container clips to the painted sky region (~top 30% of
+                canvas) so puffs stay inside it. */}
+            <div
+              aria-hidden
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "30%",
+                overflow: "hidden",
+                pointerEvents: "none",
+                zIndex: 1,
+              }}
+            >
+              {[
+                { top: "33%", w: 38, h: 11, dur: 24, delay: 0, opacity: 0.85 },
+                { top: "73%", w: 26, h: 9, dur: 32, delay: 6, opacity: 0.75 },
+                { top: "16%", w: 22, h: 8, dur: 20, delay: 12, opacity: 0.70 },
+              ].map((c, i) => (
+                <div
+                  key={`pgsky-cloud-${i}`}
+                  aria-hidden
+                  style={{
+                    position: "absolute",
+                    top: c.top,
+                    left: 0,
+                    width: c.w,
+                    height: c.h,
+                    borderRadius: c.h,
+                    background: "#FFFFFF",
+                    opacity: c.opacity,
+                    pointerEvents: "none",
+                    animation: `custom-cloud-sweep ${c.dur}s linear infinite`,
+                    animationDelay: `-${c.delay}s`,
+                  }}
+                />
+              ))}
+            </div>
             <img
               src="/images/pets/rooms/playground_ground.png"
               alt=""
