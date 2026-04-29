@@ -2340,6 +2340,10 @@ function PlaygroundPanel({
       >
         {customRoomBg ? (
           <>
+            {/* All PNG layers stack at inset:0 100%x100%. The painted
+                regions inside each PNG handle positioning. Order:
+                bg → cloud (static) → drift puffs → ground → pets (parent)
+                → butterfly + flowers. */}
             <img
               src="/images/pets/rooms/playground_bg.png"
               alt=""
@@ -2352,16 +2356,7 @@ function PlaygroundPanel({
               alt=""
               aria-hidden
               draggable={false}
-              style={{
-                position: "absolute",
-                top: "6%",
-                left: 0,
-                width: "100%",
-                height: "auto",
-                pointerEvents: "none",
-                userSelect: "none",
-                zIndex: 1,
-              }}
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none", userSelect: "none", zIndex: 1 }}
             />
             {/* Synthetic drifting clouds on top of the static cloud PNG. */}
             {[
@@ -2393,19 +2388,9 @@ function PlaygroundPanel({
               alt=""
               aria-hidden
               draggable={false}
-              style={{
-                position: "absolute",
-                bottom: 0,
-                left: 0,
-                width: "100%",
-                height: "65%",
-                objectFit: "cover",
-                pointerEvents: "none",
-                userSelect: "none",
-                zIndex: 2,
-              }}
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none", userSelect: "none", zIndex: 2 }}
             />
-            {/* Tiny butterfly drifting across the top of the field. */}
+            {/* Butterfly drifts L→R across the field. */}
             <div
               style={{
                 position: "absolute",
@@ -2428,8 +2413,7 @@ function PlaygroundPanel({
                 </svg>
               </div>
             </div>
-            {/* A few small flowers near the bottom — smaller than walk
-                scene. Light sway. */}
+            {/* Tiny flowers near the bottom, gently sway. */}
             {[
               { left: "12%", bottom: 18, color: "#FFE873", delay: 0 },
               { left: "55%", bottom: 14, color: "#F4A6BC", delay: 0.7 },

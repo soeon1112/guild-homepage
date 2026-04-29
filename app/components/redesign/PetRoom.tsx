@@ -283,12 +283,13 @@ function PetRoomInner({
       setPosPct(scene.petAnchor);
     }
     if (scene.petAnchorY !== undefined) {
-      // Custom PNG bath uses a different tub silhouette — anchor the
-      // pet higher so the upper body stays visible above shower_front.
-      // Without this override the pet ends up mostly occluded by the
-      // PNG tub front (which sits at zIndex above the pet).
+      // Custom PNG bath: shower_front.png paints the tub's top rim at
+      // ~50% of canvas height. Default petAnchorY=0.80 (tuned for the
+      // SVG tub) makes pet sit far below that rim and get fully
+      // covered. Override to 0.20 so the pet's upper half rises above
+      // the rim — half-in-half-out look.
       const anchorY =
-        customRoomBg && activeScene === "wash" ? 0.55 : scene.petAnchorY;
+        customRoomBg && activeScene === "wash" ? 0.20 : scene.petAnchorY;
       setPosY(anchorY);
     }
     const t = window.setTimeout(() => {
@@ -749,10 +750,11 @@ function PetRoomInner({
       </svg>
 
       {/* Custom PNG room — covers the SVG procedural room with hand-drawn
-          art for opted-in viewers. Pet still uses the same posY mapping
-          (floor 38% of height) so its walking range matches the painted
-          floor area. Hidden during scenes since each scene PNG-overlays
-          the room itself. */}
+          art for opted-in viewers. All PNG layers share the same canvas
+          size and stack at inset:0 100%x100% — the painted images
+          themselves position the wall/floor/etc. via their transparent
+          regions, so we don't size or place them manually.
+          Hidden during scenes since each scene replaces the full room. */}
       {customRoomBg && !activeScene ? (
         <>
           <img
@@ -760,34 +762,14 @@ function PetRoomInner({
             alt=""
             aria-hidden
             draggable={false}
-            style={{
-              position: "absolute",
-              inset: 0,
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              pointerEvents: "none",
-              userSelect: "none",
-              zIndex: 0,
-            }}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none", userSelect: "none", zIndex: 0 }}
           />
           <img
             src={CUSTOM_BG.roomGround}
             alt=""
             aria-hidden
             draggable={false}
-            style={{
-              position: "absolute",
-              left: 0,
-              right: 0,
-              bottom: 0,
-              width: "100%",
-              height: `${(floorDepth / H) * 100}%`,
-              objectFit: "cover",
-              pointerEvents: "none",
-              userSelect: "none",
-              zIndex: 0,
-            }}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none", userSelect: "none", zIndex: 0 }}
           />
         </>
       ) : null}
@@ -886,10 +868,10 @@ function PetRoomInner({
             animation: "scene-fade-in 0.35s ease-out",
           }}
         >
-          {/* Custom PNG bath overlay — replaces the SVG tile/tub procedural
-              art with hand-drawn shower scene. Water animation is the
-              same falling-stream feel but layered behind shower_water
-              (pipe/head) so drops appear to come out of it. */}
+          {/* Custom PNG bath overlay — every layer is the same full-canvas
+              PNG; the painted regions inside each one position the
+              shower head, water trail, tub, etc. We just stack them.
+              Order: shower_bg → shower_water (+ drops) → pet → shower_front. */}
           {customRoomBg && SCENES[activeScene].overlay === "bath" ? (
             <>
               <img
@@ -897,11 +879,17 @@ function PetRoomInner({
                 alt=""
                 aria-hidden
                 draggable={false}
-                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none", userSelect: "none" }}
+                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none", userSelect: "none", zIndex: 0 }}
               />
-              {/* Water drops — fall from below the shower head, behind
-                  the shower_front overlay so they look like they're
-                  draining into the tub. */}
+              <img
+                src={CUSTOM_BG.showerWater}
+                alt=""
+                aria-hidden
+                draggable={false}
+                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none", userSelect: "none", zIndex: 1 }}
+              />
+              {/* Water drops falling from the shower head trail. Behind
+                  shower_front so they look like they're going into the tub. */}
               {[-10, -5, 0, 5, 10, -7, 7].map((offset, i) => (
                 <div
                   key={`pngdrop-${i}`}
@@ -915,52 +903,26 @@ function PetRoomInner({
                     background: "linear-gradient(180deg, rgba(176,224,250,0.85), rgba(91,174,234,0))",
                     borderRadius: 1,
                     pointerEvents: "none",
-                    zIndex: 1490,
+                    zIndex: 2,
                     animation: `custom-water-fall 0.9s ease-in infinite ${i * 0.13}s`,
                   }}
                 />
               ))}
-              <img
-                src={CUSTOM_BG.showerWater}
-                alt=""
-                aria-hidden
-                draggable={false}
-                style={{
-                  position: "absolute",
-                  left: 0,
-                  top: 0,
-                  width: "100%",
-                  height: "auto",
-                  pointerEvents: "none",
-                  userSelect: "none",
-                  zIndex: 1495,
-                }}
-              />
-              {/* shower_front sits in front of the pet (zIndex above
-                  pet's ~801) like the SVG tub front did. */}
+              {/* shower_front sits in front of the pet (pet zIndex ≈
+                  posY*1000+1, max ~801; we put front at 1500). */}
               <img
                 src={CUSTOM_BG.showerFront}
                 alt=""
                 aria-hidden
                 draggable={false}
-                style={{
-                  position: "absolute",
-                  left: 0,
-                  bottom: 0,
-                  width: "100%",
-                  height: "auto",
-                  pointerEvents: "none",
-                  userSelect: "none",
-                  zIndex: 1500,
-                }}
+                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none", userSelect: "none", zIndex: 1500 }}
               />
             </>
           ) : null}
 
-          {/* Custom PNG park (산책) overlay. Cloud drifts slowly L→R on
-              loop. Butterfly + flowers reuse the same SVG art the
-              classic overlay uses, just placed on top of the new
-              ground PNG. */}
+          {/* Custom PNG park (산책) overlay. Same stack-at-inset:0 rule.
+              Order: walk_bg → walk_cloud (static) → drift puffs →
+              walk_ground → pet → butterfly + flowers. */}
           {customRoomBg && SCENES[activeScene].overlay === "park" ? (
             <>
               <img
@@ -968,28 +930,16 @@ function PetRoomInner({
                 alt=""
                 aria-hidden
                 draggable={false}
-                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none", userSelect: "none" }}
+                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none", userSelect: "none", zIndex: 0 }}
               />
               <img
                 src={CUSTOM_BG.walkCloud}
                 alt=""
                 aria-hidden
                 draggable={false}
-                style={{
-                  position: "absolute",
-                  top: "8%",
-                  left: 0,
-                  width: "100%",
-                  height: "auto",
-                  pointerEvents: "none",
-                  userSelect: "none",
-                  zIndex: 2,
-                }}
+                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none", userSelect: "none", zIndex: 1 }}
               />
-              {/* Synthetic clouds drifting across the sky band — the
-                  walk_cloud PNG itself stays still (it's the painted
-                  sky region). These three small white puffs loop L→R
-                  on top so the scene feels alive. */}
+              {/* Synthetic drifting clouds on top of the static cloud band. */}
               {[
                 { top: "12%", w: 36, h: 11, dur: 22, delay: 0, opacity: 0.85 },
                 { top: "20%", w: 28, h: 9, dur: 28, delay: 4, opacity: 0.75 },
@@ -1019,17 +969,7 @@ function PetRoomInner({
                 alt=""
                 aria-hidden
                 draggable={false}
-                style={{
-                  position: "absolute",
-                  bottom: 0,
-                  left: 0,
-                  width: "100%",
-                  height: `${(floorDepth / H) * 100}%`,
-                  objectFit: "cover",
-                  pointerEvents: "none",
-                  userSelect: "none",
-                  zIndex: 3,
-                }}
+                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none", userSelect: "none", zIndex: 3 }}
               />
               {/* Decorative flowers on the ground — small, gently sway. */}
               {[
@@ -1060,8 +1000,7 @@ function PetRoomInner({
                   <div style={{ width: 1, height: 5, background: "#3D8B3D", marginLeft: 2.5 }} />
                 </div>
               ))}
-              {/* Butterfly — same as the classic park overlay but lifted
-                  a bit so it stays above the painted ground. */}
+              {/* Butterfly — drifts L→R across the field. */}
               <div
                 style={{
                   position: "absolute",
