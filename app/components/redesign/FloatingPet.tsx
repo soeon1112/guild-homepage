@@ -1985,6 +1985,7 @@ function PlaygroundPanel({
   const [chatByNickname, setChatByNickname] = useState<Record<string, PlaygroundChatMessage>>({});
   const [chatDraft, setChatDraft] = useState("");
   const [chatBusy, setChatBusy] = useState(false);
+  const chatInputRef = useRef<HTMLInputElement>(null);
 
   // ── Playground social interactions (greet / play / treat) ──
   // Today's playground log → drives "오늘 완료" badges + 30★ daily cap.
@@ -2293,6 +2294,9 @@ function PlaygroundPanel({
       setChatDraft("");
     } finally {
       setChatBusy(false);
+      // disabled={chatBusy} blurs the input while chatBusy=true; refocus
+      // after the re-render so the cursor stays in the input.
+      setTimeout(() => chatInputRef.current?.focus(), 0);
     }
   }, [chatDraft, chatBusy, myNickname]);
 
@@ -2663,6 +2667,7 @@ function PlaygroundPanel({
         }}
       >
         <input
+          ref={chatInputRef}
           value={chatDraft}
           onChange={(e) => setChatDraft(e.target.value.slice(0, 50))}
           placeholder="놀이터 채팅..."
