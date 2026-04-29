@@ -2359,8 +2359,9 @@ function PlaygroundPanel({
               style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none", userSelect: "none", zIndex: 1 }}
             />
             {/* Synthetic drifting clouds on top of the static cloud PNG.
-                Container clips to the painted sky region (~top 30% of
-                canvas) so puffs stay inside it. */}
+                Container clips to the painted sky region (~top 15% of
+                canvas — playground_cloud has a thinner sky band than
+                walk_cloud). */}
             <div
               aria-hidden
               style={{
@@ -2368,16 +2369,16 @@ function PlaygroundPanel({
                 top: 0,
                 left: 0,
                 width: "100%",
-                height: "30%",
+                height: "15%",
                 overflow: "hidden",
                 pointerEvents: "none",
                 zIndex: 1,
               }}
             >
               {[
-                { top: "33%", w: 38, h: 11, dur: 24, delay: 0, opacity: 0.85 },
-                { top: "73%", w: 26, h: 9, dur: 32, delay: 6, opacity: 0.75 },
-                { top: "16%", w: 22, h: 8, dur: 20, delay: 12, opacity: 0.70 },
+                { top: "30%", w: 30, h: 8, dur: 24, delay: 0, opacity: 0.85 },
+                { top: "60%", w: 22, h: 7, dur: 32, delay: 6, opacity: 0.75 },
+                { top: "10%", w: 18, h: 6, dur: 20, delay: 12, opacity: 0.70 },
               ].map((c, i) => (
                 <div
                   key={`pgsky-cloud-${i}`}

@@ -885,14 +885,18 @@ function PetRoomInner({
             position: "absolute",
             inset: 0,
             pointerEvents: "none",
-            background: customRoomBg
-              ? "transparent"
-              : SCENES[activeScene].overlay === "bath"
+            // Dark scene gets the same dimming gradient regardless of
+            // customRoomBg — the PNG room stays visible underneath but
+            // gets covered by the dark overlay just like the SVG room.
+            background:
+              SCENES[activeScene].overlay === "dark"
+                ? "linear-gradient(180deg, rgba(20,15,55,0.55) 0%, rgba(10,8,35,0.7) 100%)"
+                : customRoomBg
+                ? "transparent"
+                : SCENES[activeScene].overlay === "bath"
                 ? "linear-gradient(180deg, #BDE5F4 0%, #BDE5F4 50%, #8BC8E0 50%, #8BC8E0 100%)"
                 : SCENES[activeScene].overlay === "park"
                 ? "linear-gradient(180deg, #8FC9F0 0%, #8FC9F0 60%, #76C172 60%, #5DAB5A 100%)"
-                : SCENES[activeScene].overlay === "dark"
-                ? "linear-gradient(180deg, rgba(20,15,55,0.55) 0%, rgba(10,8,35,0.7) 100%)"
                 : "transparent",
             animation: "scene-fade-in 0.35s ease-out",
           }}
