@@ -2351,16 +2351,9 @@ function PlaygroundPanel({
               draggable={false}
               style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none", userSelect: "none", zIndex: 0 }}
             />
-            <img
-              src="/images/pets/rooms/playground_cloud.png"
-              alt=""
-              aria-hidden
-              draggable={false}
-              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none", userSelect: "none", zIndex: 1 }}
-            />
-            {/* playground_cloud stays as-is (a static painted sky band).
-                Butterflies + flowers used to live here; they now render
-                AFTER the wandering pets below so they sit on top. */}
+            {/* Butterflies + flowers render AFTER the wandering pets
+                below so they sit on top. The cloud PNG was dropped:
+                playground_bg already paints the sky. */}
             <img
               src="/images/pets/rooms/playground_ground.png"
               alt=""

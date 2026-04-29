@@ -93,7 +93,6 @@ const CUSTOM_BG = {
   showerFront: "/images/pets/rooms/shower_front.png",
   showerWater: "/images/pets/rooms/shower_water.png",
   walkBg: "/images/pets/rooms/walk_bg.png",
-  walkCloud: "/images/pets/rooms/walk_cloud.png",
   walkGround: "/images/pets/rooms/walk_ground.png",
 } as const;
 
@@ -966,18 +965,11 @@ function PetRoomInner({
                 draggable={false}
                 style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none", userSelect: "none", zIndex: 0 }}
               />
-              <img
-                src={CUSTOM_BG.walkCloud}
-                alt=""
-                aria-hidden
-                draggable={false}
-                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none", userSelect: "none", zIndex: 1 }}
-              />
-              {/* walk_cloud stays as-is (a static painted sky band).
-                  Butterflies + flowers used to live here too, but they
-                  now render outside this masked container as a sibling
-                  of the pet so they can sit on top of the pet (see the
-                  decor block after the pet div below). */}
+              {/* Butterflies + flowers render outside this masked
+                  container as a sibling of the pet so they sit on top
+                  of the pet (see the decor block after the pet div
+                  below). The cloud PNG was dropped: walk_bg already
+                  paints the sky. */}
               <img
                 src={CUSTOM_BG.walkGround}
                 alt=""
