@@ -302,10 +302,11 @@ function PetRoomInner({
       // Custom PNG bath: shower_front.png paints the tub's top rim at
       // ~50% of canvas height. Default petAnchorY=0.80 (tuned for the
       // SVG tub) makes pet sit far below that rim and get fully
-      // covered. Override to 0.20 so the pet's upper half rises above
-      // the rim — half-in-half-out look.
+      // covered. Override to 0.25 so the pet's upper half rises above
+      // the rim — half-in-half-out look (slightly deeper than the
+      // initial 0.20 per user feedback).
       const anchorY =
-        customRoomBg && activeScene === "wash" ? 0.20 : scene.petAnchorY;
+        customRoomBg && activeScene === "wash" ? 0.25 : scene.petAnchorY;
       setPosY(anchorY);
     }
     const t = window.setTimeout(() => {

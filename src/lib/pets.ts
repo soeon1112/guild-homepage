@@ -48,16 +48,15 @@ export function canDebugPet(nickname: string | null | undefined): boolean {
   return nickname === PET_DEBUG_ADMIN_NICKNAME;
 }
 
-// Custom PNG room backgrounds — soft-launched to a small allowlist.
-// Replaces the SVG-procedural room/scene visuals with hand-drawn art.
-// Gate stays per-viewer so test users see the new art everywhere
-// (own room, visited rooms, playground tab) regardless of pet owner.
-const CUSTOM_ROOM_BG_NICKNAMES = ["테스트", "언쏘"] as const;
+// Custom PNG room backgrounds — replaces the SVG-procedural room/scene
+// visuals with hand-drawn art. Soft-launched to a ['테스트', '언쏘']
+// allowlist; now rolled out to every signed-in member. The classic
+// SVG room rendering is preserved in PetRoom (gated behind
+// !customRoomBg) for easy rollback if needed.
 export function canSeeCustomPetRoom(
   nickname: string | null | undefined,
 ): boolean {
-  if (!nickname) return false;
-  return (CUSTOM_ROOM_BG_NICKNAMES as readonly string[]).includes(nickname);
+  return !!nickname;
 }
 
 // ── Pet types ─────────────────────────────────────────────────
