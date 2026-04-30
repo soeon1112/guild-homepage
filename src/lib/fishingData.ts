@@ -10,7 +10,14 @@ export const FISHING_ADMIN_NICKNAME = "언쏘";
 
 export function canSeeFishing(nickname: string | null | undefined): boolean {
   if (!nickname) return false;
-  return nickname === FISHING_ADMIN_NICKNAME;
+  // Hangul NFC vs NFD encoding can differ between iOS-stored
+  // strings and source-literal strings — normalize both sides so
+  // the gate doesn't silently fail when the bytes look identical
+  // but the codepoints don't (same root cause as the members doc
+  // ID issue in feedback_member_doc_id_ascii memory).
+  return (
+    nickname.normalize("NFC") === FISHING_ADMIN_NICKNAME.normalize("NFC")
+  );
 }
 
 export const TILE_SIZE = 16;
