@@ -354,6 +354,31 @@ const KEY_RIGHT = new Set(["d", "D", "ㅇ", "ArrowRight"]);
 // VIEWPORT (306) ÷ MAP_SCALE (2) = 153px of map visible at a time.
 const MAP_SCALE = 2;
 
+// Flat-theme UI sprites used for the action button + text banners.
+// Paths use encodeURI so the literal "UI assets" space resolves
+// correctly in browsers and Next.js's static handler.
+const UI_ACTION_BUTTON_IDLE = encodeURI(
+  "/images/fishing/UI assets/01_Flat_Theme/Sprites/UI_Flat_Button02a_1.png",
+);
+const UI_ACTION_BUTTON_PRESSED = encodeURI(
+  "/images/fishing/UI assets/01_Flat_Theme/Sprites/UI_Flat_Button02a_3.png",
+);
+const UI_BANNER_BG = encodeURI(
+  "/images/fishing/UI assets/01_Flat_Theme/Sprites/UI_Flat_Banner03a.png",
+);
+
+// 9-slice banner background. Source banner is 64×20 with ~4 px of
+// decorative edge per side; we slice 4 px and render the corners at
+// 8 px (2× scale) so the pixel art stays crisp.
+const bannerBgStyle: React.CSSProperties = {
+  borderImageSource: `url("${UI_BANNER_BG}")`,
+  borderImageSlice: "4 4 4 4 fill",
+  borderImageWidth: "8px",
+  borderImageRepeat: "stretch",
+  borderStyle: "solid",
+  imageRendering: "pixelated",
+};
+
 // Joystick is parked at a fixed bottom-left dock so the player can
 // always thumb-drag from a known spot. Outer diameter ≈ 24% of the
 // 306px viewport (per design note "20–25%"). Idle state fades to a
@@ -442,6 +467,10 @@ export default function FishingGame({ open, onClose }: Props) {
   const [mode, setMode] = useState<Mode>("walk");
   const [canFish, setCanFish] = useState(false);
   const canFishRef = useRef(false);
+  // Whether the floating action button is currently being held down.
+  // Drives the idle ↔ pressed sprite swap; resets on pointer up /
+  // leave / cancel.
+  const [actionPressed, setActionPressed] = useState(false);
   // Result text shown during fishingSuccess / fishingFail. The kind
   // distinguishes styling but both auto-clear when the mode advances.
   const [fishingResult, setFishingResult] = useState<{
@@ -1951,9 +1980,13 @@ export default function FishingGame({ open, onClose }: Props) {
                   type="button"
                   onPointerDown={(e) => {
                     e.stopPropagation();
+                    setActionPressed(true);
                     handleAction();
                   }}
-                  whileTap={{ scale: 0.9 }}
+                  onPointerUp={() => setActionPressed(false)}
+                  onPointerLeave={() => setActionPressed(false)}
+                  onPointerCancel={() => setActionPressed(false)}
+                  whileTap={{ scale: 0.92 }}
                   animate={
                     isBite ? { scale: [1, 1.08, 1] } : { scale: 1 }
                   }
@@ -1963,29 +1996,53 @@ export default function FishingGame({ open, onClose }: Props) {
                       : { duration: 0.08 }
                   }
                   aria-label={label}
-                  className="absolute right-3 bottom-3 flex items-center justify-center rounded-full text-stardust"
+                  className="absolute right-3 bottom-3 flex items-center justify-center"
                   style={{
-                    width: 56,
-                    height: 56,
-                    background: isBite
-                      ? "rgba(220,80,80,0.78)"
-                      : "rgba(11,8,33,0.6)",
-                    border: isBite
-                      ? "1px solid rgba(255,229,196,0.85)"
-                      : "1px solid rgba(216,150,200,0.35)",
-                    boxShadow: isBite
-                      ? "0 4px 18px rgba(220,80,80,0.55), inset 0 1px 0 rgba(255,229,196,0.30)"
-                      : "0 4px 14px rgba(11,8,33,0.55), inset 0 1px 0 rgba(255,229,196,0.10)",
-                    backdropFilter: "blur(4px)",
-                    WebkitBackdropFilter: "blur(4px)",
+                    width: 64,
+                    height: 64,
+                    padding: 0,
+                    border: "none",
+                    background: "transparent",
+                    // Bite mode adds a red glow around the sprite so
+                    // it reads as urgent without changing the asset.
+                    filter: isBite
+                      ? "drop-shadow(0 0 8px rgba(220,80,80,0.85)) drop-shadow(0 0 14px rgba(220,80,80,0.55))"
+                      : "drop-shadow(0 4px 6px rgba(11,8,33,0.45))",
                   }}
                 >
-                  <span
-                    className="leading-none"
-                    aria-hidden
+                  <img
+                    src={
+                      actionPressed
+                        ? UI_ACTION_BUTTON_PRESSED
+                        : UI_ACTION_BUTTON_IDLE
+                    }
+                    alt=""
+                    width={64}
+                    height={64}
+                    draggable={false}
                     style={{
+                      imageRendering: "pixelated",
+                      width: 64,
+                      height: 64,
+                      pointerEvents: "none",
+                    }}
+                  />
+                  <span
+                    aria-hidden
+                    className="absolute leading-none"
+                    style={{
+                      // Nudge the icon slightly up so it sits in the
+                      // button's visual center (the sprite has a
+                      // bottom shadow strip that shifts the optical
+                      // center).
+                      transform: "translateY(-3px)",
                       fontSize: isBite ? 28 : 24,
-                      fontWeight: isBite ? 800 : 400,
+                      fontWeight: isBite ? 800 : 600,
+                      color: isBite ? "#c0392b" : "#3d2c1c",
+                      textShadow: isBite
+                        ? "0 0 4px rgba(255,255,255,0.6)"
+                        : "none",
+                      pointerEvents: "none",
                     }}
                   >
                     {icon}
@@ -1994,27 +2051,18 @@ export default function FishingGame({ open, onClose }: Props) {
               );
             })()}
 
-            {/* Fishing result toast — shown during fishingSuccess
-                / fishingFail. Distinct color per kind so a glance
-                tells the player what happened. */}
+            {/* Fishing result toast — shown during fishingSuccess.
+                Wrapped in a Flat-theme banner sprite via 9-slice
+                border-image so the cosmetic frame matches the rest
+                of the new UI. Fail renders no toast (silent retract). */}
             {fishingResult ? (
               <div
-                className="pointer-events-none absolute left-1/2 top-[28%] -translate-x-1/2 rounded-xl px-3 py-1.5 text-[12px] font-semibold"
+                className="pointer-events-none absolute left-1/2 top-[28%] -translate-x-1/2 px-3 py-2 text-[12px] font-bold"
                 style={{
-                  background:
-                    fishingResult.kind === "success"
-                      ? "rgba(216,150,200,0.92)"
-                      : "rgba(11,8,33,0.92)",
-                  color:
-                    fishingResult.kind === "success" ? "#1a0f3d" : "#f4efff",
-                  border:
-                    fishingResult.kind === "success"
-                      ? "1px solid rgba(255,229,196,0.85)"
-                      : "1px solid rgba(216,150,200,0.50)",
-                  boxShadow:
-                    fishingResult.kind === "success"
-                      ? "0 4px 16px rgba(216,150,200,0.55)"
-                      : "0 4px 16px rgba(11,8,33,0.6)",
+                  ...bannerBgStyle,
+                  color: "#3d2c1c",
+                  filter:
+                    "drop-shadow(0 3px 6px rgba(11,8,33,0.55))",
                 }}
               >
                 {fishingResult.text}
@@ -2024,18 +2072,20 @@ export default function FishingGame({ open, onClose }: Props) {
             {/* "준비중입니다" toast — auto-dismisses after 1.6s */}
             {yellowToast ? (
               <div
-                className="pointer-events-none absolute left-1/2 top-1/3 -translate-x-1/2 rounded-xl px-3 py-1.5 text-[12px] font-semibold text-stardust"
+                className="pointer-events-none absolute left-1/2 top-1/3 -translate-x-1/2 px-3 py-2 text-[12px] font-bold"
                 style={{
-                  background: "rgba(11,8,33,0.92)",
-                  border: "1px solid rgba(216,150,200,0.50)",
-                  boxShadow: "0 4px 16px rgba(11,8,33,0.6)",
+                  ...bannerBgStyle,
+                  color: "#3d2c1c",
+                  filter:
+                    "drop-shadow(0 3px 6px rgba(11,8,33,0.55))",
                 }}
               >
                 {YELLOW_SHOP_LINE}
               </div>
             ) : null}
 
-            {/* NPC dialog — speech bubble style, dismiss on tap or E */}
+            {/* NPC dialog — Flat-theme banner background. Tap or
+                Space dismisses (handled by handleAction). */}
             {npcDialog ? (
               <button
                 type="button"
@@ -2043,20 +2093,21 @@ export default function FishingGame({ open, onClose }: Props) {
                   e.stopPropagation();
                   setNpcDialog(false);
                 }}
-                className="absolute bottom-3 left-3 right-3 flex flex-col gap-1.5 rounded-xl px-3 py-2 text-left text-stardust"
+                className="absolute bottom-3 left-3 right-3 flex flex-col gap-1 px-4 py-3 text-left"
                 style={{
-                  background: "rgba(11,8,33,0.94)",
-                  border: "1px solid rgba(216,150,200,0.50)",
-                  boxShadow: "0 8px 28px rgba(11,8,33,0.7)",
+                  ...bannerBgStyle,
+                  color: "#3d2c1c",
+                  filter:
+                    "drop-shadow(0 6px 14px rgba(11,8,33,0.65))",
                 }}
               >
-                <span className="font-serif text-[10px] font-bold tracking-widest text-nebula-pink">
+                <span className="text-[10px] font-bold tracking-widest text-[#7a4a1a]">
                   생선가게 주인
                 </span>
-                <span className="text-[12px] leading-snug">
+                <span className="text-[12px] leading-snug font-semibold">
                   {FISHSHOP_NPC_LINE}
                 </span>
-                <span className="text-[9px] text-text-sub">
+                <span className="text-[9px] opacity-70">
                   탭 또는 Space로 닫기
                 </span>
               </button>
@@ -2068,8 +2119,8 @@ export default function FishingGame({ open, onClose }: Props) {
             style={{ borderTop: "1px solid rgba(216,150,200,0.20)" }}
           >
             {scene === "outdoor"
-              ? "WASD / 방향키 · Space 또는 우하단 🎣 버튼"
-              : "Space 또는 우하단 💬 버튼으로 대화 · 출구로 걸어가면 자동 퇴장"}
+              ? "WASD / 방향키 · Space 또는 우하단 액션 버튼"
+              : "Space 또는 우하단 액션 버튼으로 대화 · 출구로 걸어가면 자동 퇴장"}
           </div>
         </motion.div>
       ) : null}
