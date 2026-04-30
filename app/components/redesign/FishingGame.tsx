@@ -592,7 +592,7 @@ const UI_INV_SLOT = encodeURI(UI_FLAT_BASE + "UI_Flat_FrameSlot01c.png");
 // set so the shop UI reads visually distinct from the player's own
 // inventory panel.
 const UI_SELL_PANEL_FRAME = encodeURI(UI_FLAT_BASE + "UI_Flat_Frame03a.png");
-const UI_SELL_SLOT = encodeURI(UI_FLAT_BASE + "UI_Flat_FrameSlot03a.png");
+const UI_SELL_SLOT = encodeURI(UI_FLAT_BASE + "UI_Flat_FrameSlot03c.png");
 const UI_SELL_TAB_MARKER = encodeURI(
   UI_FLAT_BASE + "UI_Flat_FrameMarker03a.png",
 );
