@@ -871,8 +871,12 @@ export default function FloatingChat() {
                     type="button"
                     // preventDefault on pointer-down stops the button from
                     // stealing focus (and thereby dismissing the mobile
-                    // keyboard) when the user taps Send.
+                    // keyboard) when the user taps Send. onTouchStart
+                    // covers Safari iOS — onMouseDown alone misses some
+                    // mobile flows where touchstart fires but no synthetic
+                    // mousedown follows quickly enough to keep focus.
                     onMouseDown={(e) => e.preventDefault()}
+                    onTouchStart={(e) => e.preventDefault()}
                     onClick={handleSend}
                     disabled={sending || (!draft.trim() && !file)}
                     aria-label="메시지 전송"

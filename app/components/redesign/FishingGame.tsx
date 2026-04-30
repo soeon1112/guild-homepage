@@ -5066,6 +5066,15 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
             <button
               type="submit"
               disabled={!chatDraft.trim()}
+              // preventDefault on touch/mouse-down stops the
+              // browser's default "move focus to the button" step
+              // — without it, on mobile the input briefly blurs
+              // (closing the keyboard) and re-focuses (re-opening
+              // it), bouncing the visualViewport and the lifted
+              // game panel up/down. Form submit still fires
+              // normally on the subsequent click event.
+              onMouseDown={(e) => e.preventDefault()}
+              onTouchStart={(e) => e.preventDefault()}
               style={{
                 fontSize: 12,
                 fontWeight: 700,
