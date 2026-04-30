@@ -12,7 +12,15 @@
 import { motion, AnimatePresence, useAnimationControls } from "framer-motion";
 import { X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { doc, getDoc, setDoc, deleteField } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  setDoc,
+  deleteField,
+  addDoc,
+  collection,
+  serverTimestamp,
+} from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
 import { addPoints } from "@/src/lib/points";
 import {
@@ -865,6 +873,21 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
   const [creatorDraft, setCreatorDraft] = useState<CharacterConfig>(
     DEFAULT_CHARACTER_CONFIG,
   );
+  // Chat — draft is the in-progress input value, selfChatMsg is the
+  // currently-displayed bubble above the player. Bubble auto-clears
+  // after CHAT_BUBBLE_VISIBLE_MS so old messages don't linger over
+  // the head. chatFocusedRef gates the global keyboard handler so
+  // typing doesn't pump WASD/Space into the game while the input
+  // owns focus; chatComposingRef defers Enter while a Hangul IME
+  // composition is in progress so the first Enter completes the
+  // composition rather than firing send.
+  const [chatDraft, setChatDraft] = useState("");
+  const [selfChatMsg, setSelfChatMsg] = useState<string | null>(null);
+  const chatInputRef = useRef<HTMLInputElement>(null);
+  const chatFocusedRef = useRef(false);
+  const chatComposingRef = useRef(false);
+  const chatBubbleRef = useRef<HTMLDivElement>(null);
+  const chatBubbleClearRef = useRef<number | null>(null);
   // Generic short-lived hint toast for stamina / shop edge cases
   // ("체력이 부족하다", "이미 체력이 가득 찼다", "별빛이 부족합니다").
   const [hintToast, setHintToast] = useState<string | null>(null);
@@ -959,6 +982,50 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
       setNpcMessage(null);
     }
   }, [sellOpen]);
+  // Player chat bubble position — same imperative pattern as the
+  // NPC bubble below: rAF tracks the player every frame, mutates
+  // left/top via the ref so React isn't forced to re-render at
+  // 60 fps. Re-runs when the bubble appears/disappears.
+  useEffect(() => {
+    if (!selfChatMsg) return;
+    let raf = 0;
+    const update = () => {
+      const el = chatBubbleRef.current;
+      if (el) {
+        const s = stateRef.current;
+        const mapW =
+          sceneRef.current === "outdoor" ? MAP_WIDTH : INDOOR_MAP_WIDTH;
+        const mapH =
+          sceneRef.current === "outdoor" ? MAP_HEIGHT : INDOOR_MAP_HEIGHT;
+        const visibleW = VIEWPORT / MAP_SCALE;
+        const visibleH = VIEWPORT / MAP_SCALE;
+        const camX = clamp(
+          Math.round(s.x - visibleW / 2),
+          0,
+          Math.max(0, mapW - visibleW),
+        );
+        const camY = clamp(
+          Math.round(s.y - visibleH / 2),
+          0,
+          Math.max(0, mapH - visibleH),
+        );
+        // Anchor: bubble bottom-center sits 6 px above the
+        // nameplate baseline. The nameplate baseline lives at
+        // (s.y - NAMEPLATE_HEAD_OFFSET) in unscaled foot-relative
+        // coords; with the bubble's CSS transform translate(-50%,
+        // -100%) the (left, top) coordinate IS the bubble's
+        // bottom-center anchor.
+        const x = Math.round((s.x - camX) * MAP_SCALE);
+        const y = Math.round((s.y - 12 - camY) * MAP_SCALE) - 16;
+        el.style.left = `${x}px`;
+        el.style.top = `${y}px`;
+      }
+      raf = requestAnimationFrame(update);
+    };
+    raf = requestAnimationFrame(update);
+    return () => cancelAnimationFrame(raf);
+  }, [selfChatMsg]);
+
   // While the bubble is up, recompute its screen position every
   // frame from the current camera and NPC foot pixel. Direct DOM
   // mutation via ref so this doesn't re-render React 60×/s.
@@ -1983,6 +2050,41 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
   //   fishingFakeBite → fail with "너무 빨랐다..."
   //   fishingBite → success with "물고기를 잡았다!"
   //   fishingSuccess / fishingFail → ignored (auto-advance)
+  // Chat send — stores the bubble locally for instant display,
+  // mirrors to Firestore for persistence (and future multi-player
+  // bubbles when guild members are simultaneously online), and
+  // refocuses the input so the player can keep typing without
+  // tapping back.
+  const CHAT_BUBBLE_VISIBLE_MS = 4500;
+  const CHAT_MAX_LENGTH = 100;
+  const sendChat = useCallback(() => {
+    const msg = chatDraft.trim().slice(0, CHAT_MAX_LENGTH);
+    if (!msg) return;
+    setChatDraft("");
+    setSelfChatMsg(msg);
+    if (chatBubbleClearRef.current != null) {
+      window.clearTimeout(chatBubbleClearRef.current);
+    }
+    chatBubbleClearRef.current = window.setTimeout(() => {
+      setSelfChatMsg(null);
+      chatBubbleClearRef.current = null;
+    }, CHAT_BUBBLE_VISIBLE_MS);
+    if (nickname) {
+      const s = stateRef.current;
+      void addDoc(collection(db, "fishing_chat"), {
+        nickname,
+        message: msg,
+        createdAt: serverTimestamp(),
+        position: { x: s.x, y: s.y },
+      }).catch((err) =>
+        console.error("[fishing] chat write failed", err),
+      );
+    }
+    // Refocus on the next tick — the input may have momentarily lost
+    // focus during the React state update / re-render.
+    window.setTimeout(() => chatInputRef.current?.focus(), 0);
+  }, [chatDraft, nickname]);
+
   const handleAction = useCallback(() => {
     if (npcDialog) {
       setNpcDialog(false);
@@ -2112,6 +2214,11 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent, down: boolean) => {
+      // Chat input owns focus — let the native input handle every
+      // key (typing, arrow-key cursor nav, space). The window
+      // listener fires regardless of where focus lives, so we
+      // explicitly opt out here when chat is active.
+      if (chatFocusedRef.current) return;
       if (KEY_UP.has(e.key)) {
         keysRef.current.up = down;
         e.preventDefault();
@@ -4006,6 +4113,51 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
               </motion.div>
             ) : null}
 
+            {/* Player chat bubble — DOM overlay above the player's
+                nameplate. Position is updated via rAF in the effect
+                above. word-break:break-all wraps long ㅋㅋㅋ-style
+                runs; maxWidth caps the bubble at 40% of the viewport
+                so it can never escape the game pane horizontally. */}
+            {selfChatMsg ? (
+              <div
+                ref={chatBubbleRef}
+                className="pointer-events-none absolute"
+                style={{
+                  transform: "translate(-50%, -100%)",
+                  maxWidth: Math.round(VIEWPORT * 0.4),
+                  background: "rgba(255,255,255,0.96)",
+                  color: "#0b0821",
+                  borderRadius: 10,
+                  padding: "5px 9px",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  lineHeight: 1.3,
+                  wordBreak: "break-all",
+                  whiteSpace: "pre-wrap",
+                  boxShadow: "0 2px 8px rgba(11,8,33,0.55)",
+                  border: "1px solid rgba(11,8,33,0.15)",
+                  zIndex: 26,
+                  willChange: "left, top",
+                }}
+              >
+                {selfChatMsg}
+                <span
+                  aria-hidden
+                  className="absolute"
+                  style={{
+                    bottom: -5,
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    width: 0,
+                    height: 0,
+                    borderLeft: "5px solid transparent",
+                    borderRight: "5px solid transparent",
+                    borderTop: "6px solid rgba(255,255,255,0.96)",
+                  }}
+                />
+              </div>
+            ) : null}
+
             {/* Character creator — shown only on first session when
                 no character config exists in Firestore. Opaque
                 backdrop blocks every other overlay; confirming
@@ -4039,6 +4191,77 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
             ) : null}
           </motion.div>
 
+          {/* Chat input bar — sits between the game pane and the
+              hint bar. fontSize 16 prevents iOS from auto-zooming
+              when the field is focused. Pointer/key events on the
+              input are explicitly stopped from reaching the canvas
+              (chatFocusedRef gates the global keyboard handler so
+              WASD/Space don't drive the player while typing). */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              sendChat();
+            }}
+            className="flex items-center gap-2 px-2 py-1.5"
+            style={{ borderTop: "1px solid rgba(216,150,200,0.20)" }}
+          >
+            <input
+              ref={chatInputRef}
+              type="text"
+              value={chatDraft}
+              maxLength={CHAT_MAX_LENGTH}
+              placeholder="채팅 입력..."
+              autoComplete="off"
+              onChange={(e) => setChatDraft(e.target.value)}
+              onFocus={() => {
+                chatFocusedRef.current = true;
+              }}
+              onBlur={() => {
+                chatFocusedRef.current = false;
+              }}
+              onCompositionStart={() => {
+                chatComposingRef.current = true;
+              }}
+              onCompositionEnd={() => {
+                chatComposingRef.current = false;
+              }}
+              onKeyDown={(e) => {
+                e.stopPropagation();
+                if (e.key === "Enter" && !chatComposingRef.current) {
+                  e.preventDefault();
+                  sendChat();
+                }
+              }}
+              style={{
+                flex: 1,
+                fontSize: 16,
+                padding: "6px 10px",
+                borderRadius: 8,
+                border: "1px solid rgba(216,150,200,0.30)",
+                background: "rgba(11,8,33,0.5)",
+                color: "#f4efff",
+                outline: "none",
+              }}
+            />
+            <button
+              type="submit"
+              disabled={!chatDraft.trim()}
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                padding: "6px 12px",
+                borderRadius: 8,
+                border: "1px solid rgba(216,150,200,0.30)",
+                background: "rgba(61,46,107,0.55)",
+                color: "#f4efff",
+                cursor: chatDraft.trim() ? "pointer" : "default",
+                opacity: chatDraft.trim() ? 1 : 0.5,
+                whiteSpace: "nowrap",
+              }}
+            >
+              전송
+            </button>
+          </form>
           <div
             className="px-3 py-1.5 text-[10px] text-text-sub"
             style={{ borderTop: "1px solid rgba(216,150,200,0.20)" }}
