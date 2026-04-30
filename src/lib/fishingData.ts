@@ -248,7 +248,7 @@ export const GAUGE_MAX_EDGE_HITS = 6;
 
 export type FishGrade =
   | "common"
-  | "advanced"
+  | "uncommon"
   | "rare"
   | "legendary"
   | "mythic";
@@ -262,7 +262,7 @@ export type FishGradeConfig = {
 
 export const FISH_GRADES: Record<FishGrade, FishGradeConfig> = {
   common:    { width: 0.40, baseSpeed: 1.4, jitter: 0.10, rollProbability: 0.60 },
-  advanced:  { width: 0.30, baseSpeed: 1.9, jitter: 0.18, rollProbability: 0.25 },
+  uncommon:  { width: 0.30, baseSpeed: 1.9, jitter: 0.18, rollProbability: 0.25 },
   rare:      { width: 0.20, baseSpeed: 2.5, jitter: 0.28, rollProbability: 0.10 },
   legendary: { width: 0.15, baseSpeed: 3.2, jitter: 0.42, rollProbability: 0.04 },
   mythic:    { width: 0.10, baseSpeed: 4.0, jitter: 0.55, rollProbability: 0.01 },
@@ -270,7 +270,7 @@ export const FISH_GRADES: Record<FishGrade, FishGradeConfig> = {
 
 export const FISH_GRADE_LABEL: Record<FishGrade, string> = {
   common: "일반",
-  advanced: "고급",
+  uncommon: "고급",
   rare: "희귀",
   legendary: "전설",
   mythic: "신화",
@@ -278,7 +278,7 @@ export const FISH_GRADE_LABEL: Record<FishGrade, string> = {
 
 export const FISH_GRADE_COLOR: Record<FishGrade, string> = {
   common: "#cbd5e1",
-  advanced: "#86efac",
+  uncommon: "#86efac",
   rare: "#7dd3fc",
   legendary: "#c4b5fd",
   mythic: "#fbbf24",
@@ -344,3 +344,175 @@ export const ROD_TIP_OFFSETS: Record<
   right: { x: 12, y: -10 },
   left: { x: -13, y: -10 },
 };
+
+// ── Fish catalog (100 species) ─────────────────────────────────
+// Sourced from fishing assets/Fish Forage Items/fish list.txt and
+// the fish_all.png / inv_fish_shadow.png 16×16 sprite sheets — both
+// are 160×160 = 10×10 grids, so each fish at id N has sprite cell
+//   col = (N-1) mod 10, row = (N-1) div 10.
+// fish list.txt order is Ocean Fish (1..35) → Ocean Creatures
+// (36..52) → River Fish (53..76) → River Creatures (77..80) →
+// Pond Fish (81..97) → Pond Creatures (98..100).
+
+export type FishHabitat = "ocean" | "river" | "pond";
+export type FishType = "fish" | "creature";
+
+export type Fish = {
+  id: number;
+  nameEn: string;
+  nameKo: string;
+  grade: FishGrade;
+  price: number;
+  habitat: FishHabitat;
+  type: FishType;
+  spriteX: number;
+  spriteY: number;
+};
+
+// Sprite cells are 16 px on both fish_all.png and inv_fish_shadow.png.
+export const FISH_SPRITE_CELL = 16;
+export const FISH_SPRITE_COLS = 10;
+export const FISH_SPRITE_ROWS = 10;
+
+export const ASSETS_FISH_CATALOG = {
+  fishAll: encodeURI("/images/fishing/fishing assets/Fish Forage Items/fish_all.png"),
+  fishSilhouettes: encodeURI("/images/fishing/fishing assets/Fish Forage Items/inv_fish_shadow.png"),
+};
+
+// Helper: given a 1-based fish id, return its sprite-cell offset.
+export function fishSpriteCoords(id: number): { x: number; y: number } {
+  const n = id - 1;
+  return {
+    x: (n % FISH_SPRITE_COLS) * FISH_SPRITE_CELL,
+    y: Math.floor(n / FISH_SPRITE_COLS) * FISH_SPRITE_CELL,
+  };
+}
+
+// Authored seed list (id, name, grade, price, habitat, type) —
+// spriteX/Y filled in by the .map below so adding a fish only needs
+// the gameplay metadata.
+type FishSeed = Omit<Fish, "spriteX" | "spriteY">;
+
+const FISH_SEED: FishSeed[] = [
+  // ── Ocean Fish (1–35) ──
+  { id: 1,  nameEn: "Parrot Fish",          nameKo: "앵무고기",       grade: "rare",      price: 8,  habitat: "ocean", type: "fish" },
+  { id: 2,  nameEn: "Mackerel",             nameKo: "고등어",         grade: "common",    price: 2,  habitat: "ocean", type: "fish" },
+  { id: 3,  nameEn: "Clown Fish",           nameKo: "흰동가리",       grade: "uncommon",  price: 5,  habitat: "ocean", type: "fish" },
+  { id: 4,  nameEn: "Plaice",               nameKo: "가자미",         grade: "common",    price: 2,  habitat: "ocean", type: "fish" },
+  { id: 5,  nameEn: "Silver Eel",           nameKo: "은장어",         grade: "uncommon",  price: 6,  habitat: "ocean", type: "fish" },
+  { id: 6,  nameEn: "Sea Horse",            nameKo: "해마",           grade: "rare",      price: 10, habitat: "ocean", type: "fish" },
+  { id: 7,  nameEn: "Lionfish",             nameKo: "쏠배감펭",       grade: "legendary", price: 20, habitat: "ocean", type: "fish" },
+  { id: 8,  nameEn: "Cowfish",              nameKo: "뿔복",           grade: "rare",      price: 9,  habitat: "ocean", type: "fish" },
+  { id: 9,  nameEn: "Tuna",                 nameKo: "참치",           grade: "uncommon",  price: 6,  habitat: "ocean", type: "fish" },
+  { id: 10, nameEn: "Banded Butterflyfish", nameKo: "줄나비고기",     grade: "rare",      price: 8,  habitat: "ocean", type: "fish" },
+  { id: 11, nameEn: "Atlantic Bass",        nameKo: "농어",           grade: "common",    price: 3,  habitat: "ocean", type: "fish" },
+  { id: 12, nameEn: "Blue Tang",            nameKo: "블루탱",         grade: "uncommon",  price: 5,  habitat: "ocean", type: "fish" },
+  { id: 13, nameEn: "Pollock",              nameKo: "명태",           grade: "common",    price: 2,  habitat: "ocean", type: "fish" },
+  { id: 14, nameEn: "Ballan Wrasse",        nameKo: "놀래기",         grade: "common",    price: 2,  habitat: "ocean", type: "fish" },
+  { id: 15, nameEn: "Weaver Fish",          nameKo: "독가시치",       grade: "uncommon",  price: 4,  habitat: "ocean", type: "fish" },
+  { id: 16, nameEn: "Bream",                nameKo: "도미",           grade: "common",    price: 3,  habitat: "ocean", type: "fish" },
+  { id: 17, nameEn: "Pufferfish",           nameKo: "복어",           grade: "legendary", price: 18, habitat: "ocean", type: "fish" },
+  { id: 18, nameEn: "Cod",                  nameKo: "대구",           grade: "common",    price: 2,  habitat: "ocean", type: "fish" },
+  { id: 19, nameEn: "Dab",                  nameKo: "참서대",         grade: "common",    price: 1,  habitat: "ocean", type: "fish" },
+  { id: 20, nameEn: "Flounder",             nameKo: "넙치",           grade: "uncommon",  price: 5,  habitat: "ocean", type: "fish" },
+  { id: 21, nameEn: "Whiting",              nameKo: "민어",           grade: "common",    price: 2,  habitat: "ocean", type: "fish" },
+  { id: 22, nameEn: "Halibut",              nameKo: "광어",           grade: "uncommon",  price: 6,  habitat: "ocean", type: "fish" },
+  { id: 23, nameEn: "Herring",              nameKo: "청어",           grade: "common",    price: 1,  habitat: "ocean", type: "fish" },
+  { id: 24, nameEn: "Stingray",             nameKo: "가오리",         grade: "legendary", price: 22, habitat: "ocean", type: "fish" },
+  { id: 25, nameEn: "Wolfish",              nameKo: "이리치",         grade: "rare",      price: 10, habitat: "ocean", type: "fish" },
+  { id: 26, nameEn: "Bonefish",             nameKo: "뼈고기",         grade: "uncommon",  price: 4,  habitat: "ocean", type: "fish" },
+  { id: 27, nameEn: "Cobia",                nameKo: "코비아",         grade: "rare",      price: 9,  habitat: "ocean", type: "fish" },
+  { id: 28, nameEn: "Black Drum",           nameKo: "검은드럼",       grade: "uncommon",  price: 5,  habitat: "ocean", type: "fish" },
+  { id: 29, nameEn: "Blobfish",             nameKo: "블로브피쉬",     grade: "mythic",    price: 40, habitat: "ocean", type: "fish" },
+  { id: 30, nameEn: "Pompano",              nameKo: "전갱이",         grade: "common",    price: 3,  habitat: "ocean", type: "fish" },
+  { id: 31, nameEn: "Sardine",              nameKo: "정어리",         grade: "common",    price: 1,  habitat: "ocean", type: "fish" },
+  { id: 32, nameEn: "Angelfish",            nameKo: "엔젤피쉬",       grade: "rare",      price: 8,  habitat: "ocean", type: "fish" },
+  { id: 33, nameEn: "Red Snapper",          nameKo: "붉은돔",         grade: "legendary", price: 15, habitat: "ocean", type: "fish" },
+  { id: 34, nameEn: "Salmon",               nameKo: "연어",           grade: "uncommon",  price: 6,  habitat: "ocean", type: "fish" },
+  { id: 35, nameEn: "Anglerfish",           nameKo: "아귀",           grade: "mythic",    price: 35, habitat: "ocean", type: "fish" },
+
+  // ── Ocean Creatures (36–52) ──
+  { id: 36, nameEn: "Shrimp",               nameKo: "새우",           grade: "common",    price: 2,  habitat: "ocean", type: "creature" },
+  { id: 37, nameEn: "Squid",                nameKo: "오징어",         grade: "common",    price: 3,  habitat: "ocean", type: "creature" },
+  { id: 38, nameEn: "Dumbo Octopus",        nameKo: "덤보문어",       grade: "mythic",    price: 45, habitat: "ocean", type: "creature" },
+  { id: 39, nameEn: "Crab",                 nameKo: "게",             grade: "common",    price: 3,  habitat: "ocean", type: "creature" },
+  { id: 40, nameEn: "Lobster",              nameKo: "바닷가재",       grade: "rare",      price: 12, habitat: "ocean", type: "creature" },
+  { id: 41, nameEn: "Sea Angel",            nameKo: "바다천사",       grade: "legendary", price: 25, habitat: "ocean", type: "creature" },
+  { id: 42, nameEn: "Turtle",               nameKo: "바다거북",       grade: "legendary", price: 20, habitat: "ocean", type: "creature" },
+  { id: 43, nameEn: "Octopus",              nameKo: "문어",           grade: "uncommon",  price: 6,  habitat: "ocean", type: "creature" },
+  { id: 44, nameEn: "Pink Fantasia",        nameKo: "핑크환상",       grade: "mythic",    price: 50, habitat: "ocean", type: "creature" },
+  { id: 45, nameEn: "Sea Spider",           nameKo: "바다거미",       grade: "rare",      price: 7,  habitat: "ocean", type: "creature" },
+  { id: 46, nameEn: "Jellyfish",            nameKo: "해파리",         grade: "uncommon",  price: 4,  habitat: "ocean", type: "creature" },
+  { id: 47, nameEn: "Sea Cucumber",         nameKo: "해삼",           grade: "common",    price: 3,  habitat: "ocean", type: "creature" },
+  { id: 48, nameEn: "Christmas Tree Worm",  nameKo: "크리스마스갯지렁이", grade: "rare",  price: 9,  habitat: "ocean", type: "creature" },
+  { id: 49, nameEn: "Sea Pen",              nameKo: "바다깃펜",       grade: "uncommon",  price: 5,  habitat: "ocean", type: "creature" },
+  { id: 50, nameEn: "Sea Urchin",           nameKo: "성게",           grade: "common",    price: 2,  habitat: "ocean", type: "creature" },
+  { id: 51, nameEn: "Blue Lobster",         nameKo: "푸른바닷가재",   grade: "mythic",    price: 50, habitat: "ocean", type: "creature" },
+  { id: 52, nameEn: "Saltwater Snail",      nameKo: "바다달팽이",     grade: "common",    price: 1,  habitat: "ocean", type: "creature" },
+
+  // ── River Fish (53–76) ──
+  { id: 53, nameEn: "Crucian Carp",         nameKo: "붕어",           grade: "common",    price: 1,  habitat: "river", type: "fish" },
+  { id: 54, nameEn: "Bluegill",             nameKo: "블루길",         grade: "common",    price: 1,  habitat: "river", type: "fish" },
+  { id: 55, nameEn: "Tilapia",              nameKo: "틸라피아",       grade: "common",    price: 2,  habitat: "river", type: "fish" },
+  { id: 56, nameEn: "Smelt",                nameKo: "빙어",           grade: "common",    price: 2,  habitat: "river", type: "fish" },
+  { id: 57, nameEn: "Trout",                nameKo: "송어",           grade: "uncommon",  price: 4,  habitat: "river", type: "fish" },
+  { id: 58, nameEn: "Betta",                nameKo: "베타",           grade: "rare",      price: 8,  habitat: "river", type: "fish" },
+  { id: 59, nameEn: "Rainbow Trout",        nameKo: "무지개송어",     grade: "uncommon",  price: 5,  habitat: "river", type: "fish" },
+  { id: 60, nameEn: "Yellow Perch",         nameKo: "노란퍼치",       grade: "common",    price: 2,  habitat: "river", type: "fish" },
+  { id: 61, nameEn: "Char",                 nameKo: "곤들매기",       grade: "uncommon",  price: 5,  habitat: "river", type: "fish" },
+  { id: 62, nameEn: "Guppy",                nameKo: "구피",           grade: "common",    price: 1,  habitat: "river", type: "fish" },
+  { id: 63, nameEn: "King Salmon",          nameKo: "킹연어",         grade: "legendary", price: 18, habitat: "river", type: "fish" },
+  { id: 64, nameEn: "Neon Tetra",           nameKo: "네온테트라",     grade: "uncommon",  price: 4,  habitat: "river", type: "fish" },
+  { id: 65, nameEn: "Piranha",              nameKo: "피라냐",         grade: "legendary", price: 15, habitat: "river", type: "fish" },
+  { id: 66, nameEn: "Bitterling",           nameKo: "납줄개",         grade: "common",    price: 1,  habitat: "river", type: "fish" },
+  { id: 67, nameEn: "Black Bass",           nameKo: "배스",           grade: "uncommon",  price: 5,  habitat: "river", type: "fish" },
+  { id: 68, nameEn: "Eel",                  nameKo: "뱀장어",         grade: "rare",      price: 9,  habitat: "river", type: "fish" },
+  { id: 69, nameEn: "Chub",                 nameKo: "피라미",         grade: "common",    price: 1,  habitat: "river", type: "fish" },
+  { id: 70, nameEn: "Perch",                nameKo: "퍼치",           grade: "common",    price: 2,  habitat: "river", type: "fish" },
+  { id: 71, nameEn: "Crappie",              nameKo: "크래피",         grade: "common",    price: 2,  habitat: "river", type: "fish" },
+  { id: 72, nameEn: "Catfish",              nameKo: "메기",           grade: "uncommon",  price: 4,  habitat: "river", type: "fish" },
+  { id: 73, nameEn: "Walleye",              nameKo: "월아이",         grade: "rare",      price: 7,  habitat: "river", type: "fish" },
+  { id: 74, nameEn: "Dace",                 nameKo: "황어",           grade: "common",    price: 1,  habitat: "river", type: "fish" },
+  { id: 75, nameEn: "Loach",                nameKo: "미꾸라지",       grade: "common",    price: 1,  habitat: "river", type: "fish" },
+  { id: 76, nameEn: "Largemouth Bass",      nameKo: "큰입배스",       grade: "rare",      price: 8,  habitat: "river", type: "fish" },
+
+  // ── River Creatures (77–80) ──
+  { id: 77, nameEn: "Water Beetle",         nameKo: "물방개",         grade: "common",    price: 1,  habitat: "river", type: "creature" },
+  { id: 78, nameEn: "Crayfish",             nameKo: "가재",           grade: "uncommon",  price: 4,  habitat: "river", type: "creature" },
+  { id: 79, nameEn: "Snake",                nameKo: "물뱀",           grade: "rare",      price: 7,  habitat: "river", type: "creature" },
+  { id: 80, nameEn: "Freshwater Snail",     nameKo: "민물달팽이",     grade: "common",    price: 1,  habitat: "river", type: "creature" },
+
+  // ── Pond Fish (81–97) ──
+  { id: 81, nameEn: "Goldfish",             nameKo: "금붕어",         grade: "common",    price: 2,  habitat: "pond",  type: "fish" },
+  { id: 82, nameEn: "Koi",                  nameKo: "비단잉어",       grade: "rare",      price: 10, habitat: "pond",  type: "fish" },
+  { id: 83, nameEn: "Grass Carp",           nameKo: "초어",           grade: "common",    price: 2,  habitat: "pond",  type: "fish" },
+  { id: 84, nameEn: "Fathead Minnow",       nameKo: "뚱뚱송사리",     grade: "common",    price: 1,  habitat: "pond",  type: "fish" },
+  { id: 85, nameEn: "Green Sunfish",        nameKo: "초록개복치",     grade: "uncommon",  price: 4,  habitat: "pond",  type: "fish" },
+  { id: 86, nameEn: "Plecostomus",          nameKo: "플레코",         grade: "uncommon",  price: 5,  habitat: "pond",  type: "fish" },
+  { id: 87, nameEn: "Red Shiner",           nameKo: "붉은치리",       grade: "common",    price: 1,  habitat: "pond",  type: "fish" },
+  { id: 88, nameEn: "Pumpkin Seed Fish",    nameKo: "호박씨고기",     grade: "uncommon",  price: 4,  habitat: "pond",  type: "fish" },
+  { id: 89, nameEn: "Goby",                 nameKo: "망둥어",         grade: "common",    price: 1,  habitat: "pond",  type: "fish" },
+  { id: 90, nameEn: "Shubukin",             nameKo: "슈분킨",         grade: "uncommon",  price: 5,  habitat: "pond",  type: "fish" },
+  { id: 91, nameEn: "Fancy Goldfish",       nameKo: "난초금붕어",     grade: "rare",      price: 9,  habitat: "pond",  type: "fish" },
+  { id: 92, nameEn: "High Fin Banded Shark",nameKo: "칠성상어",       grade: "legendary", price: 22, habitat: "pond",  type: "fish" },
+  { id: 93, nameEn: "Paradise Fish",        nameKo: "극락어",         grade: "rare",      price: 8,  habitat: "pond",  type: "fish" },
+  { id: 94, nameEn: "Gizzard Shad",         nameKo: "전어",           grade: "common",    price: 2,  habitat: "pond",  type: "fish" },
+  { id: 95, nameEn: "Rosette",              nameKo: "로제트",         grade: "uncommon",  price: 5,  habitat: "pond",  type: "fish" },
+  { id: 96, nameEn: "Golden Tench",         nameKo: "황금잉어",       grade: "legendary", price: 20, habitat: "pond",  type: "fish" },
+  { id: 97, nameEn: "Molly",                nameKo: "몰리",           grade: "common",    price: 1,  habitat: "pond",  type: "fish" },
+
+  // ── Pond Creatures (98–100) ──
+  { id: 98, nameEn: "Frog",                 nameKo: "개구리",         grade: "common",    price: 2,  habitat: "pond",  type: "creature" },
+  { id: 99, nameEn: "Tadpole",              nameKo: "올챙이",         grade: "common",    price: 1,  habitat: "pond",  type: "creature" },
+  { id: 100,nameEn: "Axolotl",              nameKo: "아홀로틀",       grade: "mythic",    price: 45, habitat: "pond",  type: "creature" },
+];
+
+export const FISH_LIST: Fish[] = FISH_SEED.map((f) => ({
+  ...f,
+  ...((c) => ({ spriteX: c.x, spriteY: c.y }))(fishSpriteCoords(f.id)),
+}));
+
+// Lookup by id (1..100). Returns undefined for out-of-range ids.
+export function getFishById(id: number): Fish | undefined {
+  return FISH_LIST[id - 1];
+}
