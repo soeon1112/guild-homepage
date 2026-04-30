@@ -562,11 +562,17 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
     y: number;
   }>({ visible: false, x: 0, y: 0 });
   const [panelOpen, setPanelOpen] = useState(false);
-  const [panelTab, setPanelTab] = useState<"inventory" | "info" | "ranking">(
-    "inventory",
-  );
+  const [panelTab, setPanelTab] = useState<
+    "inventory" | "codex" | "info" | "ranking"
+  >("inventory");
   const [invPage, setInvPage] = useState(0);
   const [invSelected, setInvSelected] = useState<string | null>(null);
+  // Codex tracks every fish ID that's been caught at least once.
+  // Persists past sales — once seen, stays in the codex forever.
+  // Pages and selection mirror the inventory tab's controls.
+  const [codexCaught, setCodexCaught] = useState<Set<number>>(new Set());
+  const [codexPage, setCodexPage] = useState(0);
+  const [codexSelected, setCodexSelected] = useState<number | null>(null);
   // Panel-open ref read by the game loop to gate movement input
   // without a re-render every frame.
   const panelOpenRef = useRef(false);
@@ -2432,6 +2438,18 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                     ...prev,
                     [itemKey]: (prev[itemKey] ?? 0) + 1,
                   }));
+                  // Codex records every NEW fish kind (forage doesn't
+                  // count toward the dex). Adding to a Set is
+                  // idempotent — repeat catches are a no-op for the
+                  // codex but still grow the inventory stack.
+                  if (result.kind === "fish") {
+                    setCodexCaught((prev) => {
+                      if (prev.has(result.fish.id)) return prev;
+                      const next = new Set(prev);
+                      next.add(result.fish.id);
+                      return next;
+                    });
+                  }
                   setTotalCatches((c) => c + 1);
                   // Catching a fish goes only into the inventory —
                   // 별빛 is paid out by the fish-shop sale, not the
@@ -2596,10 +2614,16 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                   setInvPage={setInvPage}
                   invSelected={invSelected}
                   setInvSelected={setInvSelected}
+                  codexCaught={codexCaught}
+                  codexPage={codexPage}
+                  setCodexPage={setCodexPage}
+                  codexSelected={codexSelected}
+                  setCodexSelected={setCodexSelected}
                   assets={assets}
                   onClose={() => {
                     setPanelOpen(false);
                     setInvSelected(null);
+                    setCodexSelected(null);
                   }}
                 />
               ) : null}
@@ -3119,6 +3143,9 @@ const SLOT_GAP = 0;
 const SLOTS_PER_PAGE = 20;      // 5 cols × 4 rows — wider than tall
 const SLOT_COLS = 5;
 const SLOT_ROWS = 4;
+// Four tabs (inventory / codex / info / ranking) — 4 × 64 = 256 fits
+// the panel width exactly with 0 gap so tabs render flush across the
+// top edge.
 const TAB_W = 64;               // 64×32 source at 1×
 const TAB_H = 32;
 const TAB_CAP = 4;
@@ -3137,7 +3164,7 @@ const PANEL_TOP = 18;
 const DETAIL_WIDTH = 200;
 const DETAIL_HEIGHT = 172;
 
-type PanelTab = "inventory" | "info" | "ranking";
+type PanelTab = "inventory" | "codex" | "info" | "ranking";
 
 function InventoryPanel({
   nickname,
@@ -3151,6 +3178,11 @@ function InventoryPanel({
   setInvPage,
   invSelected,
   setInvSelected,
+  codexCaught,
+  codexPage,
+  setCodexPage,
+  codexSelected,
+  setCodexSelected,
   assets,
   onClose,
 }: {
@@ -3165,11 +3197,17 @@ function InventoryPanel({
   setInvPage: (n: number | ((p: number) => number)) => void;
   invSelected: string | null;
   setInvSelected: (s: string | null) => void;
+  codexCaught: Set<number>;
+  codexPage: number;
+  setCodexPage: (n: number | ((p: number) => number)) => void;
+  codexSelected: number | null;
+  setCodexSelected: (s: number | null) => void;
   assets: LoadedAssets | null;
   onClose: () => void;
 }) {
   const tabs: Array<{ id: PanelTab; label: string }> = [
     { id: "inventory", label: "인벤토리" },
+    { id: "codex", label: "도감" },
     { id: "info", label: "정보" },
     { id: "ranking", label: "랭킹" },
   ];
@@ -3211,7 +3249,7 @@ function InventoryPanel({
             panel; inactive tabs slide BELOW (zIndex 1) and dim. */}
         <div
           className="absolute left-0 right-0 flex justify-center"
-          style={{ top: -(TAB_H - TAB_VISIBLE), gap: 2 }}
+          style={{ top: -(TAB_H - TAB_VISIBLE), gap: 0 }}
         >
           {tabs.map((t) => {
             const active = tab === t.id;
@@ -3222,7 +3260,11 @@ function InventoryPanel({
                 onPointerDown={(e) => {
                   e.stopPropagation();
                   onTab(t.id);
+                  // Drop any open detail card from any tab when
+                  // switching — stale detail from another tab would
+                  // float over the new content.
                   setInvSelected(null);
+                  setCodexSelected(null);
                 }}
                 aria-label={t.label}
                 aria-pressed={active}
@@ -3334,6 +3376,14 @@ function InventoryPanel({
                 setPage={setInvPage}
                 selected={invSelected}
                 setSelected={setInvSelected}
+              />
+            ) : tab === "codex" ? (
+              <CodexContent
+                caught={codexCaught}
+                page={codexPage}
+                setPage={setCodexPage}
+                selected={codexSelected}
+                setSelected={setCodexSelected}
               />
             ) : tab === "info" ? (
               <InfoContent
@@ -3687,6 +3737,364 @@ function InventoryContent({
         ) : null}
       </AnimatePresence>
     </>
+  );
+}
+
+// ── Codex tab content ────────────────────────────────────────────
+// Same 5×4 slot grid the inventory uses, but iterates the full
+// FISH_LIST instead of the player's inventory keys. Caught fish
+// render their colour sprite from fish_all.png; uncaught render the
+// black silhouette from inv_fish_shadow.png. Tapping any slot opens
+// a Frame02a detail card centered over the panel — caught shows
+// name/grade/price, uncaught shows "???" and a discovery prompt.
+function CodexContent({
+  caught,
+  page,
+  setPage,
+  selected,
+  setSelected,
+}: {
+  caught: Set<number>;
+  page: number;
+  setPage: (n: number | ((p: number) => number)) => void;
+  selected: number | null;
+  setSelected: (s: number | null) => void;
+}) {
+  const totalPages = Math.max(
+    1,
+    Math.ceil(FISH_LIST.length / SLOTS_PER_PAGE),
+  );
+  const safePage = Math.min(page, totalPages - 1);
+  const start = safePage * SLOTS_PER_PAGE;
+  const slice = FISH_LIST.slice(start, start + SLOTS_PER_PAGE);
+  const selectedFish =
+    selected != null ? FISH_LIST.find((f) => f.id === selected) ?? null : null;
+  const selectedCaught = selectedFish ? caught.has(selectedFish.id) : false;
+  return (
+    <>
+      {/* Header — codex progress count. Sits just above the grid. */}
+      <div
+        className="font-serif font-bold leading-none"
+        style={{
+          fontSize: 11,
+          color: "#3d2c1c",
+          marginBottom: 4,
+        }}
+      >
+        도감 {caught.size} / {FISH_LIST.length}
+      </div>
+
+      {/* Slot grid — same dimensions as InventoryContent so the
+          two tabs feel consistent. */}
+      <div
+        className="grid"
+        style={{
+          gridTemplateColumns: `repeat(${SLOT_COLS}, ${SLOT_DISPLAY}px)`,
+          gridTemplateRows: `repeat(${SLOT_ROWS}, ${SLOT_DISPLAY}px)`,
+          gap: SLOT_GAP,
+        }}
+      >
+        {Array.from({ length: SLOTS_PER_PAGE }, (_, i) => {
+          const fish = slice[i];
+          if (!fish) {
+            return (
+              <div
+                key={`empty-${i}`}
+                style={{ width: SLOT_DISPLAY, height: SLOT_DISPLAY }}
+              />
+            );
+          }
+          const isCaught = caught.has(fish.id);
+          return (
+            <button
+              key={fish.id}
+              type="button"
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                setSelected(fish.id);
+              }}
+              aria-label={isCaught ? fish.nameKo : "미발견 종"}
+              className="relative flex items-center justify-center"
+              style={{
+                width: SLOT_DISPLAY,
+                height: SLOT_DISPLAY,
+                padding: 0,
+                border: "none",
+                background: "transparent",
+              }}
+            >
+              <img
+                src={UI_INV_SLOT}
+                alt=""
+                draggable={false}
+                style={{
+                  imageRendering: "pixelated",
+                  width: SLOT_DISPLAY,
+                  height: SLOT_DISPLAY,
+                  pointerEvents: "none",
+                }}
+              />
+              <CodexSprite fish={fish} caught={isCaught} />
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Pagination — identical layout to InventoryContent. */}
+      <div
+        className="mt-1 flex items-center justify-center gap-2 text-[11px] font-serif font-bold"
+        style={{ color: "#3d2c1c" }}
+      >
+        <button
+          type="button"
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            setPage((p) => Math.max(0, p - 1));
+          }}
+          disabled={safePage === 0}
+          aria-label="이전 페이지"
+          className="flex items-center justify-center"
+          style={{
+            width: 24,
+            height: 18,
+            padding: 0,
+            border: "none",
+            background: "transparent",
+            opacity: safePage === 0 ? 0.3 : 1,
+            cursor: safePage === 0 ? "default" : "pointer",
+          }}
+        >
+          <img
+            src={UI_ICON_ARROW}
+            alt=""
+            draggable={false}
+            style={{
+              imageRendering: "pixelated",
+              width: 24,
+              height: 18,
+              transform: "scaleX(-1)",
+              pointerEvents: "none",
+            }}
+          />
+        </button>
+        <span style={{ minWidth: 40, textAlign: "center" }}>
+          {safePage + 1}/{totalPages}
+        </span>
+        <button
+          type="button"
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            setPage((p) => Math.min(totalPages - 1, p + 1));
+          }}
+          disabled={safePage >= totalPages - 1}
+          aria-label="다음 페이지"
+          className="flex items-center justify-center"
+          style={{
+            width: 24,
+            height: 18,
+            padding: 0,
+            border: "none",
+            background: "transparent",
+            opacity: safePage >= totalPages - 1 ? 0.3 : 1,
+            cursor: safePage >= totalPages - 1 ? "default" : "pointer",
+          }}
+        >
+          <img
+            src={UI_ICON_ARROW}
+            alt=""
+            draggable={false}
+            style={{
+              imageRendering: "pixelated",
+              width: 24,
+              height: 18,
+              pointerEvents: "none",
+            }}
+          />
+        </button>
+      </div>
+
+      {/* Codex detail popup — centered over the inventory panel.
+          Shares the Frame02a card style with the inventory detail
+          so the two tabs read as one component family. */}
+      <AnimatePresence>
+        {selectedFish ? (
+          <motion.div
+            key="codex-detail-anchor"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.14 }}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              setSelected(null);
+            }}
+            className="pointer-events-auto absolute inset-0 flex items-center justify-center"
+            style={{ background: "rgba(11,8,33,0.45)", zIndex: 4 }}
+          >
+            <motion.div
+              initial={{ scale: 0.85 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.85 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              onPointerDown={(e) => e.stopPropagation()}
+              style={{ width: DETAIL_WIDTH, height: DETAIL_HEIGHT }}
+            >
+              <Frame9Slice
+                src={UI_POPUP_DETAIL_FRAME}
+                cap={4}
+                scale={2}
+                width={DETAIL_WIDTH}
+                height={DETAIL_HEIGHT}
+                className="flex flex-col items-center"
+                style={{
+                  paddingTop: 14,
+                  paddingBottom: 10,
+                  paddingInline: 12,
+                  boxSizing: "border-box",
+                }}
+              >
+                <div className="relative" style={{ width: 48, height: 48 }}>
+                  <CodexSprite
+                    fish={selectedFish}
+                    caught={selectedCaught}
+                    bigPreview
+                  />
+                </div>
+                <div
+                  className="font-serif font-bold leading-none"
+                  style={{
+                    marginTop: 6,
+                    fontSize: 13,
+                    color: "#f4efff",
+                  }}
+                >
+                  {selectedCaught ? selectedFish.nameKo : "???"}
+                </div>
+                {selectedCaught ? (
+                  <>
+                    <div
+                      className="font-bold leading-none"
+                      style={{
+                        marginTop: 4,
+                        fontSize: 10,
+                        letterSpacing: 1,
+                        color: FISH_GRADE_COLOR[selectedFish.grade],
+                      }}
+                    >
+                      {gradeLabel(selectedFish.grade)}
+                    </div>
+                    <div
+                      className="leading-none"
+                      style={{
+                        marginTop: 4,
+                        fontSize: 10,
+                        color: "#fde68a",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {selectedFish.price} 별빛
+                    </div>
+                    <div
+                      className="leading-none"
+                      style={{
+                        marginTop: 4,
+                        fontSize: 10,
+                        color: "#d8d4e8",
+                      }}
+                    >
+                      도감 등록 완료
+                    </div>
+                  </>
+                ) : (
+                  <div
+                    className="leading-snug"
+                    style={{
+                      marginTop: 6,
+                      fontSize: 10,
+                      color: "#d8d4e8",
+                      textAlign: "center",
+                      maxWidth: DETAIL_WIDTH - 36,
+                    }}
+                  >
+                    아직 발견하지 못한 종입니다.
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    setSelected(null);
+                  }}
+                  aria-label="확인"
+                  className="flex items-center justify-center transition-transform active:scale-90"
+                  style={{
+                    marginTop: 8,
+                    width: 17 * 2,
+                    height: 14 * 2,
+                    padding: 0,
+                    border: "none",
+                    background: "transparent",
+                    cursor: "pointer",
+                  }}
+                >
+                  <img
+                    src={UI_ICON_CHECK}
+                    alt=""
+                    draggable={false}
+                    style={{
+                      imageRendering: "pixelated",
+                      width: 17 * 2,
+                      height: 14 * 2,
+                      pointerEvents: "none",
+                    }}
+                  />
+                </button>
+              </Frame9Slice>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </>
+  );
+}
+
+// 16×16 sprite cropped from either fish_all.png (caught, in colour)
+// or inv_fish_shadow.png (uncaught silhouette). Both sheets share
+// the same 10×10 grid so spriteX/spriteY map identically.
+function CodexSprite({
+  fish,
+  caught,
+  bigPreview = false,
+}: {
+  fish: Fish;
+  caught: boolean;
+  bigPreview?: boolean;
+}) {
+  const display = bigPreview ? 32 : 24;
+  const sheetUrl = caught
+    ? ASSETS_FISH_CATALOG.fishAll
+    : ASSETS_FISH_CATALOG.fishSilhouettes;
+  const sheetW = 160;
+  const sheetH = 160;
+  const cellSize = 16;
+  const scale = display / cellSize;
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute"
+      style={{
+        left: "50%",
+        top: "50%",
+        width: display,
+        height: display,
+        transform: "translate(-50%, -50%)",
+        backgroundImage: `url(${sheetUrl})`,
+        backgroundRepeat: "no-repeat",
+        backgroundSize: `${sheetW * scale}px ${sheetH * scale}px`,
+        backgroundPosition: `-${fish.spriteX * scale}px -${fish.spriteY * scale}px`,
+        imageRendering: "pixelated",
+      }}
+    />
   );
 }
 
