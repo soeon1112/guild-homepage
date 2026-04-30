@@ -403,9 +403,15 @@ const UI_GAUGE_FILL = encodeURI(UI_FLAT_BASE + "UI_Flat_BarFill01a.png");
 const UI_GAUGE_MARKER = encodeURI(UI_FLAT_BASE + "UI_Flat_Handle06a.png");
 // Result popup frame. Frame01a is a 96×64 light-gray slab with a 1-px
 // outer border, 2-px highlight and 1-px shadow — i.e. ~4 px caps for
-// 9-slice. Painted via CSS border-image so we can stretch it to fit
-// the popup contents instead of fitting the popup to the asset.
+// 9-slice. Painted via the Frame9Slice helper which draws each slice
+// on a canvas at its native size (corners) or stretched along one
+// axis (edges) / both (center). CSS `border-image` was tried first
+// but blurred the border in some browsers despite image-rendering:
+// pixelated, so we draw it ourselves.
 const UI_POPUP_FRAME = encodeURI(UI_FLAT_BASE + "UI_Flat_Frame01a.png");
+// Confirm-button icon for the catch popup. 17×14 source, rendered
+// at 2× = 34×28 inside a button-shaped container.
+const UI_ICON_CHECK = encodeURI(UI_FLAT_BASE + "UI_Flat_IconCheck01a.png");
 
 // Joystick is parked at a fixed bottom-left dock so the player can
 // always thumb-drag from a known spot. Outer diameter ≈ 24% of the
@@ -2300,6 +2306,102 @@ function clamp(v: number, lo: number, hi: number): number {
   return v < lo ? lo : v > hi ? hi : v;
 }
 
+// ── 9-slice frame renderer ────────────────────────────────────────
+// Draws a stretchable frame on a <canvas> by slicing the source image
+// into a 3×3 grid: four corners drawn at native size, two horizontal
+// edges stretched along x, two vertical edges stretched along y, and
+// the center stretched on both axes. Image smoothing is disabled so
+// upscaling stays pixel-crisp — the same effect CSS border-image is
+// supposed to give but doesn't, reliably, with image-rendering:
+// pixelated across browsers. Children render on top of the canvas.
+function Frame9Slice({
+  src,
+  cap,
+  scale,
+  width,
+  height,
+  className,
+  style,
+  children,
+}: {
+  src: string;
+  cap: number;
+  scale: number;
+  width: number;
+  height: number;
+  className?: string;
+  style?: React.CSSProperties;
+  children?: React.ReactNode;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [img, setImg] = useState<HTMLImageElement | null>(null);
+
+  useEffect(() => {
+    const i = new Image();
+    i.onload = () => setImg(i);
+    i.src = src;
+  }, [src]);
+
+  useEffect(() => {
+    if (!img || !canvasRef.current) return;
+    const c = canvasRef.current;
+    const ctx = c.getContext("2d");
+    if (!ctx) return;
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, c.width, c.height);
+    const sw = img.width;
+    const sh = img.height;
+    const dw = width;
+    const dh = height;
+    const cs = cap * scale;
+    const sm = Math.max(1, sw - cap * 2); // source middle width
+    const smH = Math.max(1, sh - cap * 2);
+    const dm = Math.max(0, dw - cs * 2);  // dest middle width
+    const dmH = Math.max(0, dh - cs * 2);
+    // Corners — native size at scale.
+    ctx.drawImage(img, 0, 0, cap, cap, 0, 0, cs, cs);
+    ctx.drawImage(img, sw - cap, 0, cap, cap, dw - cs, 0, cs, cs);
+    ctx.drawImage(img, 0, sh - cap, cap, cap, 0, dh - cs, cs, cs);
+    ctx.drawImage(img, sw - cap, sh - cap, cap, cap, dw - cs, dh - cs, cs, cs);
+    // Top + bottom edges (stretch x).
+    if (dm > 0) {
+      ctx.drawImage(img, cap, 0, sm, cap, cs, 0, dm, cs);
+      ctx.drawImage(img, cap, sh - cap, sm, cap, cs, dh - cs, dm, cs);
+    }
+    // Left + right edges (stretch y).
+    if (dmH > 0) {
+      ctx.drawImage(img, 0, cap, cap, smH, 0, cs, cs, dmH);
+      ctx.drawImage(img, sw - cap, cap, cap, smH, dw - cs, cs, cs, dmH);
+    }
+    // Center (stretch both).
+    if (dm > 0 && dmH > 0) {
+      ctx.drawImage(img, cap, cap, sm, smH, cs, cs, dm, dmH);
+    }
+  }, [img, width, height, cap, scale]);
+
+  return (
+    <div
+      className={className}
+      style={{ position: "relative", width, height, ...style }}
+    >
+      <canvas
+        ref={canvasRef}
+        width={width}
+        height={height}
+        style={{
+          position: "absolute",
+          inset: 0,
+          width,
+          height,
+          imageRendering: "pixelated",
+          pointerEvents: "none",
+        }}
+      />
+      {children}
+    </div>
+  );
+}
+
 // ── Catch result popup ────────────────────────────────────────────
 // Renders a centered modal card on top of the canvas using the
 // Flat_Frame02a sprite as a 9-slice border (via CSS border-image).
@@ -2307,13 +2409,14 @@ function clamp(v: number, lo: number, hi: number): number {
 // the parent div's background-position; both sheets use 16×16 cells
 // indexed by Fish.spriteX/Y or Forage.spriteX/Y. Per-grade flair is
 // layered on top via box-shadow glows + (mythic) sparkle particles.
-// Sized for a 306-wide viewport: 240 wide + 8 px borders on each side
-// = 256 visible width, leaving ~25 px margins. Height fits sprite +
-// 4 text rows + the confirm button overhang without clipping.
+// Sized for a 306-wide viewport: 240 wide leaves ~33 px margins on
+// each side. Height fits the sprite, four text rows, and the confirm
+// button at the bottom of the frame (no overhang) without clipping.
 const POPUP_WIDTH = 240;
-const POPUP_HEIGHT = 180;
+const POPUP_HEIGHT = 200;
 const POPUP_FRAME_CAP = 4;        // px in source — Frame01a 9-slice
 const POPUP_FRAME_SCALE = 2;       // 2× upscale per spec, pixelated
+const POPUP_BORDER = POPUP_FRAME_CAP * POPUP_FRAME_SCALE; // 8
 const SPRITE_DISPLAY_SIZE = 64;    // px shown on screen — 4× of 16×16
 const FISH_SHEET_W = 160;
 const FISH_SHEET_H = 160;
@@ -2395,76 +2498,72 @@ function CatchPopup({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.92 }}
             transition={{ duration: 0.22, ease: "easeOut" }}
-            className="pointer-events-auto relative flex flex-col items-center"
+            className="pointer-events-auto"
             style={{
               width: POPUP_WIDTH,
               height: POPUP_HEIGHT,
-              boxSizing: "border-box",
-              // 9-slice border-image on the frame asset. Source caps
-              // are 4 px; with imageRendering pixelated the border
-              // stays crisp at the 2× display scale (8 px thick).
-              borderStyle: "solid",
-              borderWidth: POPUP_FRAME_CAP * POPUP_FRAME_SCALE,
-              borderImage: `url(${UI_POPUP_FRAME}) ${POPUP_FRAME_CAP} fill stretch`,
-              imageRendering: "pixelated",
               boxShadow: gradeFlair(result).glow,
-              paddingTop: 8,
-              paddingBottom: 8,
-              paddingInline: 16,
             }}
           >
-            <PopupContents result={result} />
-            {gradeFlair(result).sparkles ? <Sparkles /> : null}
-            <button
-              type="button"
-              onPointerDown={(e) => {
-                e.stopPropagation();
-                setPressed(true);
-              }}
-              onPointerUp={(e) => {
-                e.stopPropagation();
-                setPressed(false);
-                onConfirm();
-              }}
-              onPointerLeave={() => setPressed(false)}
-              onPointerCancel={() => setPressed(false)}
-              aria-label="확인"
-              className="absolute -bottom-3 left-1/2 flex items-center justify-center"
+            <Frame9Slice
+              src={UI_POPUP_FRAME}
+              cap={POPUP_FRAME_CAP}
+              scale={POPUP_FRAME_SCALE}
+              width={POPUP_WIDTH}
+              height={POPUP_HEIGHT}
+              className="flex flex-col items-center"
               style={{
-                transform: "translateX(-50%)",
-                width: 56,
-                height: 32,
-                padding: 0,
-                border: "none",
-                background: "transparent",
-                filter: "drop-shadow(0 3px 6px rgba(11,8,33,0.55))",
+                paddingTop: POPUP_BORDER + 4,
+                paddingBottom: POPUP_BORDER + 4,
+                paddingInline: POPUP_BORDER + 8,
+                boxSizing: "border-box",
               }}
             >
-              <img
-                src={pressed ? UI_ACTION_BUTTON_PRESSED : UI_ACTION_BUTTON_IDLE}
-                alt=""
-                draggable={false}
-                style={{
-                  imageRendering: "pixelated",
-                  width: 56,
-                  height: 32,
-                  pointerEvents: "none",
-                  objectFit: "fill",
+              <PopupContents result={result} />
+              {gradeFlair(result).sparkles ? <Sparkles /> : null}
+              <button
+                type="button"
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  setPressed(true);
                 }}
-              />
-              <span
-                aria-hidden
-                className="absolute font-serif font-bold leading-none"
+                onPointerUp={(e) => {
+                  e.stopPropagation();
+                  setPressed(false);
+                  onConfirm();
+                }}
+                onPointerLeave={() => setPressed(false)}
+                onPointerCancel={() => setPressed(false)}
+                aria-label="확인"
+                className="mt-1 flex items-center justify-center rounded"
                 style={{
-                  transform: `translateY(${pressed ? 0 : -2}px)`,
-                  fontSize: 12,
-                  color: "#3d2c1c",
-                  pointerEvents: "none",
+                  width: 44,
+                  height: 32,
+                  padding: 0,
+                  border: "none",
+                  background: pressed
+                    ? "rgba(132,204,22,0.55)"
+                    : "rgba(132,204,22,0.30)",
+                  boxShadow: pressed
+                    ? "inset 0 2px 0 rgba(0,0,0,0.18)"
+                    : "0 1px 0 rgba(0,0,0,0.12)",
+                  transition: "background 80ms ease",
                 }}
               >
-                확인
-              </span>
-            </button>
+                <img
+                  src={UI_ICON_CHECK}
+                  alt=""
+                  draggable={false}
+                  style={{
+                    imageRendering: "pixelated",
+                    width: 17 * 2,
+                    height: 14 * 2,
+                    pointerEvents: "none",
+                    transform: `translateY(${pressed ? 1 : 0}px)`,
+                  }}
+                />
+              </button>
+            </Frame9Slice>
           </motion.div>
         </div>
       ) : null}
