@@ -4860,14 +4860,34 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                   buySelected={buySelected}
                   setBuySelected={setBuySelected}
                   totalStarlight={totalStarlight}
-                  onBuy={(foodId) => {
+                  onBuy={async (foodId) => {
                     const food = getFoodById(foodId);
                     if (!food) return;
-                    if (totalStarlight < food.price) {
+                    if (!nickname) return;
+                    // Real balance check — read users/{nickname}.points
+                    // from Firestore instead of comparing against the
+                    // game's local totalStarlight mirror. Local state
+                    // can drift from the canonical balance if other
+                    // features (comments, posts, attendance, …) added
+                    // points outside the fishing flow; using the live
+                    // value matches what the player sees on My 페이지.
+                    let realPoints = 0;
+                    try {
+                      const snap = await getDoc(doc(db, "users", nickname));
+                      const raw = snap.data()?.points;
+                      realPoints = typeof raw === "number" ? raw : 0;
+                    } catch (e) {
+                      console.error("[fishing] read points failed", e);
                       setHintToast(STARLIGHT_INSUFFICIENT_MESSAGE);
                       return;
                     }
-                    setTotalStarlight((s) => s - food.price);
+                    if (realPoints < food.price) {
+                      setHintToast(STARLIGHT_INSUFFICIENT_MESSAGE);
+                      return;
+                    }
+                    // Local mirror — sync to fresh value minus price
+                    // so the in-game info card matches MY 페이지.
+                    setTotalStarlight(realPoints - food.price);
                     setInventory((prev) => {
                       const key = `food-${food.id}`;
                       return { ...prev, [key]: (prev[key] ?? 0) + 1 };
@@ -4876,12 +4896,10 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                     setHintToast(
                       `${food.nameKo} 구매! (-${food.price} 별빛)`,
                     );
-                    // Mirror the deduction to the main-site point
-                    // ledger so users/{nickname}.points stays in
-                    // lockstep with the in-game star count, and the
-                    // pointHistory subcollection records the buy as
-                    // a "낚시" entry visible on the MY 포인트 내역
-                    // page.
+                    // addPoints does the atomic increment(-price)
+                    // write + appends a "낚시" entry to the player's
+                    // pointHistory subcollection so the MY 포인트
+                    // 내역 page shows "낚시 ${name} 구매".
                     void addPoints(
                       nickname,
                       "낚시",
@@ -7074,44 +7092,20 @@ function BuyContent({
         className="flex w-full flex-col items-center"
         style={{ flex: 1, justifyContent: "center", minHeight: 0 }}
       >
-        {/* Food slot grid — single row of 5 cells (was 5×2). The
-            second row of empty placeholders was bleeding behind
-            the 구매 button on small mobile viewports; with only
-            2 food items today the extra row offered no value.
-            Future shop items extending past 5 entries should
-            re-introduce a second row at that point. */}
+        {/* Food slot grid — only the actual food entries. Empty
+            placeholder cells were creating a row of "ghost" slot
+            backgrounds in the buy tab; with FOOD_LIST holding 2
+            items today, only those 2 slots render. When more
+            shop items land, the grid auto-expands. */}
         <div
           className="grid"
           style={{
-            gridTemplateColumns: `repeat(${SELL_SLOT_COLS}, ${SLOT_DISPLAY}px)`,
+            gridTemplateColumns: `repeat(${FOOD_LIST.length}, ${SLOT_DISPLAY}px)`,
             gridTemplateRows: `${SLOT_DISPLAY}px`,
             gap: SLOT_GAP,
           }}
         >
-          {Array.from({ length: SELL_SLOT_COLS }, (_, i) => {
-            const food = FOOD_LIST[i];
-            if (!food) {
-              return (
-                <div
-                  key={`empty-${i}`}
-                  className="relative"
-                  style={{ width: SLOT_DISPLAY, height: SLOT_DISPLAY }}
-                  aria-hidden
-                >
-                  <img
-                    src={UI_SELL_SLOT}
-                    alt=""
-                    draggable={false}
-                    style={{
-                      imageRendering: "pixelated",
-                      width: SLOT_DISPLAY,
-                      height: SLOT_DISPLAY,
-                      pointerEvents: "none",
-                    }}
-                  />
-                </div>
-              );
-            }
+          {FOOD_LIST.map((food) => {
             const isSel = buySelected === food.id;
             return (
               <button
