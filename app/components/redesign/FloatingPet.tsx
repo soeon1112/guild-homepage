@@ -88,7 +88,7 @@ import {
 import { ItemIconSvg, PetSvg } from "./PetSvg";
 import { PetChatBox } from "./PetChatBox";
 import { PetRoom, type PetReaction } from "./PetRoom";
-import FishingGame from "./FishingGame";
+import FishingGame, { PixelIcon } from "./FishingGame";
 import { canSeeFishing } from "@/src/lib/fishingData";
 import { getOpenPanel, setOpenPanel } from "@/src/lib/uiBus";
 import {
@@ -722,8 +722,8 @@ export default function FloatingPet() {
                 border: "1px solid rgba(216,150,200,0.30)",
               }}
             >
-              <span className="text-[14px] leading-none" aria-hidden>
-                🎣
+              <span aria-hidden className="flex items-center justify-center">
+                <PixelIcon name="rod" size={16} />
               </span>
               <span className="font-serif text-[12px] font-semibold tracking-wide">
                 낚시하기

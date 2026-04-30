@@ -4341,8 +4341,9 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
             {/* Unified action button (bottom-right). Mirrors the
                 Space key — it's only rendered when there's something
                 meaningful to do, and the icon shifts with context:
-                  • 🎣 — fishing in progress, or facing water
-                  • 💬 — standing in the NPC interaction zone
+                  • rod — fishing in progress, or facing water
+                  • shop — counter zone (sell UI)
+                  • exclaim — bite mode
                 Hidden during dialog (the dialog acts as its own tap
                 target) and during fade transitions. */}
             {(() => {
@@ -4364,11 +4365,11 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
               // Counter zone swaps the icon to a cart so it reads as
               // "open the sell UI" rather than the fishing prompt.
               // Bite mode uses a vivid "!" instead of the rod icon.
-              const icon = showCounter
-                ? "🛒"
+              const iconName: PixelIconName = showCounter
+                ? "shop"
                 : mode === "fishingBite"
-                ? "❗"
-                : "🎣";
+                ? "exclaim"
+                : "rod";
               const label =
                 mode === "fishingBite"
                   ? "당기기"
@@ -4442,20 +4443,17 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                   />
                   <span
                     aria-hidden
-                    className="absolute leading-none"
+                    className="absolute"
                     style={{
                       transform: `translateY(${iconOffsetY}px)`,
                       transition: "transform 60ms ease-out",
-                      fontSize: isBite ? 28 : 24,
-                      fontWeight: isBite ? 800 : 600,
-                      color: isBite ? "#c0392b" : "#3d2c1c",
-                      textShadow: isBite
-                        ? "0 0 4px rgba(255,255,255,0.6)"
-                        : "none",
                       pointerEvents: "none",
+                      filter: isBite
+                        ? "drop-shadow(0 0 4px rgba(255,255,255,0.6))"
+                        : undefined,
                     }}
                   >
-                    {icon}
+                    <PixelIcon name={iconName} size={isBite ? 32 : 28} />
                   </span>
                 </motion.button>
               );
@@ -4572,14 +4570,13 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                 />
                 <span
                   aria-hidden
-                  className="absolute leading-none"
+                  className="absolute"
                   style={{
                     transform: "translateY(-2px)",
-                    fontSize: 18,
                     pointerEvents: "none",
                   }}
                 >
-                  🎒
+                  <PixelIcon name="bag" size={20} />
                 </span>
               </motion.button>
             ) : null}
@@ -7370,6 +7367,192 @@ function gradeLabel(g: FishGrade): string {
 //   .  transparent
 //   bread:  O outline / H top highlight / B body / S underside shadow
 //   steak:  O outline / R meat / D dark meat / F fat trim / B bone / M grill mark
+// ── Pixel-art icons ──────────────────────────────────────────────
+// Replaces system emoji (🎣 🛒 🎒 💬 ❗) on the action button, the
+// inventory bag chip, and the FloatingPet "낚시하기" menu so the
+// game's pixel-art aesthetic isn't broken by an OS-rendered glyph.
+// Same canvas / pixel-row pattern as the bread / steak food
+// sprites.
+//   .  transparent
+//   per-icon palette letters defined below
+export type PixelIconName = "rod" | "shop" | "bag" | "speech" | "exclaim";
+
+const PIXEL_ICON_ROD: readonly string[] = [
+  "................",
+  "..............RR",
+  ".............RR.",
+  "............RR..",
+  "...........RR...",
+  "..........RR....",
+  ".........RR.....",
+  "........RR.L....",
+  ".......RR..L....",
+  "......RR...L....",
+  ".....RR....L....",
+  "....RR.....W....",
+  "...RR......W....",
+  "..GG............",
+  ".GG.............",
+  "GG..............",
+];
+const PIXEL_ICON_ROD_PALETTE: Record<string, string> = {
+  R: "#a0521b",
+  G: "#3d2010",
+  L: "#d8d4e8",
+  W: "#f4efff",
+};
+
+const PIXEL_ICON_SHOP: readonly string[] = [
+  "................",
+  "................",
+  "....OOOOOOOO....",
+  "...OYYYYYYYYO...",
+  "..OYYYY*YYYYO...",
+  "..OYYY***YYYO...",
+  "..OYY*****YYO...",
+  "..OY*******YO...",
+  "..OYY*****YYO...",
+  "..OYYY***YYYO...",
+  "..OYYYY*YYYYO...",
+  "...OYYYYYYYYO...",
+  "....OOOOOOOO....",
+  "................",
+  "................",
+  "................",
+];
+const PIXEL_ICON_SHOP_PALETTE: Record<string, string> = {
+  O: "#7a5b1c",
+  Y: "#f5c842",
+  "*": "#ffffff",
+};
+
+const PIXEL_ICON_BAG: readonly string[] = [
+  "................",
+  "................",
+  ".....OOOO.......",
+  "....O....O......",
+  "....O.OO.O......",
+  "....OOOOOO......",
+  "...OBBBBBBO.....",
+  "..OBBBBBBBBO....",
+  "..OBBBBBBBBO....",
+  "..OBBPPPPBBO....",
+  "..OBBPPPPBBO....",
+  "..OBBBBBBBBO....",
+  "..OBBBBBBBBO....",
+  "..OBBBBBBBBO....",
+  "..OOOOOOOOOO....",
+  "................",
+];
+const PIXEL_ICON_BAG_PALETTE: Record<string, string> = {
+  O: "#2a1810",
+  B: "#7a4515",
+  P: "#5a3018",
+};
+
+const PIXEL_ICON_SPEECH: readonly string[] = [
+  "................",
+  "................",
+  ".OOOOOOOOOOOO...",
+  ".OWWWWWWWWWWO...",
+  ".OWWDWWDWWDWO...",
+  ".OWWWWWWWWWWO...",
+  ".OOOOOOOOOOOO...",
+  "......OOO.......",
+  ".......OO.......",
+  "........O.......",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+  "................",
+];
+const PIXEL_ICON_SPEECH_PALETTE: Record<string, string> = {
+  O: "#1a0f3d",
+  W: "#f4efff",
+  D: "#3d2c1c",
+};
+
+const PIXEL_ICON_EXCLAIM: readonly string[] = [
+  "................",
+  "................",
+  "......OOOO......",
+  ".....OERREO.....",
+  ".....OERREO.....",
+  ".....OERREO.....",
+  ".....OERREO.....",
+  ".....OERREO.....",
+  ".....OERREO.....",
+  ".....OERREO.....",
+  "......OOOO......",
+  "................",
+  "......OOOO......",
+  ".....OERREO.....",
+  "......OOOO......",
+  "................",
+];
+const PIXEL_ICON_EXCLAIM_PALETTE: Record<string, string> = {
+  O: "#581818",
+  E: "#a83030",
+  R: "#ff5252",
+};
+
+const PIXEL_ICONS: Record<
+  PixelIconName,
+  { rows: readonly string[]; palette: Record<string, string> }
+> = {
+  rod: { rows: PIXEL_ICON_ROD, palette: PIXEL_ICON_ROD_PALETTE },
+  shop: { rows: PIXEL_ICON_SHOP, palette: PIXEL_ICON_SHOP_PALETTE },
+  bag: { rows: PIXEL_ICON_BAG, palette: PIXEL_ICON_BAG_PALETTE },
+  speech: { rows: PIXEL_ICON_SPEECH, palette: PIXEL_ICON_SPEECH_PALETTE },
+  exclaim: { rows: PIXEL_ICON_EXCLAIM, palette: PIXEL_ICON_EXCLAIM_PALETTE },
+};
+
+export function PixelIcon({
+  name,
+  size,
+}: {
+  name: PixelIconName;
+  size: number;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const cv = canvasRef.current;
+    if (!cv) return;
+    const ctx = cv.getContext("2d");
+    if (!ctx) return;
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, 16, 16);
+    const def = PIXEL_ICONS[name];
+    for (let y = 0; y < 16; y++) {
+      const row = def.rows[y] ?? "";
+      for (let x = 0; x < 16; x++) {
+        const ch = row[x];
+        if (!ch || ch === ".") continue;
+        const color = def.palette[ch];
+        if (!color) continue;
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, 1, 1);
+      }
+    }
+  }, [name]);
+  return (
+    <canvas
+      ref={canvasRef}
+      width={16}
+      height={16}
+      aria-hidden
+      style={{
+        width: size,
+        height: size,
+        imageRendering: "pixelated",
+        display: "block",
+      }}
+    />
+  );
+}
+
 const BREAD_PIXELS: readonly string[] = [
   "................",
   "....OOOOOOOO....",
