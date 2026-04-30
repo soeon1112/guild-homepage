@@ -2861,19 +2861,14 @@ function CatchPopup({
                 onPointerLeave={() => setPressed(false)}
                 onPointerCancel={() => setPressed(false)}
                 aria-label="확인"
-                className="mt-1 flex items-center justify-center rounded"
+                className="mt-1 flex items-center justify-center"
                 style={{
-                  width: 44,
-                  height: 32,
+                  width: 17 * 2,
+                  height: 14 * 2,
                   padding: 0,
                   border: "none",
-                  background: pressed
-                    ? "rgba(132,204,22,0.55)"
-                    : "rgba(132,204,22,0.30)",
-                  boxShadow: pressed
-                    ? "inset 0 2px 0 rgba(0,0,0,0.18)"
-                    : "0 1px 0 rgba(0,0,0,0.12)",
-                  transition: "background 80ms ease",
+                  background: "transparent",
+                  cursor: "pointer",
                 }}
               >
                 <img
@@ -2885,7 +2880,8 @@ function CatchPopup({
                     width: 17 * 2,
                     height: 14 * 2,
                     pointerEvents: "none",
-                    transform: `translateY(${pressed ? 1 : 0}px)`,
+                    transform: `scale(${pressed ? 0.9 : 1})`,
+                    transition: "transform 80ms ease",
                   }}
                 />
               </button>
@@ -3212,7 +3208,10 @@ function InventoryPanel({
             boxSizing: "border-box",
           }}
         >
-          {/* Close button — top-right corner of the panel. */}
+          {/* Close button — top-right corner of the panel. No
+              backing rectangle: the cross icon is its own visual.
+              :active pseudo-class scales the whole button (img
+              inside rides along) for the press feedback. */}
           <button
             type="button"
             onPointerDown={(e) => {
@@ -3220,15 +3219,16 @@ function InventoryPanel({
               onClose();
             }}
             aria-label="닫기"
-            className="absolute flex items-center justify-center rounded"
+            className="absolute flex items-center justify-center transition-transform active:scale-90"
             style={{
               top: PANEL_BORDER + 4,
               right: PANEL_BORDER + 4,
-              width: 32,
-              height: 32,
+              width: 30,
+              height: 30,
               padding: 0,
               border: "none",
-              background: "rgba(220,80,80,0.18)",
+              background: "transparent",
+              cursor: "pointer",
               zIndex: 3,
             }}
           >
