@@ -3189,7 +3189,7 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
       // too, but a fractional foot pixel was bleeding through here.
       // Future chat bubbles should stack ABOVE this baseline so the
       // tail still points at the head.
-      const NAMEPLATE_HEAD_OFFSET = 22;
+      const NAMEPLATE_HEAD_OFFSET = 12;
       if (nickname) {
         const nx = Math.round((s.x - camX) * MAP_SCALE);
         const ny = Math.round(
@@ -6692,6 +6692,14 @@ const ROD_TYPE_LABELS: Record<RodType, string> = {
 const PREVIEW_DIRS: readonly Direction[] = ["down", "right", "up", "left"];
 const PREVIEW_ROTATE_MS = 1700;
 
+// Source-cell crop window — character occupies y=10..32 of the
+// 32×32 sprite cell (see Character bbox comment in fishingData).
+// Cropping to that band removes the 10 px of empty space above
+// the head, which was leaking through as visible margin between
+// the customizer title and the preview canvas.
+const PREVIEW_SRC_TOP = 10;
+const PREVIEW_SRC_HEIGHT = SPRITE_CELL - PREVIEW_SRC_TOP; // 22
+
 function CharacterCreatorPreview({
   draft,
   dir,
@@ -6702,6 +6710,9 @@ function CharacterCreatorPreview({
   size: number;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  // Canvas height is proportional to the cropped source band so
+  // the character fills the canvas top-to-bottom with no padding.
+  const drawHeight = Math.round((size * PREVIEW_SRC_HEIGHT) / SPRITE_CELL);
   useEffect(() => {
     const cv = canvasRef.current;
     if (!cv) return;
@@ -6734,24 +6745,38 @@ function CharacterCreatorPreview({
       ),
     ).then((imgs) => {
       if (cancelled) return;
-      ctx.clearRect(0, 0, size, size);
+      ctx.clearRect(0, 0, size, drawHeight);
       for (let i = 0; i < imgs.length; i++) {
         const sx = layers[i].varX + FRAME * CELL;
-        ctx.drawImage(imgs[i], sx, ROW_Y, CELL, CELL, 0, 0, size, size);
+        // Source y starts at the cell top + PREVIEW_SRC_TOP so the
+        // 10 px of transparent space above the hair line never
+        // ships to the canvas. Source height is PREVIEW_SRC_HEIGHT
+        // (22), drawn into the full canvas height (drawHeight).
+        ctx.drawImage(
+          imgs[i],
+          sx,
+          ROW_Y + PREVIEW_SRC_TOP,
+          CELL,
+          PREVIEW_SRC_HEIGHT,
+          0,
+          0,
+          size,
+          drawHeight,
+        );
       }
     });
     return () => {
       cancelled = true;
     };
-  }, [draft, dir, size]);
+  }, [draft, dir, size, drawHeight]);
   return (
     <canvas
       ref={canvasRef}
       width={size}
-      height={size}
+      height={drawHeight}
       style={{
         width: size,
-        height: size,
+        height: drawHeight,
         imageRendering: "pixelated",
         // display:block kills the inline-baseline gap that <canvas>
         // inherits by default — without it, a few px of phantom
