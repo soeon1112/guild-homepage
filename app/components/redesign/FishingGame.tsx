@@ -746,6 +746,15 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
   const stateRef = useRef({
     x: SPAWN_X,
     y: SPAWN_Y,
+    // Sub-pixel movement accumulators. Each tick adds the float
+    // step (vx * speed * dt) to these, then drains the integer
+    // part into s.x/s.y. Keeps the world position on integer
+    // coords every frame — drawCharacter / camX rounding can't
+    // flicker between adjacent pixels — without losing the
+    // accumulated speed (an integer-only Math.round on the move
+    // would discard 0.33 px/frame at 80 px/s + 60 fps).
+    subPxX: 0,
+    subPxY: 0,
     dir: "down" as Direction,
     moving: false,
     frame: 0,
@@ -1144,8 +1153,8 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
           0,
           Math.max(0, INDOOR_MAP_HEIGHT - visibleH),
         );
-        const sx = (assets.npcFoot.x - camX) * MAP_SCALE;
-        const sy = (assets.npcFoot.y - camY) * MAP_SCALE;
+        const sx = Math.round((assets.npcFoot.x - camX) * MAP_SCALE);
+        const sy = Math.round((assets.npcFoot.y - camY) * MAP_SCALE);
         el.style.left = `${sx}px`;
         // Bubble's bottom-center anchor sits ~54 px above the foot —
         // clears the NPC sprite (≈48 px tall in canvas px) plus a
@@ -1187,6 +1196,8 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
     stateRef.current = {
       x: SPAWN_X,
       y: SPAWN_Y,
+      subPxX: 0,
+      subPxY: 0,
       dir: "down",
       moving: false,
       frame: 0,
@@ -2069,6 +2080,8 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
           stateRef.current = {
             x: spawn.x,
             y: spawn.y,
+            subPxX: 0,
+            subPxY: 0,
             dir: "up",
             moving: false,
             frame: 0,
@@ -2122,6 +2135,8 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
           stateRef.current = {
             x: FISHSHOP_EXIT_SPAWN_X,
             y: FISHSHOP_EXIT_SPAWN_Y,
+            subPxX: 0,
+            subPxY: 0,
             dir: "down",
             moving: false,
             frame: 0,
@@ -3011,8 +3026,15 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
 
       if (moving) {
         const speed = MOVE_SPEED_PX_PER_SEC;
-        const dx = vx * speed * dt;
-        const dy = vy * speed * dt;
+        // Float move per frame goes into the sub-pixel
+        // accumulator first; only the integer part is committed
+        // to s.x / s.y so the player stays on whole-pixel coords.
+        const dxFloat = vx * speed * dt + s.subPxX;
+        const dyFloat = vy * speed * dt + s.subPxY;
+        const dx = Math.trunc(dxFloat);
+        const dy = Math.trunc(dyFloat);
+        s.subPxX = dxFloat - dx;
+        s.subPxY = dyFloat - dy;
         // Peer-overlap probe — true only when the candidate
         // (x, y) sits within PEER_COLLIDE_RADIUS of another
         // player AND the candidate is *closer* than the current
@@ -3075,6 +3097,11 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
       } else {
         s.frame = 0;
         s.frameAcc = 0;
+        // Drain the sub-pixel accumulator on stop so a leftover
+        // fraction can't snap the player by ±1 px on the next
+        // move (would look like a flick).
+        s.subPxX = 0;
+        s.subPxY = 0;
       }
       s.moving = moving;
 
