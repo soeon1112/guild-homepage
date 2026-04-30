@@ -212,10 +212,11 @@ export const FISH_FRAMES = 5;
 export const FISH_TIMINGS_LR: readonly number[] = [100, 100, 250, 60, 100];
 export const FISH_TIMINGS_UD: readonly number[] = [100, 250, 60, 100, 100];
 
-// Bobber: a single-row 128×32 sheet, 4 frames at 32×32 each, looped
-// while the player waits for a bite.
-export const BOBBER_FRAMES = 4;
-export const BOBBER_FRAME_MS = 220;
+// Bobber: 128×32 sheet, but the layout is 8 distinct 16×16 bobber
+// designs laid out horizontally — NOT a 4-frame animation. We pick
+// the first design (sx=0..16) and render it as a static sprite.
+export const BOBBER_CELL = 16;
+export const BOBBER_INDEX = 0;
 
 // How far in front of the player's feet the bobber lands, in map
 // pixels. Two tiles forward keeps the line visibly slack.

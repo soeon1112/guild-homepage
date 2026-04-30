@@ -15,9 +15,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ASSETS,
   ASSETS_FISH,
+  BOBBER_CELL,
   BOBBER_DISTANCE,
-  BOBBER_FRAME_MS,
-  BOBBER_FRAMES,
+  BOBBER_INDEX,
   CHAR_BBOX_HALF_W,
   CHAR_BBOX_HEIGHT,
   COLLISION_BLUE_B_MIN,
@@ -899,11 +899,8 @@ export default function FishingGame({ open, onClose }: Props) {
         return;
       }
       if (s.mode === "fishingWait") {
-        s.bobberAcc += dt * 1000;
-        while (s.bobberAcc >= BOBBER_FRAME_MS) {
-          s.bobberAcc -= BOBBER_FRAME_MS;
-          s.bobberFrame = (s.bobberFrame + 1) % BOBBER_FRAMES;
-        }
+        // Bobber renders as a static sprite (no per-frame loop), so
+        // the only loop work here is gating input/zone updates.
         return;
       }
 
@@ -1096,32 +1093,33 @@ export default function FishingGame({ open, onClose }: Props) {
       );
     };
 
-    // Bobber + fishing line. The bobber lands BOBBER_DISTANCE pixels
-    // ahead of the player's foot in the facing direction; the line
-    // is a 1-px stroke from the rod-tip pixel (sampled from
-    // fishingrod.png's last cast frame) to the bobber's center.
+    // Bobber + fishing line. bobber.png is a 128×32 strip of EIGHT
+    // distinct 16×16 bobber designs (not a 4-frame animation), so
+    // we crop only the first design and render it statically. The
+    // bobber sits BOBBER_DISTANCE pixels ahead of the player's foot
+    // along the facing direction's unit vector.
+    //
+    // Direction vectors use canvas orientation: +y is downward, so
+    // dir="down" → dy=+1 places the bobber south of the player.
     const drawBobberAndLine = (
       footX: number,
       footY: number,
       camX: number,
       camY: number,
       dir: Direction,
-      bobberFrame: number,
     ) => {
       const dx = dir === "right" ? 1 : dir === "left" ? -1 : 0;
       const dy = dir === "down" ? 1 : dir === "up" ? -1 : 0;
       const bobberCX = footX + dx * BOBBER_DISTANCE;
-      const bobberCY = footY + dy * BOBBER_DISTANCE - 4;
-      const bobberDrawX = Math.round(bobberCX - 16 - camX);
-      const bobberDrawY = Math.round(bobberCY - 16 - camY);
-      // Source rect crops EXACTLY the current 32×32 frame from the
-      // 128×32 sheet — destination rect is also 32×32 so only one
-      // bobber appears on screen, never the full strip.
-      const bobberSrcX = Math.floor(bobberFrame) * SPRITE_CELL;
+      const bobberCY = footY + dy * BOBBER_DISTANCE;
+      // 16×16 crop, centered on the bobber's intended water position.
+      const half = BOBBER_CELL / 2;
+      const bobberDrawX = Math.round(bobberCX - half - camX);
+      const bobberDrawY = Math.round(bobberCY - half - camY);
       ctx.drawImage(
         imgs.fishBobber,
-        bobberSrcX, 0, SPRITE_CELL, SPRITE_CELL,
-        bobberDrawX, bobberDrawY, SPRITE_CELL, SPRITE_CELL,
+        BOBBER_INDEX * BOBBER_CELL, 0, BOBBER_CELL, BOBBER_CELL,
+        bobberDrawX, bobberDrawY, BOBBER_CELL, BOBBER_CELL,
       );
       // Rod tip — exact pixel from the cast's final frame, after
       // applying the +4 fishing Y correction. Each direction has a
@@ -1135,7 +1133,7 @@ export default function FishingGame({ open, onClose }: Props) {
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(tipX, tipY);
-      ctx.lineTo(bobberCX - camX, bobberCY - 4 - camY);
+      ctx.lineTo(bobberCX - camX, bobberCY - camY);
       ctx.stroke();
       ctx.restore();
     };
@@ -1208,7 +1206,7 @@ export default function FishingGame({ open, onClose }: Props) {
           // sheet; "fishingWait" just locks the last frame.
           drawFishingChar(s.x, s.y, camX, camY, s.fishFrame, s.dir, playerColors);
           if (s.mode === "fishingWait") {
-            drawBobberAndLine(s.x, s.y, camX, camY, s.dir, s.bobberFrame);
+            drawBobberAndLine(s.x, s.y, camX, camY, s.dir);
           }
         }
         // Front layer — drawn last so any non-transparent pixel of
