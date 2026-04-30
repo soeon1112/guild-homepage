@@ -12,6 +12,8 @@
 import { motion, AnimatePresence, useAnimationControls } from "framer-motion";
 import { X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { db } from "@/src/lib/firebase";
 import {
   ASSETS,
   ASSETS_FISH,
@@ -548,10 +550,9 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
   const [totalExp, setTotalExp] = useState(0);
   const [totalCatches, setTotalCatches] = useState(0);
   // 별빛 is only granted when a fish is sold at the shop. The
-  // sale UX doesn't exist yet, so the setter is currently unused —
-  // wired up here so later phases can hook in without re-plumbing
-  // the panel props.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // sale UX doesn't exist yet, so the setter is only called during
+  // Firestore restore for now; once the shop sale UX exists it'll
+  // also fire on each transaction.
   const [totalStarlight, setTotalStarlight] = useState(0);
   // Brief level-up banner shown when totalExp crosses a threshold.
   const [levelUpBanner, setLevelUpBanner] = useState<number | null>(null);
@@ -666,6 +667,177 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
     fadeRef.current = { active: false, t: 0, midDone: false, onMid: null };
     canFishRef.current = false;
   }, [open]);
+
+  // ── Firestore persistence ─────────────────────────────────────
+  // Doc path: users/{nickname}/fishing/current. Single document
+  // holds the full save state — inventory, codex, exp, totalCaught,
+  // totalStars, last position, last map. Saves are merged so we can
+  // patch individual fields without clobbering the rest.
+  //
+  // saveEnabledRef gates writes so the initial load → setState
+  // cascade doesn't immediately echo back as a save before the
+  // restored data even lands. Flips to true once the load promise
+  // resolves (whether data existed or not).
+  const saveEnabledRef = useRef(false);
+  useEffect(() => {
+    if (!open || !nickname) return;
+    saveEnabledRef.current = false;
+    let cancelled = false;
+    const ref = doc(db, "users", nickname, "fishing", "current");
+    getDoc(ref)
+      .then((snap) => {
+        if (cancelled) return;
+        if (snap.exists()) {
+          const data = snap.data();
+          // Restore inventory (fish + forage merged into one map).
+          const inv: Record<string, number> = {};
+          if (Array.isArray(data.inventory)) {
+            for (const e of data.inventory) {
+              const id = (e as { fishId?: number }).fishId;
+              const c = (e as { count?: number }).count;
+              if (typeof id === "number" && typeof c === "number" && c > 0) {
+                inv[`fish-${id}`] = c;
+              }
+            }
+          }
+          if (Array.isArray(data.forageInventory)) {
+            for (const e of data.forageInventory) {
+              const id = (e as { forageId?: number }).forageId;
+              const c = (e as { count?: number }).count;
+              if (typeof id === "number" && typeof c === "number" && c > 0) {
+                inv[`forage-${id}`] = c;
+              }
+            }
+          }
+          setInventory(inv);
+          setCodexCaught(
+            new Set(
+              Array.isArray(data.codex)
+                ? (data.codex as unknown[]).filter(
+                    (n): n is number => typeof n === "number",
+                  )
+                : [],
+            ),
+          );
+          if (typeof data.exp === "number") setTotalExp(data.exp);
+          if (typeof data.totalCaught === "number")
+            setTotalCatches(data.totalCaught);
+          if (typeof data.totalStars === "number")
+            setTotalStarlight(data.totalStars);
+          // Position — restore lastMap first so collision/render
+          // pick up the right scene, then drop the player at the
+          // saved foot pixel. Defensive: invalid scenes fall back
+          // to outdoor + spawn.
+          if (data.lastMap === "fishshop") {
+            sceneRef.current = "fishshop";
+            setScene("fishshop");
+          } else {
+            sceneRef.current = "outdoor";
+            setScene("outdoor");
+          }
+          const lp = data.lastPosition as
+            | { x?: number; y?: number; facing?: string }
+            | undefined;
+          if (lp && typeof lp.x === "number" && typeof lp.y === "number") {
+            stateRef.current.x = lp.x;
+            stateRef.current.y = lp.y;
+            if (
+              lp.facing === "up" ||
+              lp.facing === "down" ||
+              lp.facing === "left" ||
+              lp.facing === "right"
+            ) {
+              stateRef.current.dir = lp.facing;
+            }
+          }
+        }
+        saveEnabledRef.current = true;
+      })
+      .catch((err) => {
+        console.error("[fishing] Firestore load failed", err);
+        // Still enable saves so the player's local progress isn't
+        // permanently locked out of being persisted.
+        saveEnabledRef.current = true;
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, nickname]);
+
+  // Auto-save on game state changes (catches, xp, codex). Skips
+  // until the initial load resolves — see saveEnabledRef above.
+  useEffect(() => {
+    if (!saveEnabledRef.current || !open || !nickname) return;
+    const inventoryArr: Array<{ fishId: number; count: number }> = [];
+    const forageArr: Array<{ forageId: number; count: number }> = [];
+    for (const [k, v] of Object.entries(inventory)) {
+      if (v <= 0) continue;
+      if (k.startsWith("fish-")) {
+        inventoryArr.push({ fishId: Number(k.slice(5)), count: v });
+      } else if (k.startsWith("forage-")) {
+        forageArr.push({ forageId: Number(k.slice(7)), count: v });
+      }
+    }
+    const ref = doc(db, "users", nickname, "fishing", "current");
+    setDoc(
+      ref,
+      {
+        inventory: inventoryArr,
+        forageInventory: forageArr,
+        codex: Array.from(codexCaught),
+        exp: totalExp,
+        level: levelFromTotalExp(totalExp).level,
+        totalCaught: totalCatches,
+        totalStars: totalStarlight,
+      },
+      { merge: true },
+    ).catch((err) => console.error("[fishing] save state failed", err));
+  }, [
+    inventory,
+    codexCaught,
+    totalExp,
+    totalCatches,
+    totalStarlight,
+    open,
+    nickname,
+  ]);
+
+  // Save lastMap whenever the scene transitions. Pairs with the
+  // position save so reopening drops the player back where they
+  // were standing inside the right scene.
+  useEffect(() => {
+    if (!saveEnabledRef.current || !open || !nickname) return;
+    const ref = doc(db, "users", nickname, "fishing", "current");
+    setDoc(
+      ref,
+      { lastMap: scene === "fishshop" ? "fishshop" : "outdoor" },
+      { merge: true },
+    ).catch((err) => console.error("[fishing] save lastMap failed", err));
+  }, [scene, open, nickname]);
+
+  // Save final foot position when the panel closes. Cleanup runs
+  // when open flips to false; we read stateRef synchronously and
+  // fire-and-forget the write (no await — close should feel
+  // instant). Position writes ONLY here so frame-by-frame movement
+  // doesn't burn quota.
+  useEffect(() => {
+    if (!open || !nickname) return;
+    return () => {
+      if (!saveEnabledRef.current) return;
+      const s = stateRef.current;
+      const ref = doc(db, "users", nickname, "fishing", "current");
+      setDoc(
+        ref,
+        {
+          lastPosition: { x: s.x, y: s.y, facing: s.dir },
+          lastMap: sceneRef.current === "fishshop" ? "fishshop" : "outdoor",
+        },
+        { merge: true },
+      ).catch((err) =>
+        console.error("[fishing] save position failed", err),
+      );
+    };
+  }, [open, nickname]);
 
   // Asset loader — runs each time the panel opens. The browser cache
   // makes subsequent opens cheap; we keep the previous assets in
