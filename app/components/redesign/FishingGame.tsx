@@ -2478,8 +2478,12 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
           next.add(result.fish.id);
           return next;
         });
+        // "총 낚은 횟수" counts fish only — forage (treasure +
+        // trash) lands in the inventory but isn't a fish catch.
+        // Increment lives inside this branch so the stat never
+        // ticks on a coral / plastic-bag pull.
+        setTotalCatches((c) => c + 1);
       }
-      setTotalCatches((c) => c + 1);
       const xp = expForCatch(result);
       if (xp > 0) {
         setTotalExp((prev) => {
@@ -5890,7 +5894,7 @@ function InventoryPanel({
                   totalExp={totalExp}
                   totalCatches={totalCatches}
                   earnedStars={earnedStars}
-                  inventory={inventory}
+                  codexCaught={codexCaught}
                   assets={assets}
                 />
               ) : (
@@ -7732,22 +7736,22 @@ function InfoContent({
   totalExp,
   totalCatches,
   earnedStars,
-  inventory,
+  codexCaught,
   assets,
 }: {
   nickname: string;
   totalExp: number;
   totalCatches: number;
   earnedStars: number;
-  inventory: Record<string, number>;
+  codexCaught: ReadonlySet<number>;
   assets: LoadedAssets | null;
 }) {
   const lvl = levelFromTotalExp(totalExp);
-  // Codex tracks fish only — forage entries (forage-{id} keys) are
-  // skipped so the dex progress matches TOTAL_DEX_SPECIES (= 100).
-  const dexCount = Object.keys(inventory).filter(
-    (k) => k.startsWith("fish-") && (inventory[k] ?? 0) > 0,
-  ).length;
+  // Codex progress = number of distinct fish ever caught — read
+  // straight off `codexCaught` (the persistent Set that survives
+  // sells). Earlier we counted current inventory entries, which
+  // dropped back to 0 after the player sold their stack.
+  const dexCount = codexCaught.size;
   const expFraction =
     lvl.expToNext > 0 ? Math.min(1, lvl.expInLevel / lvl.expToNext) : 0;
   return (
