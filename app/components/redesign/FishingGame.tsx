@@ -3481,10 +3481,10 @@ function InventoryPanel({
           })}
         </div>
 
-        {/* Close button — sits OUTSIDE the panel, hanging off the
-            top-right corner. Offsets are smaller than the button
-            radius so part of it overlaps the frame border (the
-            "걸치는 느낌"). Stays clear of the slot grid below. */}
+        {/* Close button — bottom-center of the panel, mirroring
+            where the catch / detail popup's check button sits. Hangs
+            off the bottom edge of the frame so the cross icon
+            "걸치는" feel matches the overhanging top tabs. */}
         <button
           type="button"
           onPointerDown={(e) => {
@@ -3494,8 +3494,9 @@ function InventoryPanel({
           aria-label="닫기"
           className="absolute flex items-center justify-center transition-transform active:scale-90"
           style={{
-            top: -10,
-            right: -10,
+            bottom: -14,
+            left: "50%",
+            transform: "translateX(-50%)",
             width: 30,
             height: 30,
             padding: 0,
