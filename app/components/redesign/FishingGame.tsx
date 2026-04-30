@@ -621,6 +621,12 @@ const UI_ICON_ARROW = encodeURI(UI_FLAT_BASE + "UI_Flat_IconArrow01a.png");
 const TORCH_TILES_URL = encodeURI(
   "/images/fishing/fishing_assets/Tiles/tiles_all.png",
 );
+// Hand-painted wave-position mask. White pixels mark positions where
+// the shoreline foam dashes should breathe; everything else (alpha=0
+// or any non-white colour) is silent. Lets the artist place ripples
+// exactly where they want without touching code or running the
+// collision-edge auto-detector.
+const WAVE_MASK_URL = encodeURI("/images/fishing/wave.png");
 const TORCH_FRAME_W = 16;
 const TORCH_FRAME_H = 32;
 const TORCH_FRAME_COUNT = 5;
@@ -1503,6 +1509,7 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
       ASSETS_FISH_CATALOG.fishAll,
       ASSETS_FORAGE_CATALOG.forageAll,
       TORCH_TILES_URL,
+      WAVE_MASK_URL,
     ];
     console.log("[fishing] loading", allPaths.length, "assets:", allPaths);
     Promise.all([
@@ -1534,6 +1541,7 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
       load(ASSETS_FISH_CATALOG.fishAll),
       load(ASSETS_FORAGE_CATALOG.forageAll),
       load(TORCH_TILES_URL),
+      loadCollision(WAVE_MASK_URL),
     ])
       .then(
         ([
@@ -1565,6 +1573,7 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
           fishCatalog,
           forageCatalog,
           tilesAll,
+          waveMask,
         ]) => {
           if (cancelled) return;
           // Yellow patch → NPC anchor + interaction zone. Fallback is
@@ -1574,54 +1583,34 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
             foot: { x: 80, y: 80 },
             zone: { x: 64, y: 88, w: 32, h: 16 },
           };
-          // Walk the collision mask once and record water-edge
-          // pixels — red cells with at least one walkable neighbour
-          // (walkable = transparent or near-white). The blue door
-          // tiles and green inland markers are explicitly excluded
-          // so they don't seed false foam pulses inland.
+          // Wave-mask-driven foam positions. wave.png is a hand
+          // painted overlay where every white pixel marks a single
+          // foam-dash anchor — the artist controls density and
+          // placement directly, so the auto-detector that walked
+          // the collision edge is no longer used. SHORELINE_SAMPLE_PX
+          // still applies as a stride so a thick painted line
+          // doesn't produce a wall of dashes.
           const buildShorelinePoints = (
-            cm: ImageData,
+            mask: ImageData,
           ): ReadonlyArray<{ x: number; y: number; phase: number }> => {
-            const w = cm.width;
-            const h = cm.height;
+            const w = mask.width;
+            const h = mask.height;
             if (w <= 1 || h <= 1) return [];
-            const px = cm.data;
-            const isRed = (x: number, y: number) => {
-              if (x < 0 || y < 0 || x >= w || y >= h) return false;
-              const i = (y * w + x) * 4;
-              return (
-                px[i] >= COLLISION_RED_R_MIN &&
-                px[i + 1] <= COLLISION_RED_GB_MAX &&
-                px[i + 2] <= COLLISION_RED_GB_MAX
-              );
-            };
-            const isWalkable = (x: number, y: number) => {
-              if (x < 0 || y < 0 || x >= w || y >= h) return false;
-              const i = (y * w + x) * 4;
-              const a = px[i + 3];
-              if (a < 50) return true;
-              const r = px[i];
-              const g = px[i + 1];
-              const b = px[i + 2];
-              return r > 200 && g > 200 && b > 200;
-            };
+            const px = mask.data;
             const out: Array<{ x: number; y: number; phase: number }> = [];
             for (let y = 0; y < h; y += SHORELINE_SAMPLE_PX) {
               for (let x = 0; x < w; x += SHORELINE_SAMPLE_PX) {
-                if (!isRed(x, y)) continue;
-                if (
-                  isWalkable(x - 1, y) ||
-                  isWalkable(x + 1, y) ||
-                  isWalkable(x, y - 1) ||
-                  isWalkable(x, y + 1)
-                ) {
-                  out.push({ x, y, phase: Math.random() });
+                const i = (y * w + x) * 4;
+                if (px[i + 3] < 200) continue;
+                if (px[i] < 200 || px[i + 1] < 200 || px[i + 2] < 200) {
+                  continue;
                 }
+                out.push({ x, y, phase: Math.random() });
               }
             }
             return out;
           };
-          const shorelinePoints = buildShorelinePoints(collision);
+          const shorelinePoints = buildShorelinePoints(waveMask);
           setAssets({
             map: mapBundle.img,
             backgroundData: mapBundle.data,
