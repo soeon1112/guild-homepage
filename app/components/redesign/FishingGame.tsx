@@ -12,7 +12,7 @@
 import { motion, AnimatePresence, useAnimationControls } from "framer-motion";
 import { X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, deleteField } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
 import { addPoints } from "@/src/lib/points";
 import {
@@ -1148,6 +1148,29 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
   // restored data even lands. Flips to true once the load promise
   // resolves (whether data existed or not).
   const saveEnabledRef = useRef(false);
+
+  // TEMP — one-shot reset of the customization for 언쏘 so the
+  // creator overlay reopens for QA. Removes the `character` field
+  // from the fishing doc and forces the creator open in the same
+  // render. After verifying the customization screen appears,
+  // delete this entire useEffect block.
+  const charResetDoneRef = useRef(false);
+  useEffect(() => {
+    if (!open || nickname !== "언쏘") return;
+    if (charResetDoneRef.current) return;
+    charResetDoneRef.current = true;
+    const ref = doc(db, "users", nickname, "fishing", "current");
+    setDoc(ref, { character: deleteField() }, { merge: true })
+      .then(() => {
+        console.log("[fishing] TEMP character reset for", nickname);
+        setCharacterConfig(DEFAULT_CHARACTER_CONFIG);
+        setCreatorDraft(DEFAULT_CHARACTER_CONFIG);
+        setShowCharacterCreator(true);
+      })
+      .catch((err) =>
+        console.error("[fishing] TEMP character reset failed", err),
+      );
+  }, [open, nickname]);
   useEffect(() => {
     if (!open || !nickname) return;
     saveEnabledRef.current = false;
