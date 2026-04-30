@@ -242,7 +242,9 @@ export const FISH_TEXT_CAUGHT = "물고기를 잡았다!";
 
 export const GAUGE_WIDTH = 184;       // px (~60% of 306 viewport)
 export const GAUGE_HEIGHT = 16;       // px (Bar01a 8 px × 2 scale)
-export const GAUGE_BOTTOM_OFFSET = 28; // px from canvas bottom
+// Lift the gauge well above the bottom-right action button so the
+// sprite + marker don't visually collide with it.
+export const GAUGE_BOTTOM_OFFSET = 90; // px from canvas bottom
 // 3 round trips = 6 edge bounces (left↔right counted on each hit).
 export const GAUGE_MAX_EDGE_HITS = 6;
 
@@ -262,13 +264,27 @@ export type FishGradeConfig = {
 
 // rollProbability values are CONDITIONAL on the catch being a fish
 // (i.e. the forage roll has already failed). Sums to 1.0.
+//
+// baseSpeed is in bar-widths-per-second. With jitter = 0.25 and the
+// slow sin modulation in tick(), traversal time per direction lives
+// in the user-spec ranges:
+//   common   ~2.0 s (1.6–2.7s)
+//   uncommon ~1.5 s (1.2–2.0s)
+//   rare     ~1.2 s (1.0–1.6s)
+//   legendary~1.0 s (0.8–1.3s)
+//   mythic   ~0.8 s (0.6–1.1s)
 export const FISH_GRADES: Record<FishGrade, FishGradeConfig> = {
-  common:    { width: 0.40, baseSpeed: 1.4, jitter: 0.10, rollProbability: 0.50 },
-  uncommon:  { width: 0.30, baseSpeed: 1.9, jitter: 0.18, rollProbability: 0.28 },
-  rare:      { width: 0.20, baseSpeed: 2.5, jitter: 0.28, rollProbability: 0.14 },
-  legendary: { width: 0.15, baseSpeed: 3.2, jitter: 0.42, rollProbability: 0.06 },
-  mythic:    { width: 0.10, baseSpeed: 4.0, jitter: 0.55, rollProbability: 0.02 },
+  common:    { width: 0.40, baseSpeed: 0.50, jitter: 0.25, rollProbability: 0.50 },
+  uncommon:  { width: 0.30, baseSpeed: 0.67, jitter: 0.25, rollProbability: 0.28 },
+  rare:      { width: 0.20, baseSpeed: 0.83, jitter: 0.25, rollProbability: 0.14 },
+  legendary: { width: 0.15, baseSpeed: 1.00, jitter: 0.25, rollProbability: 0.06 },
+  mythic:    { width: 0.10, baseSpeed: 1.25, jitter: 0.25, rollProbability: 0.02 },
 };
+
+// Sin frequency for the in-run speed modulation. 0.001 ≈ one full
+// up-down cycle per second — slow enough that the player perceives
+// a smooth ease in/out rather than abrupt speed jumps.
+export const GAUGE_SPEED_SIN_FREQ = 0.001;
 
 // Top-level catch table. Each successful catch first rolls forage
 // vs fish at CATCH_FORAGE_PROBABILITY; on a forage hit, a second

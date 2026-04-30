@@ -27,9 +27,8 @@ import {
   FISH_FAKE_BITE_MAX,
   FISH_FAKE_BITE_PROBABILITY,
   FISH_GRADES,
-  FISH_GRADE_COLOR,
-  FISH_GRADE_LABEL,
   FISH_RESULT_MS,
+  GAUGE_SPEED_SIN_FREQ,
   FISH_SHADOW_CELL,
   FISH_SHADOW_FRAME_MS,
   FISH_SHADOW_FRAMES,
@@ -1237,11 +1236,16 @@ export default function FishingGame({ open, onClose }: Props) {
       if (s.mode === "fishingBite") {
         s.subT += dt * 1000;
         // Animate the gauge marker. Speed is the base bar-widths
-        // per second, modulated by a sin term so the trip feels
-        // uneven (worse for higher-tier fish).
+        // per second, modulated by a slow sin term so the marker
+        // smoothly eases in and out rather than snapping between
+        // speeds. ±jitter of base, never abrupt.
         const speed =
           s.gaugeBaseSpeed *
-          (1 + s.gaugeJitter * Math.sin(performance.now() * 0.003 + s.gaugePhase));
+          (1 +
+            s.gaugeJitter *
+              Math.sin(
+                performance.now() * GAUGE_SPEED_SIN_FREQ + s.gaugePhase,
+              ));
         s.gaugeMarkerPos += s.gaugeMarkerDir * speed * dt;
         if (s.gaugeMarkerPos >= 1) {
           s.gaugeMarkerPos = 1;
@@ -1896,17 +1900,9 @@ export default function FishingGame({ open, onClose }: Props) {
           markerDstH,
         );
 
-        // Grade label centered above the bar (canvas text overlay).
-        ctx.font = "bold 10px sans-serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "alphabetic";
-        ctx.fillStyle = FISH_GRADE_COLOR[s.fishGrade];
-        ctx.strokeStyle = "rgba(11,8,33,0.85)";
-        ctx.lineWidth = 2;
-        const labelX = gaugeX + GAUGE_WIDTH / 2;
-        const labelY = gaugeY - 6;
-        ctx.strokeText(FISH_GRADE_LABEL[s.fishGrade], labelX, labelY);
-        ctx.fillText(FISH_GRADE_LABEL[s.fishGrade], labelX, labelY);
+        // No grade label rendered — the player only sees what they
+        // caught after the success popup. The grade is internal
+        // difficulty info only.
       }
 
       // Fade overlay — black plane whose alpha follows a 0→1→0 ramp
