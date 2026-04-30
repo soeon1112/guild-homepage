@@ -5396,14 +5396,15 @@ function CodexSprite({
 // transaction. Forage / trash are sellable for their (zero) price
 // so the player can also use this as inventory cleanup.
 const SELL_PANEL_WIDTH = 256;
-// 270 (down from 290) keeps the panel inside the 306-px viewport
-// while still leaving ~4 px of breathing room around the sell-tab
-// content stack (grid + page row + info row + buttons + close).
-// Top is offset enough to clear the tab bookmark, which pokes
-// (TAB_H - TAB_VISIBLE) = 20 px above the frame's top edge.
-const SELL_PANEL_HEIGHT = 270;
+// Match the inventory panel exactly (256×256, top=28) so the tab
+// bookmarks line up with the frame's top edge identically and the
+// shop reads as the same component family. The sell-tab content
+// stack (grid + page row + info row + buttons + close) is trimmed
+// at the margin level (see button row mt and close marginTop below)
+// to fit the smaller inner area.
+const SELL_PANEL_HEIGHT = 256;
 const SELL_PANEL_LEFT = (VIEWPORT - SELL_PANEL_WIDTH) / 2;
-const SELL_PANEL_TOP = 24;
+const SELL_PANEL_TOP = 28;
 const SELL_SLOTS_PER_PAGE = 15;     // 5 cols × 3 rows
 const SELL_SLOT_COLS = 5;
 const SELL_SLOT_ROWS = 3;
@@ -5518,10 +5519,10 @@ function SellPanel({
             // that overlaps the frame top, plus a small breathing
             // gap, so the content never sits under a tab.
             paddingTop: TAB_H - TAB_VISIBLE + 4,
-            // Larger paddingBottom — the sell/buy buttons sit a few
-            // px above the frame edge instead of flush against it,
-            // and the close X gets its own breathing room beneath.
-            paddingBottom: 14,
+            // Match the inventory panel's bottom padding so the
+            // sell/buy frame inset reads identical to the inventory
+            // frame inset.
+            paddingBottom: 12,
             paddingInline: PANEL_BORDER + 2,
             boxSizing: "border-box",
             zIndex: 2,
@@ -5702,9 +5703,11 @@ function SellPanel({
             </div>
 
             {/* Action button row — split off the close X so it
-                gets its own row beneath the panel buttons. */}
+                gets its own row beneath the panel buttons. mt-1
+                trim keeps the stack inside the inventory-matched
+                256-px panel height. */}
             <div
-              className="mt-2 flex items-center justify-center"
+              className="mt-1 flex items-center justify-center"
               style={{ gap: 10 }}
             >
               <SellActionButton
@@ -5848,7 +5851,7 @@ function BuyContent({
           : "구매할 아이템을 선택하세요"}
       </div>
       <div
-        className="mt-2 flex items-center justify-center"
+        className="mt-1 flex items-center justify-center"
         style={{ gap: 10 }}
       >
         <SellActionButton
@@ -5886,7 +5889,7 @@ function SellCloseButton({
       aria-label="닫기"
       className="flex items-center justify-center transition-transform active:scale-90"
       style={{
-        marginTop: 8,
+        marginTop: 4,
         width: 24,
         height: 24,
         padding: 0,
