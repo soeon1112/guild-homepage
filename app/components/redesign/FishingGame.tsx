@@ -375,7 +375,7 @@ const MAP_SCALE = 2;
 // assets" space resolves correctly in the browser and Next.js's
 // static handler.
 const UI_FLAT_BASE =
-  "/images/fishing/UI assets/01_Flat_Theme/Sprites/";
+  "/images/fishing/UI_assets/01_Flat_Theme/Sprites/";
 // Frame order in the asset is HIGHEST-NUMBER-FIRST: _4 sits highest
 // off the surface (idle), _3 dips a touch (hover), _1 is fully
 // pressed. _2 is an intermediate "almost pressed" frame we don't

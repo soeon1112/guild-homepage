@@ -18,7 +18,7 @@ export const VIEWPORT = 306;
 export const MAP_WIDTH = 336;
 export const MAP_HEIGHT = 336;
 
-// Per Character assets/info.txt LAYERS section, the full character is
+// Per Character_assets/info.txt LAYERS section, the full character is
 // composited bottom-to-top as:
 //   1. char base
 //   2. eyes (+ optional blush/lipstick — skipped in phase 1)
@@ -40,14 +40,14 @@ export const ASSETS = {
   collision: encodeURI("/images/fishing/collision.png"),
   shopInterior: encodeURI("/images/fishing/생선가게.png"),
   shopCollision: encodeURI("/images/fishing/생선가게_collision.png"),
-  charBase: encodeURI("/images/fishing/Character assets/characters/char1.png"),
-  npcChar: encodeURI("/images/fishing/Character assets/characters/char3.png"),
-  eyes: encodeURI("/images/fishing/Character assets/eyes/eyes.png"),
-  shirt: encodeURI("/images/fishing/Character assets/clothes/basic.png"),
-  pants: encodeURI("/images/fishing/Character assets/clothes/pants.png"),
-  shoes: encodeURI("/images/fishing/Character assets/clothes/shoes.png"),
-  hair: encodeURI("/images/fishing/Character assets/hair/wavy.png"),
-  shadow: encodeURI("/images/fishing/Character assets/shadow.png"),
+  charBase: encodeURI("/images/fishing/Character_assets/characters/char1.png"),
+  npcChar: encodeURI("/images/fishing/Character_assets/characters/char3.png"),
+  eyes: encodeURI("/images/fishing/Character_assets/eyes/eyes.png"),
+  shirt: encodeURI("/images/fishing/Character_assets/clothes/basic.png"),
+  pants: encodeURI("/images/fishing/Character_assets/clothes/pants.png"),
+  shoes: encodeURI("/images/fishing/Character_assets/clothes/shoes.png"),
+  hair: encodeURI("/images/fishing/Character_assets/hair/wavy.png"),
+  shadow: encodeURI("/images/fishing/Character_assets/shadow.png"),
 };
 
 // Color gates for the collision mask. Anti-aliased edges in the PNG
@@ -187,20 +187,20 @@ export const SCENE_FADE_SECONDS = 0.3;
 
 // ── Fishing minigame phase 1 ──────────────────────────────────
 // Cast/wait state assets live under
-// /images/fishing/Character assets/separate/fish/. The "without"
+// /images/fishing/Character_assets/separate/fish/. The "without"
 // base is the body without the rod baked in; layering
 // tool/fishingrod.png on top renders the held rod. Color variants
 // are 160-px wide blocks (vs 256-px for the walk sheet).
 export const ASSETS_FISH = {
-  base: encodeURI("/images/fishing/Character assets/separate/fish/without/char1_fish_without.png"),
-  eyes: encodeURI("/images/fishing/Character assets/separate/fish/eyes/eyes_fish.png"),
-  shirt: encodeURI("/images/fishing/Character assets/separate/fish/clothes/basic_fish.png"),
-  pants: encodeURI("/images/fishing/Character assets/separate/fish/clothes/pants_fish.png"),
-  shoes: encodeURI("/images/fishing/Character assets/separate/fish/clothes/shoes_fish.png"),
-  hair: encodeURI("/images/fishing/Character assets/separate/fish/hair/wavy_fish.png"),
-  rod: encodeURI("/images/fishing/Character assets/separate/fish/tool/fishingrod.png"),
-  bobber: encodeURI("/images/fishing/Character assets/separate/fish/tool/bobber.png"),
-  fishShadow: encodeURI("/images/fishing/fishing assets/Fish Forage Items/fish_shadow_transparent.png"),
+  base: encodeURI("/images/fishing/Character_assets/separate/fish/without/char1_fish_without.png"),
+  eyes: encodeURI("/images/fishing/Character_assets/separate/fish/eyes/eyes_fish.png"),
+  shirt: encodeURI("/images/fishing/Character_assets/separate/fish/clothes/basic_fish.png"),
+  pants: encodeURI("/images/fishing/Character_assets/separate/fish/clothes/pants_fish.png"),
+  shoes: encodeURI("/images/fishing/Character_assets/separate/fish/clothes/shoes_fish.png"),
+  hair: encodeURI("/images/fishing/Character_assets/separate/fish/hair/wavy_fish.png"),
+  rod: encodeURI("/images/fishing/Character_assets/separate/fish/tool/fishingrod.png"),
+  bobber: encodeURI("/images/fishing/Character_assets/separate/fish/tool/bobber.png"),
+  fishShadow: encodeURI("/images/fishing/fishing_assets/Fish_Forage_Items/fish_shadow_transparent.png"),
 };
 
 // Fish-shadow filmstrip: 240×16 = 15 frames × 16×16, looped while a
@@ -370,7 +370,7 @@ export const FISH_VARIANT_WIDTH = 160;
 export const FISH_FRAMES = 5;
 
 // Per-direction cast frame durations (ms) — copied verbatim from
-// Character assets/info.txt (FISHING L/R and FISHING U/D rows).
+// Character_assets/info.txt (FISHING L/R and FISHING U/D rows).
 export const FISH_TIMINGS_LR: readonly number[] = [100, 100, 250, 60, 100];
 export const FISH_TIMINGS_UD: readonly number[] = [100, 250, 60, 100, 100];
 
@@ -426,7 +426,7 @@ export const ROD_TIP_OFFSETS: Record<
 };
 
 // ── Fish catalog (100 species) ─────────────────────────────────
-// Sourced from fishing assets/Fish Forage Items/fish list.txt and
+// Sourced from fishing_assets/Fish_Forage_Items/fish list.txt and
 // the fish_all.png / inv_fish_shadow.png 16×16 sprite sheets — both
 // are 160×160 = 10×10 grids, so each fish at id N has sprite cell
 //   col = (N-1) mod 10, row = (N-1) div 10.
@@ -455,8 +455,8 @@ export const FISH_SPRITE_COLS = 10;
 export const FISH_SPRITE_ROWS = 10;
 
 export const ASSETS_FISH_CATALOG = {
-  fishAll: encodeURI("/images/fishing/fishing assets/Fish Forage Items/fish_all.png"),
-  fishSilhouettes: encodeURI("/images/fishing/fishing assets/Fish Forage Items/inv_fish_shadow.png"),
+  fishAll: encodeURI("/images/fishing/fishing_assets/Fish_Forage_Items/fish_all.png"),
+  fishSilhouettes: encodeURI("/images/fishing/fishing_assets/Fish_Forage_Items/inv_fish_shadow.png"),
 };
 
 // Helper: given a 1-based fish id, return its sprite-cell offset.
@@ -598,7 +598,7 @@ export function getFishById(id: number): Fish | undefined {
 }
 
 // ── Forage catalog (24 items) ──────────────────────────────────
-// Sourced from fishing assets/Fish Forage Items/forage list.txt and
+// Sourced from fishing_assets/Fish_Forage_Items/forage list.txt and
 // the forage_all.png 16×16 sprite sheet (160×48 = 10×3 grid; only
 // the first 24 cells are used — row 2 is partial). list.txt order
 // is mostly treasure with four trash items (#7..#10) interleaved.
@@ -621,7 +621,7 @@ export const FORAGE_TOTAL = 24;
 
 export const ASSETS_FORAGE_CATALOG = {
   forageAll: encodeURI(
-    "/images/fishing/fishing assets/Fish Forage Items/forage_all.png",
+    "/images/fishing/fishing_assets/Fish_Forage_Items/forage_all.png",
   ),
 };
 
