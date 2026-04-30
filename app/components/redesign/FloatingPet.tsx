@@ -88,6 +88,8 @@ import {
 import { ItemIconSvg, PetSvg } from "./PetSvg";
 import { PetChatBox } from "./PetChatBox";
 import { PetRoom, type PetReaction } from "./PetRoom";
+import FishingGame from "./FishingGame";
+import { canSeeFishing } from "@/src/lib/fishingData";
 import { getOpenPanel, setOpenPanel } from "@/src/lib/uiBus";
 import {
   INTERACTION_ICONS,
@@ -192,6 +194,13 @@ const CATEGORY_LABELS: Record<ItemCategory, string> = {
 export default function FloatingPet() {
   const { nickname, ready } = useAuth();
   const [open, setOpen] = useState(false);
+  // Phase-1 fishing soft-launch — for the gated nickname the FAB
+  // expands a two-button menu (펫 키우기 / 낚시하기) instead of
+  // opening the pet panel directly. Everyone else keeps the original
+  // single-click → pet panel flow.
+  const [showMenu, setShowMenu] = useState(false);
+  const [fishingOpen, setFishingOpen] = useState(false);
+  const canFish = canSeeFishing(nickname);
   // Mirror open state into the shared uiBus and hide the pet icon
   // whenever chat owns the screen.
   // FAB icons stay visible always. When a panel opens, its higher
@@ -202,6 +211,10 @@ export default function FloatingPet() {
     if (open) setOpenPanel("pet");
     else if (getOpenPanel() === "pet") setOpenPanel(null);
   }, [open]);
+  // Close the menu whenever the pet panel or fishing game takes over.
+  useEffect(() => {
+    if (open || fishingOpen) setShowMenu(false);
+  }, [open, fishingOpen]);
   const [pet, setPet] = useState<PetDoc | null>(null);
   const [items, setItems] = useState<PetItemsDoc>({ inventory: {} });
   const [points, setPoints] = useState(0);
@@ -595,14 +608,24 @@ export default function FloatingPet() {
       {/* ── Floating button (bottom-left) ── */}
       <motion.button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          if (!canFish) {
+            setOpen((v) => !v);
+            return;
+          }
+          if (open) {
+            setOpen(false);
+            return;
+          }
+          setShowMenu((v) => !v);
+        }}
         aria-label={open ? "펫 닫기" : "펫 열기"}
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         whileTap={{ scale: 0.92 }}
         transition={{ duration: 0.2 }}
         className="group fixed left-4 bottom-24 z-[100] flex h-14 w-14 items-center justify-center rounded-full"
-        style={{ pointerEvents: open ? "none" : "auto" }}
+        style={{ pointerEvents: open || fishingOpen ? "none" : "auto" }}
       >
         <span
           className="relative flex h-12 w-12 items-center justify-center rounded-full transition-transform group-hover:scale-105"
@@ -630,6 +653,71 @@ export default function FloatingPet() {
           </span>
         ) : null}
       </motion.button>
+
+      {/* ── Two-button menu (gated to fishing admin) ── */}
+      <AnimatePresence>
+        {canFish && showMenu && !open && !fishingOpen ? (
+          <motion.div
+            key="pet-menu"
+            initial={{ opacity: 0, y: 8, scale: 0.92 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.92 }}
+            transition={{ duration: 0.16 }}
+            className="fixed left-4 bottom-[170px] z-[150] flex w-[160px] flex-col gap-1.5 rounded-2xl border border-nebula-pink/30 p-2 backdrop-blur-md"
+            style={{
+              background:
+                "linear-gradient(180deg, rgba(26,15,61,0.94) 0%, rgba(11,8,33,0.94) 100%)",
+              boxShadow:
+                "0 24px 60px rgba(11,8,33,0.7), 0 0 40px rgba(107,75,168,0.30), inset 0 1px 0 rgba(255,229,196,0.06)",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setShowMenu(false);
+                setOpen(true);
+              }}
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-stardust transition-colors hover:bg-nebula-pink/15"
+              style={{
+                background: "rgba(61,46,107,0.55)",
+                border: "1px solid rgba(216,150,200,0.30)",
+              }}
+            >
+              <PetButtonIcon size={16} />
+              <span className="font-serif text-[12px] font-semibold tracking-wide">
+                펫 키우기
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowMenu(false);
+                setFishingOpen(true);
+              }}
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-stardust transition-colors hover:bg-nebula-pink/15"
+              style={{
+                background: "rgba(61,46,107,0.55)",
+                border: "1px solid rgba(216,150,200,0.30)",
+              }}
+            >
+              <span className="text-[14px] leading-none" aria-hidden>
+                🎣
+              </span>
+              <span className="font-serif text-[12px] font-semibold tracking-wide">
+                낚시하기
+              </span>
+            </button>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+
+      {/* ── Fishing game panel (gated) ── */}
+      {canFish ? (
+        <FishingGame
+          open={fishingOpen}
+          onClose={() => setFishingOpen(false)}
+        />
+      ) : null}
 
       {/* ── Modal panel ── */}
       <AnimatePresence>
