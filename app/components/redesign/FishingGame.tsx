@@ -4378,13 +4378,12 @@ const TAB_SCALE = 1;
 // active tab paints over (zIndex 3), inactive tabs tuck behind
 // (zIndex 1) so the active tab visually "connects" to the panel.
 const TAB_VISIBLE = 12;
-// Shop-side override. The marker geometry is byte-identical to the
-// inventory marker (per opaque-pixel-row scan), but the warmer
-// Frame02a body + Marker02a blend visually obscures the bookmark
-// edge — the shop tab reads as "tucked inside" the frame top. We
-// pull the shop strip 4 extra px higher so the visible bookmark
-// portion stays distinct from the panel body.
-const SHOP_TAB_VISIBLE = 8;
+// Shop-side tab overlap. Same value as the inventory's TAB_VISIBLE
+// so the bookmark/frame relationship is identical — bottom 12 px of
+// the tab overlaps the frame top edge (with the active tab in front
+// at zIndex 3). Kept as a separate const so future tuning of one
+// panel doesn't silently affect the other.
+const SHOP_TAB_VISIBLE = TAB_VISIBLE;
 
 // Shared bookmark renderer for the panel-tab strip. Inventory and
 // shop both lay out tabs with the same active/inactive translateY,
