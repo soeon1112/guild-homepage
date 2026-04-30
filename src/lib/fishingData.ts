@@ -67,10 +67,14 @@ export const MOVE_SPEED_PX_PER_SEC = 80;
 
 // Default modular layer indices. Hardcoded for phase 1; later phases
 // will let the player pick from list.txt's color palette (eyes 14
-// colors, clothes 10 colors, hair 14 colors).
+// colors, clothes 10 colors, hair 14 colors). Pants intentionally
+// chosen brown (clothes index 3 = "Brown") so it's visually
+// distinguishable from the black shirt — at solid black on black the
+// shirt and pants merge into a single silhouette and earlier QA
+// passes mistook the composite for "missing pants".
 export const DEFAULT_EYES_COLOR = 0;
 export const DEFAULT_SHIRT_COLOR = 0;
-export const DEFAULT_PANTS_COLOR = 0;
+export const DEFAULT_PANTS_COLOR = 3;
 export const DEFAULT_SHOES_COLOR = 0;
 export const DEFAULT_HAIR_COLOR = 0;
 
