@@ -6734,7 +6734,16 @@ function CharacterCreatorPreview({
       ref={canvasRef}
       width={size}
       height={size}
-      style={{ width: size, height: size, imageRendering: "pixelated" }}
+      style={{
+        width: size,
+        height: size,
+        imageRendering: "pixelated",
+        // display:block kills the inline-baseline gap that <canvas>
+        // inherits by default — without it, a few px of phantom
+        // space appear under the canvas because the parent's
+        // line-box reserves room for descenders.
+        display: "block",
+      }}
     />
   );
 }
@@ -6927,17 +6936,17 @@ function CharacterCreator({
         >
           <div
             className="flex h-full w-full flex-col items-center"
-            style={{ gap: 6 }}
+            style={{ gap: 0 }}
           >
-            {/* Title — sits flush against the preview below it
-                (no extra gap) so the canvas reads as part of the
-                same header block. */}
+            {/* Title — flush against the preview below. Outer gap
+                is 0 and the preview wrapper has no top space, so
+                the title baseline sits a few px above the canvas
+                with no visible breathing room. */}
             <div
               className="font-serif font-bold leading-none"
               style={{
                 fontSize: 14,
                 color: "#3d2c1c",
-                marginBottom: -2,
               }}
             >
               캐릭터 생성
@@ -6945,10 +6954,17 @@ function CharacterCreator({
             {/* Auto-rotating preview — direction cycles every
                 PREVIEW_ROTATE_MS via the timer above; manual dir
                 arrows were removed since the rotation already
-                surfaces every facing. */}
+                surfaces every facing. flexShrink:0 keeps the
+                preview from collapsing as the option list grows. */}
             <div
               className="flex w-full flex-col items-center"
-              style={{ flexShrink: 0 }}
+              style={{
+                flexShrink: 0,
+                marginTop: 0,
+                marginBottom: 6,
+                padding: 0,
+                lineHeight: 0,
+              }}
             >
               <CharacterCreatorPreview
                 draft={draft}
