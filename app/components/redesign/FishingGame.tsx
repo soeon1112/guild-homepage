@@ -3095,28 +3095,23 @@ function Sparkles() {
 }
 
 // ── Inventory / info / ranking panel ─────────────────────────────
-// Single fixed-position modal hosted at the screen level so the 4×5
-// slot grid can fit at full 2× scale instead of being bounded by the
-// 306×306 game canvas. Three tab content blocks share the same
-// Frame9Slice container; tabs are bookmark-shaped FrameMarker sprites
-// sitting just above the panel top edge.
-// Panel sized to fit inside the 306×306 game canvas. Tabs at native
-// (1×) scale and slots at 1.25× are downscaled compromises so the
-// 4×5 = 20-slot grid + tabs all fit the viewport at once. Native
-// scale on tabs avoids fractional rendering on the sprite that
-// matters most for tab readability; slots take the fractional hit
-// since each is small enough that nearest-neighbor unevenness is
-// barely perceptible.
-const PANEL_WIDTH = 280;
-const PANEL_HEIGHT = 288;
+// Sized to fit inside the 306×306 game pane with no overflow. Tabs
+// at native (1×) scale, slots at 1.25× — the smallest readable
+// settings that let the 5×4 = 20-slot grid + tab strip + close
+// button + pagination row all coexist within the canvas. Source
+// pixels stay crisp via image-rendering: pixelated; the fractional
+// 1.25× on slots gets nearest-neighbour rendering with mild width
+// unevenness but no blur.
+const PANEL_WIDTH = 256;
+const PANEL_HEIGHT = 256;
 const PANEL_FRAME_CAP = 4;
 const PANEL_FRAME_SCALE = 2;
 const PANEL_BORDER = PANEL_FRAME_CAP * PANEL_FRAME_SCALE;
 const SLOT_DISPLAY = 40;        // 32×32 source × 1.25×
 const SLOT_GAP = 0;
-const SLOTS_PER_PAGE = 20;      // 4 cols × 5 rows
-const SLOT_COLS = 4;
-const SLOT_ROWS = 5;
+const SLOTS_PER_PAGE = 20;      // 5 cols × 4 rows — wider than tall
+const SLOT_COLS = 5;
+const SLOT_ROWS = 4;
 const TAB_W = 64;               // 64×32 source at 1×
 const TAB_H = 32;
 const TAB_CAP = 4;
@@ -3305,12 +3300,13 @@ function InventoryPanel({
           width={PANEL_WIDTH}
           height={PANEL_HEIGHT}
           style={{
-            // paddingTop accounts for the (TAB_H - TAB_VISIBLE) px of
-            // tab visual that overlaps the panel top, plus a small
-            // breathing gap, so the slot grid never sits under a tab.
+            // paddingTop clears the tab-cover region (the part of
+            // each tab that sits behind the panel border). 4 px of
+            // breathing room beneath that. paddingInline/paddingBottom
+            // are kept tight so every available pixel goes to content.
             paddingTop: TAB_H - TAB_VISIBLE + 4,
-            paddingBottom: PANEL_BORDER + 4,
-            paddingInline: PANEL_BORDER + 4,
+            paddingBottom: 6,
+            paddingInline: PANEL_BORDER + 2,
             boxSizing: "border-box",
             // Panel itself sits below the active tab in z so the
             // tab visually connects to it.
@@ -3464,9 +3460,12 @@ function InventoryContent({
         })}
       </div>
 
-      {/* Pagination — left arrow (flipped), "n/total", right arrow */}
+      {/* Pagination — left arrow (flipped), "n/total", right arrow.
+          Smaller arrows than the previous panel sizing so the row
+          fits comfortably under the slot grid in the new compact
+          panel. */}
       <div
-        className="mt-2 flex items-center justify-center gap-3 text-[12px] font-serif font-bold"
+        className="mt-1 flex items-center justify-center gap-2 text-[11px] font-serif font-bold"
         style={{ color: "#3d2c1c" }}
       >
         <button
@@ -3479,8 +3478,8 @@ function InventoryContent({
           aria-label="이전 페이지"
           className="flex items-center justify-center"
           style={{
-            width: 32,
-            height: 24,
+            width: 24,
+            height: 18,
             padding: 0,
             border: "none",
             background: "transparent",
@@ -3494,14 +3493,14 @@ function InventoryContent({
             draggable={false}
             style={{
               imageRendering: "pixelated",
-              width: 32,
-              height: 24,
+              width: 24,
+              height: 18,
               transform: "scaleX(-1)",
               pointerEvents: "none",
             }}
           />
         </button>
-        <span style={{ minWidth: 48, textAlign: "center" }}>
+        <span style={{ minWidth: 40, textAlign: "center" }}>
           {safePage + 1}/{totalPages}
         </span>
         <button
@@ -3514,8 +3513,8 @@ function InventoryContent({
           aria-label="다음 페이지"
           className="flex items-center justify-center"
           style={{
-            width: 32,
-            height: 24,
+            width: 24,
+            height: 18,
             padding: 0,
             border: "none",
             background: "transparent",
@@ -3529,8 +3528,8 @@ function InventoryContent({
             draggable={false}
             style={{
               imageRendering: "pixelated",
-              width: 32,
-              height: 24,
+              width: 24,
+              height: 18,
               pointerEvents: "none",
             }}
           />
@@ -3548,10 +3547,9 @@ function InventoryContent({
             exit={{ opacity: 0, y: 8 }}
             transition={{ duration: 0.14 }}
             onPointerDown={(e) => e.stopPropagation()}
-            className="absolute left-0 right-0 mx-auto rounded-lg px-3 py-2 text-[11px]"
+            className="absolute left-1 right-1 rounded-lg px-2 py-1.5 text-[10px]"
             style={{
-              bottom: 12,
-              width: 240,
+              bottom: 8,
               background: "rgba(11,8,33,0.94)",
               border: "1px solid rgba(216,150,200,0.45)",
               boxShadow: "0 4px 16px rgba(11,8,33,0.6)",
@@ -3697,22 +3695,34 @@ function InfoContent({
   const expFraction =
     lvl.expToNext > 0 ? Math.min(1, lvl.expInLevel / lvl.expToNext) : 0;
   return (
+    // overflowY:auto as a safety net — content is sized to fit but a
+    // very long nickname / future stat lines could push it over;
+    // scrolling is preferable to clipping.
     <div
       className="flex w-full flex-col items-center"
-      style={{ color: "#3d2c1c", fontSize: 11, gap: 6 }}
+      style={{
+        color: "#3d2c1c",
+        fontSize: 10,
+        gap: 3,
+        overflowY: "auto",
+        height: "100%",
+      }}
     >
       <CharacterPreview assets={assets} />
       <div
         className="font-serif font-bold leading-none"
-        style={{ fontSize: 14, marginTop: 2 }}
+        style={{ fontSize: 12 }}
       >
         {nickname || "이름 없음"}
       </div>
       {/* Fishing level + exp bar */}
-      <div className="flex w-full flex-col" style={{ gap: 2 }}>
-        <div className="flex items-baseline justify-between font-bold">
+      <div className="flex w-full flex-col" style={{ gap: 1 }}>
+        <div
+          className="flex items-baseline justify-between font-bold"
+          style={{ fontSize: 10 }}
+        >
           <span>낚시 Lv.{lvl.level}</span>
-          <span style={{ fontSize: 10, color: "#5a4a30" }}>
+          <span style={{ fontSize: 9, color: "#5a4a30" }}>
             {lvl.expInLevel} / {lvl.expToNext} EXP
           </span>
         </div>
@@ -3727,7 +3737,10 @@ function InfoContent({
         <span>전투 Lv.</span>
         <span>준비중입니다</span>
       </div>
-      <div className="my-1 h-px w-full" style={{ background: "rgba(61,44,28,0.25)" }} />
+      <div
+        className="h-px w-full"
+        style={{ background: "rgba(61,44,28,0.25)", margin: "1px 0" }}
+      />
       <StatRow label="총 낚은 횟수" value={`${totalCatches}마리`} />
       <StatRow label="총 번 별빛" value={`${totalStarlight} 별빛`} />
       <StatRow
@@ -3748,7 +3761,9 @@ function StatRow({ label, value }: { label: string; value: string }) {
 }
 
 // Mini exp-bar styled like the catch gauge but without the marker.
-const EXP_BAR_WIDTH = 240;
+// Width tuned for the compact info tab; gauge height matches the
+// in-game catch gauge so the visual language is consistent.
+const EXP_BAR_WIDTH = 200;
 const EXP_BAR_HEIGHT = 12;
 function ExpBar({ fraction }: { fraction: number }) {
   return (
@@ -3789,8 +3804,10 @@ function ExpBar({ fraction }: { fraction: number }) {
 // pants + shoes + hair, in that order.
 function CharacterPreview({ assets }: { assets: LoadedAssets | null }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const PREVIEW_SCALE = 2.5;
-  const SIZE = SPRITE_CELL * PREVIEW_SCALE; // 80
+  // Compact preview — 32×32 cell at 1.5× = 48 px on screen. Fits the
+  // smaller info tab without crowding the stat lines.
+  const PREVIEW_SCALE = 1.5;
+  const SIZE = SPRITE_CELL * PREVIEW_SCALE; // 48
   useEffect(() => {
     if (!assets || !canvasRef.current) return;
     const cv = canvasRef.current;
