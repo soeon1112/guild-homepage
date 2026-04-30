@@ -8473,6 +8473,14 @@ function RankingContent({
           const parent = d.ref.parent.parent;
           if (!parent) return;
           const data = d.data() as Record<string, unknown>;
+          // Only list players who completed the character
+          // creator. The `character` field is written when the
+          // customization screen is confirmed; players who only
+          // peeked at the panel have no character set and
+          // shouldn't pollute the ranking.
+          if (!data.character || typeof data.character !== "object") {
+            return;
+          }
           const exp =
             typeof data.exp === "number" && Number.isFinite(data.exp)
               ? data.exp
