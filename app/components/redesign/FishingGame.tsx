@@ -3161,6 +3161,29 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
 
       ctx.restore();
 
+      // Player nameplate — drawn at viewport pixel scale (after the
+      // ctx.restore that undoes MAP_SCALE) so the typography stays
+      // crisp instead of being upscaled with the sprite art. Sits
+      // a few px above the sprite head and is always visible (walk
+      // and fishing both), matching the spec.
+      if (nickname) {
+        const nx = (s.x - camX) * MAP_SCALE;
+        const ny = (s.y - SPRITE_CELL - 3 - camY) * MAP_SCALE;
+        ctx.save();
+        ctx.font =
+          '700 10px "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif';
+        ctx.textAlign = "center";
+        ctx.textBaseline = "bottom";
+        ctx.miterLimit = 2;
+        ctx.lineJoin = "round";
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = "rgba(11, 8, 33, 0.95)";
+        ctx.strokeText(nickname, nx, ny);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText(nickname, nx, ny);
+        ctx.restore();
+      }
+
       // Catch gauge — Flat-theme sprites stretched to the gauge
       // width via a horizontal 9-slice (4 px caps, middle stretched).
       // Drawn AFTER the scaled scene so the bar sits in viewport
