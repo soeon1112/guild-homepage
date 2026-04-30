@@ -23,6 +23,7 @@ import {
   deleteDoc,
   query,
   where,
+  collectionGroup,
 } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
 import { setChatInputFocused, useChatInputFocused } from "@/src/lib/uiBus";
@@ -8452,8 +8453,59 @@ function RankingContent({
   nickname: string;
   totalExp: number;
 }) {
-  const lvl = levelFromTotalExp(totalExp);
-  const rows = [{ rank: 1, nickname: nickname || "이름 없음", level: lvl.level }];
+  // Live ranking — collectionGroup("fishing") streams every
+  // user's fishing/current doc (each member has exactly one), so
+  // a single subscription gives us the whole guild's leveled
+  // population. Self is folded in from the local totalExp prop
+  // so a brand-new player who hasn't saved yet still appears
+  // at the bottom of the list rather than disappearing.
+  const [peerRows, setPeerRows] = useState<
+    ReadonlyArray<{ nickname: string; level: number; exp: number }>
+  >([]);
+  useEffect(() => {
+    const q = collectionGroup(db, "fishing");
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const rows: Array<{ nickname: string; level: number; exp: number }> = [];
+        snap.forEach((d) => {
+          if (d.id !== "current") return;
+          const parent = d.ref.parent.parent;
+          if (!parent) return;
+          const data = d.data() as Record<string, unknown>;
+          const exp =
+            typeof data.exp === "number" && Number.isFinite(data.exp)
+              ? data.exp
+              : 0;
+          rows.push({
+            nickname: parent.id,
+            level: levelFromTotalExp(exp).level,
+            exp,
+          });
+        });
+        setPeerRows(rows);
+      },
+      (err) =>
+        console.error("[fishing] ranking subscribe failed", err),
+    );
+    return () => unsub();
+  }, []);
+  // Merge: peer rows override (live exp from Firestore) + ensure
+  // self is in the list using the latest local totalExp (the
+  // local value can lead Firestore by one auto-save cycle).
+  const merged = (() => {
+    const map = new Map<string, { nickname: string; level: number; exp: number }>();
+    for (const r of peerRows) map.set(r.nickname, r);
+    if (nickname) {
+      const lvl = levelFromTotalExp(totalExp);
+      map.set(nickname, { nickname, level: lvl.level, exp: totalExp });
+    }
+    return Array.from(map.values()).sort((a, b) => {
+      if (b.exp !== a.exp) return b.exp - a.exp;
+      return a.nickname.localeCompare(b.nickname);
+    });
+  })();
+  const rows = merged.slice(0, 20).map((r, i) => ({ rank: i + 1, ...r }));
   return (
     <div
       className="flex w-full flex-col"
@@ -8465,32 +8517,45 @@ function RankingContent({
       >
         낚시 레벨 랭킹
       </div>
-      {rows.map((r) => (
+      {rows.map((r) => {
+        const isSelf = r.nickname === nickname;
+        return (
+          <div
+            key={r.nickname}
+            className="flex items-center justify-between rounded px-3 py-2"
+            style={{
+              background:
+                r.rank === 1
+                  ? "rgba(251,191,36,0.20)"
+                  : isSelf
+                  ? "rgba(216,150,200,0.18)"
+                  : "rgba(0,0,0,0.05)",
+              border:
+                r.rank === 1
+                  ? "1px solid rgba(251,191,36,0.55)"
+                  : isSelf
+                  ? "1px solid rgba(216,150,200,0.55)"
+                  : "1px solid rgba(61,44,28,0.20)",
+            }}
+          >
+            <span className="font-serif font-bold" style={{ width: 36 }}>
+              {r.rank}위
+            </span>
+            <span className="flex-1 truncate px-2">
+              {r.nickname || "이름 없음"}
+            </span>
+            <span className="font-bold">Lv.{r.level}</span>
+          </div>
+        );
+      })}
+      {rows.length === 0 ? (
         <div
-          key={r.rank}
-          className="flex items-center justify-between rounded px-3 py-2"
-          style={{
-            background:
-              r.rank === 1 ? "rgba(251,191,36,0.20)" : "rgba(0,0,0,0.05)",
-            border:
-              r.rank === 1
-                ? "1px solid rgba(251,191,36,0.55)"
-                : "1px solid rgba(61,44,28,0.20)",
-          }}
+          className="mt-2 text-center"
+          style={{ fontSize: 10, color: "#7a6a4a" }}
         >
-          <span className="font-serif font-bold" style={{ width: 36 }}>
-            {r.rank}위
-          </span>
-          <span className="flex-1 truncate px-2">{r.nickname}</span>
-          <span className="font-bold">Lv.{r.level}</span>
+          아직 등록된 낚시꾼이 없습니다
         </div>
-      ))}
-      <div
-        className="mt-2 text-center"
-        style={{ fontSize: 10, color: "#7a6a4a" }}
-      >
-        길드원 전체 랭킹은 추후 업데이트됩니다
-      </div>
+      ) : null}
     </div>
   );
 }
