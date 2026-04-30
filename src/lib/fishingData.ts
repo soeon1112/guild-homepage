@@ -68,8 +68,13 @@ export const ASSETS = {
 //   Anything else (transparent/black) → walkable floor.
 export const COLLISION_RED_R_MIN = 200;
 export const COLLISION_RED_GB_MAX = 100;
+// The shop counter is painted with a darker green (≈ R=6 G=125 B=9
+// in the source PNG), not the saturated lime the spec implied. The
+// G≥200 / RB≤100 gate that worked for cleaner palettes missed it
+// completely; G_MIN is dropped to 100 so the actual sprite passes
+// while still rejecting reds (R≥200) and blues (B≥180).
 export const COLLISION_GREEN_RB_MAX = 100;
-export const COLLISION_GREEN_G_MIN = 200;
+export const COLLISION_GREEN_G_MIN = 100;
 export const COLLISION_BLUE_B_MIN = 180;
 export const COLLISION_BLUE_R_MAX = 100;
 export const COLLISION_BLUE_G_MAX = 180;
