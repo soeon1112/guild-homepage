@@ -174,6 +174,14 @@ type LoadedAssets = {
   // the popup crops a single cell at popup-paint time.
   fishCatalog: HTMLImageElement;
   forageCatalog: HTMLImageElement;
+  // Tiles_all sprite-sheet — the torch strip lives at
+  // (TORCH_SOURCE_X, TORCH_SOURCE_Y); per-frame slicing happens at
+  // render time so we just need the raw image.
+  tilesAll: HTMLImageElement;
+  // Pre-computed water-edge points (in unscaled map coords) sampled
+  // from the collision mask. Each carries a randomised phase so the
+  // shoreline foam breathes out-of-sync along the coast.
+  shorelinePoints: ReadonlyArray<{ x: number; y: number; phase: number }>;
 };
 
 type Prompt = "blueDoor" | "yellowDoor" | "exit" | "counter" | null;
@@ -602,6 +610,39 @@ const UI_SELL_TAB_MARKER = encodeURI(
 // dedicated close button. 01b reads as a quiet dismiss control.
 const UI_ICON_CROSS = encodeURI(UI_FLAT_BASE + "UI_Flat_IconCross01b.png");
 const UI_ICON_ARROW = encodeURI(UI_FLAT_BASE + "UI_Flat_IconArrow01a.png");
+
+// ── Torch + shoreline animation ──────────────────────────────────
+// Torches in the outdoor map are baked into 배경.png at fixed cells.
+// We overlay an animated 5-frame strip from tiles_all.png on top of
+// each baked torch so the flame flickers without needing the map
+// repainted. Strip starts at (304, 48) inside tiles_all.png and is
+// 5 frames × 16×32. Each torch frame plays for ~180 ms (≈ matches
+// the source torch.gif cadence) for a 0.9 s loop.
+const TORCH_TILES_URL = encodeURI(
+  "/images/fishing/fishing_assets/Tiles/tiles_all.png",
+);
+const TORCH_FRAME_W = 16;
+const TORCH_FRAME_H = 32;
+const TORCH_FRAME_COUNT = 5;
+const TORCH_FRAME_MS = 180;
+const TORCH_SOURCE_X = 304;
+const TORCH_SOURCE_Y = 48;
+// Outdoor torch positions — measured from 배경.png by sampling the
+// flame and post pixels (post bottom y=127 → cell top 96; post
+// horizontal centre maps to sprite x=7 → cell left 208 / 304).
+const TORCH_POSITIONS: ReadonlyArray<{ x: number; y: number }> = [
+  { x: 208, y: 96 },
+  { x: 304, y: 96 },
+];
+
+// Shoreline foam pulses — built from collision.png at load time.
+// Walks the map looking for red (water) pixels that border a
+// walkable cell, samples them every SHORELINE_SAMPLE_PX so the
+// effect stays sparse, and assigns each point a random phase so
+// the breath of the waves desynchronises along the coast.
+const SHORELINE_SAMPLE_PX = 6;
+const SHORELINE_WAVE_PERIOD_MS = 2600;
+const SHORELINE_WAVE_PEAK_ALPHA = 0.45;
 
 // Joystick is parked at a fixed bottom-left dock so the player can
 // always thumb-drag from a known spot. Outer diameter ≈ 24% of the
@@ -1366,6 +1407,7 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
       UI_GAUGE_MARKER,
       ASSETS_FISH_CATALOG.fishAll,
       ASSETS_FORAGE_CATALOG.forageAll,
+      TORCH_TILES_URL,
     ];
     console.log("[fishing] loading", allPaths.length, "assets:", allPaths);
     Promise.all([
@@ -1396,6 +1438,7 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
       loadOptional(UI_GAUGE_MARKER),
       load(ASSETS_FISH_CATALOG.fishAll),
       load(ASSETS_FORAGE_CATALOG.forageAll),
+      load(TORCH_TILES_URL),
     ])
       .then(
         ([
@@ -1426,6 +1469,7 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
           uiGaugeMarker,
           fishCatalog,
           forageCatalog,
+          tilesAll,
         ]) => {
           if (cancelled) return;
           // Yellow patch → NPC anchor + interaction zone. Fallback is
@@ -1435,6 +1479,54 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
             foot: { x: 80, y: 80 },
             zone: { x: 64, y: 88, w: 32, h: 16 },
           };
+          // Walk the collision mask once and record water-edge
+          // pixels — red cells with at least one walkable neighbour
+          // (walkable = transparent or near-white). The blue door
+          // tiles and green inland markers are explicitly excluded
+          // so they don't seed false foam pulses inland.
+          const buildShorelinePoints = (
+            cm: ImageData,
+          ): ReadonlyArray<{ x: number; y: number; phase: number }> => {
+            const w = cm.width;
+            const h = cm.height;
+            if (w <= 1 || h <= 1) return [];
+            const px = cm.data;
+            const isRed = (x: number, y: number) => {
+              if (x < 0 || y < 0 || x >= w || y >= h) return false;
+              const i = (y * w + x) * 4;
+              return (
+                px[i] >= COLLISION_RED_R_MIN &&
+                px[i + 1] <= COLLISION_RED_GB_MAX &&
+                px[i + 2] <= COLLISION_RED_GB_MAX
+              );
+            };
+            const isWalkable = (x: number, y: number) => {
+              if (x < 0 || y < 0 || x >= w || y >= h) return false;
+              const i = (y * w + x) * 4;
+              const a = px[i + 3];
+              if (a < 50) return true;
+              const r = px[i];
+              const g = px[i + 1];
+              const b = px[i + 2];
+              return r > 200 && g > 200 && b > 200;
+            };
+            const out: Array<{ x: number; y: number; phase: number }> = [];
+            for (let y = 0; y < h; y += SHORELINE_SAMPLE_PX) {
+              for (let x = 0; x < w; x += SHORELINE_SAMPLE_PX) {
+                if (!isRed(x, y)) continue;
+                if (
+                  isWalkable(x - 1, y) ||
+                  isWalkable(x + 1, y) ||
+                  isWalkable(x, y - 1) ||
+                  isWalkable(x, y + 1)
+                ) {
+                  out.push({ x, y, phase: Math.random() });
+                }
+              }
+            }
+            return out;
+          };
+          const shorelinePoints = buildShorelinePoints(collision);
           setAssets({
             map: mapBundle.img,
             backgroundData: mapBundle.data,
@@ -1466,6 +1558,8 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
             uiGaugeMarker,
             fishCatalog,
             forageCatalog,
+            tilesAll,
+            shorelinePoints,
           });
         },
       )
@@ -2785,6 +2879,38 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
       if (currentScene === "outdoor") {
         ctx.drawImage(imgs.map, -camX, -camY);
         const now = performance.now();
+        // Shoreline foam — small white dashes that breathe in/out
+        // along the water edge. Drawn before the player + front
+        // layer so docks/tree canopies still occlude them.
+        if (imgs.shorelinePoints.length > 0) {
+          ctx.fillStyle = "#ffffff";
+          for (const p of imgs.shorelinePoints) {
+            const phase =
+              ((now / SHORELINE_WAVE_PERIOD_MS) + p.phase) * Math.PI * 2;
+            const a = Math.max(0, Math.sin(phase)) * SHORELINE_WAVE_PEAK_ALPHA;
+            if (a < 0.04) continue;
+            ctx.globalAlpha = a;
+            ctx.fillRect(p.x - camX, p.y - camY, 2, 1);
+          }
+          ctx.globalAlpha = 1;
+        }
+        // Animated torch overlay — covers the static torches baked
+        // into 배경.png. 5 frames cycling at TORCH_FRAME_MS each.
+        const torchFrame =
+          Math.floor(now / TORCH_FRAME_MS) % TORCH_FRAME_COUNT;
+        for (const t of TORCH_POSITIONS) {
+          ctx.drawImage(
+            imgs.tilesAll,
+            TORCH_SOURCE_X + torchFrame * TORCH_FRAME_W,
+            TORCH_SOURCE_Y,
+            TORCH_FRAME_W,
+            TORCH_FRAME_H,
+            t.x - camX,
+            t.y - camY,
+            TORCH_FRAME_W,
+            TORCH_FRAME_H,
+          );
+        }
         if (s.mode === "walk") {
           drawCharacter(
             imgs.char,
