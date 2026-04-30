@@ -3169,12 +3169,17 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
 
       // Player nameplate — drawn at viewport pixel scale (after the
       // ctx.restore that undoes MAP_SCALE) so the typography stays
-      // crisp instead of being upscaled with the sprite art. Sits
-      // a few px above the sprite head and is always visible (walk
-      // and fishing both), matching the spec.
+      // crisp instead of being upscaled with the sprite art. The
+      // 32×32 sprite cell holds the character around y=10..32 of
+      // the cell (head crown ≈ s.y - 22 in unscaled foot-relative
+      // coords); placing the text baseline 2 px above that puts it
+      // tight against the head instead of floating a full sprite-
+      // height above. Future chat bubbles should stack ABOVE this
+      // baseline so the tail still points at the head.
+      const NAMEPLATE_HEAD_OFFSET = 24;
       if (nickname) {
         const nx = (s.x - camX) * MAP_SCALE;
-        const ny = (s.y - SPRITE_CELL - 3 - camY) * MAP_SCALE;
+        const ny = (s.y - NAMEPLATE_HEAD_OFFSET - camY) * MAP_SCALE;
         ctx.save();
         ctx.font =
           '700 10px "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif';
