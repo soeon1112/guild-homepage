@@ -3327,9 +3327,14 @@ const TAB_SCALE = 1;
 // active tab paints over (zIndex 3), inactive tabs tuck behind
 // (zIndex 1) so the active tab visually "connects" to the panel.
 const TAB_VISIBLE = 12;
-// Where the panel sits inside the inner game pane (306×306).
+// Where the panel sits inside the inner game pane (306×306). The
+// top offset has to clear the (TAB_H - TAB_VISIBLE) px of tab that
+// sticks up above the panel, otherwise the tab visuals would punch
+// up into the floating window's title bar (the inner pane has no
+// clipping above its top edge — the outer overflow-hidden is rounded
+// outside this region).
 const PANEL_LEFT = (VIEWPORT - PANEL_WIDTH) / 2;
-const PANEL_TOP = 18;
+const PANEL_TOP = 28;
 // Inventory slot-detail popup — vertically stacked layout matching
 // the catch popup, sized so sprite + 4 centered text lines + the
 // check button all fit comfortably inside the inventory tab area.
@@ -3540,8 +3545,16 @@ function InventoryPanel({
             zIndex: 2,
           }}
         >
-          {/* Tab content */}
-          <div className="flex h-full w-full flex-col items-center">
+          {/* Tab content. Inventory centers its slot grid +
+              pagination vertically so the grid sits in the middle
+              of the frame; other tabs flow from the top so their
+              header lines / stats stay where the eye expects. */}
+          <div
+            className="flex h-full w-full flex-col items-center"
+            style={{
+              justifyContent: tab === "inventory" ? "center" : "flex-start",
+            }}
+          >
             {tab === "inventory" ? (
               <InventoryContent
                 inventory={inventory}
