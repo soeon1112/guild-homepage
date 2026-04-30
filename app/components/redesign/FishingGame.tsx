@@ -4289,6 +4289,71 @@ const TAB_SCALE = 1;
 // active tab paints over (zIndex 3), inactive tabs tuck behind
 // (zIndex 1) so the active tab visually "connects" to the panel.
 const TAB_VISIBLE = 12;
+
+// Shared bookmark renderer for the panel-tab strip. Inventory and
+// shop both lay out tabs with the same active/inactive translateY,
+// dim filter, z-stack, and label typography — extracting the render
+// path here is the single source of truth so the two strips can't
+// drift visually. Marker asset and label are passed in; the strip
+// container (positioning + flex layout) is owned by each caller.
+function TabBookmark({
+  marker,
+  label,
+  active,
+  ariaLabel,
+  onSelect,
+}: {
+  marker: string;
+  label: string;
+  active: boolean;
+  ariaLabel?: string;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        onSelect();
+      }}
+      aria-label={ariaLabel ?? label}
+      aria-pressed={active}
+      className="relative flex items-center justify-center"
+      style={{
+        width: TAB_W,
+        height: TAB_H,
+        padding: 0,
+        border: "none",
+        background: "transparent",
+        // Active pops up and sits above the panel border; inactive
+        // sinks down and tucks behind, dimmed.
+        transform: active ? "translateY(-2px)" : "translateY(4px)",
+        transition: "transform 140ms ease",
+        filter: active ? "none" : "brightness(0.6) saturate(0.55)",
+        zIndex: active ? 3 : 1,
+      }}
+    >
+      <Frame9Slice
+        src={marker}
+        cap={TAB_CAP}
+        scale={TAB_SCALE}
+        width={TAB_W}
+        height={TAB_H}
+      />
+      <span
+        aria-hidden
+        className="absolute font-serif font-bold leading-none"
+        style={{
+          fontSize: 12,
+          color: "#3d2c1c",
+          paddingBottom: 4,
+        }}
+      >
+        {label}
+      </span>
+    </button>
+  );
+}
 // Where the panel sits inside the inner game pane (306×306). The
 // top offset has to clear the (TAB_H - TAB_VISIBLE) px of tab that
 // sticks up above the panel, otherwise the tab visuals would punch
@@ -4394,62 +4459,22 @@ function InventoryPanel({
           className="absolute left-0 right-0 flex justify-center"
           style={{ top: -(TAB_H - TAB_VISIBLE), gap: 0 }}
         >
-          {tabs.map((t) => {
-            const active = tab === t.id;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onPointerDown={(e) => {
-                  e.stopPropagation();
-                  onTab(t.id);
-                  // Drop any open detail card from any tab when
-                  // switching — stale detail from another tab would
-                  // float over the new content.
-                  setInvSelected(null);
-                  setCodexSelected(null);
-                }}
-                aria-label={t.label}
-                aria-pressed={active}
-                className="relative flex items-center justify-center"
-                style={{
-                  width: TAB_W,
-                  height: TAB_H,
-                  padding: 0,
-                  border: "none",
-                  background: "transparent",
-                  // Active tab pops UP (negative translate) and sits
-                  // above the panel border; inactive tabs sink down
-                  // and tuck behind, dimmed.
-                  transform: active ? "translateY(-2px)" : "translateY(4px)",
-                  transition: "transform 140ms ease",
-                  filter: active
-                    ? "none"
-                    : "brightness(0.6) saturate(0.55)",
-                  zIndex: active ? 3 : 1,
-                }}
-              >
-                <Frame9Slice
-                  src={UI_TAB_MARKER}
-                  cap={TAB_CAP}
-                  scale={TAB_SCALE}
-                  width={TAB_W}
-                  height={TAB_H}
-                />
-                <span
-                  aria-hidden
-                  className="absolute font-serif font-bold leading-none"
-                  style={{
-                    fontSize: 12,
-                    color: "#3d2c1c",
-                    paddingBottom: 4,
-                  }}
-                >
-                  {t.label}
-                </span>
-              </button>
-            );
-          })}
+          {tabs.map((t) => (
+            <TabBookmark
+              key={t.id}
+              marker={UI_TAB_MARKER}
+              label={t.label}
+              active={tab === t.id}
+              onSelect={() => {
+                onTab(t.id);
+                // Drop any open detail card from any tab when
+                // switching — stale detail from another tab would
+                // float over the new content.
+                setInvSelected(null);
+                setCodexSelected(null);
+              }}
+            />
+          ))}
         </div>
 
         <Frame9Slice
@@ -5426,57 +5451,19 @@ function SellPanel({
           className="absolute left-0 right-0 flex justify-center"
           style={{ top: -(TAB_H - TAB_VISIBLE), gap: 0 }}
         >
-          {(["sell", "buy"] as const).map((t) => {
-            const active = tab === t;
-            const label = t === "sell" ? "판매" : "구매";
-            return (
-              <button
-                key={t}
-                type="button"
-                onPointerDown={(e) => {
-                  e.stopPropagation();
-                  setTab(t);
-                  setSelected(null);
-                  setBuySelected(null);
-                }}
-                aria-label={label}
-                aria-pressed={active}
-                className="relative flex items-center justify-center"
-                style={{
-                  width: TAB_W,
-                  height: TAB_H,
-                  padding: 0,
-                  border: "none",
-                  background: "transparent",
-                  transform: active ? "translateY(-2px)" : "translateY(4px)",
-                  transition: "transform 140ms ease",
-                  filter: active
-                    ? "none"
-                    : "brightness(0.6) saturate(0.55)",
-                  zIndex: active ? 3 : 1,
-                }}
-              >
-                <Frame9Slice
-                  src={UI_SELL_TAB_MARKER}
-                  cap={TAB_CAP}
-                  scale={TAB_SCALE}
-                  width={TAB_W}
-                  height={TAB_H}
-                />
-                <span
-                  aria-hidden
-                  className="absolute font-serif font-bold leading-none"
-                  style={{
-                    fontSize: 12,
-                    color: "#3d2c1c",
-                    paddingBottom: 4,
-                  }}
-                >
-                  {label}
-                </span>
-              </button>
-            );
-          })}
+          {(["sell", "buy"] as const).map((t) => (
+            <TabBookmark
+              key={t}
+              marker={UI_SELL_TAB_MARKER}
+              label={t === "sell" ? "판매" : "구매"}
+              active={tab === t}
+              onSelect={() => {
+                setTab(t);
+                setSelected(null);
+                setBuySelected(null);
+              }}
+            />
+          ))}
         </div>
 
         <Frame9Slice
