@@ -3279,11 +3279,12 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                     padding: "5px 9px",
                     fontSize: 10,
                     color: "#3d2c1c",
-                    // Wrap long lines instead of overflowing — max
-                    // width caps at half the viewport so two-line
-                    // greetings break at the natural space.
+                    // Wrap long lines + honour explicit `\n` in the
+                    // message string. pre-line collapses other
+                    // whitespace but breaks at \n and word
+                    // boundaries when the line exceeds maxWidth.
                     maxWidth: VIEWPORT / 2,
-                    whiteSpace: "normal",
+                    whiteSpace: "pre-line",
                     wordBreak: "keep-all",
                     textAlign: "center",
                     lineHeight: 1.3,

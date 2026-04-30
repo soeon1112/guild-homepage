@@ -177,7 +177,10 @@ export const YELLOW_SHOP_LINE = "준비중입니다";
 // idle pool gets cycled through every 15-30 s while the player
 // stays in the shop. Punctuation kept light so the bubble's
 // max-width word-wrap reads naturally.
-export const FISHSHOP_GREETING = "어서오세요! 새벽빛 낚시상점입니다.";
+// Newline kept explicit so the greeting always reads as two lines
+// regardless of font metrics — idle lines lean on the bubble's
+// auto word-wrap instead.
+export const FISHSHOP_GREETING = "어서오세요!\n새벽빛 낚시상점입니다.";
 export const FISHSHOP_IDLE_LINES: readonly string[] = [
   "요즘 날씨가 좋아서 물고기가 잘 잡히겠네요.",
   "오늘은 어떤 물고기를 잡아오셨나요?",
