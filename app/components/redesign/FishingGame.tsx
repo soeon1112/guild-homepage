@@ -7219,6 +7219,10 @@ function InfoContent({
         gap: 3,
         overflowY: "auto",
         height: "100%",
+        // iOS Safari momentum scroll for the info tab — without
+        // this, swipe-flick stops dead instead of decelerating.
+        WebkitOverflowScrolling: "touch",
+        touchAction: "pan-y",
       }}
     >
       <CharacterPreview assets={assets} />
@@ -7766,6 +7770,11 @@ function CharacterCreator({
                 minHeight: 0,
                 overflowY: "auto",
                 paddingInline: 4,
+                // iOS Safari momentum scroll + restrict touch to
+                // vertical so the panel doesn't fight the page's
+                // horizontal pan gestures.
+                WebkitOverflowScrolling: "touch",
+                touchAction: "pan-y",
               }}
               onWheel={(e) => e.stopPropagation()}
             >
