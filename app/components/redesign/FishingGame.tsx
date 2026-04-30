@@ -16,7 +16,6 @@ import {
   doc,
   getDoc,
   setDoc,
-  deleteField,
   addDoc,
   collection,
   serverTimestamp,
@@ -701,18 +700,7 @@ const JOYSTICK_KNOB = 16;
 const JOYSTICK_DEAD_ZONE = 5;
 
 export default function FishingGame({ open, onClose, nickname }: Props) {
-  // DEBUG: build verification — confirms the prod bundle is from
-  // this revision. Remove with the other [FISHING] logs once the
-  // deployment is verified.
-  if (typeof window !== "undefined" && !(window as unknown as { __fishingBuildLogged?: boolean }).__fishingBuildLogged) {
-    (window as unknown as { __fishingBuildLogged: boolean }).__fishingBuildLogged = true;
-    console.log("[FISHING BUILD] v2 - canvas fix applied");
-  }
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  // DEBUG: nickname-draw log — fires once per session so the
-  // console isn't flooded by the 60 fps render loop. Confirms
-  // the new offset value (22) is in the bundle.
-  const nicknameLogOnceRef = useRef(false);
 
   // Loop-owned state lives in refs to avoid React re-renders at 60fps.
   const stateRef = useRef({
@@ -1227,28 +1215,6 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
   // resolves (whether data existed or not).
   const saveEnabledRef = useRef(false);
 
-  // TEMP — one-shot reset of the customization for 언쏘 so the
-  // creator overlay reopens for QA. Removes the `character` field
-  // from the fishing doc and forces the creator open in the same
-  // render. After verifying the customization screen appears,
-  // delete this entire useEffect block.
-  const charResetDoneRef = useRef(false);
-  useEffect(() => {
-    if (!open || nickname !== "언쏘") return;
-    if (charResetDoneRef.current) return;
-    charResetDoneRef.current = true;
-    const ref = doc(db, "users", nickname, "fishing", "current");
-    setDoc(ref, { character: deleteField() }, { merge: true })
-      .then(() => {
-        console.log("[fishing] TEMP character reset for", nickname);
-        setCharacterConfig(DEFAULT_CHARACTER_CONFIG);
-        setCreatorDraft(DEFAULT_CHARACTER_CONFIG);
-        setShowCharacterCreator(true);
-      })
-      .catch((err) =>
-        console.error("[fishing] TEMP character reset failed", err),
-      );
-  }, [open, nickname]);
   useEffect(() => {
     if (!open || !nickname) return;
     saveEnabledRef.current = false;
@@ -3302,15 +3268,6 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
         const ny = Math.round(
           (s.y - NAMEPLATE_HEAD_OFFSET - camY) * MAP_SCALE,
         );
-        if (!nicknameLogOnceRef.current) {
-          nicknameLogOnceRef.current = true;
-          console.log(
-            "[FISHING] NAMEPLATE_HEAD_OFFSET=",
-            NAMEPLATE_HEAD_OFFSET,
-            "ny=",
-            ny,
-          );
-        }
         ctx.save();
         ctx.font =
           '700 10px "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif';
@@ -6966,13 +6923,6 @@ function CharacterCreatorPreview({
     ).then((imgs) => {
       if (cancelled) return;
       ctx.clearRect(0, 0, size, drawHeight);
-      console.log(
-        "[FISHING] canvas size:",
-        size,
-        drawHeight,
-        "char draw y:",
-        0,
-      );
       for (let i = 0; i < imgs.length; i++) {
         const sx = layers[i].varX + FRAME * CELL;
         // Source y starts at the cell top + PREVIEW_SRC_TOP so the
@@ -7141,9 +7091,6 @@ function CharacterCreator({
     }, PREVIEW_ROTATE_MS);
     return () => clearInterval(id);
   }, []);
-  // DEBUG: confirms the auto-rotate timer is actually flipping
-  // state in the prod bundle. Logs every direction tick.
-  console.log("[FISHING] previewDirIdx=", previewDirIdx);
   const previewDir = PREVIEW_DIRS[previewDirIdx];
   const cycleNumber = (
     key: "charIndex" | "hairColor" | "shirtColor" | "pantsColor" | "shoesColor",
