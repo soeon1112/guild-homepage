@@ -430,7 +430,9 @@ const UI_ICON_CHECK = encodeURI(UI_FLAT_BASE + "UI_Flat_IconCheck01a.png");
 // Inventory / info / ranking panel UI sprites.
 const UI_TAB_MARKER = encodeURI(UI_FLAT_BASE + "UI_Flat_FrameMarker01a.png");
 const UI_INV_SLOT = encodeURI(UI_FLAT_BASE + "UI_Flat_FrameSlot01c.png");
-const UI_ICON_CROSS = encodeURI(UI_FLAT_BASE + "UI_Flat_IconCross01a.png");
+// 9×9 small cross — the larger 01a (15×15) felt too heavy as a
+// dedicated close button. 01b reads as a quiet dismiss control.
+const UI_ICON_CROSS = encodeURI(UI_FLAT_BASE + "UI_Flat_IconCross01b.png");
 const UI_ICON_ARROW = encodeURI(UI_FLAT_BASE + "UI_Flat_IconArrow01a.png");
 
 // Joystick is parked at a fixed bottom-left dock so the player can
@@ -3704,9 +3706,9 @@ function InventoryPanel({
               aria-label="닫기"
               className="flex items-center justify-center transition-transform active:scale-90"
               style={{
-                marginTop: 2,
-                width: 30,
-                height: 30,
+                marginTop: 4,
+                width: 24,
+                height: 24,
                 padding: 0,
                 border: "none",
                 background: "transparent",
@@ -3720,8 +3722,8 @@ function InventoryPanel({
                 draggable={false}
                 style={{
                   imageRendering: "pixelated",
-                  width: 30,
-                  height: 30,
+                  width: 18,
+                  height: 18,
                   pointerEvents: "none",
                 }}
               />
@@ -4719,8 +4721,8 @@ function SellPanel({
                 aria-label="닫기"
                 className="flex items-center justify-center transition-transform active:scale-90"
                 style={{
-                  width: 30,
-                  height: 30,
+                  width: 24,
+                  height: 24,
                   padding: 0,
                   border: "none",
                   background: "transparent",
@@ -4735,8 +4737,8 @@ function SellPanel({
                   draggable={false}
                   style={{
                     imageRendering: "pixelated",
-                    width: 30,
-                    height: 30,
+                    width: 18,
+                    height: 18,
                     pointerEvents: "none",
                   }}
                 />
@@ -4978,6 +4980,16 @@ function ExpBar({ fraction }: { fraction: number }) {
   // stale prop or rounding could push it outside. Math.min/max
   // here so a future caller bug never makes the fill overshoot.
   const ratio = Math.max(0, Math.min(1, fraction));
+  // Bar01a (32×8 source) renders edge-to-edge as the empty track —
+  // the cream-coloured background. BarFill01a (32×3 source) draws
+  // on top at fraction width, replacing the same in-game pattern
+  // the catch gauge uses on canvas. Using two simple <img>s with
+  // image-rendering: pixelated keeps both crisp at the stretched
+  // display size; objectFit: fill stretches uniformly, and inner
+  // fill width is computed from the bar's interior width so the
+  // 1-px Bar01a border isn't covered.
+  const innerWidth = EXP_BAR_WIDTH - 4; // 2-px Bar01a border each side
+  const fillWidth = Math.round(innerWidth * ratio);
   return (
     <div
       className="relative"
@@ -4995,32 +5007,24 @@ function ExpBar({ fraction }: { fraction: number }) {
           objectFit: "fill",
         }}
       />
-      {/* Solid dark track that fills the entire bar interior end to
-          end — the empty portion of the bar should be visible at full
-          width. The earlier semi-transparent variant let Bar01a's
-          cream show through, which made the empty region read as
-          "still filled" at low fractions. The orange fill below is a
-          % of this track so 5 EXP / 100 EXP = 5% wide. */}
-      <div
-        className="absolute overflow-hidden"
-        style={{
-          left: 2,
-          top: 2,
-          width: EXP_BAR_WIDTH - 4,
-          height: EXP_BAR_HEIGHT - 4,
-          background: "#1f1530",
-        }}
-      >
-        <div
+      {fillWidth > 0 ? (
+        <img
+          src={UI_GAUGE_FILL}
+          alt=""
+          draggable={false}
+          className="absolute"
           style={{
-            width: `${ratio * 100}%`,
-            height: "100%",
-            background: "linear-gradient(180deg, #fde68a 0%, #f59e0b 100%)",
-            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.45)",
+            left: 2,
+            top: 4,
+            width: fillWidth,
+            height: EXP_BAR_HEIGHT - 8,
+            imageRendering: "pixelated",
+            objectFit: "fill",
+            pointerEvents: "none",
             transition: "width 240ms ease",
           }}
         />
-      </div>
+      ) : null}
     </div>
   );
 }
