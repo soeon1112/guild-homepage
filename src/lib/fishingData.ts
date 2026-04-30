@@ -200,7 +200,37 @@ export const ASSETS_FISH = {
   hair: encodeURI("/images/fishing/Character assets/separate/fish/hair/wavy_fish.png"),
   rod: encodeURI("/images/fishing/Character assets/separate/fish/tool/fishingrod.png"),
   bobber: encodeURI("/images/fishing/Character assets/separate/fish/tool/bobber.png"),
+  fishShadow: encodeURI("/images/fishing/fishing assets/Fish Forage Items/fish_shadow.png"),
 };
+
+// Fish-shadow filmstrip: 240×16 = 15 frames × 16×16, looped while a
+// fish is "lurking" under the bobber. Frame timing kept slow so the
+// silhouette swims smoothly rather than flickering.
+export const FISH_SHADOW_CELL = 16;
+export const FISH_SHADOW_FRAMES = 15;
+export const FISH_SHADOW_FRAME_MS = 100;
+export const FISH_SHADOW_ORBIT_RADIUS = 14;
+
+// Bite-system tunables. The wait timer rolls a real-bite time in
+// [3..10]s and 0–2 fake bites scattered earlier; the shadow appears
+// FISH_SHADOW_LEAD_MS before the real bite. Reaction window is 2s.
+export const FISH_WAIT_MIN_MS = 3000;
+export const FISH_WAIT_MAX_MS = 10000;
+export const FISH_FAKE_BITE_PROBABILITY = 0.5;
+export const FISH_FAKE_BITE_MAX = 2;
+export const FISH_FAKE_BITE_DURATION_MS = 200;
+export const FISH_BITE_REACTION_MS = 2000;
+export const FISH_RESULT_MS = 1500;
+export const FISH_SHADOW_LEAD_MS = 2500;
+export const FISH_BITE_DEPTH_PX = 7;        // bobber sinks this far on real bite
+export const FISH_FAKE_BITE_DEPTH_PX = 1.5; // fake bite peak dip
+export const FISH_BOBBER_BOB_AMP = 2;       // sin oscillation amplitude in wait
+export const FISH_BOBBER_BOB_FREQ = 0.005;  // sin frequency
+
+// Toast text shown during success / fail modes.
+export const FISH_TEXT_TOO_EARLY = "너무 빨랐다...";
+export const FISH_TEXT_GOT_AWAY = "물고기가 도망갔다...";
+export const FISH_TEXT_CAUGHT = "물고기를 잡았다!";
 
 // Fishing sprite sheet: 5 frames × 4 directions in a 160×128 block;
 // each color variant is laid out horizontally at FISH_VARIANT_WIDTH.

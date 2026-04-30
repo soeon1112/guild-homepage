@@ -18,6 +18,25 @@ import {
   BOBBER_CELL,
   BOBBER_DISTANCE,
   BOBBER_INDEX,
+  FISH_BITE_DEPTH_PX,
+  FISH_BITE_REACTION_MS,
+  FISH_BOBBER_BOB_AMP,
+  FISH_BOBBER_BOB_FREQ,
+  FISH_FAKE_BITE_DEPTH_PX,
+  FISH_FAKE_BITE_DURATION_MS,
+  FISH_FAKE_BITE_MAX,
+  FISH_FAKE_BITE_PROBABILITY,
+  FISH_RESULT_MS,
+  FISH_SHADOW_CELL,
+  FISH_SHADOW_FRAME_MS,
+  FISH_SHADOW_FRAMES,
+  FISH_SHADOW_LEAD_MS,
+  FISH_SHADOW_ORBIT_RADIUS,
+  FISH_TEXT_CAUGHT,
+  FISH_TEXT_GOT_AWAY,
+  FISH_TEXT_TOO_EARLY,
+  FISH_WAIT_MAX_MS,
+  FISH_WAIT_MIN_MS,
   CHAR_BBOX_HALF_W,
   CHAR_BBOX_HEIGHT,
   COLLISION_BLUE_B_MIN,
@@ -108,10 +127,20 @@ type LoadedAssets = {
   fishHair: HTMLImageElement;
   fishRod: HTMLImageElement;
   fishBobber: HTMLImageElement;
+  fishShadow: HTMLImageElement;
 };
 
 type Prompt = "blueDoor" | "yellowDoor" | "exit" | "npc" | null;
-type Mode = "walk" | "fishingCast" | "fishingWait";
+type Mode =
+  | "walk"
+  | "fishingCast"
+  | "fishingWait"
+  | "fishingFakeBite"
+  | "fishingBite"
+  | "fishingSuccess"
+  | "fishingFail";
+
+type BiteEvent = { at: number; type: "fake" | "real" };
 
 function pointInRect(x: number, y: number, r: Rect): boolean {
   return x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h;
@@ -342,13 +371,26 @@ export default function FishingGame({ open, onClose }: Props) {
     frame: 0,
     frameAcc: 0,
     // Fishing state machine. mode = "walk" outside the minigame;
-    // "fishingCast" plays the 5-frame cast; "fishingWait" locks the
-    // last cast frame and loops the bobber.
+    // "fishingCast" plays the 5-frame cast; "fishingWait" loops the
+    // bobber bobbing while fake/real bite events fire on schedule.
     mode: "walk" as Mode,
     fishFrame: 0,
     fishFrameAcc: 0,
     bobberFrame: 0,
     bobberAcc: 0,
+    // Bite-system bookkeeping. waitElapsed is the cumulative time
+    // spent in fishingWait (paused during fake bites); subT is the
+    // ms elapsed in the current sub-mode (cast / wait / fake / bite
+    // / success / fail). events is the schedule rolled at the start
+    // of each wait — fake bites + the eventual real bite.
+    waitElapsed: 0,
+    subT: 0,
+    events: [] as BiteEvent[],
+    eventIdx: 0,
+    realBiteAt: 0,
+    shadowAt: 0,
+    shadowFrame: 0,
+    shadowAcc: 0,
   });
   const keysRef = useRef({ up: false, down: false, left: false, right: false });
   const joyRef = useRef({
@@ -382,6 +424,12 @@ export default function FishingGame({ open, onClose }: Props) {
   const [mode, setMode] = useState<Mode>("walk");
   const [canFish, setCanFish] = useState(false);
   const canFishRef = useRef(false);
+  // Result text shown during fishingSuccess / fishingFail. The kind
+  // distinguishes styling but both auto-clear when the mode advances.
+  const [fishingResult, setFishingResult] = useState<{
+    text: string;
+    kind: "success" | "fail";
+  } | null>(null);
   // Joystick visual state mirrored into React for the DOM overlay.
   // Updates only on pointer events (not 60fps), so React isn't thrashed.
   // dx/dy here are knob offset in pixels relative to the static base.
@@ -416,6 +464,14 @@ export default function FishingGame({ open, onClose }: Props) {
       fishFrameAcc: 0,
       bobberFrame: 0,
       bobberAcc: 0,
+      waitElapsed: 0,
+      subT: 0,
+      events: [],
+      eventIdx: 0,
+      realBiteAt: 0,
+      shadowAt: 0,
+      shadowFrame: 0,
+      shadowAcc: 0,
     };
     keysRef.current = { up: false, down: false, left: false, right: false };
     joyRef.current = { active: false, pointerId: -1, dx: 0, dy: 0 };
@@ -509,6 +565,7 @@ export default function FishingGame({ open, onClose }: Props) {
       load(ASSETS_FISH.hair),
       load(ASSETS_FISH.rod),
       load(ASSETS_FISH.bobber),
+      load(ASSETS_FISH.fishShadow),
     ])
       .then(
         ([
@@ -533,6 +590,7 @@ export default function FishingGame({ open, onClose }: Props) {
           fishHair,
           fishRod,
           fishBobber,
+          fishShadow,
         ]) => {
           if (cancelled) return;
           // Yellow patch → NPC anchor + interaction zone. Fallback is
@@ -567,6 +625,7 @@ export default function FishingGame({ open, onClose }: Props) {
             fishHair,
             fishRod,
             fishBobber,
+            fishShadow,
           });
         },
       )
@@ -611,6 +670,14 @@ export default function FishingGame({ open, onClose }: Props) {
             fishFrameAcc: 0,
             bobberFrame: 0,
             bobberAcc: 0,
+            waitElapsed: 0,
+            subT: 0,
+            events: [],
+            eventIdx: 0,
+            realBiteAt: 0,
+            shadowAt: 0,
+            shadowFrame: 0,
+            shadowAcc: 0,
           };
           promptRef.current = null;
           canFishRef.current = false;
@@ -634,6 +701,14 @@ export default function FishingGame({ open, onClose }: Props) {
             fishFrameAcc: 0,
             bobberFrame: 0,
             bobberAcc: 0,
+            waitElapsed: 0,
+            subT: 0,
+            events: [],
+            eventIdx: 0,
+            realBiteAt: 0,
+            shadowAt: 0,
+            shadowFrame: 0,
+            shadowAcc: 0,
           };
           promptRef.current = null;
           canFishRef.current = false;
@@ -649,41 +724,77 @@ export default function FishingGame({ open, onClose }: Props) {
     [startTransition],
   );
 
-  // Spacebar / action button. Starts a cast when the player is on
-  // the outdoor map, currently walking, and facing water within ~2
-  // tiles; otherwise (already fishing) it cancels back to walking.
-  const toggleFishing = useCallback(() => {
-    if (fadeRef.current.active || npcDialog) return;
-    if (sceneRef.current !== "outdoor") return;
-    const s = stateRef.current;
-    if (s.mode === "walk") {
-      if (!canFishRef.current) return;
-      s.mode = "fishingCast";
-      s.fishFrame = 0;
-      s.fishFrameAcc = 0;
-      s.bobberFrame = 0;
-      s.bobberAcc = 0;
-      // Cancel any movement input so the cast plays cleanly.
-      keysRef.current = { up: false, down: false, left: false, right: false };
-      joyRef.current = { active: false, pointerId: -1, dx: 0, dy: 0 };
-      setJoyView({ active: false, dx: 0, dy: 0 });
-      setMode("fishingCast");
-    } else {
-      s.mode = "walk";
-      s.fishFrame = 0;
-      s.fishFrameAcc = 0;
-      s.bobberFrame = 0;
-      s.bobberAcc = 0;
-      setMode("walk");
+  // Roll a new bite schedule when entering wait. Real bite drops in
+  // [3..10]s, optionally preceded by 0..2 fake bites scattered
+  // earlier; the fish shadow appears FISH_SHADOW_LEAD_MS before the
+  // real bite so the player gets a tell.
+  const scheduleFishingEvents = useCallback((s: typeof stateRef.current) => {
+    const realAt =
+      FISH_WAIT_MIN_MS +
+      Math.random() * (FISH_WAIT_MAX_MS - FISH_WAIT_MIN_MS);
+    const numFakes =
+      Math.random() < FISH_FAKE_BITE_PROBABILITY
+        ? Math.floor(Math.random() * (FISH_FAKE_BITE_MAX + 1))
+        : 0;
+    const events: BiteEvent[] = [];
+    for (let i = 0; i < numFakes; i++) {
+      events.push({
+        at: 800 + Math.random() * Math.max(0, realAt - 1600),
+        type: "fake",
+      });
     }
-  }, [npcDialog]);
+    events.push({ at: realAt, type: "real" });
+    events.sort((a, b) => a.at - b.at);
+    s.events = events;
+    s.eventIdx = 0;
+    s.realBiteAt = realAt;
+    s.shadowAt = Math.max(500, realAt - FISH_SHADOW_LEAD_MS);
+    s.waitElapsed = 0;
+    s.shadowFrame = 0;
+    s.shadowAcc = 0;
+  }, []);
 
-  // Unified context action. Both the Space key and the floating
-  // action button call this; the icon/label decision in the UI also
-  // lives in `currentActionIcon` below so the two stay in sync.
-  //   • npcDialog open → close it
-  //   • fishing in progress OR facing water → toggleFishing
-  //   • standing in NPC zone → open dialog
+  // Cancel any active fishing back to walking. Used by Esc and by
+  // the action button when the player wants out of wait.
+  const cancelFishingToWalk = useCallback(() => {
+    const s = stateRef.current;
+    s.mode = "walk";
+    s.subT = 0;
+    s.fishFrame = 0;
+    s.fishFrameAcc = 0;
+    s.events = [];
+    s.eventIdx = 0;
+    s.waitElapsed = 0;
+    setMode("walk");
+    setFishingResult(null);
+  }, []);
+
+  // Start a new cast. Movement input is cleared so the animation
+  // plays without dragging.
+  const startCast = useCallback(() => {
+    const s = stateRef.current;
+    s.mode = "fishingCast";
+    s.subT = 0;
+    s.fishFrame = 0;
+    s.fishFrameAcc = 0;
+    s.events = [];
+    s.eventIdx = 0;
+    s.waitElapsed = 0;
+    keysRef.current = { up: false, down: false, left: false, right: false };
+    joyRef.current = { active: false, pointerId: -1, dx: 0, dy: 0 };
+    setJoyView({ active: false, dx: 0, dy: 0 });
+    setMode("fishingCast");
+    setFishingResult(null);
+  }, []);
+
+  // Single context-aware action. Wired to both Space and the
+  // floating action button. The mode dictates the response:
+  //   walk + canFish → start cast
+  //   walk + npc zone → open dialog
+  //   fishingCast / fishingWait → cancel back to walk
+  //   fishingFakeBite → fail with "너무 빨랐다..."
+  //   fishingBite → success with "물고기를 잡았다!"
+  //   fishingSuccess / fishingFail → ignored (auto-advance)
   const handleAction = useCallback(() => {
     if (npcDialog) {
       setNpcDialog(false);
@@ -691,14 +802,40 @@ export default function FishingGame({ open, onClose }: Props) {
     }
     if (fadeRef.current.active) return;
     const s = stateRef.current;
-    if (s.mode !== "walk" || canFishRef.current) {
-      toggleFishing();
+    if (s.mode === "fishingFakeBite") {
+      s.mode = "fishingFail";
+      s.subT = 0;
+      setMode("fishingFail");
+      setFishingResult({ text: FISH_TEXT_TOO_EARLY, kind: "fail" });
+      return;
+    }
+    if (s.mode === "fishingBite") {
+      s.mode = "fishingSuccess";
+      s.subT = 0;
+      setMode("fishingSuccess");
+      setFishingResult({ text: FISH_TEXT_CAUGHT, kind: "success" });
+      return;
+    }
+    if (s.mode === "fishingWait" || s.mode === "fishingCast") {
+      cancelFishingToWalk();
+      return;
+    }
+    if (s.mode === "fishingSuccess" || s.mode === "fishingFail") {
+      return;
+    }
+    // walk mode — start cast or open NPC dialog
+    if (sceneRef.current === "outdoor" && canFishRef.current) {
+      startCast();
       return;
     }
     if (promptRef.current === "npc") {
       setNpcDialog(true);
     }
-  }, [npcDialog, toggleFishing]);
+  }, [npcDialog, cancelFishingToWalk, startCast]);
+
+  // Backward-compatible alias used by the Esc handler — same as
+  // cancelFishingToWalk for any non-walk fishing state.
+  const toggleFishing = cancelFishingToWalk;
 
   // Keyboard input. We listen on window so focus on the canvas isn't
   // required — the panel is the foreground UI when open.
@@ -904,15 +1041,83 @@ export default function FishingGame({ open, onClose }: Props) {
         ) {
           s.mode = "fishingWait";
           s.fishFrameAcc = 0;
-          s.bobberFrame = 0;
-          s.bobberAcc = 0;
+          s.subT = 0;
+          scheduleFishingEvents(s);
           setMode("fishingWait");
         }
         return;
       }
       if (s.mode === "fishingWait") {
-        // Bobber renders as a static sprite (no per-frame loop), so
-        // the only loop work here is gating input/zone updates.
+        s.waitElapsed += dt * 1000;
+        s.subT += dt * 1000;
+        // Animate fish shadow once it appears.
+        if (s.waitElapsed >= s.shadowAt) {
+          s.shadowAcc += dt * 1000;
+          while (s.shadowAcc >= FISH_SHADOW_FRAME_MS) {
+            s.shadowAcc -= FISH_SHADOW_FRAME_MS;
+            s.shadowFrame = (s.shadowFrame + 1) % FISH_SHADOW_FRAMES;
+          }
+        }
+        // Trigger the next scheduled event if its time has come.
+        if (
+          s.eventIdx < s.events.length &&
+          s.waitElapsed >= s.events[s.eventIdx].at
+        ) {
+          const ev = s.events[s.eventIdx];
+          s.eventIdx++;
+          s.subT = 0;
+          if (ev.type === "fake") {
+            s.mode = "fishingFakeBite";
+            setMode("fishingFakeBite");
+          } else {
+            s.mode = "fishingBite";
+            setMode("fishingBite");
+          }
+        }
+        return;
+      }
+      if (s.mode === "fishingFakeBite") {
+        s.subT += dt * 1000;
+        if (s.subT >= FISH_FAKE_BITE_DURATION_MS) {
+          s.mode = "fishingWait";
+          s.subT = 0;
+          setMode("fishingWait");
+        }
+        return;
+      }
+      if (s.mode === "fishingBite") {
+        s.subT += dt * 1000;
+        if (s.subT >= FISH_BITE_REACTION_MS) {
+          // Player missed the reaction window — fish escapes.
+          s.mode = "fishingFail";
+          s.subT = 0;
+          setMode("fishingFail");
+          setFishingResult({ text: FISH_TEXT_GOT_AWAY, kind: "fail" });
+        }
+        return;
+      }
+      if (s.mode === "fishingSuccess") {
+        s.subT += dt * 1000;
+        if (s.subT >= FISH_RESULT_MS) {
+          // Catch sequence done — back to walk.
+          s.mode = "walk";
+          s.subT = 0;
+          setMode("walk");
+          setFishingResult(null);
+        }
+        return;
+      }
+      if (s.mode === "fishingFail") {
+        s.subT += dt * 1000;
+        if (s.subT >= FISH_RESULT_MS) {
+          // Bobber resets and a fresh schedule rolls so the player
+          // can keep fishing without re-casting.
+          s.mode = "fishingWait";
+          s.subT = 0;
+          scheduleFishingEvents(s);
+          setMode("fishingWait");
+          setFishingResult(null);
+        }
         return;
       }
 
@@ -1125,29 +1330,69 @@ export default function FishingGame({ open, onClose }: Props) {
       );
     };
 
+    // Compute the bobber's vertical offset for the current fishing
+    // sub-mode. wait + fail bob gently with a sin oscillation;
+    // fakeBite peaks down ~1.5 px halfway through; bite eases down
+    // FISH_BITE_DEPTH_PX and holds; success pops up briefly then
+    // disappears (handled by skipping the draw in render).
+    const bobberYOffset = (m: Mode, subT: number, time: number): number => {
+      if (m === "fishingWait" || m === "fishingFail") {
+        return Math.sin(time * FISH_BOBBER_BOB_FREQ) * FISH_BOBBER_BOB_AMP;
+      }
+      if (m === "fishingFakeBite") {
+        const t = Math.min(subT / FISH_FAKE_BITE_DURATION_MS, 1);
+        return Math.sin(t * Math.PI) * FISH_FAKE_BITE_DEPTH_PX;
+      }
+      if (m === "fishingBite") {
+        // Quick sink (300 ms) then hold at depth.
+        const t = Math.min(subT / 300, 1);
+        return t * FISH_BITE_DEPTH_PX;
+      }
+      if (m === "fishingSuccess") {
+        // First 200 ms pops up, then we stop drawing.
+        const t = Math.min(subT / 200, 1);
+        return -t * 4;
+      }
+      return 0;
+    };
+
+    // Whether the bobber should be drawn at all in the current mode.
+    // Hidden after the brief success pop-up so the catch animation
+    // ends with an empty surface.
+    const isBobberVisible = (m: Mode, subT: number): boolean => {
+      if (m === "fishingSuccess" && subT > 200) return false;
+      return (
+        m === "fishingWait" ||
+        m === "fishingFakeBite" ||
+        m === "fishingBite" ||
+        m === "fishingSuccess" ||
+        m === "fishingFail"
+      );
+    };
+
     // Bobber + fishing line. bobber.png is a 128×32 strip of EIGHT
-    // distinct 16×16 bobber designs (not a 4-frame animation), so
-    // we crop only the first design and render it statically. The
-    // bobber sits BOBBER_DISTANCE pixels ahead of the player's foot
-    // along the facing direction's unit vector.
-    //
-    // Canvas convention: +x is right, +y is downward. So
-    //   dir="right" → dx=+1 (bobber to the player's right)
-    //   dir="down"  → dy=+1 (bobber south of the player)
-    // Both rod tip and bobber must use this same orientation so the
-    // line connecting them stays straight.
+    // distinct 16×16 bobber designs; we crop the first one and
+    // render it statically. The Y position varies with mode (see
+    // bobberYOffset above) so the bobber bobs in wait, dips on fake
+    // bites, sinks on real bites, and pops up on success.
     const drawBobberAndLine = (
       footX: number,
       footY: number,
       camX: number,
       camY: number,
       dir: Direction,
+      m: Mode,
+      subT: number,
+      time: number,
     ) => {
+      if (!isBobberVisible(m, subT)) return;
       const dx = dir === "right" ? 1 : dir === "left" ? -1 : 0;
       const dy = dir === "down" ? 1 : dir === "up" ? -1 : 0;
-      const bobberCX = footX + dx * BOBBER_DISTANCE;
-      const bobberCY = footY + dy * BOBBER_DISTANCE;
-      // 16×16 crop, centered on the bobber's intended water position.
+      const baseCX = footX + dx * BOBBER_DISTANCE;
+      const baseCY = footY + dy * BOBBER_DISTANCE;
+      const yOffset = bobberYOffset(m, subT, time);
+      const bobberCX = baseCX;
+      const bobberCY = baseCY + yOffset;
       const half = BOBBER_CELL / 2;
       const bobberDrawX = Math.round(bobberCX - half - camX);
       const bobberDrawY = Math.round(bobberCY - half - camY);
@@ -1170,6 +1415,88 @@ export default function FishingGame({ open, onClose }: Props) {
       ctx.moveTo(tipX, tipY);
       ctx.lineTo(bobberCX - camX, bobberCY - camY);
       ctx.stroke();
+      ctx.restore();
+    };
+
+    // Fish shadow under water. Visible during the lurking phase
+    // (fishingWait once waitElapsed reaches shadowAt, and through
+    // fishingFakeBite / fishingBite). Orbits the bobber in an
+    // ellipse during wait; on a real bite it dives toward the
+    // bobber center and disappears once the catch resolves.
+    const drawFishShadow = (
+      footX: number,
+      footY: number,
+      camX: number,
+      camY: number,
+      dir: Direction,
+      m: Mode,
+      subT: number,
+      waitElapsed: number,
+      shadowAt: number,
+      shadowFrame: number,
+    ) => {
+      const showInWait =
+        (m === "fishingWait" || m === "fishingFakeBite") &&
+        waitElapsed >= shadowAt;
+      const showInBite = m === "fishingBite";
+      if (!showInWait && !showInBite) return;
+      const dx = dir === "right" ? 1 : dir === "left" ? -1 : 0;
+      const dy = dir === "down" ? 1 : dir === "up" ? -1 : 0;
+      const baseCX = footX + dx * BOBBER_DISTANCE;
+      const baseCY = footY + dy * BOBBER_DISTANCE;
+      let shadowCX = baseCX;
+      let shadowCY = baseCY + 4; // a bit below water surface
+      if (showInWait) {
+        const t = (waitElapsed - shadowAt) / 1000;
+        shadowCX += Math.cos(t * 2.2) * FISH_SHADOW_ORBIT_RADIUS;
+        shadowCY +=
+          Math.sin(t * 2.2) * FISH_SHADOW_ORBIT_RADIUS * 0.55;
+      } else {
+        // bite: the shadow rushes from its last orbit position to
+        // the bobber center. Use a 300 ms ease-in.
+        const k = Math.min(subT / 300, 1);
+        const lastT = (shadowAt + FISH_SHADOW_LEAD_MS - shadowAt) / 1000;
+        const startCX =
+          baseCX + Math.cos(lastT * 2.2) * FISH_SHADOW_ORBIT_RADIUS;
+        const startCY =
+          baseCY +
+          4 +
+          Math.sin(lastT * 2.2) * FISH_SHADOW_ORBIT_RADIUS * 0.55;
+        shadowCX = startCX + (baseCX - startCX) * k;
+        shadowCY = startCY + (baseCY + 4 - startCY) * k;
+      }
+      const half = FISH_SHADOW_CELL / 2;
+      const drawX = Math.round(shadowCX - half - camX);
+      const drawY = Math.round(shadowCY - half - camY);
+      ctx.save();
+      ctx.globalAlpha = 0.55;
+      ctx.drawImage(
+        imgs.fishShadow,
+        shadowFrame * FISH_SHADOW_CELL, 0, FISH_SHADOW_CELL, FISH_SHADOW_CELL,
+        drawX, drawY, FISH_SHADOW_CELL, FISH_SHADOW_CELL,
+      );
+      ctx.restore();
+    };
+
+    // "!" exclamation above the player's head during a real bite —
+    // the canonical "fish on the line" cue.
+    const drawBiteIndicator = (
+      footX: number,
+      footY: number,
+      camX: number,
+      camY: number,
+    ) => {
+      ctx.save();
+      ctx.font = "bold 12px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "alphabetic";
+      ctx.fillStyle = "#FFE5C4";
+      ctx.strokeStyle = "rgba(11,8,33,0.85)";
+      ctx.lineWidth = 2;
+      const x = footX - camX;
+      const y = footY - 30 - camY;
+      ctx.strokeText("!", x, y);
+      ctx.fillText("!", x, y);
       ctx.restore();
     };
 
@@ -1225,6 +1552,7 @@ export default function FishingGame({ open, onClose }: Props) {
 
       if (currentScene === "outdoor") {
         ctx.drawImage(imgs.map, -camX, -camY);
+        const now = performance.now();
         if (s.mode === "walk") {
           drawCharacter(
             imgs.char,
@@ -1238,10 +1566,44 @@ export default function FishingGame({ open, onClose }: Props) {
           );
         } else {
           // Fishing modes share the same per-direction 5-frame
-          // sheet; "fishingWait" just locks the last frame.
-          drawFishingChar(s.x, s.y, camX, camY, s.fishFrame, s.dir, playerColors);
-          if (s.mode === "fishingWait") {
-            drawBobberAndLine(s.x, s.y, camX, camY, s.dir);
+          // sheet; the wait/result modes lock to the last cast
+          // frame (frame 4 in raw order, frame 0 after the L/R
+          // reversal handled inside drawFishingChar).
+          drawFishingChar(
+            s.x,
+            s.y,
+            camX,
+            camY,
+            s.fishFrame,
+            s.dir,
+            playerColors,
+          );
+          // Underwater shadow first (so the bobber draws on top of
+          // it when they overlap during the bite-pull moment).
+          drawFishShadow(
+            s.x,
+            s.y,
+            camX,
+            camY,
+            s.dir,
+            s.mode,
+            s.subT,
+            s.waitElapsed,
+            s.shadowAt,
+            s.shadowFrame,
+          );
+          drawBobberAndLine(
+            s.x,
+            s.y,
+            camX,
+            camY,
+            s.dir,
+            s.mode,
+            s.subT,
+            now,
+          );
+          if (s.mode === "fishingBite") {
+            drawBiteIndicator(s.x, s.y, camX, camY);
           }
         }
         // Front layer — drawn last so any non-transparent pixel of
@@ -1289,7 +1651,7 @@ export default function FishingGame({ open, onClose }: Props) {
 
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
-  }, [open, assets, triggerZone]);
+  }, [open, assets, triggerZone, scheduleFishingEvents]);
 
   return (
     <AnimatePresence>
@@ -1405,12 +1767,22 @@ export default function FishingGame({ open, onClose }: Props) {
                 scene === "outdoor" && (canFish || fishingActive);
               const showTalk = !fishingActive && prompt === "npc";
               if (!showFish && !showTalk) return null;
-              const icon = showFish ? "🎣" : "💬";
-              const label = showFish
-                ? mode === "walk"
-                  ? "낚시하기"
-                  : "낚시 취소"
-                : "대화하기";
+              // Bite mode swaps the icon to a vivid "!" so it reads
+              // as "press now!" instead of a passive fishing prompt.
+              const icon = showTalk
+                ? "💬"
+                : mode === "fishingBite"
+                ? "!"
+                : "🎣";
+              const label =
+                mode === "fishingBite"
+                  ? "당기기"
+                  : mode === "fishingFakeBite" || mode === "fishingWait"
+                  ? "낚시 취소"
+                  : showTalk
+                  ? "대화하기"
+                  : "낚시하기";
+              const isBite = mode === "fishingBite";
               return (
                 <motion.button
                   type="button"
@@ -1419,26 +1791,72 @@ export default function FishingGame({ open, onClose }: Props) {
                     handleAction();
                   }}
                   whileTap={{ scale: 0.9 }}
-                  transition={{ duration: 0.08 }}
+                  animate={
+                    isBite ? { scale: [1, 1.08, 1] } : { scale: 1 }
+                  }
+                  transition={
+                    isBite
+                      ? { duration: 0.6, repeat: Infinity }
+                      : { duration: 0.08 }
+                  }
                   aria-label={label}
                   className="absolute right-3 bottom-3 flex items-center justify-center rounded-full text-stardust"
                   style={{
                     width: 56,
                     height: 56,
-                    background: "rgba(11,8,33,0.6)",
-                    border: "1px solid rgba(216,150,200,0.35)",
-                    boxShadow:
-                      "0 4px 14px rgba(11,8,33,0.55), inset 0 1px 0 rgba(255,229,196,0.10)",
+                    background: isBite
+                      ? "rgba(220,80,80,0.78)"
+                      : "rgba(11,8,33,0.6)",
+                    border: isBite
+                      ? "1px solid rgba(255,229,196,0.85)"
+                      : "1px solid rgba(216,150,200,0.35)",
+                    boxShadow: isBite
+                      ? "0 4px 18px rgba(220,80,80,0.55), inset 0 1px 0 rgba(255,229,196,0.30)"
+                      : "0 4px 14px rgba(11,8,33,0.55), inset 0 1px 0 rgba(255,229,196,0.10)",
                     backdropFilter: "blur(4px)",
                     WebkitBackdropFilter: "blur(4px)",
                   }}
                 >
-                  <span className="text-[24px] leading-none" aria-hidden>
+                  <span
+                    className="leading-none"
+                    aria-hidden
+                    style={{
+                      fontSize: isBite ? 28 : 24,
+                      fontWeight: isBite ? 800 : 400,
+                    }}
+                  >
                     {icon}
                   </span>
                 </motion.button>
               );
             })()}
+
+            {/* Fishing result toast — shown during fishingSuccess
+                / fishingFail. Distinct color per kind so a glance
+                tells the player what happened. */}
+            {fishingResult ? (
+              <div
+                className="pointer-events-none absolute left-1/2 top-[28%] -translate-x-1/2 rounded-xl px-3 py-1.5 text-[12px] font-semibold"
+                style={{
+                  background:
+                    fishingResult.kind === "success"
+                      ? "rgba(216,150,200,0.92)"
+                      : "rgba(11,8,33,0.92)",
+                  color:
+                    fishingResult.kind === "success" ? "#1a0f3d" : "#f4efff",
+                  border:
+                    fishingResult.kind === "success"
+                      ? "1px solid rgba(255,229,196,0.85)"
+                      : "1px solid rgba(216,150,200,0.50)",
+                  boxShadow:
+                    fishingResult.kind === "success"
+                      ? "0 4px 16px rgba(216,150,200,0.55)"
+                      : "0 4px 16px rgba(11,8,33,0.6)",
+                }}
+              >
+                {fishingResult.text}
+              </div>
+            ) : null}
 
             {/* "준비중입니다" toast — auto-dismisses after 1.6s */}
             {yellowToast ? (
