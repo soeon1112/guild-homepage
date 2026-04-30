@@ -41,7 +41,9 @@ type Props = { open: boolean; onClose: () => void };
 
 type LoadedAssets = {
   map: HTMLImageElement;
-  mapFront: HTMLImageElement;
+  // mapFront is stored as a canvas — see loadOpaqueOverlay below for
+  // why we pre-process the PNG instead of using the raw <img>.
+  mapFront: HTMLCanvasElement;
   collision: ImageData;
   char: HTMLImageElement;
   eyes: HTMLImageElement;
@@ -189,9 +191,32 @@ export default function FishingGame({ open, onClose }: Props) {
       cx.drawImage(img, 0, 0);
       return cx.getImageData(0, 0, img.width, img.height);
     };
+    // The 배경_front.png artwork was authored with some semi-opaque
+    // brush strokes, so drawing it raw lets the player show through
+    // tree canopies / roof eaves. Force every visible pixel to full
+    // alpha here so the front layer occludes the player completely
+    // (the spec calls for binary opacity, not soft transparency).
+    const loadOpaqueOverlay = async (
+      src: string,
+    ): Promise<HTMLCanvasElement> => {
+      const img = await load(src);
+      const c = document.createElement("canvas");
+      c.width = img.width;
+      c.height = img.height;
+      const cx = c.getContext("2d");
+      if (!cx) throw new Error("front: 2d context unavailable");
+      cx.drawImage(img, 0, 0);
+      const data = cx.getImageData(0, 0, img.width, img.height);
+      const px = data.data;
+      for (let i = 3; i < px.length; i += 4) {
+        if (px[i] > 0) px[i] = 255;
+      }
+      cx.putImageData(data, 0, 0);
+      return c;
+    };
     Promise.all([
       load(ASSETS.background),
-      load(ASSETS.mapFront),
+      loadOpaqueOverlay(ASSETS.mapFront),
       loadCollision(ASSETS.collision),
       load(ASSETS.charBase),
       load(ASSETS.eyes),
