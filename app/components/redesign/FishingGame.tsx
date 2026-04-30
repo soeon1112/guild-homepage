@@ -706,7 +706,7 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
   // deployment is verified.
   if (typeof window !== "undefined" && !(window as unknown as { __fishingBuildLogged?: boolean }).__fishingBuildLogged) {
     (window as unknown as { __fishingBuildLogged: boolean }).__fishingBuildLogged = true;
-    console.log("[FISHING BUILD] 2026-05-01 debug check v1");
+    console.log("[FISHING BUILD] v2 - canvas fix applied");
   }
   const canvasRef = useRef<HTMLCanvasElement>(null);
   // DEBUG: nickname-draw log — fires once per session so the
@@ -3296,7 +3296,7 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
       // too, but a fractional foot pixel was bleeding through here.
       // Future chat bubbles should stack ABOVE this baseline so the
       // tail still points at the head.
-      const NAMEPLATE_HEAD_OFFSET = 12;
+      const NAMEPLATE_HEAD_OFFSET = 8;
       if (nickname) {
         const nx = Math.round((s.x - camX) * MAP_SCALE);
         const ny = Math.round(
@@ -3304,7 +3304,12 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
         );
         if (!nicknameLogOnceRef.current) {
           nicknameLogOnceRef.current = true;
-          console.log("[FISHING] drawing nickname at y=", ny);
+          console.log(
+            "[FISHING] NAMEPLATE_HEAD_OFFSET=",
+            NAMEPLATE_HEAD_OFFSET,
+            "ny=",
+            ny,
+          );
         }
         ctx.save();
         ctx.font =
@@ -6969,6 +6974,13 @@ function CharacterCreatorPreview({
     ).then((imgs) => {
       if (cancelled) return;
       ctx.clearRect(0, 0, size, drawHeight);
+      console.log(
+        "[FISHING] canvas size:",
+        size,
+        drawHeight,
+        "char draw y:",
+        0,
+      );
       for (let i = 0; i < imgs.length; i++) {
         const sx = layers[i].varX + FRAME * CELL;
         // Source y starts at the cell top + PREVIEW_SRC_TOP so the
