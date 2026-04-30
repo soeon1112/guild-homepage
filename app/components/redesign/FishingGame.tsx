@@ -941,6 +941,11 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
     y: number;
     dir: Direction;
   } | null>(null);
+  // Suppress door triggers for ~1 s after a shop exit. Without this
+  // the player lands on the door's blue pixel facing the entry tile
+  // and immediately gets re-pulled into the shop on the very next
+  // computeZone pass.
+  const doorCooldownUntilRef = useRef(0);
 
   // Boot-time position validation. Fires once `assets` is set after
   // Firestore restore + asset load both finish. If the player's
@@ -1490,16 +1495,25 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
           setCanFish(false);
         });
       } else if (zone === "exit") {
+        // 1 s cooldown — even with the position-and-direction reset
+        // below, the player can be standing on a blue pixel and
+        // re-trigger the entry transition the moment they hold a
+        // direction key. The cooldown gates computeZone so blue/
+        // yellow door prompts return null until the timer expires.
+        doorCooldownUntilRef.current = performance.now() + 1000;
         startTransition(() => {
           sceneRef.current = "outdoor";
           // Restore the position the player walked in from. Falls
           // back to FISHSHOP_EXIT_SPAWN if no return memory exists
           // (first-session restore from Firestore lastMap=fishshop).
+          // Direction is forced to "down" so the player visibly
+          // faces away from the door — pairs with the cooldown to
+          // make accidental re-entry hard.
           const ret = outdoorReturnRef.current;
           stateRef.current = {
             x: ret?.x ?? FISHSHOP_EXIT_SPAWN_X,
             y: ret?.y ?? FISHSHOP_EXIT_SPAWN_Y,
-            dir: ret?.dir ?? "down",
+            dir: "down",
             moving: false,
             frame: 0,
             frameAcc: 0,
@@ -2007,8 +2021,13 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
     ): Prompt => {
       if (currentScene === "outdoor") {
         // Blue marker → shop door. Disambiguate by x: left half of
-        // the map = fish shop, right half = yellow shop.
-        if (isBlueAtBbox(x, y, collision)) {
+        // the map = fish shop, right half = yellow shop. Door
+        // triggers are suppressed for ~1 s after a shop exit so the
+        // player doesn't get yanked back in immediately.
+        if (
+          isBlueAtBbox(x, y, collision) &&
+          performance.now() >= doorCooldownUntilRef.current
+        ) {
           return x < MAP_WIDTH / 2 ? "blueDoor" : "yellowDoor";
         }
         return null;
