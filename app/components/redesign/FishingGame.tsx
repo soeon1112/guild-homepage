@@ -1253,29 +1253,110 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
     ).catch((err) => console.error("[fishing] save lastMap failed", err));
   }, [scene, open, nickname]);
 
-  // Save final foot position when the panel closes. Cleanup runs
-  // when open flips to false; we read stateRef synchronously and
-  // fire-and-forget the write (no await — close should feel
-  // instant). Position writes ONLY here so frame-by-frame movement
-  // doesn't burn quota.
+  // Final-flush helper — builds the full save payload from the most
+  // recent state and fires a single merge write. Used by the close
+  // cleanup AND the beforeunload/pagehide listeners so a player who
+  // closes the panel, navigates away, refreshes, or shuts the tab
+  // doesn't lose progress between the last auto-save and the unload.
+  //
+  // We stash the latest state in a ref each render so the closure
+  // captured by beforeunload (registered once) always reads fresh
+  // values, not whatever existed when it was first installed.
+  const flushSnapshotRef = useRef({
+    inventory,
+    codexCaught,
+    totalExp,
+    totalCatches,
+    totalStarlight,
+    stamina,
+  });
+  useEffect(() => {
+    flushSnapshotRef.current = {
+      inventory,
+      codexCaught,
+      totalExp,
+      totalCatches,
+      totalStarlight,
+      stamina,
+    };
+  }, [
+    inventory,
+    codexCaught,
+    totalExp,
+    totalCatches,
+    totalStarlight,
+    stamina,
+  ]);
+  const flushSave = useCallback(() => {
+    if (!saveEnabledRef.current) return;
+    if (!nickname) return;
+    const snap = flushSnapshotRef.current;
+    const inventoryArr: Array<{ fishId: number; count: number }> = [];
+    const forageArr: Array<{ forageId: number; count: number }> = [];
+    const foodArr: Array<{ foodId: number; count: number }> = [];
+    for (const [k, v] of Object.entries(snap.inventory)) {
+      if (v <= 0) continue;
+      if (k.startsWith("fish-")) {
+        inventoryArr.push({ fishId: Number(k.slice(5)), count: v });
+      } else if (k.startsWith("forage-")) {
+        forageArr.push({ forageId: Number(k.slice(7)), count: v });
+      } else if (k.startsWith("food-")) {
+        foodArr.push({ foodId: Number(k.slice(5)), count: v });
+      }
+    }
+    const s = stateRef.current;
+    const ref = doc(db, "users", nickname, "fishing", "current");
+    setDoc(
+      ref,
+      {
+        inventory: inventoryArr,
+        forageInventory: forageArr,
+        foodInventory: foodArr,
+        codex: Array.from(snap.codexCaught),
+        exp: snap.totalExp,
+        level: levelFromTotalExp(snap.totalExp).level,
+        totalCaught: snap.totalCatches,
+        totalStars: snap.totalStarlight,
+        stamina: snap.stamina,
+        lastPosition: { x: s.x, y: s.y, facing: s.dir },
+        lastMap:
+          sceneRef.current === "fishshop" ? "fishshop" : "outdoor",
+      },
+      { merge: true },
+    ).catch((err) => console.error("[fishing] flushSave failed", err));
+  }, [nickname]);
+
+  // Save final foot position + a fresh full-payload flush when the
+  // panel closes. Cleanup runs when `open` flips to false; the write
+  // is fire-and-forget (no await — close should feel instant). The
+  // auto-save above already streams inventory/exp/etc. on every
+  // change, so this final write mostly catches lastPosition and any
+  // last state mutation that hadn't propagated to Firestore yet.
   useEffect(() => {
     if (!open || !nickname) return;
     return () => {
-      if (!saveEnabledRef.current) return;
-      const s = stateRef.current;
-      const ref = doc(db, "users", nickname, "fishing", "current");
-      setDoc(
-        ref,
-        {
-          lastPosition: { x: s.x, y: s.y, facing: s.dir },
-          lastMap: sceneRef.current === "fishshop" ? "fishshop" : "outdoor",
-        },
-        { merge: true },
-      ).catch((err) =>
-        console.error("[fishing] save position failed", err),
-      );
+      flushSave();
     };
-  }, [open, nickname]);
+  }, [open, nickname, flushSave]);
+
+  // Browser-shutdown / refresh safety net. beforeunload fires when
+  // the user closes the tab or hits reload, pagehide is the more
+  // reliable companion event on mobile Safari and bfcache navigations.
+  // The Firestore SDK queues the write through IndexedDB and replays
+  // it once the tab/network comes back, so even an aborted in-flight
+  // request is recoverable for the typical user flow.
+  useEffect(() => {
+    if (!open || !nickname) return;
+    const onUnload = () => {
+      flushSave();
+    };
+    window.addEventListener("beforeunload", onUnload);
+    window.addEventListener("pagehide", onUnload);
+    return () => {
+      window.removeEventListener("beforeunload", onUnload);
+      window.removeEventListener("pagehide", onUnload);
+    };
+  }, [open, nickname, flushSave]);
 
   // Asset loader — runs each time the panel opens. The browser cache
   // makes subsequent opens cheap; we keep the previous assets in
