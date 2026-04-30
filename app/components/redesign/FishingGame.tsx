@@ -1402,14 +1402,15 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
             setTotalCatches(data.totalCaught);
           if (typeof data.totalStars === "number")
             setTotalStarlight(data.totalStars);
-          // earnedStars is the new income-only counter. Legacy
-          // saves only have totalStars, so use it as a best-effort
-          // seed when earnedStars is missing — players who sold
-          // before this field existed still see a non-zero stat.
+          // earnedStars is income-only and only exists on saves
+          // written after this field shipped. We DO NOT seed from
+          // totalStars — totalStars is a balance mirror that's
+          // already been decreased by buys, so seeding from it
+          // would surface the current balance under the "총 번
+          // 별빛" label (the exact bug we're avoiding). Old saves
+          // start at 0 and accumulate forward from the next sell.
           if (typeof data.earnedStars === "number") {
             setEarnedStars(data.earnedStars);
-          } else if (typeof data.totalStars === "number") {
-            setEarnedStars(Math.max(0, data.totalStars));
           }
           if (typeof data.stamina === "number") {
             // Clamp restored stamina to [0, MAX_STAMINA] so a stale
