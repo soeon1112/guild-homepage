@@ -767,48 +767,67 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
   }, [sellToast]);
 
   // NPC greeting speech bubble. Shows above the shopkeeper for 3 s
-  // each time the player walks into the shop. Position is captured
-  // once at show time using the player's current spot as the camera
-  // anchor — the indoor camera barely scrolls (160-px map vs 153-px
-  // visible) so the captured screen coords stay accurate for the
-  // bubble's lifetime even as the player wanders around.
-  const [npcGreeting, setNpcGreeting] = useState<{
-    x: number;
-    y: number;
-  } | null>(null);
+  // each time the player walks into the shop. Position is no longer
+  // captured once — a rAF loop while visible repositions the bubble
+  // every frame against the latest camera so it stays glued to the
+  // NPC head even as the player walks around (which scrolls the
+  // indoor camera 0–7 px) or gets rescued post-load.
+  const [npcGreetingVisible, setNpcGreetingVisible] = useState(false);
+  const bubbleRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (scene !== "fishshop" || !assets) return;
-    const s = stateRef.current;
-    const visibleW = VIEWPORT / MAP_SCALE;
-    const visibleH = VIEWPORT / MAP_SCALE;
-    const camX = clamp(
-      Math.round(s.x - visibleW / 2),
-      0,
-      Math.max(0, INDOOR_MAP_WIDTH - visibleW),
-    );
-    const camY = clamp(
-      Math.round(s.y - visibleH / 2),
-      0,
-      Math.max(0, INDOOR_MAP_HEIGHT - visibleH),
-    );
-    setNpcGreeting({
-      x: (assets.npcFoot.x - camX) * MAP_SCALE,
-      y: (assets.npcFoot.y - camY) * MAP_SCALE,
-    });
-    const t = setTimeout(() => setNpcGreeting(null), 3000);
+    if (scene !== "fishshop" || !assets) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setNpcGreetingVisible(false);
+      return;
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setNpcGreetingVisible(true);
+    const t = setTimeout(() => setNpcGreetingVisible(false), 3000);
     return () => clearTimeout(t);
   }, [scene, assets]);
   // Tapping the NPC (i.e. opening the sell UI) dismisses the
   // greeting early so it doesn't reappear when the panel closes.
-  // setState-in-effect lint rule is fine here: this fires only on
-  // sellOpen edges, not in a render loop, and replaces the local
-  // bubble state to match the new "we already greeted" reality.
   useEffect(() => {
     if (sellOpen) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setNpcGreeting(null);
+      setNpcGreetingVisible(false);
     }
   }, [sellOpen]);
+  // While the bubble is up, recompute its screen position every
+  // frame from the current camera and NPC foot pixel. Direct DOM
+  // mutation via ref so this doesn't re-render React 60×/s.
+  useEffect(() => {
+    if (!npcGreetingVisible || !assets || scene !== "fishshop") return;
+    let raf = 0;
+    const update = () => {
+      const el = bubbleRef.current;
+      if (el) {
+        const s = stateRef.current;
+        const visibleW = VIEWPORT / MAP_SCALE;
+        const visibleH = VIEWPORT / MAP_SCALE;
+        const camX = clamp(
+          Math.round(s.x - visibleW / 2),
+          0,
+          Math.max(0, INDOOR_MAP_WIDTH - visibleW),
+        );
+        const camY = clamp(
+          Math.round(s.y - visibleH / 2),
+          0,
+          Math.max(0, INDOOR_MAP_HEIGHT - visibleH),
+        );
+        const sx = (assets.npcFoot.x - camX) * MAP_SCALE;
+        const sy = (assets.npcFoot.y - camY) * MAP_SCALE;
+        el.style.left = `${sx}px`;
+        // Bubble's bottom-center anchor sits ~54 px above the foot —
+        // clears the NPC sprite (≈48 px tall in canvas px) plus a
+        // small gap so the tail tip points at the head.
+        el.style.top = `${sy - 54}px`;
+      }
+      raf = requestAnimationFrame(update);
+    };
+    raf = requestAnimationFrame(update);
+    return () => cancelAnimationFrame(raf);
+  }, [npcGreetingVisible, assets, scene]);
 
   // Screen shake on legendary/mythic catches. Mythic shakes harder
   // and longer than legendary — the rest of the visual flair (glow,
@@ -3169,22 +3188,22 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                 player enters the shop, sits over the NPC's head, and
                 fades out after 3 s (or when the sell panel opens).
                 Two stacked CSS triangles render the downward tail
-                with a 2-px outer border. */}
-            {npcGreeting && scene === "fishshop" && !sellOpen ? (
+                with a 2-px outer border. Position is updated every
+                rAF tick (see the bubbleRef effect) so it stays glued
+                to the NPC even as the camera scrolls. */}
+            {npcGreetingVisible && scene === "fishshop" && !sellOpen ? (
               <motion.div
                 key="npc-greeting"
+                ref={bubbleRef}
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 4 }}
                 transition={{ duration: 0.18, ease: "easeOut" }}
                 className="pointer-events-none absolute"
                 style={{
-                  // (x, y) is the NPC foot. Position the bubble's
-                  // bottom-center ~52 px above that — clears the head
-                  // (~48 px tall sprite) with a small gap. translate
-                  // -50% / -100% anchors the bubble's bottom-center.
-                  left: npcGreeting.x,
-                  top: npcGreeting.y - 52,
+                  // left/top are written each frame by the rAF
+                  // effect; translate(-50%, -100%) anchors the
+                  // bubble's bottom-center at that pixel.
                   transform: "translate(-50%, -100%)",
                   zIndex: 12,
                 }}
@@ -3199,13 +3218,21 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                     padding: "5px 9px",
                     fontSize: 10,
                     color: "#3d2c1c",
-                    whiteSpace: "nowrap",
-                    lineHeight: 1.2,
+                    // Wrap long lines instead of overflowing — max
+                    // width caps at half the viewport so two-line
+                    // greetings break at the natural space.
+                    maxWidth: VIEWPORT / 2,
+                    whiteSpace: "normal",
+                    wordBreak: "keep-all",
+                    textAlign: "center",
+                    lineHeight: 1.3,
                     boxShadow: "0 2px 4px rgba(11,8,33,0.45)",
                     imageRendering: "pixelated",
                   }}
                 >
-                  어서오세요! 새벽빛 낚시상점입니다.
+                  어서오세요!
+                  <br />
+                  새벽빛 낚시상점입니다.
                   {/* Tail outer (border colour) — bigger triangle
                       sits below the bubble pointing down. */}
                   <div
