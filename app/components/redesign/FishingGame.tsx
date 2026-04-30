@@ -23,7 +23,6 @@ import {
   FISH_BITE_DEPTH_PX,
   FISH_BOBBER_BOB_AMP,
   FISH_BOBBER_BOB_FREQ,
-  FISH_FAIL_RETRACT_MS,
   FISH_FAKE_BITE_DEPTH_PX,
   FISH_FAKE_BITE_DURATION_MS,
   FISH_FAKE_BITE_MAX,
@@ -390,6 +389,14 @@ const UI_ACTION_BUTTON_HOVER = encodeURI(
 const UI_ACTION_BUTTON_PRESSED = encodeURI(
   UI_FLAT_BASE + "UI_Flat_Button02a_1.png",
 );
+// Gauge-fail toast lines + on-screen duration. Defined locally so we
+// can keep the data file (FISH_FAIL_RETRACT_MS) untouched while still
+// holding the toast long enough to read — 1500 ms feels like a clean
+// "miss" beat before the rod retracts back to walk.
+const FISH_TEXT_TOO_EARLY = "타이밍이 빨랐다.";
+const FISH_TEXT_TOO_LATE = "타이밍이 늦었다.";
+const FAIL_TOAST_DURATION_MS = 1500;
+
 const UI_GAUGE_BAR = encodeURI(UI_FLAT_BASE + "UI_Flat_Bar01a.png");
 const UI_GAUGE_FILL = encodeURI(UI_FLAT_BASE + "UI_Flat_BarFill01a.png");
 const UI_GAUGE_MARKER = encodeURI(UI_FLAT_BASE + "UI_Flat_Handle06a.png");
@@ -498,9 +505,9 @@ export default function FishingGame({ open, onClose }: Props) {
   // Catch result popup state. On success the gauge press resolves
   // the catch (fish/treasure/trash) and we render a popup that the
   // player has to confirm before the game returns to walk. The
-  // failure toast ("물고기가 도망갔다.") uses the same lifecycle as
-  // success — auto-clears after FISH_FAIL_RETRACT_MS — so we keep a
-  // separate transient string for it.
+  // failure toast (early/late/got-away) auto-clears after
+  // FAIL_TOAST_DURATION_MS, so we keep a separate transient string
+  // for it.
   const [catchPopup, setCatchPopup] = useState<CatchResult | null>(null);
   const [failToast, setFailToast] = useState<string | null>(null);
   // Screen-shake controls for legendary/mythic catches. Targets the
@@ -999,13 +1006,16 @@ export default function FishingGame({ open, onClose }: Props) {
         // could match the fish grade — surface it in the popup now.
         setCatchPopup(s.catchResult);
       } else {
-        // Missed press — show the "got away" line briefly, then
-        // auto-retract. Result is discarded.
+        // Missed press — distinguish "early" vs "late" so the player
+        // gets feedback on which side of the green zone they hit.
+        // Marker left of zone = pressed too early; right of zone =
+        // pressed too late.
+        const tooEarly = s.gaugeMarkerPos < s.gaugeSuccessStart;
         s.mode = "fishingFail";
         s.subT = 0;
         s.catchResult = null;
         setMode("fishingFail");
-        setFailToast(FISH_TEXT_GOT_AWAY);
+        setFailToast(tooEarly ? FISH_TEXT_TOO_EARLY : FISH_TEXT_TOO_LATE);
       }
       return;
     }
@@ -1340,7 +1350,7 @@ export default function FishingGame({ open, onClose }: Props) {
       }
       if (s.mode === "fishingFail") {
         s.subT += dt * 1000;
-        if (s.subT >= FISH_FAIL_RETRACT_MS) {
+        if (s.subT >= FAIL_TOAST_DURATION_MS) {
           s.mode = "walk";
           s.subT = 0;
           setMode("walk");
