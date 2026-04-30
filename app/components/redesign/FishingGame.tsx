@@ -1167,9 +1167,19 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
       } else if (KEY_RIGHT.has(e.key)) {
         keysRef.current.right = down;
         e.preventDefault();
-      } else if (down && (e.key === " " || e.code === "Space")) {
+      } else if (e.key === " " || e.code === "Space") {
+        // Mirror the mouse/touch pressed-state on the action button
+        // so Space gives the same visual feedback. Auto-repeat (held
+        // Space) shouldn't re-fire handleAction or thrash setState.
         e.preventDefault();
-        handleAction();
+        if (down) {
+          if (!e.repeat) {
+            setActionPressed(true);
+            handleAction();
+          }
+        } else {
+          setActionPressed(false);
+        }
       } else if (down && e.key === "Escape") {
         if (npcDialog) {
           setNpcDialog(false);
