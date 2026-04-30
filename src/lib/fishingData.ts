@@ -424,14 +424,15 @@ export const FISH_SHADOW_FRAME_MS = 100;
 export const FISH_SHADOW_ORBIT_RADIUS = 14;
 
 // Bite-system tunables. The wait timer rolls a real-bite time in
-// [5..15]s and 0–2 fake bites scattered earlier; the shadow appears
+// [8..20]s and 0–2 fake bites scattered earlier; the shadow appears
 // FISH_SHADOW_LEAD_MS before the real bite. Real-bite reaction is
 // no longer a fixed window — see FISH_GRADES below for the gauge
-// minigame that replaces the simple timing press. Original
-// 3–10s window made bites feel rushed; 5–15s gives the cast time
-// to settle so the wait reads as fishing rather than a quick QTE.
-export const FISH_WAIT_MIN_MS = 5000;
-export const FISH_WAIT_MAX_MS = 15000;
+// minigame that replaces the simple timing press. History: 3–10s
+// felt rushed, 5–15s settled it; 8–20s gives the cast even more
+// breathing room so the wait reads as a contemplative beat rather
+// than a quick QTE between casts.
+export const FISH_WAIT_MIN_MS = 8000;
+export const FISH_WAIT_MAX_MS = 20000;
 export const FISH_FAKE_BITE_PROBABILITY = 0.5;
 export const FISH_FAKE_BITE_MAX = 2;
 export const FISH_FAKE_BITE_DURATION_MS = 200;
