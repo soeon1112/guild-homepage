@@ -336,11 +336,13 @@ export const INDOOR_MAP_HEIGHT = 160;
 export const FISHSHOP_INDOOR_SPAWN_X = 80;
 export const FISHSHOP_INDOOR_SPAWN_Y = 130;
 
-// Where the player lands when leaving the shop — a couple of tiles
-// south of the LEFT blue marker (fish-shop door) so the player
-// doesn't bounce straight back inside.
+// Where the player lands when leaving the shop — pushed two tiles
+// further south (32 px = 2× TILE_SIZE) so a momentary lost-touch
+// on the joystick doesn't leave the player straddling the door
+// blue pixel and immediately re-triggering entry once the cooldown
+// expires.
 export const FISHSHOP_EXIT_SPAWN_X = 88;
-export const FISHSHOP_EXIT_SPAWN_Y = 152;
+export const FISHSHOP_EXIT_SPAWN_Y = 184;
 
 // Indoor exit zone — bottom strip of the floor. Walking south into
 // this zone auto-fires the exit transition.

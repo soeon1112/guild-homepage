@@ -2071,24 +2071,23 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
           setCanFish(false);
         });
       } else if (zone === "exit") {
-        // 1 s cooldown — even with the position-and-direction reset
-        // below, the player can be standing on a blue pixel and
-        // re-trigger the entry transition the moment they hold a
-        // direction key. The cooldown gates computeZone so blue/
-        // yellow door prompts return null until the timer expires.
-        doorCooldownUntilRef.current = performance.now() + 1000;
+        // 2 s cooldown — long enough to cover a touch-drag that
+        // briefly resets while the scene transition fades, plus
+        // the time the player needs to register the spawn point
+        // and steer away from the door.
+        doorCooldownUntilRef.current = performance.now() + 2000;
         startTransition(() => {
           sceneRef.current = "outdoor";
-          // Restore the position the player walked in from. Falls
-          // back to FISHSHOP_EXIT_SPAWN if no return memory exists
-          // (first-session restore from Firestore lastMap=fishshop).
-          // Direction is forced to "down" so the player visibly
-          // faces away from the door — pairs with the cooldown to
-          // make accidental re-entry hard.
-          const ret = outdoorReturnRef.current;
+          // Always use FISHSHOP_EXIT_SPAWN (2 tiles south of the
+          // door) regardless of where the player came from on
+          // entry. The previous "remember entry position" path
+          // could land them ON the door pixel if they entered
+          // from directly above it, instantly re-triggering the
+          // entry transition. Direction is forced to "down" so
+          // the player visibly faces away from the door.
           stateRef.current = {
-            x: ret?.x ?? FISHSHOP_EXIT_SPAWN_X,
-            y: ret?.y ?? FISHSHOP_EXIT_SPAWN_Y,
+            x: FISHSHOP_EXIT_SPAWN_X,
+            y: FISHSHOP_EXIT_SPAWN_Y,
             dir: "down",
             moving: false,
             frame: 0,
