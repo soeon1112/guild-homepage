@@ -121,9 +121,23 @@ import {
   WALK_FRAME_MS,
   WALK_ROWS,
   YELLOW_SHOP_LINE,
+  CHARACTER_COUNT,
+  HAIR_STYLES,
+  HAIR_COLOR_COUNT,
+  SHIRT_COLOR_COUNT,
+  PANTS_COLOR_COUNT,
+  SHOES_COLOR_COUNT,
+  ROD_TYPES,
+  ROD_BOBBER_PAIRS,
+  DEFAULT_CHARACTER_CONFIG,
+  characterAssetUrls,
+  sanitizeCharacterConfig,
   type Direction,
   type Rect,
   type Scene,
+  type CharacterConfig,
+  type HairStyle,
+  type RodType,
 } from "@/src/lib/fishingData";
 
 type Props = { open: boolean; onClose: () => void; nickname: string };
@@ -610,6 +624,10 @@ const UI_SELL_TAB_MARKER = encodeURI(
 // dedicated close button. 01b reads as a quiet dismiss control.
 const UI_ICON_CROSS = encodeURI(UI_FLAT_BASE + "UI_Flat_IconCross01b.png");
 const UI_ICON_ARROW = encodeURI(UI_FLAT_BASE + "UI_Flat_IconArrow01a.png");
+// Customization screen background — 64×32 cream slab with a gold
+// underline edge. 9-slice with cap=4 scale=2 stretches it to fit
+// the full creator panel. Same theme as the inventory frame.
+const UI_INPUT_FIELD = encodeURI(UI_FLAT_BASE + "UI_Flat_InputField01a.png");
 
 // ── Torch + shoreline animation ──────────────────────────────────
 // Torches in the outdoor map are baked into 배경.png at fixed cells.
@@ -823,6 +841,19 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
   useEffect(() => {
     staminaRef.current = stamina;
   }, [stamina]);
+  // Character customization (phase 1). characterConfig is the
+  // *applied* look used by the game's render layer; creatorDraft is
+  // the in-progress selection inside the customizer overlay. The
+  // creator surfaces only on the first session for a given player —
+  // once their character is saved to Firestore the overlay never
+  // re-opens (a future settings entry can re-trigger it).
+  const [characterConfig, setCharacterConfig] = useState<CharacterConfig>(
+    DEFAULT_CHARACTER_CONFIG,
+  );
+  const [showCharacterCreator, setShowCharacterCreator] = useState(false);
+  const [creatorDraft, setCreatorDraft] = useState<CharacterConfig>(
+    DEFAULT_CHARACTER_CONFIG,
+  );
   // Generic short-lived hint toast for stamina / shop edge cases
   // ("체력이 부족하다", "이미 체력이 가득 찼다", "별빛이 부족합니다").
   const [hintToast, setHintToast] = useState<string | null>(null);
@@ -1202,6 +1233,25 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
               stateRef.current.dir = lp.facing;
             }
           }
+          // Character config — if present, apply and skip the
+          // creator. Missing field means a brand-new save (or a
+          // legacy doc from before customization landed) — open
+          // the creator overlay so the player picks their look
+          // before the game starts.
+          if (data.character != null) {
+            const cfg = sanitizeCharacterConfig(data.character);
+            setCharacterConfig(cfg);
+            setCreatorDraft(cfg);
+            setShowCharacterCreator(false);
+          } else {
+            setCreatorDraft(DEFAULT_CHARACTER_CONFIG);
+            setShowCharacterCreator(true);
+          }
+        } else {
+          // No save document yet — first-time player. Open the
+          // creator with default draft.
+          setCreatorDraft(DEFAULT_CHARACTER_CONFIG);
+          setShowCharacterCreator(true);
         }
         saveEnabledRef.current = true;
       })
@@ -1477,6 +1527,12 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
         return { img, data: blankImageData() };
       }
     };
+    // Resolve character-specific URLs from the live config so the
+    // game loads the chosen char/hair/rod sheets. Layers that don't
+    // vary per character (eyes, shirt, pants, shoes — all single
+    // sheets with multi-colour variants) keep their static ASSETS
+    // URLs; the variant offset is applied at draw time.
+    const charUrls = characterAssetUrls(characterConfig);
     // Dump every URL we're about to fetch. If the panel hangs again
     // the network tab + this list make it trivial to find the
     // mismatched name.
@@ -1486,21 +1542,21 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
       ASSETS.collision,
       ASSETS.shopInterior,
       ASSETS.shopCollision,
-      ASSETS.charBase,
+      charUrls.walkChar,
       ASSETS.npcChar,
       ASSETS.eyes,
       ASSETS.shirt,
       ASSETS.pants,
       ASSETS.shoes,
-      ASSETS.hair,
+      charUrls.walkHair,
       ASSETS.shadow,
-      ASSETS_FISH.base,
+      charUrls.fishChar,
       ASSETS_FISH.eyes,
       ASSETS_FISH.shirt,
       ASSETS_FISH.pants,
       ASSETS_FISH.shoes,
-      ASSETS_FISH.hair,
-      ASSETS_FISH.rod,
+      charUrls.fishHair,
+      charUrls.fishRod,
       ASSETS_FISH.bobber,
       ASSETS_FISH.fishShadow,
       UI_GAUGE_BAR,
@@ -1518,21 +1574,21 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
       loadCollision(ASSETS.collision),
       load(ASSETS.shopInterior),
       loadCollision(ASSETS.shopCollision),
-      load(ASSETS.charBase),
+      load(charUrls.walkChar),
       load(ASSETS.npcChar),
       load(ASSETS.eyes),
       load(ASSETS.shirt),
       load(ASSETS.pants),
       load(ASSETS.shoes),
-      load(ASSETS.hair),
+      load(charUrls.walkHair),
       load(ASSETS.shadow),
-      load(ASSETS_FISH.base),
+      load(charUrls.fishChar),
       load(ASSETS_FISH.eyes),
       load(ASSETS_FISH.shirt),
       load(ASSETS_FISH.pants),
       load(ASSETS_FISH.shoes),
-      load(ASSETS_FISH.hair),
-      load(ASSETS_FISH.rod),
+      load(charUrls.fishHair),
+      load(charUrls.fishRod),
       load(ASSETS_FISH.bobber),
       load(ASSETS_FISH.fishShadow),
       loadOptional(UI_GAUGE_BAR),
@@ -1653,7 +1709,7 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, [open, characterConfig]);
 
   // Trigger a 0.3s fade transition. The midpoint callback runs when
   // the screen is fully black, swapping scene + position so fade-in
@@ -2924,10 +2980,10 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
 
       const playerColors = {
         eyes: DEFAULT_EYES_COLOR,
-        shirt: DEFAULT_SHIRT_COLOR,
-        pants: DEFAULT_PANTS_COLOR,
-        shoes: DEFAULT_SHOES_COLOR,
-        hair: DEFAULT_HAIR_COLOR,
+        shirt: characterConfig.shirtColor,
+        pants: characterConfig.pantsColor,
+        shoes: characterConfig.shoesColor,
+        hair: characterConfig.hairColor,
       };
       const npcColors = {
         eyes: NPC_EYES_COLOR,
@@ -3872,6 +3928,38 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                   ? `${sellToast}별빛 획득!`
                   : "별빛 획득은 없었다."}
               </motion.div>
+            ) : null}
+
+            {/* Character creator — shown only on first session when
+                no character config exists in Firestore. Opaque
+                backdrop blocks every other overlay; confirming
+                writes the chosen config and the loader re-runs with
+                the new asset URLs. */}
+            {showCharacterCreator ? (
+              <CharacterCreator
+                draft={creatorDraft}
+                onChange={setCreatorDraft}
+                onConfirm={() => {
+                  setCharacterConfig(creatorDraft);
+                  setShowCharacterCreator(false);
+                  if (saveEnabledRef.current && nickname) {
+                    const ref = doc(
+                      db,
+                      "users",
+                      nickname,
+                      "fishing",
+                      "current",
+                    );
+                    setDoc(
+                      ref,
+                      { character: creatorDraft },
+                      { merge: true },
+                    ).catch((err) =>
+                      console.error("[fishing] save character failed", err),
+                    );
+                  }
+                }}
+              />
             ) : null}
           </motion.div>
 
@@ -6489,6 +6577,341 @@ function ExpBar({ fraction }: { fraction: number }) {
 
 // Composite character preview (idle frame, facing down). Re-uses the
 // same sheet layout the game renders — char base + eyes + shirt +
+// ── Character creator ───────────────────────────────────────────
+// Shown on first session (no `character` field on the fishing doc).
+// Cycles through 8 chars, 13 hair styles × 14 colours, shirt /
+// pants / shoes 10 colours, and 4 rod types. The preview canvas
+// re-loads the chosen layer URLs on every draft change so the
+// player sees their pick reflected immediately. Save happens in
+// the parent's onConfirm — this component owns no Firestore I/O.
+function CharacterCreatorPreview({ draft }: { draft: CharacterConfig }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const cv = canvasRef.current;
+    if (!cv) return;
+    const ctx = cv.getContext("2d");
+    if (!ctx) return;
+    ctx.imageSmoothingEnabled = false;
+    const SIZE = 96;
+    const CELL = SPRITE_CELL;
+    const VAR_W = VARIANT_WIDTH;
+    const FRAME = 0; // walk-down idle
+    const ROW_Y = WALK_ROWS.down * CELL;
+    const urls = characterAssetUrls(draft);
+    const layers: Array<{ src: string; varX: number }> = [
+      { src: urls.walkChar, varX: 0 },
+      { src: ASSETS.eyes, varX: 0 },
+      { src: ASSETS.shirt, varX: draft.shirtColor * VAR_W },
+      { src: ASSETS.pants, varX: draft.pantsColor * VAR_W },
+      { src: ASSETS.shoes, varX: draft.shoesColor * VAR_W },
+      { src: urls.walkHair, varX: draft.hairColor * VAR_W },
+    ];
+    let cancelled = false;
+    Promise.all(
+      layers.map(
+        (l) =>
+          new Promise<HTMLImageElement>((resolve) => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = () => resolve(img);
+            img.src = l.src;
+          }),
+      ),
+    ).then((imgs) => {
+      if (cancelled) return;
+      ctx.clearRect(0, 0, SIZE, SIZE);
+      for (let i = 0; i < imgs.length; i++) {
+        const sx = layers[i].varX + FRAME * CELL;
+        ctx.drawImage(imgs[i], sx, ROW_Y, CELL, CELL, 0, 0, SIZE, SIZE);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [draft]);
+  return (
+    <canvas
+      ref={canvasRef}
+      width={96}
+      height={96}
+      style={{ width: 96, height: 96, imageRendering: "pixelated" }}
+    />
+  );
+}
+
+function CreatorOption({
+  label,
+  value,
+  onPrev,
+  onNext,
+}: {
+  label: string;
+  value: string;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  return (
+    <div
+      className="flex items-center justify-between"
+      style={{ fontSize: 10, color: "#3d2c1c", fontWeight: 600 }}
+    >
+      <span style={{ minWidth: 38 }}>{label}</span>
+      <div className="flex items-center" style={{ gap: 2 }}>
+        <button
+          type="button"
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            onPrev();
+          }}
+          aria-label={`${label} 이전`}
+          className="flex items-center justify-center"
+          style={{
+            width: 18,
+            height: 14,
+            padding: 0,
+            border: "none",
+            background: "transparent",
+            cursor: "pointer",
+          }}
+        >
+          <img
+            src={UI_ICON_ARROW}
+            alt=""
+            draggable={false}
+            style={{
+              width: 18,
+              height: 14,
+              imageRendering: "pixelated",
+              transform: "scaleX(-1)",
+              pointerEvents: "none",
+            }}
+          />
+        </button>
+        <span
+          className="font-serif"
+          style={{
+            minWidth: 64,
+            textAlign: "center",
+            fontSize: 9,
+            color: "#3d2c1c",
+          }}
+        >
+          {value}
+        </span>
+        <button
+          type="button"
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            onNext();
+          }}
+          aria-label={`${label} 다음`}
+          className="flex items-center justify-center"
+          style={{
+            width: 18,
+            height: 14,
+            padding: 0,
+            border: "none",
+            background: "transparent",
+            cursor: "pointer",
+          }}
+        >
+          <img
+            src={UI_ICON_ARROW}
+            alt=""
+            draggable={false}
+            style={{
+              width: 18,
+              height: 14,
+              imageRendering: "pixelated",
+              pointerEvents: "none",
+            }}
+          />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CharacterCreator({
+  draft,
+  onChange,
+  onConfirm,
+}: {
+  draft: CharacterConfig;
+  onChange: (next: CharacterConfig) => void;
+  onConfirm: () => void;
+}) {
+  const cycleNumber = (
+    key: "charIndex" | "hairColor" | "shirtColor" | "pantsColor" | "shoesColor",
+    delta: number,
+    max: number,
+  ) => {
+    const cur = draft[key] as number;
+    const next = ((cur + delta) % max + max) % max;
+    onChange({ ...draft, [key]: next });
+  };
+  const cycleStyle = (delta: number) => {
+    const idx = HAIR_STYLES.indexOf(draft.hairStyle);
+    const len = HAIR_STYLES.length;
+    const nidx = ((idx + delta) % len + len) % len;
+    onChange({ ...draft, hairStyle: HAIR_STYLES[nidx] as HairStyle });
+  };
+  const cycleRod = (delta: number) => {
+    const idx = ROD_TYPES.indexOf(draft.rodType);
+    const len = ROD_TYPES.length;
+    const nidx = ((idx + delta) % len + len) % len;
+    onChange({ ...draft, rodType: ROD_TYPES[nidx] as RodType });
+  };
+  const PANEL_W = 280;
+  const PANEL_H = 270;
+  const left = (VIEWPORT - PANEL_W) / 2;
+  const top = (VIEWPORT - PANEL_H) / 2;
+  return (
+    <motion.div
+      key="creator-root"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.18 }}
+      className="pointer-events-auto absolute inset-0"
+      style={{ background: "rgba(11,8,33,0.6)", zIndex: 30 }}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      <motion.div
+        initial={{ scale: 0.92 }}
+        animate={{ scale: 1 }}
+        exit={{ scale: 0.92 }}
+        transition={{ duration: 0.22, ease: "easeOut" }}
+        className="absolute"
+        style={{ width: PANEL_W, height: PANEL_H, left, top }}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        <Frame9Slice
+          src={UI_INPUT_FIELD}
+          cap={4}
+          scale={2}
+          width={PANEL_W}
+          height={PANEL_H}
+          style={{
+            paddingTop: 14,
+            paddingBottom: 12,
+            paddingInline: 16,
+            boxSizing: "border-box",
+          }}
+        >
+          <div
+            className="flex h-full w-full flex-col items-center"
+            style={{ gap: 8 }}
+          >
+            <div
+              className="font-serif font-bold leading-none"
+              style={{ fontSize: 13, color: "#3d2c1c" }}
+            >
+              캐릭터 생성
+            </div>
+            <div
+              className="flex w-full"
+              style={{ gap: 12, flex: 1, minHeight: 0 }}
+            >
+              <div
+                className="flex flex-col items-center justify-center"
+                style={{ width: 96 }}
+              >
+                <CharacterCreatorPreview draft={draft} />
+              </div>
+              <div className="flex flex-1 flex-col" style={{ gap: 4 }}>
+                <CreatorOption
+                  label="캐릭터"
+                  value={`${draft.charIndex + 1} / ${CHARACTER_COUNT}`}
+                  onPrev={() => cycleNumber("charIndex", -1, CHARACTER_COUNT)}
+                  onNext={() => cycleNumber("charIndex", +1, CHARACTER_COUNT)}
+                />
+                <CreatorOption
+                  label="헤어"
+                  value={draft.hairStyle}
+                  onPrev={() => cycleStyle(-1)}
+                  onNext={() => cycleStyle(+1)}
+                />
+                <CreatorOption
+                  label="헤어색"
+                  value={`${draft.hairColor + 1} / ${HAIR_COLOR_COUNT}`}
+                  onPrev={() => cycleNumber("hairColor", -1, HAIR_COLOR_COUNT)}
+                  onNext={() => cycleNumber("hairColor", +1, HAIR_COLOR_COUNT)}
+                />
+                <CreatorOption
+                  label="상의색"
+                  value={`${draft.shirtColor + 1} / ${SHIRT_COLOR_COUNT}`}
+                  onPrev={() =>
+                    cycleNumber("shirtColor", -1, SHIRT_COLOR_COUNT)
+                  }
+                  onNext={() =>
+                    cycleNumber("shirtColor", +1, SHIRT_COLOR_COUNT)
+                  }
+                />
+                <CreatorOption
+                  label="하의색"
+                  value={`${draft.pantsColor + 1} / ${PANTS_COLOR_COUNT}`}
+                  onPrev={() =>
+                    cycleNumber("pantsColor", -1, PANTS_COLOR_COUNT)
+                  }
+                  onNext={() =>
+                    cycleNumber("pantsColor", +1, PANTS_COLOR_COUNT)
+                  }
+                />
+                <CreatorOption
+                  label="신발색"
+                  value={`${draft.shoesColor + 1} / ${SHOES_COLOR_COUNT}`}
+                  onPrev={() =>
+                    cycleNumber("shoesColor", -1, SHOES_COLOR_COUNT)
+                  }
+                  onNext={() =>
+                    cycleNumber("shoesColor", +1, SHOES_COLOR_COUNT)
+                  }
+                />
+                <CreatorOption
+                  label="낚시대"
+                  value={draft.rodType}
+                  onPrev={() => cycleRod(-1)}
+                  onNext={() => cycleRod(+1)}
+                />
+              </div>
+            </div>
+            <button
+              type="button"
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                onConfirm();
+              }}
+              aria-label="확인"
+              className="flex items-center justify-center transition-transform active:scale-90"
+              style={{
+                width: 34,
+                height: 28,
+                padding: 0,
+                border: "none",
+                background: "transparent",
+                cursor: "pointer",
+              }}
+            >
+              <img
+                src={UI_ICON_CHECK}
+                alt=""
+                draggable={false}
+                style={{
+                  imageRendering: "pixelated",
+                  width: 34,
+                  height: 28,
+                  pointerEvents: "none",
+                }}
+              />
+            </button>
+          </div>
+        </Frame9Slice>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 // pants + shoes + hair, in that order.
 function CharacterPreview({ assets }: { assets: LoadedAssets | null }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);

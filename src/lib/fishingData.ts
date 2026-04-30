@@ -120,6 +120,172 @@ export const DEFAULT_PANTS_COLOR = 3;
 export const DEFAULT_SHOES_COLOR = 0;
 export const DEFAULT_HAIR_COLOR = 0;
 
+// ── Character customization (phase 1) ──────────────────────────
+// Layered look = char base + eyes + shirt + pants + shoes + hair,
+// optionally with a fishing rod sprite during the cast/wait/bite
+// modes. The customization screen surfaces a subset of the
+// available variants per layer; the full palette is loaded later.
+export const CHARACTER_COUNT = 8;          // char1..char8
+export const HAIR_COLOR_COUNT = 14;
+export const SHIRT_COLOR_COUNT = 10;
+export const PANTS_COLOR_COUNT = 10;
+export const SHOES_COLOR_COUNT = 10;
+
+// Hair styles supported for BOTH walk and fish poses. The two
+// skirt-paired styles (extra_long_skirt, long_straight_skirt) live
+// only in the walk hair folder, so they're excluded from the
+// customizer to keep the fishing pose intact.
+export const HAIR_STYLES = [
+  "bob",
+  "braids",
+  "buzzcut",
+  "curly",
+  "emo",
+  "extra_long",
+  "french_curl",
+  "gentleman",
+  "long_straight",
+  "midiwave",
+  "ponytail",
+  "spacebuns",
+  "wavy",
+] as const;
+export type HairStyle = (typeof HAIR_STYLES)[number];
+
+// Walk-sheet hair filenames preserve trailing-space artist quirks
+// from the source asset drop — bob, long_straight, ponytail were
+// saved with a trailing space. encodeURI handles the space at
+// fetch time. Fish-sheet filenames are clean (no trailing space).
+const WALK_HAIR_FILE: Record<HairStyle, string> = {
+  bob: "bob ",
+  braids: "braids",
+  buzzcut: "buzzcut",
+  curly: "curly",
+  emo: "emo",
+  extra_long: "extra_long",
+  french_curl: "french_curl",
+  gentleman: "gentleman",
+  long_straight: "long_straight ",
+  midiwave: "midiwave",
+  ponytail: "ponytail ",
+  spacebuns: "spacebuns",
+  wavy: "wavy",
+};
+
+export const ROD_TYPES = ["default", "blue", "brown", "pink"] as const;
+export type RodType = (typeof ROD_TYPES)[number];
+
+// Pair each rod with two bobber sprites (8 cells in bobber.png).
+// First entry is the default selection used when fishing starts;
+// the second is reserved for future "swap bobber" interactions.
+export const ROD_BOBBER_PAIRS: Record<RodType, readonly [number, number]> = {
+  default: [0, 1],
+  blue: [2, 3],
+  brown: [4, 5],
+  pink: [6, 7],
+};
+
+export type CharacterConfig = {
+  charIndex: number;       // 0..CHARACTER_COUNT-1
+  hairStyle: HairStyle;
+  hairColor: number;       // 0..HAIR_COLOR_COUNT-1
+  shirtColor: number;      // 0..SHIRT_COLOR_COUNT-1
+  pantsColor: number;      // 0..PANTS_COLOR_COUNT-1
+  shoesColor: number;      // 0..SHOES_COLOR_COUNT-1
+  rodType: RodType;
+};
+
+// Default config mirrors the previous hardcoded values so existing
+// sessions without a saved character continue to render identically.
+export const DEFAULT_CHARACTER_CONFIG: CharacterConfig = {
+  charIndex: 0,
+  hairStyle: "wavy",
+  hairColor: DEFAULT_HAIR_COLOR,
+  shirtColor: DEFAULT_SHIRT_COLOR,
+  pantsColor: DEFAULT_PANTS_COLOR,
+  shoesColor: DEFAULT_SHOES_COLOR,
+  rodType: "default",
+};
+
+// Resolve character-specific asset URLs. Layers that share a single
+// sheet (eyes, shirt, pants, shoes) keep their hardcoded URLs in
+// ASSETS / ASSETS_FISH; only the layers whose FILE varies (char,
+// hair, rod) are computed here.
+export function characterAssetUrls(cfg: CharacterConfig) {
+  const charN = cfg.charIndex + 1;
+  const rodSuffix = cfg.rodType === "default" ? "" : `_${cfg.rodType}`;
+  return {
+    walkChar: encodeURI(
+      `/images/fishing/Character_assets/characters/char${charN}.png`,
+    ),
+    walkHair: encodeURI(
+      `/images/fishing/Character_assets/hair/${WALK_HAIR_FILE[cfg.hairStyle]}.png`,
+    ),
+    fishChar: encodeURI(
+      `/images/fishing/Character_assets/separate/fish/without/char${charN}_fish_without.png`,
+    ),
+    fishHair: encodeURI(
+      `/images/fishing/Character_assets/separate/fish/hair/${cfg.hairStyle}_fish.png`,
+    ),
+    fishRod: encodeURI(
+      `/images/fishing/Character_assets/separate/fish/tool/fishingrod${rodSuffix}.png`,
+    ),
+  };
+}
+
+// Defensive parse for Firestore reads — any field could be missing
+// or out-of-range, so we coerce to a valid CharacterConfig using
+// DEFAULT_CHARACTER_CONFIG as the fallback baseline.
+export function sanitizeCharacterConfig(raw: unknown): CharacterConfig {
+  if (!raw || typeof raw !== "object") {
+    return { ...DEFAULT_CHARACTER_CONFIG };
+  }
+  const r = raw as Partial<CharacterConfig>;
+  const safeIndex = (v: unknown, max: number, dflt: number) =>
+    typeof v === "number" && Number.isFinite(v) && v >= 0 && v < max
+      ? Math.floor(v)
+      : dflt;
+  const hairStyle: HairStyle =
+    typeof r.hairStyle === "string" &&
+    (HAIR_STYLES as readonly string[]).includes(r.hairStyle)
+      ? (r.hairStyle as HairStyle)
+      : DEFAULT_CHARACTER_CONFIG.hairStyle;
+  const rodType: RodType =
+    typeof r.rodType === "string" &&
+    (ROD_TYPES as readonly string[]).includes(r.rodType)
+      ? (r.rodType as RodType)
+      : DEFAULT_CHARACTER_CONFIG.rodType;
+  return {
+    charIndex: safeIndex(
+      r.charIndex,
+      CHARACTER_COUNT,
+      DEFAULT_CHARACTER_CONFIG.charIndex,
+    ),
+    hairStyle,
+    hairColor: safeIndex(
+      r.hairColor,
+      HAIR_COLOR_COUNT,
+      DEFAULT_CHARACTER_CONFIG.hairColor,
+    ),
+    shirtColor: safeIndex(
+      r.shirtColor,
+      SHIRT_COLOR_COUNT,
+      DEFAULT_CHARACTER_CONFIG.shirtColor,
+    ),
+    pantsColor: safeIndex(
+      r.pantsColor,
+      PANTS_COLOR_COUNT,
+      DEFAULT_CHARACTER_CONFIG.pantsColor,
+    ),
+    shoesColor: safeIndex(
+      r.shoesColor,
+      SHOES_COLOR_COUNT,
+      DEFAULT_CHARACTER_CONFIG.shoesColor,
+    ),
+    rodType,
+  };
+}
+
 // Character bbox in sprite-cell-relative px. The 32×32 cell holds a
 // ~15×22 character centered horizontally with feet near the bottom.
 // We collide on a small rect at the feet so head/torso can clip into
