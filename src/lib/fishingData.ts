@@ -181,16 +181,19 @@ export const YELLOW_SHOP_LINE = "준비중입니다";
 // regardless of font metrics — idle lines lean on the bubble's
 // auto word-wrap instead.
 export const FISHSHOP_GREETING = "어서오세요!\n새벽빛 낚시상점입니다.";
+// Explicit `\n` matches the greeting style — every multi-clause
+// line breaks at a natural pause so wrapping doesn't depend on
+// font metrics or bubble width.
 export const FISHSHOP_IDLE_LINES: readonly string[] = [
-  "요즘 날씨가 좋아서 물고기가 잘 잡히겠네요.",
-  "오늘은 어떤 물고기를 잡아오셨나요?",
-  "진주는 정말 귀한 거예요, 알고 계셨죠?",
-  "가끔 쓰레기가 낚이기도 하죠... 바다를 깨끗이 합시다!",
-  "전설의 물고기를 본 적 있으신가요? 저는 아직...",
-  "신화 등급 물고기는 정말 존재하는 걸까요?",
+  "요즘 날씨가 좋아서\n물고기가 잘 잡히겠네요",
+  "오늘은 어떤 물고기를\n잡아오셨나요?",
+  "진주는 정말 귀한 거예요,\n알고 계셨죠?",
+  "가끔 쓰레기가 낚이기도 하죠.\n바다를 깨끗이 합시다!",
+  "전설의 물고기를 본 적 있으신가요?\n저는 아직...",
+  "신화 등급 물고기는\n정말 존재하는 걸까요?",
   "좋은 하루 보내고 계신가요?",
   "바다 냄새가 참 좋죠?",
-  "오래 계시네요, 편하게 구경하세요!",
+  "오래 계시네요.\n편하게 구경하세요!",
   "혹시 도감은 많이 채우셨나요?",
 ];
 // Bubble timing — fixed display window, randomised inter-line gap.
