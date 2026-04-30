@@ -733,8 +733,10 @@ const SHORELINE_WAVE_H = 1;
 const JOYSTICK_BASE_X = 50;
 const JOYSTICK_BASE_Y = VIEWPORT - 50;
 const JOYSTICK_RADIUS = 36;
-const JOYSTICK_KNOB = 16;
-const JOYSTICK_DEAD_ZONE = 5;
+// Centre dead-zone radius — touches inside this circle are
+// treated as "no input" so finger noise on a resting touch
+// can't drive the character. 8 px ≈ 22 % of JOYSTICK_RADIUS.
+const JOYSTICK_DEAD_ZONE = 8;
 
 export default function FishingGame({ open, onClose, nickname }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -2561,6 +2563,14 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
   // pointer position relative to the fixed base, so the player can
   // thumb-drag from anywhere on the canvas and the visible knob
   // tracks the drag at the bottom-left dock. Single-pointer only.
+  // Discrete 8-way directional pad. Computes the touch's angle
+  // from the FAB centre and snaps to the nearest 45° increment,
+  // converting back to a unit vector. Output magnitude is
+  // exactly 1 along an axis or √½/√½ on a diagonal, never the
+  // analog 0..1 the previous joystick produced — finger
+  // micro-jitter inside a sector keeps the same direction
+  // instead of bouncing between angles. Dead-zone in the centre
+  // 22 % blocks ambiguous near-centre touches outright.
   const updateJoy = (
     e: React.PointerEvent<HTMLDivElement>,
     isStart: boolean,
@@ -2568,24 +2578,31 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
     const rect = e.currentTarget.getBoundingClientRect();
     const px = e.clientX - rect.left;
     const py = e.clientY - rect.top;
-    let dx = px - JOYSTICK_BASE_X;
-    let dy = py - JOYSTICK_BASE_Y;
-    const len = Math.hypot(dx, dy);
-    if (len > JOYSTICK_RADIUS) {
-      dx = (dx / len) * JOYSTICK_RADIUS;
-      dy = (dy / len) * JOYSTICK_RADIUS;
+    const rawDx = px - JOYSTICK_BASE_X;
+    const rawDy = py - JOYSTICK_BASE_Y;
+    const len = Math.hypot(rawDx, rawDy);
+    let snapDx = 0;
+    let snapDy = 0;
+    if (len >= JOYSTICK_DEAD_ZONE) {
+      const angle = Math.atan2(rawDy, rawDx);
+      const step = Math.PI / 4; // 45°
+      const snapped = Math.round(angle / step) * step;
+      snapDx = Math.cos(snapped);
+      snapDy = Math.sin(snapped);
+      // Squash floating-point residuals on cardinal directions
+      // (cos(π/2) ≈ 6e-17, etc.) so axis-aligned input stays
+      // truly axis-aligned and the moving deadzone in tick()
+      // doesn't see ghost diagonal components.
+      if (Math.abs(snapDx) < 0.001) snapDx = 0;
+      if (Math.abs(snapDy) < 0.001) snapDy = 0;
     }
-    if (len < JOYSTICK_DEAD_ZONE) {
-      dx = 0;
-      dy = 0;
-    }
-    joyRef.current.dx = dx / JOYSTICK_RADIUS;
-    joyRef.current.dy = dy / JOYSTICK_RADIUS;
+    joyRef.current.dx = snapDx;
+    joyRef.current.dy = snapDy;
     if (isStart) {
       joyRef.current.active = true;
       joyRef.current.pointerId = e.pointerId;
     }
-    setJoyView({ active: true, dx, dy });
+    setJoyView({ active: true, dx: snapDx, dy: snapDy });
   };
 
   const onPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
@@ -4127,6 +4144,9 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                 compete with the paused game. */}
             {!panelOpen && !sellOpen ? (
               <>
+                {/* Base circle — unchanged from the analog era; we
+                    still want a clear hit target ringed at the
+                    bottom-left corner. */}
                 <div
                   className="pointer-events-none absolute rounded-full"
                   style={{
@@ -4140,22 +4160,98 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                     transition: "opacity 200ms ease",
                   }}
                 />
-                <div
-                  className="pointer-events-none absolute rounded-full"
-                  style={{
-                    left: JOYSTICK_BASE_X + joyView.dx - JOYSTICK_KNOB,
-                    top: JOYSTICK_BASE_Y + joyView.dy - JOYSTICK_KNOB,
-                    width: JOYSTICK_KNOB * 2,
-                    height: JOYSTICK_KNOB * 2,
-                    background: "rgba(216,150,200,0.55)",
-                    border: "1px solid rgba(255,229,196,0.65)",
-                    boxShadow: joyView.active
-                      ? "0 0 12px rgba(255,229,196,0.45)"
+                {/* 4-arrow directional indicator. Each arrow lights
+                    up when the snapped 8-way input has a component
+                    along its axis (>|0.5| filters out 0 and the
+                    perpendicular cardinals). Diagonal touches
+                    naturally highlight TWO arrows — e.g., NE
+                    activates both ↑ and →. Stationary positions:
+                    the previous analog knob used to track the
+                    finger; per spec we don't want that any more. */}
+                {(() => {
+                  const ARROW_SIZE = 16;
+                  const ARROW_INSET = 6;
+                  const dirActive = (axis: "n" | "s" | "e" | "w") => {
+                    if (axis === "n") return joyView.dy < -0.5;
+                    if (axis === "s") return joyView.dy > 0.5;
+                    if (axis === "e") return joyView.dx > 0.5;
+                    return joyView.dx < -0.5;
+                  };
+                  const arrowStyle = (active: boolean): React.CSSProperties => ({
+                    position: "absolute",
+                    width: ARROW_SIZE,
+                    height: ARROW_SIZE,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 13,
+                    lineHeight: 1,
+                    color: active ? "#FFE5C4" : "rgba(244,239,255,0.55)",
+                    textShadow: active
+                      ? "0 0 6px rgba(255,229,196,0.85)"
                       : "none",
-                    opacity: joyView.active ? 0.90 : 0.35,
-                    transition: "opacity 200ms ease, box-shadow 200ms ease",
-                  }}
-                />
+                    transition: "color 120ms ease, text-shadow 120ms ease",
+                    pointerEvents: "none",
+                    userSelect: "none",
+                  });
+                  return (
+                    <>
+                      <span
+                        aria-hidden
+                        style={{
+                          ...arrowStyle(dirActive("n")),
+                          left: JOYSTICK_BASE_X - ARROW_SIZE / 2,
+                          top: JOYSTICK_BASE_Y - JOYSTICK_RADIUS + ARROW_INSET,
+                        }}
+                      >
+                        ▲
+                      </span>
+                      <span
+                        aria-hidden
+                        style={{
+                          ...arrowStyle(dirActive("e")),
+                          left: JOYSTICK_BASE_X + JOYSTICK_RADIUS - ARROW_INSET - ARROW_SIZE,
+                          top: JOYSTICK_BASE_Y - ARROW_SIZE / 2,
+                        }}
+                      >
+                        ▶
+                      </span>
+                      <span
+                        aria-hidden
+                        style={{
+                          ...arrowStyle(dirActive("s")),
+                          left: JOYSTICK_BASE_X - ARROW_SIZE / 2,
+                          top: JOYSTICK_BASE_Y + JOYSTICK_RADIUS - ARROW_INSET - ARROW_SIZE,
+                        }}
+                      >
+                        ▼
+                      </span>
+                      <span
+                        aria-hidden
+                        style={{
+                          ...arrowStyle(dirActive("w")),
+                          left: JOYSTICK_BASE_X - JOYSTICK_RADIUS + ARROW_INSET,
+                          top: JOYSTICK_BASE_Y - ARROW_SIZE / 2,
+                        }}
+                      >
+                        ◀
+                      </span>
+                      {/* Centre dot — small dead-zone marker so the
+                          player has a visual anchor for "no input". */}
+                      <span
+                        aria-hidden
+                        className="pointer-events-none absolute rounded-full"
+                        style={{
+                          left: JOYSTICK_BASE_X - 3,
+                          top: JOYSTICK_BASE_Y - 3,
+                          width: 6,
+                          height: 6,
+                          background: "rgba(244,239,255,0.35)",
+                        }}
+                      />
+                    </>
+                  );
+                })()}
               </>
             ) : null}
 
