@@ -6666,13 +6666,12 @@ const ROD_TYPE_LABELS: Record<RodType, string> = {
   brown: "갈색",
   pink: "분홍",
 };
-// Three previewable directions inside the customizer (left is
-// mirrored from right at draw time, so we don't need a fourth row).
-const PREVIEW_DIRS = [
-  { dir: "down" as Direction, label: "앞" },
-  { dir: "right" as Direction, label: "옆" },
-  { dir: "up" as Direction, label: "뒤" },
-];
+// Auto-rotate through all four cardinal facings inside the
+// customizer preview. Each WALK_ROWS row is a dedicated direction
+// (left isn't mirrored — the sheet has its own row), so we cycle
+// straight through them at PREVIEW_ROTATE_MS per facing.
+const PREVIEW_DIRS: readonly Direction[] = ["down", "right", "up", "left"];
+const PREVIEW_ROTATE_MS = 1700;
 
 function CharacterCreatorPreview({
   draft,
@@ -6851,15 +6850,18 @@ function CharacterCreator({
   onChange: (next: CharacterConfig) => void;
   onConfirm: () => void;
 }) {
-  // Direction shown in the preview. Independent of the chosen
-  // character (which doesn't have a "direction" attribute) — purely
-  // a UI affordance to let the player rotate around their look.
+  // Direction shown in the preview — auto-rotates every
+  // PREVIEW_ROTATE_MS so the player sees their look from all four
+  // facings without manual interaction. Independent of the chosen
+  // character (which doesn't have a "direction" attribute).
   const [previewDirIdx, setPreviewDirIdx] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => {
+      setPreviewDirIdx((i) => (i + 1) % PREVIEW_DIRS.length);
+    }, PREVIEW_ROTATE_MS);
+    return () => clearInterval(id);
+  }, []);
   const previewDir = PREVIEW_DIRS[previewDirIdx];
-  const cycleDir = (delta: number) => {
-    const len = PREVIEW_DIRS.length;
-    setPreviewDirIdx((cur) => ((cur + delta) % len + len) % len);
-  };
   const cycleNumber = (
     key: "charIndex" | "hairColor" | "shirtColor" | "pantsColor" | "shoesColor",
     delta: number,
@@ -6923,96 +6925,32 @@ function CharacterCreator({
             className="flex h-full w-full flex-col items-center"
             style={{ gap: 6 }}
           >
-            {/* Title */}
+            {/* Title — sits flush against the preview below it
+                (no extra gap) so the canvas reads as part of the
+                same header block. */}
             <div
               className="font-serif font-bold leading-none"
-              style={{ fontSize: 14, color: "#3d2c1c" }}
+              style={{
+                fontSize: 14,
+                color: "#3d2c1c",
+                marginBottom: -2,
+              }}
             >
               캐릭터 생성
             </div>
-            {/* Preview area — character + direction toggle. Stays
-                fixed at the top while the option list scrolls. */}
+            {/* Auto-rotating preview — direction cycles every
+                PREVIEW_ROTATE_MS via the timer above; manual dir
+                arrows were removed since the rotation already
+                surfaces every facing. */}
             <div
               className="flex w-full flex-col items-center"
-              style={{ gap: 4, flexShrink: 0 }}
+              style={{ flexShrink: 0 }}
             >
               <CharacterCreatorPreview
                 draft={draft}
-                dir={previewDir.dir}
+                dir={previewDir}
                 size={PREVIEW_SIZE}
               />
-              <div className="flex items-center" style={{ gap: 8 }}>
-                <button
-                  type="button"
-                  onPointerDown={(e) => {
-                    e.stopPropagation();
-                    cycleDir(-1);
-                  }}
-                  aria-label="이전 방향"
-                  className="flex items-center justify-center transition-transform active:scale-90"
-                  style={{
-                    width: 28,
-                    height: 24,
-                    padding: 0,
-                    border: "none",
-                    background: "transparent",
-                    cursor: "pointer",
-                  }}
-                >
-                  <img
-                    src={UI_ICON_ARROW}
-                    alt=""
-                    draggable={false}
-                    style={{
-                      width: 24,
-                      height: 18,
-                      imageRendering: "pixelated",
-                      transform: "scaleX(-1)",
-                      pointerEvents: "none",
-                    }}
-                  />
-                </button>
-                <span
-                  className="font-serif font-bold"
-                  style={{
-                    fontSize: 13,
-                    minWidth: 56,
-                    textAlign: "center",
-                    color: "#3d2c1c",
-                  }}
-                >
-                  {previewDir.label}
-                </span>
-                <button
-                  type="button"
-                  onPointerDown={(e) => {
-                    e.stopPropagation();
-                    cycleDir(+1);
-                  }}
-                  aria-label="다음 방향"
-                  className="flex items-center justify-center transition-transform active:scale-90"
-                  style={{
-                    width: 28,
-                    height: 24,
-                    padding: 0,
-                    border: "none",
-                    background: "transparent",
-                    cursor: "pointer",
-                  }}
-                >
-                  <img
-                    src={UI_ICON_ARROW}
-                    alt=""
-                    draggable={false}
-                    style={{
-                      width: 24,
-                      height: 18,
-                      imageRendering: "pixelated",
-                      pointerEvents: "none",
-                    }}
-                  />
-                </button>
-              </div>
             </div>
             {/* Scrollable options + confirm button. flex-1 + minHeight 0
                 lets the inner overflow:auto take whatever vertical
