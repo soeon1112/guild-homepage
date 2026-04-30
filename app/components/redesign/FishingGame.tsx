@@ -3836,6 +3836,10 @@ function StatRow({ label, value }: { label: string; value: string }) {
 const EXP_BAR_WIDTH = 200;
 const EXP_BAR_HEIGHT = 12;
 function ExpBar({ fraction }: { fraction: number }) {
+  // Defensive clamp — fraction should already be in [0, 1] but a
+  // stale prop or rounding could push it outside. Math.min/max
+  // here so a future caller bug never makes the fill overshoot.
+  const ratio = Math.max(0, Math.min(1, fraction));
   return (
     <div
       className="relative"
@@ -3853,18 +3857,32 @@ function ExpBar({ fraction }: { fraction: number }) {
           objectFit: "fill",
         }}
       />
+      {/* Dark interior covers Bar01a's cream pixels — without this
+          overlay the bar looks "filled" at any fraction because the
+          sprite's empty-state colour is a light cream. The orange
+          fill div sits on top and is sized as a percentage of the
+          interior so 5/100 EXP produces a 5% wide sliver, not a
+          near-full bar. */}
       <div
-        className="absolute"
+        className="absolute overflow-hidden"
         style={{
-          left: 4,
-          top: 4,
-          width: Math.max(0, (EXP_BAR_WIDTH - 8) * fraction),
-          height: EXP_BAR_HEIGHT - 8,
-          background: "linear-gradient(180deg, #fde68a 0%, #f59e0b 100%)",
-          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.5)",
-          transition: "width 200ms ease",
+          left: 2,
+          top: 2,
+          width: EXP_BAR_WIDTH - 4,
+          height: EXP_BAR_HEIGHT - 4,
+          background: "rgba(20,12,40,0.85)",
         }}
-      />
+      >
+        <div
+          style={{
+            width: `${ratio * 100}%`,
+            height: "100%",
+            background: "linear-gradient(180deg, #fde68a 0%, #f59e0b 100%)",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.45)",
+            transition: "width 240ms ease",
+          }}
+        />
+      </div>
     </div>
   );
 }
