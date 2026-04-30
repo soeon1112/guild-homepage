@@ -3511,45 +3511,6 @@ function InventoryPanel({
           })}
         </div>
 
-        {/* Close button — bottom-center of the panel, mirroring
-            where the catch / detail popup's check button sits. Hangs
-            off the bottom edge of the frame so the cross icon
-            "걸치는" feel matches the overhanging top tabs. */}
-        <button
-          type="button"
-          onPointerDown={(e) => {
-            e.stopPropagation();
-            onClose();
-          }}
-          aria-label="닫기"
-          className="absolute flex items-center justify-center transition-transform active:scale-90"
-          style={{
-            bottom: -14,
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: 30,
-            height: 30,
-            padding: 0,
-            border: "none",
-            background: "transparent",
-            cursor: "pointer",
-            zIndex: 4,
-          }}
-        >
-          <img
-            src={UI_ICON_CROSS}
-            alt=""
-            draggable={false}
-            style={{
-              imageRendering: "pixelated",
-              width: 30,
-              height: 30,
-              pointerEvents: "none",
-              filter: "drop-shadow(0 1px 2px rgba(11,8,33,0.55))",
-            }}
-          />
-        </button>
-
         <Frame9Slice
           src={UI_POPUP_FRAME}
           cap={PANEL_FRAME_CAP}
@@ -3559,10 +3520,10 @@ function InventoryPanel({
           style={{
             // paddingTop clears the tab-cover region (the part of
             // each tab that sits behind the panel border). 4 px of
-            // breathing room beneath that. paddingInline/paddingBottom
-            // are kept tight so every available pixel goes to content.
+            // breathing room beneath that. paddingBottom keeps the
+            // close button comfortably inside the frame.
             paddingTop: TAB_H - TAB_VISIBLE + 4,
-            paddingBottom: 6,
+            paddingBottom: 4,
             paddingInline: PANEL_BORDER + 2,
             boxSizing: "border-box",
             // Panel itself sits below the active tab in z so the
@@ -3570,46 +3531,89 @@ function InventoryPanel({
             zIndex: 2,
           }}
         >
-          {/* Tab content. Inventory centers its slot grid +
-              pagination vertically so the grid sits in the middle
-              of the frame; other tabs flow from the top so their
-              header lines / stats stay where the eye expects. */}
-          <div
-            className="flex h-full w-full flex-col items-center"
-            style={{
-              justifyContent: tab === "inventory" ? "center" : "flex-start",
-            }}
-          >
-            {tab === "inventory" ? (
-              <InventoryContent
-                inventory={inventory}
-                page={invPage}
-                setPage={setInvPage}
-                selected={invSelected}
-                setSelected={setInvSelected}
-                externalPressed={externalPressed}
+          {/* Tab content + close button. Top wrapper takes flex-1
+              so it absorbs all available vertical space and the
+              close button always docks at the bottom-center of the
+              frame, fully inside (no overhang). Inventory and codex
+              both center their grid + pagination inside the wrapper
+              so the two tabs land at the exact same position. */}
+          <div className="flex h-full w-full flex-col items-center">
+            <div
+              className="flex w-full flex-col items-center"
+              style={{
+                flex: 1,
+                justifyContent:
+                  tab === "inventory" || tab === "codex"
+                    ? "center"
+                    : "flex-start",
+                minHeight: 0,
+              }}
+            >
+              {tab === "inventory" ? (
+                <InventoryContent
+                  inventory={inventory}
+                  page={invPage}
+                  setPage={setInvPage}
+                  selected={invSelected}
+                  setSelected={setInvSelected}
+                  externalPressed={externalPressed}
+                />
+              ) : tab === "codex" ? (
+                <CodexContent
+                  caught={codexCaught}
+                  page={codexPage}
+                  setPage={setCodexPage}
+                  selected={codexSelected}
+                  setSelected={setCodexSelected}
+                  externalPressed={externalPressed}
+                />
+              ) : tab === "info" ? (
+                <InfoContent
+                  nickname={nickname}
+                  totalExp={totalExp}
+                  totalCatches={totalCatches}
+                  totalStarlight={totalStarlight}
+                  inventory={inventory}
+                  assets={assets}
+                />
+              ) : (
+                <RankingContent nickname={nickname} totalExp={totalExp} />
+              )}
+            </div>
+            {/* Close X — sits inside the panel at bottom-center,
+                same slot as the popup check buttons. Transparent
+                background, scale-down on press. */}
+            <button
+              type="button"
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                onClose();
+              }}
+              aria-label="닫기"
+              className="flex items-center justify-center transition-transform active:scale-90"
+              style={{
+                marginTop: 2,
+                width: 30,
+                height: 30,
+                padding: 0,
+                border: "none",
+                background: "transparent",
+                cursor: "pointer",
+                flexShrink: 0,
+              }}
+            >
+              <img
+                src={UI_ICON_CROSS}
+                alt=""
+                draggable={false}
+                style={{
+                  imageRendering: "pixelated",
+                  width: 30,
+                  height: 30,
+                  pointerEvents: "none",
+                }}
               />
-            ) : tab === "codex" ? (
-              <CodexContent
-                caught={codexCaught}
-                page={codexPage}
-                setPage={setCodexPage}
-                selected={codexSelected}
-                setSelected={setCodexSelected}
-                externalPressed={externalPressed}
-              />
-            ) : tab === "info" ? (
-              <InfoContent
-                nickname={nickname}
-                totalExp={totalExp}
-                totalCatches={totalCatches}
-                totalStarlight={totalStarlight}
-                inventory={inventory}
-                assets={assets}
-              />
-            ) : (
-              <RankingContent nickname={nickname} totalExp={totalExp} />
-            )}
+            </button>
           </div>
         </Frame9Slice>
       </motion.div>
@@ -3990,17 +3994,10 @@ function CodexContent({
   const selectedCaught = selectedFish ? caught.has(selectedFish.id) : false;
   return (
     <>
-      {/* Header — codex progress count. Sits just above the grid. */}
-      <div
-        className="font-serif font-bold leading-none"
-        style={{
-          fontSize: 11,
-          color: "#3d2c1c",
-          marginBottom: 4,
-        }}
-      >
-        도감 {caught.size} / {FISH_LIST.length}
-      </div>
+      {/* Codex layout deliberately omits a header so the slot grid
+          and pagination row land at the EXACT same coordinates as
+          the inventory tab — the user reads the dex count from the
+          info tab instead. */}
 
       {/* Slot grid — same dimensions as InventoryContent so the
           two tabs feel consistent. */}
