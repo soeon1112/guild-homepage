@@ -322,10 +322,10 @@ export type FishGradeConfig = {
 //   legendary~1.0 s (0.8–1.3s)
 //   mythic   ~0.8 s (0.6–1.1s)
 export const FISH_GRADES: Record<FishGrade, FishGradeConfig> = {
-  common:    { width: 0.40, baseSpeed: 0.50, jitter: 0.25, rollProbability: 0.50 },
-  uncommon:  { width: 0.30, baseSpeed: 0.67, jitter: 0.25, rollProbability: 0.28 },
-  rare:      { width: 0.20, baseSpeed: 0.83, jitter: 0.25, rollProbability: 0.14 },
-  legendary: { width: 0.15, baseSpeed: 1.00, jitter: 0.25, rollProbability: 0.06 },
+  common:    { width: 0.20, baseSpeed: 0.50, jitter: 0.25, rollProbability: 0.50 },
+  uncommon:  { width: 0.20, baseSpeed: 0.67, jitter: 0.25, rollProbability: 0.28 },
+  rare:      { width: 0.15, baseSpeed: 0.83, jitter: 0.25, rollProbability: 0.14 },
+  legendary: { width: 0.10, baseSpeed: 1.00, jitter: 0.25, rollProbability: 0.06 },
   mythic:    { width: 0.10, baseSpeed: 1.25, jitter: 0.25, rollProbability: 0.02 },
 };
 
