@@ -4488,12 +4488,12 @@ function ExpBar({ fraction }: { fraction: number }) {
           objectFit: "fill",
         }}
       />
-      {/* Dark interior covers Bar01a's cream pixels — without this
-          overlay the bar looks "filled" at any fraction because the
-          sprite's empty-state colour is a light cream. The orange
-          fill div sits on top and is sized as a percentage of the
-          interior so 5/100 EXP produces a 5% wide sliver, not a
-          near-full bar. */}
+      {/* Solid dark track that fills the entire bar interior end to
+          end — the empty portion of the bar should be visible at full
+          width. The earlier semi-transparent variant let Bar01a's
+          cream show through, which made the empty region read as
+          "still filled" at low fractions. The orange fill below is a
+          % of this track so 5 EXP / 100 EXP = 5% wide. */}
       <div
         className="absolute overflow-hidden"
         style={{
@@ -4501,7 +4501,7 @@ function ExpBar({ fraction }: { fraction: number }) {
           top: 2,
           width: EXP_BAR_WIDTH - 4,
           height: EXP_BAR_HEIGHT - 4,
-          background: "rgba(20,12,40,0.85)",
+          background: "#1f1530",
         }}
       >
         <div
