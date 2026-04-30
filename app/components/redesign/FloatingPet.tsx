@@ -716,6 +716,7 @@ export default function FloatingPet() {
         <FishingGame
           open={fishingOpen}
           onClose={() => setFishingOpen(false)}
+          nickname={nickname ?? ""}
         />
       ) : null}
 

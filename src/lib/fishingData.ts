@@ -739,3 +739,77 @@ export function rollCatchResult(): CatchResult {
 export function gradeForGauge(c: CatchResult): FishGrade {
   return c.kind === "fish" ? c.grade : "common";
 }
+
+// ── Fishing experience system ──────────────────────────────────
+// Per-catch xp award. Trash gives nothing on purpose — the player
+// shouldn't level up by spamming bad rolls. Treasure gives a token
+// 3 xp so a forage-heavy session still inches forward.
+export const FISH_EXP_REWARDS: Record<FishGrade, number> = {
+  common: 5,
+  uncommon: 10,
+  rare: 20,
+  legendary: 40,
+  mythic: 80,
+};
+export const FISH_EXP_TREASURE = 3;
+export const FISH_EXP_TRASH = 0;
+
+// "Exp required to advance from level N to level N+1." Index = N-1.
+// Hand-tuned for the first 9 levels (matches the design spec); from
+// Lv9→10 onward we extrapolate by adding LEVEL_EXP_LATE_STEP each
+// level so the curve stays smooth and there's no hard cap.
+const LEVEL_EXP_TABLE: readonly number[] = [
+  100,   // 1 → 2
+  200,   // 2 → 3
+  350,   // 3 → 4
+  550,   // 4 → 5
+  800,   // 5 → 6
+  1100,  // 6 → 7
+  1500,  // 7 → 8
+  2000,  // 8 → 9
+  2600,  // 9 → 10
+];
+const LEVEL_EXP_LATE_STEP = 700;
+
+export function expNeededForLevel(level: number): number {
+  if (level < 1) return 0;
+  if (level <= LEVEL_EXP_TABLE.length) return LEVEL_EXP_TABLE[level - 1];
+  const last = LEVEL_EXP_TABLE[LEVEL_EXP_TABLE.length - 1];
+  return last + (level - LEVEL_EXP_TABLE.length) * LEVEL_EXP_LATE_STEP;
+}
+
+export type LevelInfo = {
+  level: number;       // 1-based, no cap
+  expInLevel: number;  // exp accumulated within the current level
+  expToNext: number;   // exp needed to reach next level
+};
+
+export function levelFromTotalExp(totalExp: number): LevelInfo {
+  let level = 1;
+  let remaining = Math.max(0, Math.floor(totalExp));
+  // Iterative pop — clamps cleanly for any totalExp without overflow.
+  // The threshold grows linearly past Lv9 so even 100,000 xp resolves
+  // in well under a hundred steps. Safety bound is paranoia so a
+  // misuse can't infinite-loop the UI.
+  let safety = 0;
+  while (remaining >= expNeededForLevel(level)) {
+    remaining -= expNeededForLevel(level);
+    level++;
+    safety++;
+    if (safety > 10000) break;
+  }
+  return {
+    level,
+    expInLevel: remaining,
+    expToNext: expNeededForLevel(level),
+  };
+}
+
+export function expForCatch(result: CatchResult): number {
+  if (result.kind === "fish") return FISH_EXP_REWARDS[result.grade];
+  if (result.kind === "treasure") return FISH_EXP_TREASURE;
+  return FISH_EXP_TRASH;
+}
+
+// Total catalog size for the dex progress line in the info tab.
+export const TOTAL_DEX_SPECIES = FISH_LIST.length + FORAGE_LIST.length;

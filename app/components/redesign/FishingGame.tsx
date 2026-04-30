@@ -45,8 +45,15 @@ import {
   GAUGE_WIDTH,
   rollCatchResult,
   gradeForGauge,
+  expForCatch,
+  levelFromTotalExp,
+  TOTAL_DEX_SPECIES,
+  FISH_LIST,
+  FORAGE_LIST,
   type CatchResult,
   type FishGrade,
+  type Fish,
+  type Forage,
   CHAR_BBOX_HALF_W,
   CHAR_BBOX_HEIGHT,
   COLLISION_BLUE_B_MIN,
@@ -101,7 +108,7 @@ import {
   type Scene,
 } from "@/src/lib/fishingData";
 
-type Props = { open: boolean; onClose: () => void };
+type Props = { open: boolean; onClose: () => void; nickname: string };
 
 type LoadedAssets = {
   map: HTMLImageElement;
@@ -412,6 +419,11 @@ const UI_POPUP_FRAME = encodeURI(UI_FLAT_BASE + "UI_Flat_Frame01a.png");
 // Confirm-button icon for the catch popup. 17×14 source, rendered
 // at 2× = 34×28 inside a button-shaped container.
 const UI_ICON_CHECK = encodeURI(UI_FLAT_BASE + "UI_Flat_IconCheck01a.png");
+// Inventory / info / ranking panel UI sprites.
+const UI_TAB_MARKER = encodeURI(UI_FLAT_BASE + "UI_Flat_FrameMarker01a.png");
+const UI_INV_SLOT = encodeURI(UI_FLAT_BASE + "UI_Flat_FrameSlot01c.png");
+const UI_ICON_CROSS = encodeURI(UI_FLAT_BASE + "UI_Flat_IconCross01a.png");
+const UI_ICON_ARROW = encodeURI(UI_FLAT_BASE + "UI_Flat_IconArrow01a.png");
 
 // Joystick is parked at a fixed bottom-left dock so the player can
 // always thumb-drag from a known spot. Outer diameter ≈ 24% of the
@@ -423,7 +435,7 @@ const JOYSTICK_RADIUS = 36;
 const JOYSTICK_KNOB = 16;
 const JOYSTICK_DEAD_ZONE = 5;
 
-export default function FishingGame({ open, onClose }: Props) {
+export default function FishingGame({ open, onClose, nickname }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // Loop-owned state lives in refs to avoid React re-renders at 60fps.
@@ -521,6 +533,34 @@ export default function FishingGame({ open, onClose }: Props) {
   // inner game pane (canvas + overlays) so the popup itself rides
   // along with the shake — feels more like the world is reacting.
   const shakeControls = useAnimationControls();
+  // Inventory map: itemKey ("fish-12" / "forage-3") → stack count.
+  // Local state only for now; Firestore sync is a later phase. The
+  // catch popup confirm hook adds to this and grants xp at the same
+  // time so the inventory and stats stay in sync.
+  const [inventory, setInventory] = useState<Record<string, number>>({});
+  const [totalExp, setTotalExp] = useState(0);
+  const [totalCatches, setTotalCatches] = useState(0);
+  const [totalStarlight, setTotalStarlight] = useState(0);
+  // Brief level-up banner shown when totalExp crosses a threshold.
+  const [levelUpBanner, setLevelUpBanner] = useState<number | null>(null);
+  // Character-click bag button + the panel it opens.
+  const [bagButton, setBagButton] = useState<{
+    visible: boolean;
+    x: number;   // canvas-local coords
+    y: number;
+  }>({ visible: false, x: 0, y: 0 });
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [panelTab, setPanelTab] = useState<"inventory" | "info" | "ranking">(
+    "inventory",
+  );
+  const [invPage, setInvPage] = useState(0);
+  const [invSelected, setInvSelected] = useState<string | null>(null);
+  // Panel-open ref read by the game loop to gate movement input
+  // without a re-render every frame.
+  const panelOpenRef = useRef(false);
+  useEffect(() => {
+    panelOpenRef.current = panelOpen;
+  }, [panelOpen]);
   // Joystick visual state mirrored into React for the DOM overlay.
   // Updates only on pointer events (not 60fps), so React isn't thrashed.
   // dx/dy here are knob offset in pixels relative to the static base.
@@ -536,6 +576,13 @@ export default function FishingGame({ open, onClose }: Props) {
     const t = setTimeout(() => setYellowToast(false), 1600);
     return () => clearTimeout(t);
   }, [yellowToast]);
+
+  // Level-up banner auto-clears after a brief celebration window.
+  useEffect(() => {
+    if (levelUpBanner == null) return;
+    const t = setTimeout(() => setLevelUpBanner(null), 1800);
+    return () => clearTimeout(t);
+  }, [levelUpBanner]);
 
   // Screen shake on legendary/mythic catches. Mythic shakes harder
   // and longer than legendary — the rest of the visual flair (glow,
@@ -1176,10 +1223,57 @@ export default function FishingGame({ open, onClose }: Props) {
   };
 
   const onPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    // Panel open → game is paused; don't engage joystick.
+    if (panelOpenRef.current) return;
     if (joyRef.current.active) return;
+    // Character-click detection. The character footprint is at
+    // (s.x, s.y) in map units; the canvas paints with ctx.scale of
+    // MAP_SCALE, so the on-screen foot pixel is (s.x-camX)*MAP_SCALE.
+    // Hit-box is generous (~32 wide × 40 tall around the visible
+    // sprite) so taps near the character also trigger the menu.
+    const rect = e.currentTarget.getBoundingClientRect();
+    const px = e.clientX - rect.left;
+    const py = e.clientY - rect.top;
+    const s = stateRef.current;
+    const visibleW = VIEWPORT / MAP_SCALE;
+    const visibleH = VIEWPORT / MAP_SCALE;
+    const mw =
+      sceneRef.current === "outdoor" ? MAP_WIDTH : INDOOR_MAP_WIDTH;
+    const mh =
+      sceneRef.current === "outdoor" ? MAP_HEIGHT : INDOOR_MAP_HEIGHT;
+    const cx = clamp(
+      Math.round(s.x - visibleW / 2),
+      0,
+      Math.max(0, mw - visibleW),
+    );
+    const cy = clamp(
+      Math.round(s.y - visibleH / 2),
+      0,
+      Math.max(0, mh - visibleH),
+    );
+    const charSx = (s.x - cx) * MAP_SCALE;
+    const charSy = (s.y - cy) * MAP_SCALE;
+    const onChar =
+      Math.abs(px - charSx) <= 16 &&
+      py >= charSy - 44 &&
+      py <= charSy + 6;
+    if (onChar && s.mode === "walk") {
+      // Toggle: re-tapping the character closes the menu.
+      setBagButton((prev) =>
+        prev.visible
+          ? { visible: false, x: 0, y: 0 }
+          : { visible: true, x: charSx, y: charSy - 28 },
+      );
+      return;
+    }
+    if (bagButton.visible) {
+      // Tap anywhere else dismisses the floating menu.
+      setBagButton({ visible: false, x: 0, y: 0 });
+      return;
+    }
     e.currentTarget.setPointerCapture(e.pointerId);
     updateJoy(e, true);
-  }, []);
+  }, [bagButton.visible]);
 
   const onPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     const j = joyRef.current;
@@ -1415,15 +1509,20 @@ export default function FishingGame({ open, onClose }: Props) {
         return;
       }
 
+      // Inventory / info / ranking panel locks movement input — the
+      // game pauses while the modal is up.
+      const inputLocked = panelOpenRef.current;
       let vx = 0;
       let vy = 0;
-      if (k.up) vy -= 1;
-      if (k.down) vy += 1;
-      if (k.left) vx -= 1;
-      if (k.right) vx += 1;
-      if (j.active) {
-        vx += j.dx;
-        vy += j.dy;
+      if (!inputLocked) {
+        if (k.up) vy -= 1;
+        if (k.down) vy += 1;
+        if (k.left) vx -= 1;
+        if (k.right) vx += 1;
+        if (j.active) {
+          vx += j.dx;
+          vy += j.dy;
+        }
       }
       const len = Math.hypot(vx, vy);
       const moving = len > 0.05;
@@ -2119,36 +2218,42 @@ export default function FishingGame({ open, onClose }: Props) {
             {/* Static joystick dock — always rendered, low opacity
                 when idle ("살짝 숨겨지고") and full opacity while
                 dragging ("선명해지는"). 200ms fade matches the rest
-                of the cosmic UI's transition feel. */}
-            <div
-              className="pointer-events-none absolute rounded-full"
-              style={{
-                left: JOYSTICK_BASE_X - JOYSTICK_RADIUS,
-                top: JOYSTICK_BASE_Y - JOYSTICK_RADIUS,
-                width: JOYSTICK_RADIUS * 2,
-                height: JOYSTICK_RADIUS * 2,
-                background: "rgba(244,239,255,0.08)",
-                border: "1px solid rgba(216,150,200,0.45)",
-                opacity: joyView.active ? 0.85 : 0.30,
-                transition: "opacity 200ms ease",
-              }}
-            />
-            <div
-              className="pointer-events-none absolute rounded-full"
-              style={{
-                left: JOYSTICK_BASE_X + joyView.dx - JOYSTICK_KNOB,
-                top: JOYSTICK_BASE_Y + joyView.dy - JOYSTICK_KNOB,
-                width: JOYSTICK_KNOB * 2,
-                height: JOYSTICK_KNOB * 2,
-                background: "rgba(216,150,200,0.55)",
-                border: "1px solid rgba(255,229,196,0.65)",
-                boxShadow: joyView.active
-                  ? "0 0 12px rgba(255,229,196,0.45)"
-                  : "none",
-                opacity: joyView.active ? 0.90 : 0.35,
-                transition: "opacity 200ms ease, box-shadow 200ms ease",
-              }}
-            />
+                of the cosmic UI's transition feel. Hidden while the
+                inventory / info / ranking panel is up — the game is
+                paused so the input UI shouldn't compete. */}
+            {!panelOpen ? (
+              <>
+                <div
+                  className="pointer-events-none absolute rounded-full"
+                  style={{
+                    left: JOYSTICK_BASE_X - JOYSTICK_RADIUS,
+                    top: JOYSTICK_BASE_Y - JOYSTICK_RADIUS,
+                    width: JOYSTICK_RADIUS * 2,
+                    height: JOYSTICK_RADIUS * 2,
+                    background: "rgba(244,239,255,0.08)",
+                    border: "1px solid rgba(216,150,200,0.45)",
+                    opacity: joyView.active ? 0.85 : 0.30,
+                    transition: "opacity 200ms ease",
+                  }}
+                />
+                <div
+                  className="pointer-events-none absolute rounded-full"
+                  style={{
+                    left: JOYSTICK_BASE_X + joyView.dx - JOYSTICK_KNOB,
+                    top: JOYSTICK_BASE_Y + joyView.dy - JOYSTICK_KNOB,
+                    width: JOYSTICK_KNOB * 2,
+                    height: JOYSTICK_KNOB * 2,
+                    background: "rgba(216,150,200,0.55)",
+                    border: "1px solid rgba(255,229,196,0.65)",
+                    boxShadow: joyView.active
+                      ? "0 0 12px rgba(255,229,196,0.45)"
+                      : "none",
+                    opacity: joyView.active ? 0.90 : 0.35,
+                    transition: "opacity 200ms ease, box-shadow 200ms ease",
+                  }}
+                />
+              </>
+            ) : null}
 
             {/* Unified action button (bottom-right). Mirrors the
                 Space key — it's only rendered when there's something
@@ -2162,6 +2267,10 @@ export default function FishingGame({ open, onClose }: Props) {
               // Hide the action button while the result popup is up —
               // its own confirm button is the only legal interaction.
               if (catchPopup) return null;
+              // Hide while the inventory / info / ranking modal is up;
+              // also hide while the small "open menu" button is showing
+              // next to the character so the two don't visually compete.
+              if (panelOpen || bagButton.visible) return null;
               const fishingActive = mode !== "walk";
               const showFish =
                 scene === "outdoor" && (canFish || fishingActive);
@@ -2290,6 +2399,40 @@ export default function FishingGame({ open, onClose }: Props) {
               result={catchPopup}
               onConfirm={() => {
                 const s = stateRef.current;
+                const result = s.catchResult;
+                if (result) {
+                  // Stack into inventory under fish-{id} or forage-{id}.
+                  const itemKey =
+                    result.kind === "fish"
+                      ? `fish-${result.fish.id}`
+                      : `forage-${result.forage.id}`;
+                  setInventory((prev) => ({
+                    ...prev,
+                    [itemKey]: (prev[itemKey] ?? 0) + 1,
+                  }));
+                  setTotalCatches((c) => c + 1);
+                  const earnings =
+                    result.kind === "fish"
+                      ? result.fish.price
+                      : result.kind === "treasure"
+                      ? result.forage.price
+                      : 0;
+                  if (earnings > 0) {
+                    setTotalStarlight((sl) => sl + earnings);
+                  }
+                  // Award xp; trigger the level-up banner if the
+                  // catch crossed a threshold.
+                  const xp = expForCatch(result);
+                  if (xp > 0) {
+                    setTotalExp((prev) => {
+                      const before = levelFromTotalExp(prev).level;
+                      const next = prev + xp;
+                      const after = levelFromTotalExp(next).level;
+                      if (after > before) setLevelUpBanner(after);
+                      return next;
+                    });
+                  }
+                }
                 s.mode = "walk";
                 s.subT = 0;
                 s.catchResult = null;
@@ -2339,6 +2482,83 @@ export default function FishingGame({ open, onClose }: Props) {
                 </span>
               </button>
             ) : null}
+
+            {/* Floating bag button. Appears next to the character
+                when the player taps them; tapping it opens the
+                inventory / info / ranking panel. Re-tapping the
+                character or anywhere else dismisses without opening. */}
+            {bagButton.visible && !panelOpen ? (
+              <motion.button
+                type="button"
+                key="bag-button"
+                initial={{ scale: 0.6, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.6, opacity: 0 }}
+                transition={{ duration: 0.16, ease: "easeOut" }}
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  setBagButton({ visible: false, x: 0, y: 0 });
+                  setPanelOpen(true);
+                }}
+                aria-label="가방 열기"
+                className="absolute z-[15] flex items-center justify-center"
+                style={{
+                  left: bagButton.x - 24,
+                  top: bagButton.y - 24,
+                  width: 48,
+                  height: 48,
+                  padding: 0,
+                  border: "none",
+                  background: "transparent",
+                  filter: "drop-shadow(0 3px 5px rgba(11,8,33,0.55))",
+                }}
+              >
+                <img
+                  src={UI_ACTION_BUTTON_IDLE}
+                  alt=""
+                  draggable={false}
+                  style={{
+                    imageRendering: "pixelated",
+                    width: 48,
+                    height: 48,
+                    pointerEvents: "none",
+                  }}
+                />
+                <span
+                  aria-hidden
+                  className="absolute leading-none"
+                  style={{
+                    transform: "translateY(-2px)",
+                    fontSize: 18,
+                    pointerEvents: "none",
+                  }}
+                >
+                  🎒
+                </span>
+              </motion.button>
+            ) : null}
+
+            {/* Level-up banner — brief celebration when totalExp
+                crosses a threshold. Auto-clears after 1.8s. */}
+            {levelUpBanner != null ? (
+              <motion.div
+                key={`levelup-${levelUpBanner}`}
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-xl px-3 py-1.5 text-[12px] font-serif font-bold"
+                style={{
+                  background: "rgba(251,191,36,0.95)",
+                  color: "#3d2c1c",
+                  border: "1px solid rgba(255,229,196,0.85)",
+                  boxShadow:
+                    "0 0 18px rgba(251,191,36,0.7), 0 4px 12px rgba(11,8,33,0.5)",
+                  letterSpacing: 1,
+                }}
+              >
+                레벨 업! Lv.{levelUpBanner}
+              </motion.div>
+            ) : null}
           </motion.div>
 
           <div
@@ -2350,6 +2570,32 @@ export default function FishingGame({ open, onClose }: Props) {
               : "Space 또는 우하단 액션 버튼으로 대화 · 출구로 걸어가면 자동 퇴장"}
           </div>
         </motion.div>
+      ) : null}
+
+      {/* Inventory / info / ranking modal — fixed-position so it
+          isn't bounded by the 306×306 game canvas. Rendered as a
+          sibling inside the same AnimatePresence so it can fade
+          alongside the game when the parent closes. */}
+      {open && panelOpen ? (
+        <InventoryPanel
+          key="inv-panel"
+          nickname={nickname}
+          inventory={inventory}
+          totalExp={totalExp}
+          totalCatches={totalCatches}
+          totalStarlight={totalStarlight}
+          tab={panelTab}
+          onTab={setPanelTab}
+          invPage={invPage}
+          setInvPage={setInvPage}
+          invSelected={invSelected}
+          setInvSelected={setInvSelected}
+          assets={assets}
+          onClose={() => {
+            setPanelOpen(false);
+            setInvSelected(null);
+          }}
+        />
       ) : null}
     </AnimatePresence>
   );
@@ -2790,6 +3036,757 @@ function Sparkles() {
           }}
         />
       ))}
+    </div>
+  );
+}
+
+// ── Inventory / info / ranking panel ─────────────────────────────
+// Single fixed-position modal hosted at the screen level so the 4×5
+// slot grid can fit at full 2× scale instead of being bounded by the
+// 306×306 game canvas. Three tab content blocks share the same
+// Frame9Slice container; tabs are bookmark-shaped FrameMarker sprites
+// sitting just above the panel top edge.
+const PANEL_WIDTH = 320;
+const PANEL_HEIGHT = 420;
+const PANEL_FRAME_CAP = 4;
+const PANEL_FRAME_SCALE = 2;
+const PANEL_BORDER = PANEL_FRAME_CAP * PANEL_FRAME_SCALE;
+const SLOT_DISPLAY = 64;        // 32×32 source × 2×
+const SLOT_GAP = 0;             // slots touch — slot frame already has its own border
+const SLOTS_PER_PAGE = 20;      // 4 cols × 5 rows
+const SLOT_COLS = 4;
+const SLOT_ROWS = 5;
+const TAB_W = 96;               // 64 source × 1.5×
+const TAB_H = 48;               // 32 source × 1.5×
+const TAB_CAP = 4;
+const TAB_SCALE = 1.5;
+
+type PanelTab = "inventory" | "info" | "ranking";
+
+function InventoryPanel({
+  nickname,
+  inventory,
+  totalExp,
+  totalCatches,
+  totalStarlight,
+  tab,
+  onTab,
+  invPage,
+  setInvPage,
+  invSelected,
+  setInvSelected,
+  assets,
+  onClose,
+}: {
+  nickname: string;
+  inventory: Record<string, number>;
+  totalExp: number;
+  totalCatches: number;
+  totalStarlight: number;
+  tab: PanelTab;
+  onTab: (t: PanelTab) => void;
+  invPage: number;
+  setInvPage: (n: number | ((p: number) => number)) => void;
+  invSelected: string | null;
+  setInvSelected: (s: string | null) => void;
+  assets: LoadedAssets | null;
+  onClose: () => void;
+}) {
+  const tabs: Array<{ id: PanelTab; label: string }> = [
+    { id: "inventory", label: "인벤토리" },
+    { id: "info", label: "정보" },
+    { id: "ranking", label: "랭킹" },
+  ];
+  return (
+    <motion.div
+      key="inv-panel-root"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.18 }}
+      className="pointer-events-none fixed inset-0 z-[300] flex items-center justify-center"
+      style={{ background: "rgba(11,8,33,0.55)" }}
+    >
+      <motion.div
+        initial={{ scale: 0.9, y: 18 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.9, y: 18 }}
+        transition={{ duration: 0.22, ease: "easeOut" }}
+        className="pointer-events-auto relative"
+        style={{ width: PANEL_WIDTH, height: PANEL_HEIGHT }}
+      >
+        {/* Tab bookmarks above the frame top edge. Active tab is
+            slightly raised + full brightness; inactive tabs sit
+            lower with reduced brightness/saturation. */}
+        <div
+          className="absolute left-0 right-0 flex justify-center"
+          style={{ top: -(TAB_H - 6), gap: 2, zIndex: 2 }}
+        >
+          {tabs.map((t) => {
+            const active = tab === t.id;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  onTab(t.id);
+                  setInvSelected(null);
+                }}
+                aria-label={t.label}
+                aria-pressed={active}
+                className="relative flex items-center justify-center"
+                style={{
+                  width: TAB_W,
+                  height: TAB_H,
+                  padding: 0,
+                  border: "none",
+                  background: "transparent",
+                  transform: active ? "translateY(-3px)" : "translateY(0px)",
+                  transition: "transform 120ms ease",
+                  filter: active
+                    ? "none"
+                    : "brightness(0.72) saturate(0.7)",
+                }}
+              >
+                <Frame9Slice
+                  src={UI_TAB_MARKER}
+                  cap={TAB_CAP}
+                  scale={TAB_SCALE}
+                  width={TAB_W}
+                  height={TAB_H}
+                />
+                <span
+                  aria-hidden
+                  className="absolute font-serif font-bold leading-none"
+                  style={{
+                    fontSize: 12,
+                    color: "#3d2c1c",
+                    paddingBottom: 4,
+                  }}
+                >
+                  {t.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <Frame9Slice
+          src={UI_POPUP_FRAME}
+          cap={PANEL_FRAME_CAP}
+          scale={PANEL_FRAME_SCALE}
+          width={PANEL_WIDTH}
+          height={PANEL_HEIGHT}
+          style={{
+            paddingTop: PANEL_BORDER + 6,
+            paddingBottom: PANEL_BORDER + 6,
+            paddingInline: PANEL_BORDER + 6,
+            boxSizing: "border-box",
+          }}
+        >
+          {/* Close button — top-right corner of the panel. */}
+          <button
+            type="button"
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              onClose();
+            }}
+            aria-label="닫기"
+            className="absolute flex items-center justify-center rounded"
+            style={{
+              top: PANEL_BORDER + 4,
+              right: PANEL_BORDER + 4,
+              width: 32,
+              height: 32,
+              padding: 0,
+              border: "none",
+              background: "rgba(220,80,80,0.18)",
+              zIndex: 3,
+            }}
+          >
+            <img
+              src={UI_ICON_CROSS}
+              alt=""
+              draggable={false}
+              style={{
+                imageRendering: "pixelated",
+                width: 30,
+                height: 30,
+                pointerEvents: "none",
+              }}
+            />
+          </button>
+
+          {/* Tab content */}
+          <div
+            className="flex h-full w-full flex-col items-center"
+            style={{ paddingTop: 20 }}
+          >
+            {tab === "inventory" ? (
+              <InventoryContent
+                inventory={inventory}
+                page={invPage}
+                setPage={setInvPage}
+                selected={invSelected}
+                setSelected={setInvSelected}
+              />
+            ) : tab === "info" ? (
+              <InfoContent
+                nickname={nickname}
+                totalExp={totalExp}
+                totalCatches={totalCatches}
+                totalStarlight={totalStarlight}
+                inventory={inventory}
+                assets={assets}
+              />
+            ) : (
+              <RankingContent nickname={nickname} totalExp={totalExp} />
+            )}
+          </div>
+        </Frame9Slice>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ── Slot icon helpers ─────────────────────────────────────────────
+// Look up the fish/forage that a `fish-{id}` / `forage-{id}` key
+// refers to, and return the sprite-sheet info needed to render its
+// 16×16 cell at SLOT_DISPLAY scale.
+type ItemRef =
+  | { kind: "fish"; data: Fish }
+  | { kind: "treasure"; data: Forage }
+  | { kind: "trash"; data: Forage };
+
+function resolveItemKey(key: string): ItemRef | null {
+  if (key.startsWith("fish-")) {
+    const id = parseInt(key.slice(5), 10);
+    const f = FISH_LIST.find((x) => x.id === id);
+    if (!f) return null;
+    return { kind: "fish", data: f };
+  }
+  if (key.startsWith("forage-")) {
+    const id = parseInt(key.slice(7), 10);
+    const f = FORAGE_LIST.find((x) => x.id === id);
+    if (!f) return null;
+    return { kind: f.type === "trash" ? "trash" : "treasure", data: f };
+  }
+  return null;
+}
+
+function InventoryContent({
+  inventory,
+  page,
+  setPage,
+  selected,
+  setSelected,
+}: {
+  inventory: Record<string, number>;
+  page: number;
+  setPage: (n: number | ((p: number) => number)) => void;
+  selected: string | null;
+  setSelected: (s: string | null) => void;
+}) {
+  // Stable ordering — sort by item key so the same key always lands
+  // in the same slot across re-renders (no jumping when a new item
+  // pushes the list).
+  const items = Object.entries(inventory)
+    .filter(([, count]) => count > 0)
+    .sort((a, b) => a[0].localeCompare(b[0]));
+  const totalPages = Math.max(1, Math.ceil(items.length / SLOTS_PER_PAGE));
+  const safePage = Math.min(page, totalPages - 1);
+  const start = safePage * SLOTS_PER_PAGE;
+  const slice = items.slice(start, start + SLOTS_PER_PAGE);
+  const selectedRef = selected ? resolveItemKey(selected) : null;
+  const selectedCount = selected ? inventory[selected] ?? 0 : 0;
+  return (
+    <>
+      {/* Slot grid */}
+      <div
+        className="grid"
+        style={{
+          gridTemplateColumns: `repeat(${SLOT_COLS}, ${SLOT_DISPLAY}px)`,
+          gridTemplateRows: `repeat(${SLOT_ROWS}, ${SLOT_DISPLAY}px)`,
+          gap: SLOT_GAP,
+        }}
+      >
+        {Array.from({ length: SLOTS_PER_PAGE }, (_, i) => {
+          const entry = slice[i];
+          const itemKey = entry?.[0];
+          const count = entry?.[1] ?? 0;
+          const ref = itemKey ? resolveItemKey(itemKey) : null;
+          return (
+            <button
+              key={i}
+              type="button"
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                if (itemKey) setSelected(itemKey);
+              }}
+              aria-label={ref ? ref.data.nameKo : "빈 슬롯"}
+              className="relative flex items-center justify-center"
+              style={{
+                width: SLOT_DISPLAY,
+                height: SLOT_DISPLAY,
+                padding: 0,
+                border: "none",
+                background: "transparent",
+              }}
+            >
+              <img
+                src={UI_INV_SLOT}
+                alt=""
+                draggable={false}
+                style={{
+                  imageRendering: "pixelated",
+                  width: SLOT_DISPLAY,
+                  height: SLOT_DISPLAY,
+                  pointerEvents: "none",
+                }}
+              />
+              {ref ? <SlotSprite ref_={ref} /> : null}
+              {count > 1 ? (
+                <span
+                  aria-hidden
+                  className="absolute font-serif font-bold leading-none"
+                  style={{
+                    right: 6,
+                    bottom: 4,
+                    fontSize: 11,
+                    color: "#fff",
+                    textShadow:
+                      "1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000",
+                    pointerEvents: "none",
+                  }}
+                >
+                  {count}
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Pagination — left arrow (flipped), "n/total", right arrow */}
+      <div
+        className="mt-2 flex items-center justify-center gap-3 text-[12px] font-serif font-bold"
+        style={{ color: "#3d2c1c" }}
+      >
+        <button
+          type="button"
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            setPage((p) => Math.max(0, p - 1));
+          }}
+          disabled={safePage === 0}
+          aria-label="이전 페이지"
+          className="flex items-center justify-center"
+          style={{
+            width: 32,
+            height: 24,
+            padding: 0,
+            border: "none",
+            background: "transparent",
+            opacity: safePage === 0 ? 0.3 : 1,
+            cursor: safePage === 0 ? "default" : "pointer",
+          }}
+        >
+          <img
+            src={UI_ICON_ARROW}
+            alt=""
+            draggable={false}
+            style={{
+              imageRendering: "pixelated",
+              width: 32,
+              height: 24,
+              transform: "scaleX(-1)",
+              pointerEvents: "none",
+            }}
+          />
+        </button>
+        <span style={{ minWidth: 48, textAlign: "center" }}>
+          {safePage + 1}/{totalPages}
+        </span>
+        <button
+          type="button"
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            setPage((p) => Math.min(totalPages - 1, p + 1));
+          }}
+          disabled={safePage >= totalPages - 1}
+          aria-label="다음 페이지"
+          className="flex items-center justify-center"
+          style={{
+            width: 32,
+            height: 24,
+            padding: 0,
+            border: "none",
+            background: "transparent",
+            opacity: safePage >= totalPages - 1 ? 0.3 : 1,
+            cursor: safePage >= totalPages - 1 ? "default" : "pointer",
+          }}
+        >
+          <img
+            src={UI_ICON_ARROW}
+            alt=""
+            draggable={false}
+            style={{
+              imageRendering: "pixelated",
+              width: 32,
+              height: 24,
+              pointerEvents: "none",
+            }}
+          />
+        </button>
+      </div>
+
+      {/* Detail card — slides up from the bottom of the panel when a
+          slot is selected. Tap the backdrop to dismiss. */}
+      <AnimatePresence>
+        {selectedRef && selected ? (
+          <motion.div
+            key="slot-detail"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            transition={{ duration: 0.14 }}
+            onPointerDown={(e) => e.stopPropagation()}
+            className="absolute left-0 right-0 mx-auto rounded-lg px-3 py-2 text-[11px]"
+            style={{
+              bottom: 12,
+              width: 240,
+              background: "rgba(11,8,33,0.94)",
+              border: "1px solid rgba(216,150,200,0.45)",
+              boxShadow: "0 4px 16px rgba(11,8,33,0.6)",
+              color: "#f4efff",
+              zIndex: 4,
+            }}
+          >
+            <div className="flex items-center gap-2">
+              <div className="relative" style={{ width: 32, height: 32 }}>
+                <SlotSprite ref_={selectedRef} small />
+              </div>
+              <div className="flex flex-1 flex-col leading-tight">
+                <span className="font-serif font-bold text-[13px] text-stardust">
+                  {selectedRef.data.nameKo}
+                </span>
+                <span
+                  style={{
+                    fontSize: 10,
+                    color:
+                      selectedRef.kind === "fish"
+                        ? "#fbbf24"
+                        : selectedRef.kind === "trash"
+                        ? "#94a3b8"
+                        : "#fde68a",
+                    fontWeight: 700,
+                  }}
+                >
+                  {selectedRef.kind === "fish"
+                    ? gradeLabel(selectedRef.data.grade)
+                    : selectedRef.kind === "trash"
+                    ? "쓰레기"
+                    : "해양 자원"}
+                </span>
+              </div>
+              <div className="text-right leading-tight">
+                <div style={{ fontSize: 10, color: "#a8a0d0" }}>
+                  {selectedCount}개 보유
+                </div>
+                <div style={{ fontSize: 11, color: "#fde68a" }}>
+                  {selectedRef.kind === "trash"
+                    ? "판매 불가"
+                    : `${selectedRef.data.price} 별빛`}
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                setSelected(null);
+              }}
+              className="mt-2 w-full rounded text-[11px] font-bold"
+              style={{
+                background: "rgba(216,150,200,0.30)",
+                border: "1px solid rgba(216,150,200,0.55)",
+                color: "#f4efff",
+                padding: "4px 0",
+              }}
+            >
+              닫기
+            </button>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </>
+  );
+}
+
+function gradeLabel(g: FishGrade): string {
+  return g === "common"
+    ? "일반"
+    : g === "uncommon"
+    ? "고급"
+    : g === "rare"
+    ? "희귀"
+    : g === "legendary"
+    ? "전설"
+    : "신화";
+}
+
+// 16×16 sheet cell rendered at slot scale, cropped via background-
+// position (same trick the catch popup uses).
+function SlotSprite({
+  ref_,
+  small = false,
+}: {
+  ref_: ItemRef;
+  small?: boolean;
+}) {
+  const display = small ? 24 : 48;
+  const isFish = ref_.kind === "fish";
+  const sheetUrl = isFish
+    ? ASSETS_FISH_CATALOG.fishAll
+    : ASSETS_FORAGE_CATALOG.forageAll;
+  const sheetW = isFish ? 160 : 160;
+  const sheetH = isFish ? 160 : 48;
+  const cellSize = 16;
+  const scale = display / cellSize;
+  const sx = ref_.data.spriteX;
+  const sy = ref_.data.spriteY;
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute"
+      style={{
+        left: "50%",
+        top: "50%",
+        width: display,
+        height: display,
+        transform: "translate(-50%, -50%)",
+        backgroundImage: `url(${sheetUrl})`,
+        backgroundRepeat: "no-repeat",
+        backgroundSize: `${sheetW * scale}px ${sheetH * scale}px`,
+        backgroundPosition: `-${sx * scale}px -${sy * scale}px`,
+        imageRendering: "pixelated",
+      }}
+    />
+  );
+}
+
+// ── Info tab content ─────────────────────────────────────────────
+function InfoContent({
+  nickname,
+  totalExp,
+  totalCatches,
+  totalStarlight,
+  inventory,
+  assets,
+}: {
+  nickname: string;
+  totalExp: number;
+  totalCatches: number;
+  totalStarlight: number;
+  inventory: Record<string, number>;
+  assets: LoadedAssets | null;
+}) {
+  const lvl = levelFromTotalExp(totalExp);
+  const dexCount = Object.keys(inventory).filter(
+    (k) => (inventory[k] ?? 0) > 0,
+  ).length;
+  const expFraction =
+    lvl.expToNext > 0 ? Math.min(1, lvl.expInLevel / lvl.expToNext) : 0;
+  return (
+    <div
+      className="flex w-full flex-col items-center"
+      style={{ color: "#3d2c1c", fontSize: 11, gap: 6 }}
+    >
+      <CharacterPreview assets={assets} />
+      <div
+        className="font-serif font-bold leading-none"
+        style={{ fontSize: 14, marginTop: 2 }}
+      >
+        {nickname || "이름 없음"}
+      </div>
+      {/* Fishing level + exp bar */}
+      <div className="flex w-full flex-col" style={{ gap: 2 }}>
+        <div className="flex items-baseline justify-between font-bold">
+          <span>낚시 Lv.{lvl.level}</span>
+          <span style={{ fontSize: 10, color: "#5a4a30" }}>
+            {lvl.expInLevel} / {lvl.expToNext} EXP
+          </span>
+        </div>
+        <ExpBar fraction={expFraction} />
+      </div>
+      {/* Disabled lines for not-yet-built systems */}
+      <div className="flex w-full justify-between" style={{ color: "#9a8d6a" }}>
+        <span>생활 Lv.</span>
+        <span>준비중입니다</span>
+      </div>
+      <div className="flex w-full justify-between" style={{ color: "#9a8d6a" }}>
+        <span>전투 Lv.</span>
+        <span>준비중입니다</span>
+      </div>
+      <div className="my-1 h-px w-full" style={{ background: "rgba(61,44,28,0.25)" }} />
+      <StatRow label="총 낚은 횟수" value={`${totalCatches}마리`} />
+      <StatRow label="총 번 별빛" value={`${totalStarlight} 별빛`} />
+      <StatRow
+        label="도감 진행률"
+        value={`${dexCount} / ${TOTAL_DEX_SPECIES}종`}
+      />
+    </div>
+  );
+}
+
+function StatRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex w-full justify-between font-bold">
+      <span>{label}</span>
+      <span>{value}</span>
+    </div>
+  );
+}
+
+// Mini exp-bar styled like the catch gauge but without the marker.
+const EXP_BAR_WIDTH = 240;
+const EXP_BAR_HEIGHT = 12;
+function ExpBar({ fraction }: { fraction: number }) {
+  return (
+    <div
+      className="relative"
+      style={{ width: EXP_BAR_WIDTH, height: EXP_BAR_HEIGHT }}
+    >
+      <img
+        src={UI_GAUGE_BAR}
+        alt=""
+        draggable={false}
+        style={{
+          imageRendering: "pixelated",
+          width: EXP_BAR_WIDTH,
+          height: EXP_BAR_HEIGHT,
+          pointerEvents: "none",
+          objectFit: "fill",
+        }}
+      />
+      <div
+        className="absolute"
+        style={{
+          left: 4,
+          top: 4,
+          width: Math.max(0, (EXP_BAR_WIDTH - 8) * fraction),
+          height: EXP_BAR_HEIGHT - 8,
+          background: "linear-gradient(180deg, #fde68a 0%, #f59e0b 100%)",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.5)",
+          transition: "width 200ms ease",
+        }}
+      />
+    </div>
+  );
+}
+
+// Composite character preview (idle frame, facing down). Re-uses the
+// same sheet layout the game renders — char base + eyes + shirt +
+// pants + shoes + hair, in that order.
+function CharacterPreview({ assets }: { assets: LoadedAssets | null }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const PREVIEW_SCALE = 2.5;
+  const SIZE = SPRITE_CELL * PREVIEW_SCALE; // 80
+  useEffect(() => {
+    if (!assets || !canvasRef.current) return;
+    const cv = canvasRef.current;
+    const ctx = cv.getContext("2d");
+    if (!ctx) return;
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    const draw = (img: HTMLImageElement, variantStartX: number) => {
+      ctx.drawImage(
+        img,
+        variantStartX,
+        0,
+        SPRITE_CELL,
+        SPRITE_CELL,
+        0,
+        0,
+        SIZE,
+        SIZE,
+      );
+    };
+    // Frame 0, row 0 → idle, facing down. Variant index × VARIANT_WIDTH
+    // for the multi-color sheets; char base has no variants.
+    draw(assets.char, 0);
+    draw(assets.eyes, DEFAULT_EYES_COLOR * VARIANT_WIDTH);
+    draw(assets.shirt, DEFAULT_SHIRT_COLOR * VARIANT_WIDTH);
+    draw(assets.pants, DEFAULT_PANTS_COLOR * VARIANT_WIDTH);
+    draw(assets.shoes, DEFAULT_SHOES_COLOR * VARIANT_WIDTH);
+    draw(assets.hair, DEFAULT_HAIR_COLOR * VARIANT_WIDTH);
+  }, [assets, SIZE]);
+  return (
+    <canvas
+      ref={canvasRef}
+      width={SIZE}
+      height={SIZE}
+      style={{
+        imageRendering: "pixelated",
+        width: SIZE,
+        height: SIZE,
+      }}
+    />
+  );
+}
+
+// ── Ranking tab content ─────────────────────────────────────────
+// Phase-1 placeholder — only the local player. When the panel goes
+// multi-user (Firestore guild roll-up) this will fill out to a
+// top-10 list sorted by level then xp-in-level. For now we render
+// the self entry so the layout exists.
+function RankingContent({
+  nickname,
+  totalExp,
+}: {
+  nickname: string;
+  totalExp: number;
+}) {
+  const lvl = levelFromTotalExp(totalExp);
+  const rows = [{ rank: 1, nickname: nickname || "이름 없음", level: lvl.level }];
+  return (
+    <div
+      className="flex w-full flex-col"
+      style={{ color: "#3d2c1c", fontSize: 12, gap: 4 }}
+    >
+      <div
+        className="text-center font-serif font-bold"
+        style={{ fontSize: 13, marginBottom: 4 }}
+      >
+        낚시 레벨 랭킹
+      </div>
+      {rows.map((r) => (
+        <div
+          key={r.rank}
+          className="flex items-center justify-between rounded px-3 py-2"
+          style={{
+            background:
+              r.rank === 1 ? "rgba(251,191,36,0.20)" : "rgba(0,0,0,0.05)",
+            border:
+              r.rank === 1
+                ? "1px solid rgba(251,191,36,0.55)"
+                : "1px solid rgba(61,44,28,0.20)",
+          }}
+        >
+          <span className="font-serif font-bold" style={{ width: 36 }}>
+            {r.rank}위
+          </span>
+          <span className="flex-1 truncate px-2">{r.nickname}</span>
+          <span className="font-bold">Lv.{r.level}</span>
+        </div>
+      ))}
+      <div
+        className="mt-2 text-center"
+        style={{ fontSize: 10, color: "#7a6a4a" }}
+      >
+        길드원 전체 랭킹은 추후 업데이트됩니다
+      </div>
     </div>
   );
 }
