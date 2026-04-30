@@ -7031,7 +7031,6 @@ function SellPanel({
             <BuyContent
               buySelected={buySelected}
               setBuySelected={setBuySelected}
-              totalStarlight={totalStarlight}
               onBuy={onBuy}
               onClose={onClose}
               externalPressed={externalPressed}
@@ -7049,40 +7048,38 @@ function SellPanel({
 function BuyContent({
   buySelected,
   setBuySelected,
-  totalStarlight,
   onBuy,
   onClose,
   externalPressed,
 }: {
   buySelected: number | null;
   setBuySelected: (id: number | null) => void;
-  totalStarlight: number;
   onBuy: (foodId: number) => void;
   onClose: () => void;
   externalPressed: boolean;
 }) {
   const selFood = buySelected != null ? getFoodById(buySelected) : null;
-  const canAfford = selFood ? totalStarlight >= selFood.price : false;
   return (
     <>
       <div
         className="flex w-full flex-col items-center"
         style={{ flex: 1, justifyContent: "center", minHeight: 0 }}
       >
-        {/* Food slot grid — fixed 5×2 to match the sell tab's grid
-            shape. The two food entries fill the first two cells; the
-            remaining cells render as empty FrameSlot02c placeholders
-            so future shop items can drop straight in without changing
-            the layout. */}
+        {/* Food slot grid — single row of 5 cells (was 5×2). The
+            second row of empty placeholders was bleeding behind
+            the 구매 button on small mobile viewports; with only
+            2 food items today the extra row offered no value.
+            Future shop items extending past 5 entries should
+            re-introduce a second row at that point. */}
         <div
           className="grid"
           style={{
             gridTemplateColumns: `repeat(${SELL_SLOT_COLS}, ${SLOT_DISPLAY}px)`,
-            gridTemplateRows: `repeat(${SELL_SLOT_ROWS}, ${SLOT_DISPLAY}px)`,
+            gridTemplateRows: `${SLOT_DISPLAY}px`,
             gap: SLOT_GAP,
           }}
         >
-          {Array.from({ length: SELL_SLOTS_PER_PAGE }, (_, i) => {
+          {Array.from({ length: SELL_SLOT_COLS }, (_, i) => {
             const food = FOOD_LIST[i];
             if (!food) {
               return (
@@ -7179,7 +7176,13 @@ function BuyContent({
       >
         <SellActionButton
           label="구매"
-          disabled={!selFood || !canAfford}
+          // Activate on any food selection — the affordability
+          // gate runs inside `onBuy` (it surfaces the
+          // STARLIGHT_INSUFFICIENT_MESSAGE toast when stars are
+          // short) so the player gets feedback instead of a
+          // silently-disabled button. Previous condition kept
+          // the button greyed even after a successful tap.
+          disabled={!selFood}
           onClick={() => {
             if (selFood) onBuy(selFood.id);
           }}
