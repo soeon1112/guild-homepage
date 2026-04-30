@@ -365,14 +365,18 @@ const MAP_SCALE = 2;
 // static handler.
 const UI_FLAT_BASE =
   "/images/fishing/UI assets/01_Flat_Theme/Sprites/";
+// Frame order in the asset is HIGHEST-NUMBER-FIRST: _4 sits highest
+// off the surface (idle), _3 dips a touch (hover), _1 is fully
+// pressed. _2 is an intermediate "almost pressed" frame we don't
+// currently use.
 const UI_ACTION_BUTTON_IDLE = encodeURI(
-  UI_FLAT_BASE + "UI_Flat_Button02a_1.png",
+  UI_FLAT_BASE + "UI_Flat_Button02a_4.png",
 );
 const UI_ACTION_BUTTON_HOVER = encodeURI(
-  UI_FLAT_BASE + "UI_Flat_Button02a_2.png",
+  UI_FLAT_BASE + "UI_Flat_Button02a_3.png",
 );
 const UI_ACTION_BUTTON_PRESSED = encodeURI(
-  UI_FLAT_BASE + "UI_Flat_Button02a_3.png",
+  UI_FLAT_BASE + "UI_Flat_Button02a_1.png",
 );
 const UI_BANNER_BG = encodeURI(UI_FLAT_BASE + "UI_Flat_Banner03a.png");
 const UI_GAUGE_BAR = encodeURI(UI_FLAT_BASE + "UI_Flat_Bar01a.png");
