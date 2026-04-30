@@ -4098,10 +4098,11 @@ function InventoryPanel({
           style={{
             // paddingTop clears the tab-cover region (the part of
             // each tab that sits behind the panel border). 4 px of
-            // breathing room beneath that. paddingBottom keeps the
-            // close button comfortably inside the frame.
+            // breathing room beneath that. paddingBottom is bumped
+            // so the close X sits a few px above the frame edge —
+            // it was reading as glued to the bottom border before.
             paddingTop: TAB_H - TAB_VISIBLE + 4,
-            paddingBottom: 4,
+            paddingBottom: 12,
             paddingInline: PANEL_BORDER + 2,
             boxSizing: "border-box",
             // Panel itself sits below the active tab in z so the
