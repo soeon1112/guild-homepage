@@ -859,6 +859,11 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
   // Firestore restore for now; once the shop sale UX exists it'll
   // also fire on each transaction.
   const [totalStarlight, setTotalStarlight] = useState(0);
+  // Cumulative star earnings from selling fish — never decreases.
+  // The info tab's "총 번 별빛" reads this so the player sees their
+  // total fishing income (separate from the homepage points
+  // balance, which moves up AND down with comments / buys / etc.).
+  const [earnedStars, setEarnedStars] = useState(0);
   // Brief level-up banner shown when totalExp crosses a threshold.
   const [levelUpBanner, setLevelUpBanner] = useState<number | null>(null);
   // Character-click bag button + the panel it opens.
@@ -1397,6 +1402,15 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
             setTotalCatches(data.totalCaught);
           if (typeof data.totalStars === "number")
             setTotalStarlight(data.totalStars);
+          // earnedStars is the new income-only counter. Legacy
+          // saves only have totalStars, so use it as a best-effort
+          // seed when earnedStars is missing — players who sold
+          // before this field existed still see a non-zero stat.
+          if (typeof data.earnedStars === "number") {
+            setEarnedStars(data.earnedStars);
+          } else if (typeof data.totalStars === "number") {
+            setEarnedStars(Math.max(0, data.totalStars));
+          }
           if (typeof data.stamina === "number") {
             // Clamp restored stamina to [0, MAX_STAMINA] so a stale
             // doc with an out-of-range value doesn't break the bar.
@@ -1490,6 +1504,7 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
         level: levelFromTotalExp(totalExp).level,
         totalCaught: totalCatches,
         totalStars: totalStarlight,
+        earnedStars,
         stamina,
       },
       { merge: true },
@@ -1500,6 +1515,7 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
     totalExp,
     totalCatches,
     totalStarlight,
+    earnedStars,
     stamina,
     open,
     nickname,
@@ -1533,6 +1549,7 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
     totalExp,
     totalCatches,
     totalStarlight,
+    earnedStars,
     stamina,
   });
   useEffect(() => {
@@ -1542,6 +1559,7 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
       totalExp,
       totalCatches,
       totalStarlight,
+      earnedStars,
       stamina,
     };
   }, [
@@ -1550,6 +1568,7 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
     totalExp,
     totalCatches,
     totalStarlight,
+    earnedStars,
     stamina,
   ]);
   const flushSave = useCallback(() => {
@@ -1582,6 +1601,7 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
         level: levelFromTotalExp(snap.totalExp).level,
         totalCaught: snap.totalCatches,
         totalStars: snap.totalStarlight,
+        earnedStars: snap.earnedStars,
         stamina: snap.stamina,
         lastPosition: { x: s.x, y: s.y, facing: s.dir },
         lastMap:
@@ -4737,6 +4757,7 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                   totalExp={totalExp}
                   totalCatches={totalCatches}
                   totalStarlight={totalStarlight}
+                  earnedStars={earnedStars}
                   tab={panelTab}
                   onTab={setPanelTab}
                   invPage={invPage}
@@ -4810,6 +4831,11 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                     });
                     if (price > 0) {
                       setTotalStarlight((s) => s + price);
+                      // Earned-only counter — never decreases on
+                      // buys, so the info-tab "총 번 별빛" stat
+                      // reflects pure fishing income (separate from
+                      // the homepage points balance).
+                      setEarnedStars((s) => s + price);
                       // Mirror to the main-site point ledger so the
                       // earnings show up in the user's homepage points
                       // total. Fire-and-forget — sell UX shouldn't
@@ -4839,6 +4865,7 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                     setSellSelected(null);
                     if (total > 0) {
                       setTotalStarlight((s) => s + total);
+                      setEarnedStars((s) => s + total);
                       void addPoints(
                         nickname,
                         "낚시",
@@ -5696,6 +5723,7 @@ function InventoryPanel({
   totalExp,
   totalCatches,
   totalStarlight,
+  earnedStars,
   tab,
   onTab,
   invPage,
@@ -5717,6 +5745,7 @@ function InventoryPanel({
   totalExp: number;
   totalCatches: number;
   totalStarlight: number;
+  earnedStars: number;
   tab: PanelTab;
   onTab: (t: PanelTab) => void;
   invPage: number;
@@ -5860,7 +5889,7 @@ function InventoryPanel({
                   nickname={nickname}
                   totalExp={totalExp}
                   totalCatches={totalCatches}
-                  totalStarlight={totalStarlight}
+                  earnedStars={earnedStars}
                   inventory={inventory}
                   assets={assets}
                 />
@@ -7702,14 +7731,14 @@ function InfoContent({
   nickname,
   totalExp,
   totalCatches,
-  totalStarlight,
+  earnedStars,
   inventory,
   assets,
 }: {
   nickname: string;
   totalExp: number;
   totalCatches: number;
-  totalStarlight: number;
+  earnedStars: number;
   inventory: Record<string, number>;
   assets: LoadedAssets | null;
 }) {
@@ -7773,7 +7802,7 @@ function InfoContent({
         style={{ background: "rgba(61,44,28,0.25)", margin: "1px 0" }}
       />
       <StatRow label="총 낚은 횟수" value={`${totalCatches}마리`} />
-      <StatRow label="총 번 별빛" value={`${totalStarlight} 별빛`} />
+      <StatRow label="총 번 별빛" value={`${earnedStars} 별빛`} />
       <StatRow
         label="도감 진행률"
         value={`${dexCount} / ${TOTAL_DEX_SPECIES}종`}
