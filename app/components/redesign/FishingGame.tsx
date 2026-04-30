@@ -1027,11 +1027,6 @@ export default function FishingGame({ open, onClose }: Props) {
       const sx = frameCol * SPRITE_CELL;
       const sy = WALK_ROWS[dir] * SPRITE_CELL;
       ctx.drawImage(
-        imgs.shadow,
-        Math.round(footX - 8 - camX),
-        Math.round(footY - 6 - camY),
-      );
-      ctx.drawImage(
         base,
         sx, sy, SPRITE_CELL, SPRITE_CELL,
         drawX, drawY, SPRITE_CELL, SPRITE_CELL,
@@ -1076,11 +1071,6 @@ export default function FishingGame({ open, onClose }: Props) {
       const drawY = Math.round(footY + 4 - SPRITE_CELL - camY + 4);
       const sx = frameCol * SPRITE_CELL;
       const sy = WALK_ROWS[dir] * SPRITE_CELL;
-      ctx.drawImage(
-        imgs.shadow,
-        Math.round(footX - 8 - camX),
-        Math.round(footY - 6 - camY),
-      );
       ctx.drawImage(
         imgs.fishBase,
         sx, sy, SPRITE_CELL, SPRITE_CELL,
