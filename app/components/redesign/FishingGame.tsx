@@ -61,6 +61,8 @@ import {
   COLLISION_BLUE_B_MIN,
   COLLISION_BLUE_G_MAX,
   COLLISION_BLUE_R_MAX,
+  COLLISION_GREEN_G_MIN,
+  COLLISION_GREEN_RB_MAX,
   COLLISION_RED_GB_MAX,
   COLLISION_RED_R_MIN,
   COLLISION_YELLOW_B_MAX,
@@ -159,7 +161,7 @@ type LoadedAssets = {
   forageCatalog: HTMLImageElement;
 };
 
-type Prompt = "blueDoor" | "yellowDoor" | "exit" | "npc" | null;
+type Prompt = "blueDoor" | "yellowDoor" | "exit" | "counter" | null;
 type Mode =
   | "walk"
   | "fishingCast"
@@ -224,6 +226,43 @@ function collidesIndoor(
   );
 }
 
+// Safe-spawn search for the indoor scene. Walks outward from the
+// preferred (x, y) in a 4-px ring spiral until it finds a foot
+// position that doesn't collide. Used when entering the shop, when
+// restoring a saved position, and as a per-frame safety net for the
+// player getting stuck in a newly-painted red zone after a collision
+// PNG update — better to teleport them out than freeze them in
+// place.
+function findSafeIndoorSpot(
+  shopData: ImageData,
+  preferX: number,
+  preferY: number,
+  mapW: number,
+  mapH: number,
+): { x: number; y: number } {
+  if (!collidesIndoor(preferX, preferY, shopData)) {
+    return { x: preferX, y: preferY };
+  }
+  const margin = CHAR_BBOX_HALF_W + 1;
+  for (let r = 4; r <= Math.max(mapW, mapH); r += 4) {
+    for (let dy = -r; dy <= r; dy += 4) {
+      for (let dx = -r; dx <= r; dx += 4) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+        const x = preferX + dx;
+        const y = preferY + dy;
+        if (x < margin || x > mapW - margin) continue;
+        if (y < CHAR_BBOX_HEIGHT + 1 || y > mapH - 1) continue;
+        if (!collidesIndoor(x, y, shopData)) {
+          return { x, y };
+        }
+      }
+    }
+  }
+  // Total fallback — map center. Even if the map is fully blocked
+  // we'd rather drop the player there than leave them frozen.
+  return { x: mapW / 2, y: mapH / 2 };
+}
+
 // Water test against the BACKGROUND art (not collision). Used by
 // the can-fish probe so building walls and tree trunks (which are
 // also red on collision.png) don't qualify.
@@ -261,6 +300,44 @@ function isBluePixel(data: ImageData, x: number, y: number): boolean {
     b >= COLLISION_BLUE_B_MIN &&
     r <= COLLISION_BLUE_R_MAX &&
     g <= COLLISION_BLUE_G_MAX
+  );
+}
+
+// Indoor counter-zone marker. The shop's collision PNG paints the
+// area in front of the counter green; standing on it surfaces the
+// "판매" prompt and the action button icon flips to a cart. Same
+// 4-corner foot-bbox sample as the other colour gates.
+function isGreenPixel(data: ImageData, x: number, y: number): boolean {
+  const ix = x | 0;
+  const iy = y | 0;
+  if (ix < 0 || iy < 0 || ix >= data.width || iy >= data.height) return false;
+  const i = (iy * data.width + ix) * 4;
+  const r = data.data[i];
+  const g = data.data[i + 1];
+  const b = data.data[i + 2];
+  const a = data.data[i + 3];
+  return (
+    a > 50 &&
+    g >= COLLISION_GREEN_G_MIN &&
+    r <= COLLISION_GREEN_RB_MAX &&
+    b <= COLLISION_GREEN_RB_MAX
+  );
+}
+
+function isGreenAtBbox(
+  footX: number,
+  footY: number,
+  data: ImageData,
+): boolean {
+  const bx = footX - CHAR_BBOX_HALF_W;
+  const by = footY - CHAR_BBOX_HEIGHT;
+  const bw = CHAR_BBOX_HALF_W * 2;
+  const bh = CHAR_BBOX_HEIGHT;
+  return (
+    isGreenPixel(data, bx, by) ||
+    isGreenPixel(data, bx + bw, by) ||
+    isGreenPixel(data, bx, by + bh) ||
+    isGreenPixel(data, bx + bw, by + bh)
   );
 }
 
@@ -1393,7 +1470,7 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
       startCast();
       return;
     }
-    if (promptRef.current === "npc") {
+    if (promptRef.current === "counter") {
       setSellOpen(true);
     }
   }, [npcDialog, cancelFishingToWalk, startCast]);
@@ -1629,6 +1706,21 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
       );
       return;
     }
+    // Tapping the shopkeeper sprite directly opens the sell UI —
+    // shortcut for the green-counter zone trigger so the player
+    // doesn't have to step onto the marker to interact.
+    if (sceneRef.current === "fishshop" && assets) {
+      const npcSx = (assets.npcFoot.x - cx) * MAP_SCALE;
+      const npcSy = (assets.npcFoot.y - cy) * MAP_SCALE;
+      const onNpc =
+        Math.abs(px - npcSx) <= 16 &&
+        py >= npcSy - 44 &&
+        py <= npcSy + 6;
+      if (onNpc) {
+        setSellOpen(true);
+        return;
+      }
+    }
     if (bagButton.visible) {
       // Tap anywhere else dismisses the floating menu.
       setBagButton({ visible: false, x: 0, y: 0 });
@@ -1636,7 +1728,7 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
     }
     e.currentTarget.setPointerCapture(e.pointerId);
     updateJoy(e, true);
-  }, [bagButton.visible]);
+  }, [bagButton.visible, assets]);
 
   const onPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     const j = joyRef.current;
@@ -1706,12 +1798,16 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
         }
         return null;
       }
-      if (pointInRect(x, y, npcZone)) return "npc";
-      // Indoor exit is now painted as blue pixels on the shop's
-      // collision mask (the artist narrowed the previous wide bottom
-      // strip down to a single tile in front of the door). Same
-      // bbox check the outdoor blue door uses — re-painting the mask
-      // in Photoshop moves the exit without touching code.
+      // Green counter zone — explicit "press to sell" patch the
+      // artist paints in front of the shopkeeper. Replaces the
+      // previous npcZone (yellow centroid) check so the action
+      // trigger area is a hand-picked tile rather than wherever the
+      // NPC sprite happens to land.
+      if (isGreenAtBbox(x, y, shopCollision)) return "counter";
+      // Indoor exit — blue pixels on the same collision mask. The
+      // artist narrowed the previous wide bottom strip down to a
+      // single tile in front of the door; re-painting the mask in
+      // Photoshop moves the exit without touching code.
       if (isBlueAtBbox(x, y, shopCollision)) return "exit";
       return null;
     };
@@ -1933,6 +2029,28 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
         s.frameAcc = 0;
       }
       s.moving = moving;
+
+      // Indoor stuck-rescue safety net. If a collision-PNG update
+      // dropped the player inside a freshly-painted red zone (or
+      // they were saved into one earlier), push them to the nearest
+      // walkable spot instead of freezing them in place. Outdoor
+      // doesn't need this — the map hasn't been re-painted under
+      // the player. Cheap to run every frame: a single 4-corner
+      // bbox check.
+      if (
+        currentScene === "fishshop" &&
+        collidesIndoor(s.x, s.y, shopCollision)
+      ) {
+        const safe = findSafeIndoorSpot(
+          shopCollision,
+          s.x,
+          s.y,
+          INDOOR_MAP_WIDTH,
+          INDOOR_MAP_HEIGHT,
+        );
+        s.x = safe.x;
+        s.y = safe.y;
+      }
 
       // Zone bookkeeping. The first frame the player crosses INTO a
       // zone (null → zone), entry/exit/yellow auto-trigger; the NPC
@@ -2643,12 +2761,14 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
               const fishingActive = mode !== "walk";
               const showFish =
                 scene === "outdoor" && (canFish || fishingActive);
-              const showTalk = !fishingActive && prompt === "npc";
-              if (!showFish && !showTalk) return null;
-              // Bite mode swaps the icon to a vivid "!" so it reads
-              // as "press now!" instead of a passive fishing prompt.
-              const icon = showTalk
-                ? "💬"
+              const showCounter =
+                !fishingActive && prompt === "counter";
+              if (!showFish && !showCounter) return null;
+              // Counter zone swaps the icon to a cart so it reads as
+              // "open the sell UI" rather than the fishing prompt.
+              // Bite mode uses a vivid "!" instead of the rod icon.
+              const icon = showCounter
+                ? "🛒"
                 : mode === "fishingBite"
                 ? "❗"
                 : "🎣";
@@ -2657,8 +2777,8 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                   ? "당기기"
                   : mode === "fishingFakeBite" || mode === "fishingWait"
                   ? "낚시 취소"
-                  : showTalk
-                  ? "대화하기"
+                  : showCounter
+                  ? "판매하기"
                   : "낚시하기";
               const isBite = mode === "fishingBite";
               const buttonSrc = actionPressed
