@@ -6853,7 +6853,16 @@ function SellPanel({
             zIndex: 2,
           }}
         >
-          <div className="flex h-full w-full flex-col items-center">
+          <div
+            key={tab}
+            className="flex h-full w-full flex-col items-center"
+          >
+            {/* `key={tab}` forces React to fully unmount the
+                previous tab's subtree on switch — the sell + buy
+                action buttons share the same SellActionButton
+                component so without a key, React reuses the DOM
+                nodes in place and the previous tab's button can
+                briefly leak through during the swap. */}
             {/* NPC headline removed — shopkeeper greeting bubble
                 already covers the "어서오세요" line over the NPC
                 sprite, so the panel itself just shows the goods. */}
@@ -7018,7 +7027,7 @@ function SellPanel({
               style={{
                 marginTop: 4,
                 fontSize: 10,
-                color: selRef ? "#3d2c1c" : "#7a6a4a",
+                color: "#3d2c1c",
                 textAlign: "center",
               }}
             >
@@ -7092,20 +7101,44 @@ function BuyContent({
         className="flex w-full flex-col items-center"
         style={{ flex: 1, justifyContent: "center", minHeight: 0 }}
       >
-        {/* Food slot grid — only the actual food entries. Empty
-            placeholder cells were creating a row of "ghost" slot
-            backgrounds in the buy tab; with FOOD_LIST holding 2
-            items today, only those 2 slots render. When more
-            shop items land, the grid auto-expands. */}
+        {/* Food slot grid — 5 × 2 = 10 cells, mirrors the sell
+            tab layout. FOOD_LIST entries fill the leading cells;
+            the rest render as empty FrameSlot02c placeholders so
+            the buy and sell tabs share the same grid footprint
+            and future shop items drop into existing cells without
+            relayout. */}
         <div
           className="grid"
           style={{
-            gridTemplateColumns: `repeat(${FOOD_LIST.length}, ${SLOT_DISPLAY}px)`,
-            gridTemplateRows: `${SLOT_DISPLAY}px`,
+            gridTemplateColumns: `repeat(${SELL_SLOT_COLS}, ${SLOT_DISPLAY}px)`,
+            gridTemplateRows: `repeat(${SELL_SLOT_ROWS}, ${SLOT_DISPLAY}px)`,
             gap: SLOT_GAP,
           }}
         >
-          {FOOD_LIST.map((food) => {
+          {Array.from({ length: SELL_SLOTS_PER_PAGE }, (_, i) => {
+            const food = FOOD_LIST[i];
+            if (!food) {
+              return (
+                <div
+                  key={`empty-${i}`}
+                  className="relative"
+                  style={{ width: SLOT_DISPLAY, height: SLOT_DISPLAY }}
+                  aria-hidden
+                >
+                  <img
+                    src={UI_SELL_SLOT}
+                    alt=""
+                    draggable={false}
+                    style={{
+                      imageRendering: "pixelated",
+                      width: SLOT_DISPLAY,
+                      height: SLOT_DISPLAY,
+                      pointerEvents: "none",
+                    }}
+                  />
+                </div>
+              );
+            }
             const isSel = buySelected === food.id;
             return (
               <button
@@ -7165,7 +7198,7 @@ function BuyContent({
         style={{
           marginTop: 4,
           fontSize: 10,
-          color: selFood ? "#3d2c1c" : "#7a6a4a",
+          color: "#3d2c1c",
           textAlign: "center",
         }}
       >
