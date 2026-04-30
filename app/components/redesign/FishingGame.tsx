@@ -1649,6 +1649,47 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
     return () => unsub();
   }, [open, nickname, scene]);
 
+  // Mobile body-scroll lock — while the fishing panel is open,
+  // freeze html/body so a touch-drag on the joystick / canvas
+  // can't bubble into a page scroll, pull-to-refresh, or the
+  // iOS Safari URL-bar hide/show animation. Uses the
+  // position:fixed-with-stored-scrollY trick (the canonical
+  // iOS-compatible body-lock pattern); cleanup restores the
+  // exact scroll position so closing the panel doesn't jump
+  // the user to the top of the page.
+  useEffect(() => {
+    if (!open) return;
+    const scrollY = window.scrollY;
+    const html = document.documentElement;
+    const body = document.body;
+    const prev = {
+      htmlOverflow: html.style.overflow,
+      bodyOverflow: body.style.overflow,
+      bodyPosition: body.style.position,
+      bodyTop: body.style.top,
+      bodyWidth: body.style.width,
+      htmlOverscroll: html.style.overscrollBehavior,
+      bodyOverscroll: body.style.overscrollBehavior,
+    };
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+    html.style.overscrollBehavior = "none";
+    body.style.overscrollBehavior = "none";
+    return () => {
+      html.style.overflow = prev.htmlOverflow;
+      body.style.overflow = prev.bodyOverflow;
+      body.style.position = prev.bodyPosition;
+      body.style.top = prev.bodyTop;
+      body.style.width = prev.bodyWidth;
+      html.style.overscrollBehavior = prev.htmlOverscroll;
+      body.style.overscrollBehavior = prev.bodyOverscroll;
+      window.scrollTo(0, scrollY);
+    };
+  }, [open]);
+
   // Initial presence write + on-close delete. We also force-write
   // when the panel first opens so peers see us immediately rather
   // than waiting for the first tick to throttle in. Uses
@@ -3970,6 +4011,13 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
               "linear-gradient(180deg, rgba(26,15,61,0.94) 0%, rgba(11,8,33,0.94) 100%)",
             boxShadow:
               "0 24px 60px rgba(11,8,33,0.7), 0 0 40px rgba(107,75,168,0.30), inset 0 1px 0 rgba(255,229,196,0.06)",
+            // Block native scroll/zoom gestures across the whole
+            // panel — the chat input scroll list re-enables
+            // pan-y locally where it needs scroll. Without this,
+            // a touch-drag on the FAB header (above the canvas)
+            // could still trigger pull-to-refresh.
+            touchAction: "none",
+            overscrollBehavior: "contain",
           }}
         >
           <div
@@ -4014,6 +4062,11 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                 imageRendering: "pixelated",
                 width: VIEWPORT,
                 height: VIEWPORT,
+                // Belt-and-braces — parent already has
+                // touch-none, but Safari historically respected
+                // touch-action only when set on the element the
+                // gesture begins on. Repeat it here.
+                touchAction: "none",
               }}
             />
             {!assets ? (
