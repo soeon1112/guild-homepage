@@ -607,42 +607,54 @@ export default function FishingGame({ open, onClose }: Props) {
   // state during reload so the canvas doesn't flash empty. The
   // collision PNG is rasterised into ImageData here once so the game
   // loop can do O(1) pixel lookups instead of re-decoding per frame.
+  //
+  // Every loader is fault-tolerant: a 404 logs the URL and resolves
+  // with a 1×1 transparent placeholder (or empty ImageData) instead
+  // of rejecting. A single missing asset can no longer wedge the
+  // panel on "불러오는 중...". The console output from the dump call
+  // below + the per-loader error log makes path mismatches easy to
+  // spot in devtools.
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    const load = (src: string) =>
-      new Promise<HTMLImageElement>((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = () => reject(new Error(`Failed: ${src}`));
-        img.src = src;
-      });
-    // Optional assets — game still boots if these 404. Returns a
-    // 1×1 transparent placeholder on failure so the rest of the
-    // Promise.all batch resolves and setAssets fires.
     const PLACEHOLDER_PNG =
       "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYGD4DwABBAEAfbLI3wAAAABJRU5ErkJggg==";
-    const loadOptional = (src: string) =>
+    // Single loader used for everything — never rejects, so Promise.all
+    // always resolves even if individual assets 404.
+    const load = (src: string) =>
       new Promise<HTMLImageElement>((resolve) => {
         const img = new Image();
         img.onload = () => resolve(img);
         img.onerror = () => {
-          console.warn("[fishing] optional asset missing:", src);
+          console.error("[fishing] asset 404:", src);
           const ph = new Image();
           ph.onload = () => resolve(ph);
           ph.src = PLACEHOLDER_PNG;
         };
         img.src = src;
       });
+    // Backwards-compat alias used by the gauge UI block below — kept
+    // so code reads as "this is best-effort, OK if missing".
+    const loadOptional = load;
+    const blankImageData = (): ImageData => {
+      const c = document.createElement("canvas");
+      c.width = 1;
+      c.height = 1;
+      return c.getContext("2d")!.getImageData(0, 0, 1, 1);
+    };
     const loadCollision = async (src: string): Promise<ImageData> => {
       const img = await load(src);
       const c = document.createElement("canvas");
-      c.width = img.width;
-      c.height = img.height;
+      c.width = img.width || 1;
+      c.height = img.height || 1;
       const cx = c.getContext("2d");
-      if (!cx) throw new Error("collision: 2d context unavailable");
+      if (!cx) return blankImageData();
       cx.drawImage(img, 0, 0);
-      return cx.getImageData(0, 0, img.width, img.height);
+      try {
+        return cx.getImageData(0, 0, c.width, c.height);
+      } catch {
+        return blankImageData();
+      }
     };
     // The 배경_front.png artwork was authored with some semi-opaque
     // brush strokes, so drawing it raw lets the player show through
@@ -654,17 +666,21 @@ export default function FishingGame({ open, onClose }: Props) {
     ): Promise<HTMLCanvasElement> => {
       const img = await load(src);
       const c = document.createElement("canvas");
-      c.width = img.width;
-      c.height = img.height;
+      c.width = img.width || 1;
+      c.height = img.height || 1;
       const cx = c.getContext("2d");
-      if (!cx) throw new Error("front: 2d context unavailable");
+      if (!cx) return c;
       cx.drawImage(img, 0, 0);
-      const data = cx.getImageData(0, 0, img.width, img.height);
-      const px = data.data;
-      for (let i = 3; i < px.length; i += 4) {
-        if (px[i] > 0) px[i] = 255;
+      try {
+        const data = cx.getImageData(0, 0, c.width, c.height);
+        const px = data.data;
+        for (let i = 3; i < px.length; i += 4) {
+          if (px[i] > 0) px[i] = 255;
+        }
+        cx.putImageData(data, 0, 0);
+      } catch {
+        // tainted or zero-size — leave canvas as-is.
       }
-      cx.putImageData(data, 0, 0);
       return c;
     };
     // Loader for the background ART that returns BOTH the image
@@ -674,13 +690,50 @@ export default function FishingGame({ open, onClose }: Props) {
     ): Promise<{ img: HTMLImageElement; data: ImageData }> => {
       const img = await load(src);
       const c = document.createElement("canvas");
-      c.width = img.width;
-      c.height = img.height;
+      c.width = img.width || 1;
+      c.height = img.height || 1;
       const cx = c.getContext("2d");
-      if (!cx) throw new Error("background: 2d context unavailable");
+      if (!cx) return { img, data: blankImageData() };
       cx.drawImage(img, 0, 0);
-      return { img, data: cx.getImageData(0, 0, img.width, img.height) };
+      try {
+        return { img, data: cx.getImageData(0, 0, c.width, c.height) };
+      } catch {
+        return { img, data: blankImageData() };
+      }
     };
+    // Dump every URL we're about to fetch. If the panel hangs again
+    // the network tab + this list make it trivial to find the
+    // mismatched name.
+    const allPaths = [
+      ASSETS.background,
+      ASSETS.mapFront,
+      ASSETS.collision,
+      ASSETS.shopInterior,
+      ASSETS.shopCollision,
+      ASSETS.charBase,
+      ASSETS.npcChar,
+      ASSETS.eyes,
+      ASSETS.shirt,
+      ASSETS.pants,
+      ASSETS.shoes,
+      ASSETS.hair,
+      ASSETS.shadow,
+      ASSETS_FISH.base,
+      ASSETS_FISH.eyes,
+      ASSETS_FISH.shirt,
+      ASSETS_FISH.pants,
+      ASSETS_FISH.shoes,
+      ASSETS_FISH.hair,
+      ASSETS_FISH.rod,
+      ASSETS_FISH.bobber,
+      ASSETS_FISH.fishShadow,
+      UI_GAUGE_BAR,
+      UI_GAUGE_FILL,
+      UI_GAUGE_MARKER,
+      ASSETS_FISH_CATALOG.fishAll,
+      ASSETS_FORAGE_CATALOG.forageAll,
+    ];
+    console.log("[fishing] loading", allPaths.length, "assets:", allPaths);
     Promise.all([
       loadBackground(ASSETS.background),
       loadOpaqueOverlay(ASSETS.mapFront),
