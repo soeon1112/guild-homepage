@@ -9,12 +9,14 @@
 
 "use client";
 
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useAnimationControls } from "framer-motion";
 import { X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ASSETS,
   ASSETS_FISH,
+  ASSETS_FISH_CATALOG,
+  ASSETS_FORAGE_CATALOG,
   BOBBER_CELL,
   BOBBER_DISTANCE,
   BOBBER_INDEX,
@@ -27,18 +29,24 @@ import {
   FISH_FAKE_BITE_MAX,
   FISH_FAKE_BITE_PROBABILITY,
   FISH_GRADES,
-  FISH_RESULT_MS,
+  FISH_GRADE_COLOR,
+  FISH_GRADE_LABEL,
+  FISH_SPRITE_CELL,
+  FISH_TEXT_GOT_AWAY,
+  FORAGE_SPRITE_CELL,
   GAUGE_SPEED_SIN_FREQ,
   FISH_SHADOW_CELL,
   FISH_SHADOW_FRAME_MS,
   FISH_SHADOW_FRAMES,
   FISH_SHADOW_LEAD_MS,
-  FISH_TEXT_CAUGHT,
   FISH_WAIT_MAX_MS,
   FISH_WAIT_MIN_MS,
   GAUGE_BOTTOM_OFFSET,
   GAUGE_MAX_EDGE_HITS,
   GAUGE_WIDTH,
+  rollCatchResult,
+  gradeForGauge,
+  type CatchResult,
   type FishGrade,
   CHAR_BBOX_HALF_W,
   CHAR_BBOX_HEIGHT,
@@ -137,6 +145,11 @@ type LoadedAssets = {
   uiGaugeBar: HTMLImageElement;
   uiGaugeFill: HTMLImageElement;
   uiGaugeMarker: HTMLImageElement;
+  // Catalog sprites used by the result popup. fishAll/forageAll are
+  // 16×16-cell sheets indexed by Fish.spriteX/Y or Forage.spriteX/Y;
+  // the popup crops a single cell at popup-paint time.
+  fishCatalog: HTMLImageElement;
+  forageCatalog: HTMLImageElement;
 };
 
 type Prompt = "blueDoor" | "yellowDoor" | "exit" | "npc" | null;
@@ -380,6 +393,11 @@ const UI_ACTION_BUTTON_PRESSED = encodeURI(
 const UI_GAUGE_BAR = encodeURI(UI_FLAT_BASE + "UI_Flat_Bar01a.png");
 const UI_GAUGE_FILL = encodeURI(UI_FLAT_BASE + "UI_Flat_BarFill01a.png");
 const UI_GAUGE_MARKER = encodeURI(UI_FLAT_BASE + "UI_Flat_Handle06a.png");
+// Result popup frame. Frame02a is a 96×64 mid-tone slab with a 1-px
+// outer border, 1-px highlight and 1-px shadow — i.e. ~3-4 px caps
+// for 9-slice. Painted via CSS border-image so we can stretch it to
+// fit the popup contents instead of fitting the popup to the asset.
+const UI_POPUP_FRAME = encodeURI(UI_FLAT_BASE + "UI_Flat_Frame02a.png");
 
 // Joystick is parked at a fixed bottom-left dock so the player can
 // always thumb-drag from a known spot. Outer diameter ≈ 24% of the
@@ -436,6 +454,8 @@ export default function FishingGame({ open, onClose }: Props) {
     gaugeSuccessWidth: 0.4,
     gaugeEdgeHits: 0,
     gaugePhase: 0,
+    // Catch decided at bite time, surfaced to the popup on success.
+    catchResult: null as CatchResult | null,
   });
   const keysRef = useRef({ up: false, down: false, left: false, right: false });
   const joyRef = useRef({
@@ -475,12 +495,18 @@ export default function FishingGame({ open, onClose }: Props) {
   // Both reset on pointer up / leave / cancel.
   const [actionHover, setActionHover] = useState(false);
   const [actionPressed, setActionPressed] = useState(false);
-  // Result text shown during fishingSuccess / fishingFail. The kind
-  // distinguishes styling but both auto-clear when the mode advances.
-  const [fishingResult, setFishingResult] = useState<{
-    text: string;
-    kind: "success" | "fail";
-  } | null>(null);
+  // Catch result popup state. On success the gauge press resolves
+  // the catch (fish/treasure/trash) and we render a popup that the
+  // player has to confirm before the game returns to walk. The
+  // failure toast ("물고기가 도망갔다.") uses the same lifecycle as
+  // success — auto-clears after FISH_FAIL_RETRACT_MS — so we keep a
+  // separate transient string for it.
+  const [catchPopup, setCatchPopup] = useState<CatchResult | null>(null);
+  const [failToast, setFailToast] = useState<string | null>(null);
+  // Screen-shake controls for legendary/mythic catches. Targets the
+  // inner game pane (canvas + overlays) so the popup itself rides
+  // along with the shake — feels more like the world is reacting.
+  const shakeControls = useAnimationControls();
   // Joystick visual state mirrored into React for the DOM overlay.
   // Updates only on pointer events (not 60fps), so React isn't thrashed.
   // dx/dy here are knob offset in pixels relative to the static base.
@@ -496,6 +522,26 @@ export default function FishingGame({ open, onClose }: Props) {
     const t = setTimeout(() => setYellowToast(false), 1600);
     return () => clearTimeout(t);
   }, [yellowToast]);
+
+  // Screen shake on legendary/mythic catches. Mythic shakes harder
+  // and longer than legendary — the rest of the visual flair (glow,
+  // sparkles) is rendered inside the popup itself.
+  useEffect(() => {
+    if (!catchPopup) return;
+    const grade = catchPopup.kind === "fish" ? catchPopup.grade : null;
+    if (grade === "legendary") {
+      shakeControls.start({
+        x: [0, -2, 2, -2, 2, -1, 1, 0],
+        transition: { duration: 0.5 },
+      });
+    } else if (grade === "mythic") {
+      shakeControls.start({
+        x: [0, -4, 4, -4, 4, -3, 3, -2, 2, 0],
+        y: [0, 1, -1, 1, -1, 1, 0, 0, 0, 0],
+        transition: { duration: 0.7 },
+      });
+    }
+  }, [catchPopup, shakeControls]);
 
   // Reset loop refs every time the panel re-opens so a closed/reopened
   // game starts at the spawn point with no leftover input. joyView is
@@ -532,6 +578,7 @@ export default function FishingGame({ open, onClose }: Props) {
       gaugeSuccessWidth: 0.4,
       gaugeEdgeHits: 0,
       gaugePhase: 0,
+      catchResult: null,
     };
     keysRef.current = { up: false, down: false, left: false, right: false };
     joyRef.current = { active: false, pointerId: -1, dx: 0, dy: 0 };
@@ -646,6 +693,8 @@ export default function FishingGame({ open, onClose }: Props) {
       loadOptional(UI_GAUGE_BAR),
       loadOptional(UI_GAUGE_FILL),
       loadOptional(UI_GAUGE_MARKER),
+      load(ASSETS_FISH_CATALOG.fishAll),
+      load(ASSETS_FORAGE_CATALOG.forageAll),
     ])
       .then(
         ([
@@ -674,6 +723,8 @@ export default function FishingGame({ open, onClose }: Props) {
           uiGaugeBar,
           uiGaugeFill,
           uiGaugeMarker,
+          fishCatalog,
+          forageCatalog,
         ]) => {
           if (cancelled) return;
           // Yellow patch → NPC anchor + interaction zone. Fallback is
@@ -712,6 +763,8 @@ export default function FishingGame({ open, onClose }: Props) {
             uiGaugeBar,
             uiGaugeFill,
             uiGaugeMarker,
+            fishCatalog,
+            forageCatalog,
           });
         },
       )
@@ -773,6 +826,7 @@ export default function FishingGame({ open, onClose }: Props) {
             gaugeSuccessWidth: 0.4,
             gaugeEdgeHits: 0,
             gaugePhase: 0,
+            catchResult: null,
           };
           promptRef.current = null;
           canFishRef.current = false;
@@ -813,6 +867,7 @@ export default function FishingGame({ open, onClose }: Props) {
             gaugeSuccessWidth: 0.4,
             gaugeEdgeHits: 0,
             gaugePhase: 0,
+            catchResult: null,
           };
           promptRef.current = null;
           canFishRef.current = false;
@@ -828,22 +883,15 @@ export default function FishingGame({ open, onClose }: Props) {
     [startTransition],
   );
 
-  // Roll a fish grade weighted by FISH_GRADES.rollProbability and
-  // initialise the gauge state. Called when fishingBite begins.
+  // Resolve the catch and initialise the gauge. Called once at the
+  // moment of the real bite. The catch is determined NOW (forage vs
+  // fish, then specific grade/item) so gauge difficulty matches the
+  // grade and the popup can show the actual item on success — we
+  // never re-roll on press.
   const rollGauge = useCallback((s: typeof stateRef.current) => {
-    const r = Math.random();
-    let acc = 0;
-    let grade: FishGrade = "common";
-    for (const [g, cfg] of Object.entries(FISH_GRADES) as [
-      FishGrade,
-      typeof FISH_GRADES["common"],
-    ][]) {
-      acc += cfg.rollProbability;
-      if (r <= acc) {
-        grade = g;
-        break;
-      }
-    }
+    const result = rollCatchResult();
+    s.catchResult = result;
+    const grade = gradeForGauge(result);
     const cfg = FISH_GRADES[grade];
     s.fishGrade = grade;
     s.gaugeBaseSpeed = cfg.baseSpeed;
@@ -899,8 +947,9 @@ export default function FishingGame({ open, onClose }: Props) {
     s.events = [];
     s.eventIdx = 0;
     s.waitElapsed = 0;
+    s.catchResult = null;
     setMode("walk");
-    setFishingResult(null);
+    setFailToast(null);
   }, []);
 
   // Start a new cast. Movement input is cleared so the animation
@@ -914,11 +963,12 @@ export default function FishingGame({ open, onClose }: Props) {
     s.events = [];
     s.eventIdx = 0;
     s.waitElapsed = 0;
+    s.catchResult = null;
     keysRef.current = { up: false, down: false, left: false, right: false };
     joyRef.current = { active: false, pointerId: -1, dx: 0, dy: 0 };
     setJoyView({ active: false, dx: 0, dy: 0 });
     setMode("fishingCast");
-    setFishingResult(null);
+    setFailToast(null);
   }, []);
 
   // Single context-aware action. Wired to both Space and the
@@ -945,13 +995,17 @@ export default function FishingGame({ open, onClose }: Props) {
         s.mode = "fishingSuccess";
         s.subT = 0;
         setMode("fishingSuccess");
-        setFishingResult({ text: FISH_TEXT_CAUGHT, kind: "success" });
+        // The catch was rolled at bite time so the gauge difficulty
+        // could match the fish grade — surface it in the popup now.
+        setCatchPopup(s.catchResult);
       } else {
-        // Silent retract — no toast per the new spec.
+        // Missed press — show the "got away" line briefly, then
+        // auto-retract. Result is discarded.
         s.mode = "fishingFail";
         s.subT = 0;
+        s.catchResult = null;
         setMode("fishingFail");
-        setFishingResult(null);
+        setFailToast(FISH_TEXT_GOT_AWAY);
       }
       return;
     }
@@ -1269,33 +1323,28 @@ export default function FishingGame({ open, onClose }: Props) {
           s.gaugeEdgeHits++;
         }
         if (s.gaugeEdgeHits >= GAUGE_MAX_EDGE_HITS) {
-          // Timeout — silent retract back to walk.
+          // Timeout — show the "got away" toast and retract.
           s.mode = "fishingFail";
           s.subT = 0;
+          s.catchResult = null;
           setMode("fishingFail");
-          setFishingResult(null);
+          setFailToast(FISH_TEXT_GOT_AWAY);
         }
         return;
       }
       if (s.mode === "fishingSuccess") {
-        s.subT += dt * 1000;
-        if (s.subT >= FISH_RESULT_MS) {
-          // Catch sequence done — back to walk.
-          s.mode = "walk";
-          s.subT = 0;
-          setMode("walk");
-          setFishingResult(null);
-        }
+        // Hold here until the player confirms the popup. The popup
+        // dismiss handler advances mode → walk; we don't auto-tick
+        // out so the celebration stays on-screen as long as needed.
         return;
       }
       if (s.mode === "fishingFail") {
         s.subT += dt * 1000;
         if (s.subT >= FISH_FAIL_RETRACT_MS) {
-          // Silent rod retract — straight to walk per the new spec.
           s.mode = "walk";
           s.subT = 0;
           setMode("walk");
-          setFishingResult(null);
+          setFailToast(null);
         }
         return;
       }
@@ -1975,11 +2024,12 @@ export default function FishingGame({ open, onClose }: Props) {
             </button>
           </div>
 
-          <div
+          <motion.div
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerEnd}
             onPointerCancel={onPointerEnd}
+            animate={shakeControls}
             className="relative touch-none select-none"
             style={{ width: VIEWPORT, height: VIEWPORT }}
           >
@@ -2043,6 +2093,9 @@ export default function FishingGame({ open, onClose }: Props) {
                 target) and during fade transitions. */}
             {(() => {
               if (npcDialog) return null;
+              // Hide the action button while the result popup is up —
+              // its own confirm button is the only legal interaction.
+              if (catchPopup) return null;
               const fishingActive = mode !== "walk";
               const showFish =
                 scene === "outdoor" && (canFish || fishingActive);
@@ -2147,34 +2200,37 @@ export default function FishingGame({ open, onClose }: Props) {
               );
             })()}
 
-            {/* Fishing result toast — shown during fishingSuccess.
-                Cosmic-themed translucent panel (banner asset rolled
-                back per request). Fail renders no toast. */}
-            {fishingResult ? (
+            {/* "물고기가 도망갔다." — short-lived toast on a missed
+                gauge press or timeout. Auto-clears with fishingFail. */}
+            {failToast ? (
               <div
-                className="pointer-events-none absolute left-1/2 top-[28%] -translate-x-1/2 rounded-xl px-3 py-1.5 text-[12px] font-semibold"
+                className="pointer-events-none absolute left-1/2 top-[28%] -translate-x-1/2 rounded-xl px-3 py-1.5 text-[12px] font-semibold text-stardust"
                 style={{
-                  background:
-                    fishingResult.kind === "success"
-                      ? "rgba(216,150,200,0.92)"
-                      : "rgba(11,8,33,0.92)",
-                  color:
-                    fishingResult.kind === "success"
-                      ? "#1a0f3d"
-                      : "#f4efff",
-                  border:
-                    fishingResult.kind === "success"
-                      ? "1px solid rgba(255,229,196,0.85)"
-                      : "1px solid rgba(216,150,200,0.50)",
-                  boxShadow:
-                    fishingResult.kind === "success"
-                      ? "0 4px 16px rgba(216,150,200,0.55)"
-                      : "0 4px 16px rgba(11,8,33,0.6)",
+                  background: "rgba(11,8,33,0.92)",
+                  border: "1px solid rgba(216,150,200,0.50)",
+                  boxShadow: "0 4px 16px rgba(11,8,33,0.6)",
                 }}
               >
-                {fishingResult.text}
+                {failToast}
               </div>
             ) : null}
+
+            {/* Catch result popup — frame asset border, sprite from
+                fish_all/forage_all, grade-colored label, message, and
+                a confirm button to close. Held open until the player
+                presses confirm; while open, gameplay is paused in
+                fishingSuccess mode. */}
+            <CatchPopup
+              result={catchPopup}
+              onConfirm={() => {
+                const s = stateRef.current;
+                s.mode = "walk";
+                s.subT = 0;
+                s.catchResult = null;
+                setMode("walk");
+                setCatchPopup(null);
+              }}
+            />
 
             {/* "준비중입니다" toast — auto-dismisses after 1.6s */}
             {yellowToast ? (
@@ -2217,7 +2273,7 @@ export default function FishingGame({ open, onClose }: Props) {
                 </span>
               </button>
             ) : null}
-          </div>
+          </motion.div>
 
           <div
             className="px-3 py-1.5 text-[10px] text-text-sub"
@@ -2235,4 +2291,333 @@ export default function FishingGame({ open, onClose }: Props) {
 
 function clamp(v: number, lo: number, hi: number): number {
   return v < lo ? lo : v > hi ? hi : v;
+}
+
+// ── Catch result popup ────────────────────────────────────────────
+// Renders a centered modal card on top of the canvas using the
+// Flat_Frame02a sprite as a 9-slice border (via CSS border-image).
+// Sprites are cropped from fish_all.png / forage_all.png by setting
+// the parent div's background-position; both sheets use 16×16 cells
+// indexed by Fish.spriteX/Y or Forage.spriteX/Y. Per-grade flair is
+// layered on top via box-shadow glows + (mythic) sparkle particles.
+const POPUP_WIDTH = 220;
+const POPUP_HEIGHT = 168;
+const POPUP_FRAME_CAP = 4;        // px in source — Frame02a 9-slice
+const POPUP_FRAME_SCALE = 4;       // 4× upscale, source 96×64 → tiles
+const SPRITE_DISPLAY_SIZE = 64;    // px shown on screen — 4× of 16×16
+const FISH_SHEET_W = 160;
+const FISH_SHEET_H = 160;
+const FORAGE_SHEET_W = 160;
+const FORAGE_SHEET_H = 48;
+
+type GradeFlair = {
+  glow: string;
+  textGlow: string;
+  haloColor: string | null;
+  sparkles: boolean;
+};
+
+function gradeFlair(result: CatchResult): GradeFlair {
+  if (result.kind !== "fish") {
+    // Forage shares the calm common-tier flair.
+    return { glow: "none", textGlow: "none", haloColor: null, sparkles: false };
+  }
+  switch (result.grade) {
+    case "common":
+      return { glow: "none", textGlow: "none", haloColor: null, sparkles: false };
+    case "uncommon":
+      return {
+        glow: "0 0 14px rgba(134,239,172,0.45)",
+        textGlow: "0 0 6px rgba(134,239,172,0.65)",
+        haloColor: null,
+        sparkles: false,
+      };
+    case "rare":
+      return {
+        glow:
+          "0 0 18px rgba(125,211,252,0.65), 0 0 36px rgba(125,211,252,0.35)",
+        textGlow: "0 0 8px rgba(125,211,252,0.85)",
+        haloColor: "rgba(125,211,252,0.55)",
+        sparkles: false,
+      };
+    case "legendary":
+      return {
+        glow:
+          "0 0 22px rgba(196,181,253,0.75), 0 0 44px rgba(196,181,253,0.45)",
+        textGlow: "0 0 10px rgba(196,181,253,0.95)",
+        haloColor: "rgba(196,181,253,0.70)",
+        sparkles: false,
+      };
+    case "mythic":
+      return {
+        glow:
+          "0 0 28px rgba(251,191,36,0.85), 0 0 60px rgba(251,191,36,0.55)",
+        textGlow: "0 0 12px rgba(251,191,36,1.0)",
+        haloColor: "rgba(251,191,36,0.85)",
+        sparkles: true,
+      };
+  }
+}
+
+function CatchPopup({
+  result,
+  onConfirm,
+}: {
+  result: CatchResult | null;
+  onConfirm: () => void;
+}) {
+  const [pressed, setPressed] = useState(false);
+  return (
+    <AnimatePresence>
+      {result ? (
+        <motion.div
+          key="catch-popup"
+          initial={{ opacity: 0, scale: 0.85, y: 6 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.92, y: -4 }}
+          transition={{ duration: 0.22, ease: "easeOut" }}
+          className="absolute left-1/2 top-1/2 z-10 flex flex-col items-center"
+          style={{
+            width: POPUP_WIDTH,
+            height: POPUP_HEIGHT,
+            transform: "translate(-50%, -50%)",
+            // 9-slice border-image on the frame asset. Source caps
+            // are ~4 px; with imageRendering pixelated the border
+            // stays crisp at 4× scale.
+            borderStyle: "solid",
+            borderWidth: POPUP_FRAME_CAP * POPUP_FRAME_SCALE,
+            borderImage: `url(${UI_POPUP_FRAME}) ${POPUP_FRAME_CAP} fill stretch`,
+            imageRendering: "pixelated",
+            boxShadow: gradeFlair(result).glow,
+            paddingTop: 6,
+            paddingBottom: 6,
+            paddingInline: 14,
+          }}
+        >
+          <PopupContents result={result} />
+          {gradeFlair(result).sparkles ? <Sparkles /> : null}
+          <button
+            type="button"
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              setPressed(true);
+            }}
+            onPointerUp={(e) => {
+              e.stopPropagation();
+              setPressed(false);
+              onConfirm();
+            }}
+            onPointerLeave={() => setPressed(false)}
+            onPointerCancel={() => setPressed(false)}
+            aria-label="확인"
+            className="absolute -bottom-3 left-1/2 flex items-center justify-center"
+            style={{
+              transform: "translateX(-50%)",
+              width: 56,
+              height: 32,
+              padding: 0,
+              border: "none",
+              background: "transparent",
+              filter: "drop-shadow(0 3px 6px rgba(11,8,33,0.55))",
+            }}
+          >
+            <img
+              src={pressed ? UI_ACTION_BUTTON_PRESSED : UI_ACTION_BUTTON_IDLE}
+              alt=""
+              draggable={false}
+              style={{
+                imageRendering: "pixelated",
+                width: 56,
+                height: 32,
+                pointerEvents: "none",
+                objectFit: "fill",
+              }}
+            />
+            <span
+              aria-hidden
+              className="absolute font-serif font-bold leading-none"
+              style={{
+                transform: `translateY(${pressed ? 0 : -2}px)`,
+                fontSize: 12,
+                color: "#3d2c1c",
+                pointerEvents: "none",
+              }}
+            >
+              확인
+            </span>
+          </button>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+}
+
+function PopupContents({ result }: { result: CatchResult }) {
+  const flair = gradeFlair(result);
+  // Sprite source + cell coords + sheet dims depend on whether the
+  // catch is a fish (10×10 sheet) or forage (10×3 sheet).
+  let spriteUrl: string;
+  let spriteX: number;
+  let spriteY: number;
+  let sheetW: number;
+  let sheetH: number;
+  let nameKo: string;
+  let gradeText: string;
+  let gradeColor: string;
+  let priceLine: string;
+  if (result.kind === "fish") {
+    spriteUrl = ASSETS_FISH_CATALOG.fishAll;
+    spriteX = result.fish.spriteX;
+    spriteY = result.fish.spriteY;
+    sheetW = FISH_SHEET_W;
+    sheetH = FISH_SHEET_H;
+    nameKo = result.fish.nameKo;
+    gradeText = FISH_GRADE_LABEL[result.grade];
+    gradeColor = FISH_GRADE_COLOR[result.grade];
+    priceLine = `${result.fish.price} 별빛`;
+  } else {
+    spriteUrl = ASSETS_FORAGE_CATALOG.forageAll;
+    spriteX = result.forage.spriteX;
+    spriteY = result.forage.spriteY;
+    sheetW = FORAGE_SHEET_W;
+    sheetH = FORAGE_SHEET_H;
+    nameKo = result.forage.nameKo;
+    gradeText = result.kind === "treasure" ? "해양 자원" : "쓰레기";
+    gradeColor = result.kind === "treasure" ? "#fde68a" : "#94a3b8";
+    priceLine =
+      result.kind === "treasure" ? `${result.forage.price} 별빛` : "판매 불가";
+  }
+  const cellSize = result.kind === "fish" ? FISH_SPRITE_CELL : FORAGE_SPRITE_CELL;
+  const scale = SPRITE_DISPLAY_SIZE / cellSize;
+  return (
+    <>
+      {/* Sprite — pixelated background-position crop. The halo sits
+          behind the sprite for rare+ tiers. */}
+      <div className="relative" style={{ marginTop: 4 }}>
+        {flair.haloColor ? (
+          <motion.div
+            aria-hidden
+            initial={{ scale: 0.4, opacity: 0.85 }}
+            animate={{ scale: 1.6, opacity: 0 }}
+            transition={{ duration: 0.7, ease: "easeOut" }}
+            className="absolute inset-0 rounded-full"
+            style={{
+              background: `radial-gradient(circle, ${flair.haloColor} 0%, transparent 70%)`,
+              filter: "blur(2px)",
+            }}
+          />
+        ) : null}
+        <div
+          aria-hidden
+          style={{
+            width: SPRITE_DISPLAY_SIZE,
+            height: SPRITE_DISPLAY_SIZE,
+            backgroundImage: `url(${spriteUrl})`,
+            backgroundRepeat: "no-repeat",
+            backgroundSize: `${sheetW * scale}px ${sheetH * scale}px`,
+            backgroundPosition: `-${spriteX * scale}px -${spriteY * scale}px`,
+            imageRendering: "pixelated",
+          }}
+        />
+      </div>
+      <div
+        className="font-serif font-bold leading-none"
+        style={{
+          marginTop: 4,
+          fontSize: 13,
+          color: "#3d2c1c",
+        }}
+      >
+        {nameKo}
+      </div>
+      <div
+        className="leading-none"
+        style={{
+          marginTop: 4,
+          fontSize: 10,
+          color: gradeColor,
+          textShadow: flair.textGlow,
+          fontWeight: 700,
+          letterSpacing: 1,
+        }}
+      >
+        {gradeText}
+      </div>
+      <div
+        className="leading-snug"
+        style={{
+          marginTop: 4,
+          fontSize: 10,
+          color: "#3d2c1c",
+          textAlign: "center",
+          maxWidth: POPUP_WIDTH - 28,
+        }}
+      >
+        {result.message}
+      </div>
+      <div
+        className="leading-none"
+        style={{
+          marginTop: 3,
+          fontSize: 10,
+          color: result.kind === "trash" ? "#64748b" : "#3d2c1c",
+          fontWeight: 600,
+        }}
+      >
+        {priceLine}
+      </div>
+    </>
+  );
+}
+
+// Mythic-only sparkle particles. 8 dots fly outward from the center
+// of the popup and fade. Random offsets are captured in a useState
+// lazy initializer so re-renders don't re-roll mid-animation; using
+// useState (rather than useMemo) keeps the rule that no impure call
+// runs during render — the initializer only fires on first mount.
+function Sparkles() {
+  const [dots] = useState(() =>
+    Array.from({ length: 8 }, (_, i) => {
+      const angle = (i / 8) * Math.PI * 2;
+      return {
+        angle,
+        dist: 70 + Math.random() * 30,
+        delay: Math.random() * 0.15,
+      };
+    }),
+  );
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute"
+      style={{
+        left: "50%",
+        top: "45%",
+        transform: "translate(-50%, -50%)",
+      }}
+    >
+      {dots.map((d, i) => (
+        <motion.div
+          key={i}
+          initial={{ x: 0, y: 0, opacity: 0, scale: 0.6 }}
+          animate={{
+            x: Math.cos(d.angle) * d.dist,
+            y: Math.sin(d.angle) * d.dist,
+            opacity: [0, 1, 0],
+            scale: [0.6, 1, 0.4],
+          }}
+          transition={{ duration: 0.9, delay: d.delay, ease: "easeOut" }}
+          style={{
+            position: "absolute",
+            width: 6,
+            height: 6,
+            borderRadius: 999,
+            background:
+              "radial-gradient(circle, #fff7c2 0%, rgba(251,191,36,0.85) 60%, transparent 100%)",
+            boxShadow: "0 0 10px rgba(251,191,36,0.85)",
+          }}
+        />
+      ))}
+    </div>
+  );
 }

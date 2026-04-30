@@ -233,6 +233,47 @@ export const FISH_BOBBER_BOB_FREQ = 0.005;  // sin frequency
 
 // Catch text — only shown on success now (fail is silent).
 export const FISH_TEXT_CAUGHT = "물고기를 잡았다!";
+// Failure line shown briefly when the player misses the gauge zone or
+// the marker times out. Punctuation matters: a single full stop, not
+// the old ellipsis — per spec.
+export const FISH_TEXT_GOT_AWAY = "물고기가 도망갔다.";
+
+// Result-popup messages. One is picked at random per catch and shown
+// on the fish/forage card, so the same fish caught twice in a row reads
+// differently. Treasure/trash get a single deterministic line each
+// since there's no "tier" within forage.
+export const FISH_GRADE_SUCCESS_MESSAGES: Record<FishGrade, readonly string[]> = {
+  common: [
+    "흔한 녀석이 걸렸다.",
+    "이 정도는 괜찮다.",
+  ],
+  uncommon: [
+    "꽤 괜찮은 녀석을 낚았다.",
+    "오, 나쁘지 않은 녀석이다.",
+  ],
+  rare: [
+    "이건 좀 귀한 녀석이다.",
+    "쉽게 볼 수 없는 녀석을 낚았다.",
+  ],
+  legendary: [
+    "전설 등급 물고기다!",
+    "믿을 수 없는 녀석을 낚았다!",
+  ],
+  mythic: [
+    "신화 등급이라니! 말도 안돼!",
+    "와, 신화 등급을 낚았다!",
+  ],
+};
+
+// Forage shares one message pool for both treasure and trash — the
+// player learns which it is from the price line ("X 별빛" vs "판매
+// 불가"), not from the headline. Earlier draft had a separate
+// "이건... 쓰레기다." line; per spec we removed it so trash never
+// reads as a setback in the moment of catch.
+export const FORAGE_SUCCESS_MESSAGES: readonly string[] = [
+  "바다의 선물을 건졌다.",
+  "바다가 선물을 주었다.",
+];
 
 // ── Catch gauge minigame ───────────────────────────────────────
 // On a real bite the gauge bar opens at the bottom of the viewport.
@@ -627,4 +668,72 @@ export const FORAGE_LIST: Forage[] = FORAGE_SEED.map((f) => ({
 // Lookup by id (1..24). Returns undefined for out-of-range ids.
 export function getForageById(id: number): Forage | undefined {
   return FORAGE_LIST[id - 1];
+}
+
+// ── Catch result + roll helpers ───────────────────────────────────
+// On a real bite the game decides what the player will catch BEFORE
+// the gauge minigame runs — fish grade dictates gauge difficulty, and
+// forage rolls also resolve here so the popup can show the actual
+// item on success. The outcome lives on stateRef until the player
+// confirms the popup; if they miss the gauge zone the result is
+// discarded silently.
+export type CatchKind = "fish" | "treasure" | "trash";
+
+export type CatchResult =
+  | { kind: "fish"; fish: Fish; grade: FishGrade; message: string }
+  | { kind: "treasure"; forage: Forage; message: string }
+  | { kind: "trash"; forage: Forage; message: string };
+
+function pickFrom<T>(arr: readonly T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function rollFishGrade(): FishGrade {
+  const r = Math.random();
+  let acc = 0;
+  let last: FishGrade = "common";
+  for (const [g, cfg] of Object.entries(FISH_GRADES) as [
+    FishGrade,
+    FishGradeConfig,
+  ][]) {
+    acc += cfg.rollProbability;
+    last = g;
+    if (r <= acc) return g;
+  }
+  return last;
+}
+
+// Single roll resolving the full catch — picks forage vs fish, then
+// the specific item. The bay is a single shared pool so all 100 fish
+// (ocean / river / pond) are eligible regardless of where the player
+// stands per the new spec. Returns null only if the data set is empty
+// for the rolled grade (defensive — every grade has fish in
+// FISH_LIST).
+export function rollCatchResult(): CatchResult {
+  if (Math.random() < CATCH_FORAGE_PROBABILITY) {
+    const isTrash = Math.random() < CATCH_TRASH_WITHIN_FORAGE;
+    const pool = FORAGE_LIST.filter((f) =>
+      isTrash ? f.type === "trash" : f.type === "treasure",
+    );
+    const forage = pickFrom(pool);
+    const message = pickFrom(FORAGE_SUCCESS_MESSAGES);
+    return isTrash
+      ? { kind: "trash", forage, message }
+      : { kind: "treasure", forage, message };
+  }
+  const grade = rollFishGrade();
+  const pool = FISH_LIST.filter((f) => f.grade === grade);
+  // Defensive — fall back to common-grade fish if the rolled grade
+  // somehow has no entries. Every grade has multiple fish today.
+  const fish =
+    pool.length > 0 ? pickFrom(pool) : pickFrom(FISH_LIST.filter((f) => f.grade === "common"));
+  const message = pickFrom(FISH_GRADE_SUCCESS_MESSAGES[grade]);
+  return { kind: "fish", fish, grade, message };
+}
+
+// Difficulty-only view of a catch. Forage uses common difficulty so
+// the player can grab them with the same easy gauge they get on
+// junk fish; the gauge isn't meant to gate forage.
+export function gradeForGauge(c: CatchResult): FishGrade {
+  return c.kind === "fish" ? c.grade : "common";
 }
