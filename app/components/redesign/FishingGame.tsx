@@ -263,6 +263,74 @@ function findSafeIndoorSpot(
   return { x: mapW / 2, y: mapH / 2 };
 }
 
+// One-time scan of the shop collision PNG that finds the centroid
+// of the walkable region. Used as the canonical indoor spawn so
+// that re-painting the collision mask (counter, NPC, tables etc.)
+// automatically moves the spawn out of the way without anyone
+// having to update FISHSHOP_INDOOR_SPAWN_X/Y by hand.
+function computeIndoorSpawn(
+  shopData: ImageData,
+): { x: number; y: number } {
+  let sumX = 0;
+  let sumY = 0;
+  let count = 0;
+  // Sample on a 2-px grid to keep the centroid pass cheap; the
+  // tiny resolution loss is invisible since we follow up with the
+  // findSafeIndoorSpot search anchored on the centroid.
+  for (let y = CHAR_BBOX_HEIGHT + 1; y < shopData.height - 1; y += 2) {
+    for (let x = CHAR_BBOX_HALF_W + 1; x < shopData.width - CHAR_BBOX_HALF_W - 1; x += 2) {
+      if (!collidesIndoor(x, y, shopData)) {
+        sumX += x;
+        sumY += y;
+        count++;
+      }
+    }
+  }
+  if (count === 0) {
+    return { x: shopData.width / 2, y: shopData.height / 2 };
+  }
+  const cx = Math.round(sumX / count);
+  const cy = Math.round(sumY / count);
+  return findSafeIndoorSpot(
+    shopData,
+    cx,
+    cy,
+    shopData.width,
+    shopData.height,
+  );
+}
+
+// Outdoor counterpart: ring-search around (preferX, preferY) for
+// the nearest non-blocked foot pixel. Same shape as the indoor
+// version but uses collidesAt against the outdoor red mask.
+function findSafeOutdoorSpot(
+  collisionData: ImageData,
+  preferX: number,
+  preferY: number,
+  mapW: number,
+  mapH: number,
+): { x: number; y: number } {
+  if (!collidesAt(preferX, preferY, collisionData)) {
+    return { x: preferX, y: preferY };
+  }
+  const margin = CHAR_BBOX_HALF_W + 1;
+  for (let r = 4; r <= Math.max(mapW, mapH); r += 4) {
+    for (let dy = -r; dy <= r; dy += 4) {
+      for (let dx = -r; dx <= r; dx += 4) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+        const x = preferX + dx;
+        const y = preferY + dy;
+        if (x < margin || x > mapW - margin) continue;
+        if (y < CHAR_BBOX_HEIGHT + 1 || y > mapH - 1) continue;
+        if (!collidesAt(x, y, collisionData)) {
+          return { x, y };
+        }
+      }
+    }
+  }
+  return { x: mapW / 2, y: mapH / 2 };
+}
+
 // Water test against the BACKGROUND art (not collision). Used by
 // the can-fish probe so building walls and tree trunks (which are
 // also red on collision.png) don't qualify.
@@ -807,6 +875,77 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
     canFishRef.current = false;
   }, [open]);
 
+  // Computed shop spawn — derived from the walkable centroid of the
+  // shop collision PNG once it loads. Lives in a ref so triggerZone
+  // and the boot-validation effect can both read the latest value
+  // without re-running on every change. Defaults to the hand-tuned
+  // FISHSHOP_INDOOR_SPAWN_X/Y until the asset arrives.
+  const indoorSpawnRef = useRef<{ x: number; y: number }>({
+    x: FISHSHOP_INDOOR_SPAWN_X,
+    y: FISHSHOP_INDOOR_SPAWN_Y,
+  });
+
+  // Boot-time position validation. Fires once `assets` is set after
+  // Firestore restore + asset load both finish. If the player's
+  // current foot pixel collides with the active scene's mask
+  // (typically because saved data points into a freshly-painted red
+  // zone) we rescue them here and immediately persist the corrected
+  // position so reload-loops don't keep landing in walls. Also
+  // updates the indoor spawn ref from the collision centroid for
+  // any subsequent triggerZone("blueDoor") fallback.
+  useEffect(() => {
+    if (!open || !assets) return;
+    indoorSpawnRef.current = computeIndoorSpawn(assets.shopCollision);
+    const s = stateRef.current;
+    let rescued = false;
+    if (sceneRef.current === "fishshop") {
+      if (collidesIndoor(s.x, s.y, assets.shopCollision)) {
+        const safe = findSafeIndoorSpot(
+          assets.shopCollision,
+          indoorSpawnRef.current.x,
+          indoorSpawnRef.current.y,
+          INDOOR_MAP_WIDTH,
+          INDOOR_MAP_HEIGHT,
+        );
+        s.x = safe.x;
+        s.y = safe.y;
+        rescued = true;
+      }
+    } else {
+      if (collidesAt(s.x, s.y, assets.collision)) {
+        const safe = findSafeOutdoorSpot(
+          assets.collision,
+          SPAWN_X,
+          SPAWN_Y,
+          MAP_WIDTH,
+          MAP_HEIGHT,
+        );
+        s.x = safe.x;
+        s.y = safe.y;
+        rescued = true;
+      }
+    }
+    // Stale Firestore data overwrite — push the corrected position
+    // back to the doc so the next session starts from the safe
+    // spot. Fire-and-forget; the regular auto-save will reconcile
+    // any concurrent changes. We don't gate on saveEnabledRef
+    // because rescue is rare and we want it to land regardless of
+    // load ordering.
+    if (rescued && nickname) {
+      const ref = doc(db, "users", nickname, "fishing", "current");
+      setDoc(
+        ref,
+        {
+          lastPosition: { x: s.x, y: s.y, facing: s.dir },
+          lastMap: sceneRef.current === "fishshop" ? "fishshop" : "outdoor",
+        },
+        { merge: true },
+      ).catch((err) =>
+        console.error("[fishing] save rescue failed", err),
+      );
+    }
+  }, [open, assets, nickname]);
+
   // ── Firestore persistence ─────────────────────────────────────
   // Doc path: users/{nickname}/fishing/current. Single document
   // holds the full save state — inventory, codex, exp, totalCaught,
@@ -1240,9 +1379,14 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
       if (zone === "blueDoor") {
         startTransition(() => {
           sceneRef.current = "fishshop";
+          // Use the centroid-derived spawn so the entry pixel is
+          // always inside the walkable area, regardless of how the
+          // collision PNG was painted. Falls back to the hard-tuned
+          // constant if the asset hadn't loaded yet.
+          const spawn = indoorSpawnRef.current;
           stateRef.current = {
-            x: FISHSHOP_INDOOR_SPAWN_X,
-            y: FISHSHOP_INDOOR_SPAWN_Y,
+            x: spawn.x,
+            y: spawn.y,
             dir: "up",
             moving: false,
             frame: 0,
@@ -2030,13 +2174,11 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
       }
       s.moving = moving;
 
-      // Indoor stuck-rescue safety net. If a collision-PNG update
-      // dropped the player inside a freshly-painted red zone (or
-      // they were saved into one earlier), push them to the nearest
-      // walkable spot instead of freezing them in place. Outdoor
-      // doesn't need this — the map hasn't been re-painted under
-      // the player. Cheap to run every frame: a single 4-corner
-      // bbox check.
+      // Stuck-rescue safety net. If a collision-PNG update or a
+      // stale Firestore restore landed the player inside a red
+      // (blocked) zone, push them to the nearest walkable foot
+      // pixel instead of freezing them. Cheap to run every frame —
+      // a single 4-corner bbox check per scene.
       if (
         currentScene === "fishshop" &&
         collidesIndoor(s.x, s.y, shopCollision)
@@ -2047,6 +2189,20 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
           s.y,
           INDOOR_MAP_WIDTH,
           INDOOR_MAP_HEIGHT,
+        );
+        s.x = safe.x;
+        s.y = safe.y;
+      }
+      if (
+        currentScene === "outdoor" &&
+        collidesAt(s.x, s.y, collision)
+      ) {
+        const safe = findSafeOutdoorSpot(
+          collision,
+          s.x,
+          s.y,
+          MAP_WIDTH,
+          MAP_HEIGHT,
         );
         s.x = safe.x;
         s.y = safe.y;
