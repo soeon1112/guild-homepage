@@ -129,46 +129,55 @@ export type Rect = { x: number; y: number; w: number; h: number };
 export type Scene = "outdoor" | "fishshop";
 
 // ── Indoor: 생선가게.png (fish shop interior) ────────────────
-// Image is 160×160. We render at the same MAP_SCALE as outdoor for
-// consistent character size; with VIEWPORT/MAP_SCALE = 153 the camera
-// barely scrolls, so the player effectively sees the full interior.
+// Image is 160×160. Indoor renders at native 1:1 scale and is
+// centered in the viewport with black borders; the camera does not
+// follow the player inside (the whole shop is on-screen at once).
 export const INDOOR_MAP_WIDTH = 160;
 export const INDOOR_MAP_HEIGHT = 160;
 
-// Spawn just inside the shop door — the player walks up from here
-// after the entry transition completes.
+// Spawn coords. Indoor spawn is just below the counter front
+// (player faces UP looking at the shopkeeper). It sits ABOVE the
+// exit zone so re-entering doesn't immediately re-trigger the exit.
 export const FISHSHOP_INDOOR_SPAWN_X = 80;
-export const FISHSHOP_INDOOR_SPAWN_Y = 136;
+export const FISHSHOP_INDOOR_SPAWN_Y = 110;
 
 // Where the player lands when leaving the shop — a tile in front of
-// the outdoor blue-shop door.
+// the outdoor blue-shop door, OUTSIDE the door zone so the player
+// doesn't bounce straight back inside.
 export const FISHSHOP_EXIT_SPAWN_X = 88;
-export const FISHSHOP_EXIT_SPAWN_Y = 168;
+export const FISHSHOP_EXIT_SPAWN_Y = 178;
 
-// Outdoor door interaction zones. The player must stand here and
-// press E (or tap the prompt button) to enter / try to enter.
-export const FISHSHOP_DOOR_ZONE: Rect = { x: 72, y: 160, w: 32, h: 24 };
-export const YELLOW_SHOP_DOOR_ZONE: Rect = { x: 248, y: 136, w: 32, h: 24 };
+// Outdoor door zones — pinned to the actual door pixels on
+// collision.png (the white gap inside the building's red shape).
+// Reaching one auto-triggers the entry transition (no E key).
+export const FISHSHOP_DOOR_ZONE: Rect = { x: 76, y: 158, w: 24, h: 14 };
+export const YELLOW_SHOP_DOOR_ZONE: Rect = { x: 250, y: 144, w: 22, h: 14 };
 
-// Indoor exit zone — same physical spot as the indoor spawn, but as
-// an interaction box: stand here + E → leave the shop.
-export const FISHSHOP_EXIT_ZONE: Rect = { x: 64, y: 136, w: 48, h: 24 };
+// Indoor exit zone — bottom of the floor area. Walk down into it
+// and the panel fades back outside.
+export const FISHSHOP_EXIT_ZONE: Rect = { x: 64, y: 128, w: 32, h: 16 };
 
-// Fish-shop NPC. Foot is anchored on the floor right next to the
-// L-counter; rendered as a single down-facing idle frame.
-export const FISHSHOP_NPC_X = 40;
-export const FISHSHOP_NPC_Y = 64;
-export const FISHSHOP_NPC_ZONE: Rect = { x: 24, y: 72, w: 32, h: 24 };
+// Fish-shop NPC. Foot anchored ABOVE the counter front (in the
+// blue wall area) so the sprite reads as "behind the counter,
+// facing the customer". The interaction zone is the floor strip
+// directly below the counter where the player stands.
+export const FISHSHOP_NPC_X = 80;
+export const FISHSHOP_NPC_Y = 48;
+export const FISHSHOP_NPC_ZONE: Rect = { x: 64, y: 60, w: 32, h: 18 };
 export const FISHSHOP_NPC_LINE = "어서와! 잡은 물고기를 사줄게!";
 export const YELLOW_SHOP_LINE = "준비중입니다";
 
-// Indoor unwalkable rects. The top wall + horizontal counter
-// (y < 40) plus the small L-shape of vertical counter on the left
-// (x < 32, 40 ≤ y < 72) are blocked; everything else is floor.
-export const FISHSHOP_INDOOR_UNWALKABLE: Rect[] = [
-  { x: 0, y: 0, w: 160, h: 40 },     // top wall + horizontal counter
-  { x: 0, y: 40, w: 32, h: 32 },     // left vertical counter (L-tail)
-];
+// Indoor collision is sampled directly from the shop interior PNG:
+// only the dark-brown wood floor is walkable. The thresholds were
+// tuned from pixel samples — floor sits around (116, 72, 55), the
+// blue wall at (103, 154, 181), and the lighter wood counter at
+// (128, 93, 64). The R-G≥36 cut separates floor from counter; the
+// other cuts reject blue tiles, transparent borders, and over-bright
+// highlights.
+export const SHOP_FLOOR_R_MIN = 100;
+export const SHOP_FLOOR_RG_DELTA_MIN = 36;
+export const SHOP_FLOOR_GB_DELTA_MIN = 5;
+export const SHOP_FLOOR_B_MAX = 80;
 
 // NPC modular layer indices. Picked to read clearly different from
 // the player's default outfit (black shirt, brown pants, wavy hair).

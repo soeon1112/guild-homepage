@@ -29,7 +29,6 @@ import {
   FISHSHOP_EXIT_ZONE,
   FISHSHOP_INDOOR_SPAWN_X,
   FISHSHOP_INDOOR_SPAWN_Y,
-  FISHSHOP_INDOOR_UNWALKABLE,
   FISHSHOP_NPC_LINE,
   FISHSHOP_NPC_X,
   FISHSHOP_NPC_Y,
@@ -45,6 +44,10 @@ import {
   NPC_SHIRT_COLOR,
   NPC_SHOES_COLOR,
   SCENE_FADE_SECONDS,
+  SHOP_FLOOR_B_MAX,
+  SHOP_FLOOR_GB_DELTA_MIN,
+  SHOP_FLOOR_R_MIN,
+  SHOP_FLOOR_RG_DELTA_MIN,
   SPAWN_X,
   SPAWN_Y,
   SPRITE_CELL,
@@ -69,6 +72,7 @@ type LoadedAssets = {
   mapFront: HTMLCanvasElement;
   collision: ImageData;
   shopInterior: HTMLImageElement;
+  shopInteriorData: ImageData;
   char: HTMLImageElement;
   npcChar: HTMLImageElement;
   eyes: HTMLImageElement;
@@ -85,26 +89,44 @@ function pointInRect(x: number, y: number, r: Rect): boolean {
   return x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h;
 }
 
-function rectsCollideWithFoot(
+// Indoor walkability: the dark-brown wood floor is the only walkable
+// surface. The thresholds split (floor) from (counter / wall /
+// transparent border) at the pixel level — see fishingData.ts for the
+// reasoning behind each cut.
+function isShopFloor(data: ImageData, x: number, y: number): boolean {
+  const ix = x | 0;
+  const iy = y | 0;
+  if (ix < 0 || iy < 0 || ix >= data.width || iy >= data.height) return false;
+  const i = (iy * data.width + ix) * 4;
+  const r = data.data[i];
+  const g = data.data[i + 1];
+  const b = data.data[i + 2];
+  const a = data.data[i + 3];
+  if (a < 50) return false;
+  return (
+    r >= SHOP_FLOOR_R_MIN &&
+    r - g >= SHOP_FLOOR_RG_DELTA_MIN &&
+    g - b >= SHOP_FLOOR_GB_DELTA_MIN &&
+    b <= SHOP_FLOOR_B_MAX
+  );
+}
+
+function collidesIndoor(
   footX: number,
   footY: number,
-  rects: Rect[],
+  shopData: ImageData,
 ): boolean {
   const bx = footX - CHAR_BBOX_HALF_W;
   const by = footY - CHAR_BBOX_HEIGHT;
   const bw = CHAR_BBOX_HALF_W * 2;
   const bh = CHAR_BBOX_HEIGHT;
-  for (const r of rects) {
-    if (
-      bx + bw > r.x &&
-      bx < r.x + r.w &&
-      by + bh > r.y &&
-      by < r.y + r.h
-    ) {
-      return true;
-    }
-  }
-  return false;
+  // Block the move unless ALL four foot-bbox corners are floor.
+  return (
+    !isShopFloor(shopData, bx, by) ||
+    !isShopFloor(shopData, bx + bw, by) ||
+    !isShopFloor(shopData, bx, by + bh) ||
+    !isShopFloor(shopData, bx + bw, by + bh)
+  );
 }
 
 // Collision lookup. Out-of-bounds reads block (so the player can't
@@ -295,11 +317,26 @@ export default function FishingGame({ open, onClose }: Props) {
       cx.putImageData(data, 0, 0);
       return c;
     };
+    // Loads the shop interior twice: once as an HTMLImageElement for
+    // the renderer (so the PNG's anti-aliased edges look right) and
+    // once as ImageData for pixel-precise floor collision.
+    const loadShop = async (
+      src: string,
+    ): Promise<{ img: HTMLImageElement; data: ImageData }> => {
+      const img = await load(src);
+      const c = document.createElement("canvas");
+      c.width = img.width;
+      c.height = img.height;
+      const cx = c.getContext("2d");
+      if (!cx) throw new Error("shop: 2d context unavailable");
+      cx.drawImage(img, 0, 0);
+      return { img, data: cx.getImageData(0, 0, img.width, img.height) };
+    };
     Promise.all([
       load(ASSETS.background),
       loadOpaqueOverlay(ASSETS.mapFront),
       loadCollision(ASSETS.collision),
-      load(ASSETS.shopInterior),
+      loadShop(ASSETS.shopInterior),
       load(ASSETS.charBase),
       load(ASSETS.npcChar),
       load(ASSETS.eyes),
@@ -309,9 +346,23 @@ export default function FishingGame({ open, onClose }: Props) {
       load(ASSETS.hair),
       load(ASSETS.shadow),
     ])
-      .then(([map, mapFront, collision, shopInterior, char, npcChar, eyes, shirt, pants, shoes, hair, shadow]) => {
+      .then(([map, mapFront, collision, shop, char, npcChar, eyes, shirt, pants, shoes, hair, shadow]) => {
         if (cancelled) return;
-        setAssets({ map, mapFront, collision, shopInterior, char, npcChar, eyes, shirt, pants, shoes, hair, shadow });
+        setAssets({
+          map,
+          mapFront,
+          collision,
+          shopInterior: shop.img,
+          shopInteriorData: shop.data,
+          char,
+          npcChar,
+          eyes,
+          shirt,
+          pants,
+          shoes,
+          hair,
+          shadow,
+        });
       })
       .catch((err) => {
         if (!cancelled) console.error("[fishing] asset load failed", err);
@@ -323,8 +374,8 @@ export default function FishingGame({ open, onClose }: Props) {
 
   // Trigger a 0.3s fade transition. The midpoint callback runs when
   // the screen is fully black, swapping scene + position so fade-in
-  // already shows the new scene. While the fade is active, E is
-  // ignored and movement input is dropped (handled in the loop).
+  // already shows the new scene. While the fade is active, movement
+  // input is dropped (handled in the loop).
   const startTransition = useCallback((onMid: () => void) => {
     if (fadeRef.current.active) return;
     keysRef.current = { up: false, down: false, left: false, right: false };
@@ -333,51 +384,62 @@ export default function FishingGame({ open, onClose }: Props) {
     fadeRef.current = { active: true, t: 0, midDone: false, onMid };
   }, []);
 
-  // E-key / tap-prompt handler. Reads the current zone via promptRef
-  // so it works the same whether triggered by a keystroke or a tap.
+  // Fired by the game loop the first frame the player's foot enters a
+  // door / exit / yellow-shop zone. Entry and exit are auto-triggered
+  // by walking; the NPC zone only sets up the prompt and waits for E.
+  const triggerZone = useCallback(
+    (zone: Prompt) => {
+      if (fadeRef.current.active) return;
+      if (zone === "blueDoor") {
+        startTransition(() => {
+          sceneRef.current = "fishshop";
+          stateRef.current = {
+            x: FISHSHOP_INDOOR_SPAWN_X,
+            y: FISHSHOP_INDOOR_SPAWN_Y,
+            dir: "up",
+            moving: false,
+            frame: 0,
+            frameAcc: 0,
+          };
+          promptRef.current = null;
+          setScene("fishshop");
+          setPrompt(null);
+        });
+      } else if (zone === "exit") {
+        startTransition(() => {
+          sceneRef.current = "outdoor";
+          stateRef.current = {
+            x: FISHSHOP_EXIT_SPAWN_X,
+            y: FISHSHOP_EXIT_SPAWN_Y,
+            dir: "down",
+            moving: false,
+            frame: 0,
+            frameAcc: 0,
+          };
+          promptRef.current = null;
+          setScene("outdoor");
+          setPrompt(null);
+        });
+      } else if (zone === "yellowDoor") {
+        setYellowToast(true);
+      }
+    },
+    [startTransition],
+  );
+
+  // E key — only meaningful for the NPC dialog (entry/exit/yellow
+  // are auto-triggered by walking into the zone). Doubles as
+  // dismiss-on-E when the dialog is already open.
   const handleInteract = useCallback(() => {
     if (npcDialog) {
       setNpcDialog(false);
       return;
     }
     if (fadeRef.current.active) return;
-    const zone = promptRef.current;
-    if (zone === "blueDoor") {
-      startTransition(() => {
-        sceneRef.current = "fishshop";
-        stateRef.current = {
-          x: FISHSHOP_INDOOR_SPAWN_X,
-          y: FISHSHOP_INDOOR_SPAWN_Y,
-          dir: "up",
-          moving: false,
-          frame: 0,
-          frameAcc: 0,
-        };
-        promptRef.current = null;
-        setScene("fishshop");
-        setPrompt(null);
-      });
-    } else if (zone === "yellowDoor") {
-      setYellowToast(true);
-    } else if (zone === "exit") {
-      startTransition(() => {
-        sceneRef.current = "outdoor";
-        stateRef.current = {
-          x: FISHSHOP_EXIT_SPAWN_X,
-          y: FISHSHOP_EXIT_SPAWN_Y,
-          dir: "down",
-          moving: false,
-          frame: 0,
-          frameAcc: 0,
-        };
-        promptRef.current = null;
-        setScene("outdoor");
-        setPrompt(null);
-      });
-    } else if (zone === "npc") {
+    if (promptRef.current === "npc") {
       setNpcDialog(true);
     }
-  }, [npcDialog, startTransition]);
+  }, [npcDialog]);
 
   // Keyboard input. We listen on window so focus on the canvas isn't
   // required — the panel is the foreground UI when open.
@@ -492,16 +554,18 @@ export default function FishingGame({ open, onClose }: Props) {
       raf = requestAnimationFrame(step);
     };
 
-    // Pick the right collision check for the active scene. Outdoor
-    // is the painted collision.png mask; indoor uses simple rect
-    // tests (the shop interior is small and rectilinear).
+    const shopData = assets.shopInteriorData;
+
+    // Pick the right collision check for the active scene. Both are
+    // pixel-mask based: outdoor uses collision.png (red = blocked),
+    // indoor uses 생선가게.png itself (only floor pixels walkable).
     const sceneCollides = (
       currentScene: Scene,
       x: number,
       y: number,
     ): boolean => {
       if (currentScene === "outdoor") return collidesAt(x, y, collision);
-      return rectsCollideWithFoot(x, y, FISHSHOP_INDOOR_UNWALKABLE);
+      return collidesIndoor(x, y, shopData);
     };
 
     // Determine which interaction prompt (if any) is active based on
@@ -596,12 +660,21 @@ export default function FishingGame({ open, onClose }: Props) {
       }
       s.moving = moving;
 
-      // Prompt zone bookkeeping — only call setState when the zone
-      // actually changes so React doesn't re-render every frame.
+      // Zone bookkeeping. The first frame the player crosses INTO a
+      // zone (null → zone), entry/exit/yellow auto-trigger; the NPC
+      // zone just publishes the prompt for E. setState fires only on
+      // edges, so React doesn't re-render every frame.
       const newZone = computeZone(currentScene, s.x, s.y);
       if (newZone !== promptRef.current) {
         promptRef.current = newZone;
         setPrompt(newZone);
+        if (
+          newZone === "blueDoor" ||
+          newZone === "exit" ||
+          newZone === "yellowDoor"
+        ) {
+          triggerZone(newZone);
+        }
       }
     };
 
@@ -656,33 +729,11 @@ export default function FishingGame({ open, onClose }: Props) {
       const currentScene = sceneRef.current;
       const fade = fadeRef.current;
 
-      const mapW = currentScene === "outdoor" ? MAP_WIDTH : INDOOR_MAP_WIDTH;
-      const mapH = currentScene === "outdoor" ? MAP_HEIGHT : INDOOR_MAP_HEIGHT;
-      // Visible map area in 1x map coords — half the viewport per axis
-      // because we draw at 2x. Camera clamps so the player drifts
-      // off-center near map edges instead of revealing dead space.
-      const visibleW = VIEWPORT / MAP_SCALE;
-      const visibleH = VIEWPORT / MAP_SCALE;
-      const camX = clamp(
-        Math.round(s.x - visibleW / 2),
-        0,
-        Math.max(0, mapW - visibleW),
-      );
-      const camY = clamp(
-        Math.round(s.y - visibleH / 2),
-        0,
-        Math.max(0, mapH - visibleH),
-      );
-
-      // Black background — fills any letterbox area when the indoor
-      // map is smaller than the viewport (after MAP_SCALE the shop
-      // image is 320×320, so this only matters near edges).
+      // Always start with a clean black canvas so the indoor scene's
+      // letterbox area renders solid black per the design spec
+      // ("뷰포트가 크면 주변은 검정색").
       ctx.fillStyle = "#000";
       ctx.fillRect(0, 0, VIEWPORT, VIEWPORT);
-      ctx.save();
-      ctx.scale(MAP_SCALE, MAP_SCALE);
-      // Re-assert pixelated sampling under the scale matrix; some
-      // browsers reset this when the transform changes.
       ctx.imageSmoothingEnabled = false;
 
       const playerColors = {
@@ -701,6 +752,22 @@ export default function FishingGame({ open, onClose }: Props) {
       };
 
       if (currentScene === "outdoor") {
+        // Outdoor: 2x scale, camera follows player, clamped to map.
+        const visibleW = VIEWPORT / MAP_SCALE;
+        const visibleH = VIEWPORT / MAP_SCALE;
+        const camX = clamp(
+          Math.round(s.x - visibleW / 2),
+          0,
+          Math.max(0, MAP_WIDTH - visibleW),
+        );
+        const camY = clamp(
+          Math.round(s.y - visibleH / 2),
+          0,
+          Math.max(0, MAP_HEIGHT - visibleH),
+        );
+        ctx.save();
+        ctx.scale(MAP_SCALE, MAP_SCALE);
+        ctx.imageSmoothingEnabled = false;
         ctx.drawImage(imgs.map, -camX, -camY);
         drawCharacter(imgs.char, s.x, s.y, camX, camY, s.frame, s.dir, playerColors);
         // Front layer — drawn last so any non-transparent pixel of
@@ -713,11 +780,19 @@ export default function FishingGame({ open, onClose }: Props) {
         ctx.globalAlpha = 1;
         ctx.globalCompositeOperation = "source-over";
         ctx.drawImage(imgs.mapFront, -camX, -camY);
+        ctx.restore();
       } else {
-        // Fish-shop interior. NPC drawn before the player so the
-        // player passes "in front" if they ever overlap (the player's
-        // bbox is constrained to the floor, so this rarely matters).
-        ctx.drawImage(imgs.shopInterior, -camX, -camY);
+        // Indoor: native 1:1, fixed camera, shop image centered with
+        // black borders. Faking a "negative camera" via the offset
+        // keeps the drawCharacter helper working unchanged.
+        const offsetX = Math.floor((VIEWPORT - INDOOR_MAP_WIDTH) / 2);
+        const offsetY = Math.floor((VIEWPORT - INDOOR_MAP_HEIGHT) / 2);
+        const camX = -offsetX;
+        const camY = -offsetY;
+        ctx.drawImage(imgs.shopInterior, offsetX, offsetY);
+        // NPC first so the player z-orders on top if they ever
+        // overlap; in practice the floor blocks the player from
+        // reaching the NPC's tile.
         drawCharacter(
           imgs.npcChar,
           FISHSHOP_NPC_X,
@@ -730,8 +805,6 @@ export default function FishingGame({ open, onClose }: Props) {
         );
         drawCharacter(imgs.char, s.x, s.y, camX, camY, s.frame, s.dir, playerColors);
       }
-
-      ctx.restore();
 
       // Fade overlay — black plane whose alpha follows a 0→1→0 ramp
       // across the SCENE_FADE_SECONDS window so transitions never
@@ -748,7 +821,7 @@ export default function FishingGame({ open, onClose }: Props) {
 
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
-  }, [open, assets]);
+  }, [open, assets, triggerZone]);
 
   return (
     <AnimatePresence>
@@ -850,11 +923,11 @@ export default function FishingGame({ open, onClose }: Props) {
               }}
             />
 
-            {/* Interaction prompt — appears when the player is in any
-                interactive zone. Top-right of the canvas so it can't
-                hide under the thumb on mobile. PC users press E; the
-                whole pill is also tappable. */}
-            {prompt ? (
+            {/* Interaction prompt. Door entry, indoor exit, and the
+                yellow shop's "준비중" toast all auto-fire on zone
+                entry; the only zone that still needs a manual button
+                is the NPC, since talking is opt-in. */}
+            {prompt === "npc" ? (
               <button
                 type="button"
                 onPointerDown={(e) => {
@@ -877,13 +950,7 @@ export default function FishingGame({ open, onClose }: Props) {
                 >
                   E
                 </span>
-                <span>
-                  {prompt === "blueDoor" || prompt === "yellowDoor"
-                    ? "입장"
-                    : prompt === "exit"
-                    ? "나가기"
-                    : "대화"}
-                </span>
+                <span>대화</span>
               </button>
             ) : null}
 
