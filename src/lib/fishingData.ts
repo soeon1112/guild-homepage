@@ -533,11 +533,11 @@ export type FishGradeConfig = {
 //   legendary~1.0 s (0.8–1.3s)
 //   mythic   ~0.8 s (0.6–1.1s)
 export const FISH_GRADES: Record<FishGrade, FishGradeConfig> = {
-  common:    { width: 0.20, baseSpeed: 0.50, jitter: 0.25, rollProbability: 0.50 },
-  uncommon:  { width: 0.20, baseSpeed: 0.67, jitter: 0.25, rollProbability: 0.28 },
-  rare:      { width: 0.15, baseSpeed: 0.83, jitter: 0.25, rollProbability: 0.14 },
-  legendary: { width: 0.10, baseSpeed: 1.00, jitter: 0.25, rollProbability: 0.06 },
-  mythic:    { width: 0.10, baseSpeed: 1.25, jitter: 0.25, rollProbability: 0.02 },
+  common:    { width: 0.20, baseSpeed: 0.50, jitter: 0.25, rollProbability: 0.60 },
+  uncommon:  { width: 0.20, baseSpeed: 0.67, jitter: 0.25, rollProbability: 0.22 },
+  rare:      { width: 0.15, baseSpeed: 0.83, jitter: 0.25, rollProbability: 0.12 },
+  legendary: { width: 0.10, baseSpeed: 1.00, jitter: 0.25, rollProbability: 0.045 },
+  mythic:    { width: 0.10, baseSpeed: 1.25, jitter: 0.25, rollProbability: 0.015 },
 };
 
 // Sin frequency for the in-run speed modulation. 0.001 ≈ one full
@@ -551,11 +551,11 @@ export const GAUGE_SPEED_SIN_FREQ = 0.001;
 // Combined effective rates (per spec):
 //   forage treasure : 45 × 0.70 = 31.5%
 //   forage trash    : 45 × 0.30 = 13.5%
-//   fish common     : 55 × 0.50 = 27.5%
-//   fish uncommon   : 55 × 0.28 = 15.4%
-//   fish rare       : 55 × 0.14 =  7.7%
-//   fish legendary  : 55 × 0.06 =  3.3%
-//   fish mythic     : 55 × 0.02 =  1.1%
+//   fish common     : 55 × 0.60 = 33.0%
+//   fish uncommon   : 55 × 0.22 = 12.1%
+//   fish rare       : 55 × 0.12 =  6.6%
+//   fish legendary  : 55 × 0.045 = 2.475%
+//   fish mythic     : 55 × 0.015 = 0.825%
 export const CATCH_FORAGE_PROBABILITY = 0.45;
 export const CATCH_TRASH_WITHIN_FORAGE = 0.30;
 
