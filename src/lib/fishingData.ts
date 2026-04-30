@@ -85,26 +85,61 @@ export const DEFAULT_HAIR_COLOR = 0;
 export const CHAR_BBOX_HALF_W = 5;
 export const CHAR_BBOX_HEIGHT = 6;
 
-// Map-pixel-coordinate spawn. (80, 232) sits on the open beach left
-// of the umbrellas, clear of buildings and sea.
-export const SPAWN_X = 80;
-export const SPAWN_Y = 232;
+// Map-pixel-coordinate spawn. (168, 184) sits on the wide sand strip
+// between the blue-house and fish-shop compounds — clear sight lines
+// in every direction so the player can immediately see how movement
+// and camera scrolling work.
+export const SPAWN_X = 168;
+export const SPAWN_Y = 184;
 
 export type Rect = { x: number; y: number; w: number; h: number };
 
-// Unwalkable rects in map px. Phase 1 is intentionally rough — the
-// background art has irregular building footprints and a diagonal
-// shoreline, but rectangle approximations are enough to keep the
-// player out of obvious obstacles. Refine to per-tile collision later.
+// Unwalkable rects in map px (1x coordinates — the 2x render scale is
+// purely visual; collision math stays in native asset units). Each
+// rect was eyeballed off the 336×336 background with a 16-px grid
+// overlay, so most footprints are tile-aligned ±a few px.
+//
+// Two intentional walkable channels cut through the sea on the right:
+// the left dock (x≈200..232) and the right dock (x≈264..296), both
+// passable from y=184 (sand) down to y=272 (deep-water boundary).
 export const UNWALKABLE_RECTS: Rect[] = [
-  // Top-left house (blue roof + base)
-  { x: 24, y: 40, w: 104, h: 104 },
-  // Top-right fishing shop (yellow roof + base)
-  { x: 176, y: 24, w: 128, h: 144 },
-  // Sea — right side (large rectangle covering the right water body)
-  { x: 240, y: 192, w: 96, h: 144 },
-  // Sea — bottom (covers the lower coastal water)
-  { x: 144, y: 256, w: 192, h: 80 },
-  // Sea — middle bridging area (between right and bottom blocks)
-  { x: 192, y: 224, w: 144, h: 48 },
+  // ── Top edge: decorative grass strip with flowers ──
+  { x: 0, y: 0, w: 336, h: 24 },
+
+  // ── Standalone trees / flowers near the top edge ──
+  { x: 216, y: 0, w: 24, h: 40 },     // small tree right of fish-shop fence
+  { x: 264, y: 0, w: 24, h: 24 },     // red rose tuft
+  { x: 304, y: 8, w: 24, h: 32 },     // purple flower bush
+
+  // ── Building compounds (fence + structure + interior decor) ──
+  // Blue-roof house: fence runs y=64..168, x=16..160.
+  { x: 16, y: 64, w: 144, h: 104 },
+  // Yellow-roof fish shop: fence runs y=40..168, x=176..320.
+  { x: 176, y: 40, w: 144, h: 128 },
+
+  // ── Palm trees ──
+  { x: 128, y: 160, w: 24, h: 40 },   // bottom-left palm (between house and beach)
+  { x: 296, y: 128, w: 32, h: 40 },   // bottom-right palm (under fish shop)
+
+  // ── Beach decorations (BL quadrant) ──
+  { x: 8,  y: 192, w: 24, h: 56 },    // green/white parasol + chair
+  { x: 40, y: 192, w: 32, h: 56 },    // yellow parasol + chair
+  { x: 104, y: 216, w: 56, h: 48 },   // sandcastle + adjacent table
+
+  // ── Misc small objects on sand ──
+  { x: 176, y: 192, w: 16, h: 16 },   // basket near BR coast
+  { x: 304, y: 168, w: 16, h: 24 },   // dark barrel near right palm
+  { x: 24,  y: 304, w: 16, h: 16 },   // seagull at lower-left
+
+  // ── Sea (water) — multiple rects with dock channels left open ──
+  // BL bay where the coast curves inward — height bumped to 40 so it
+  // meets the deep-water rect at y=272 (avoids a 1-tile water seam
+  // the player could otherwise stand on).
+  { x: 80, y: 232, w: 120, h: 40 },
+  // BR water around the docks (channels at x=200..232 and x=264..296)
+  { x: 168, y: 216, w: 32, h: 56 },   // left of left dock
+  { x: 232, y: 216, w: 32, h: 56 },   // between docks
+  { x: 296, y: 216, w: 40, h: 56 },   // right of right dock
+  // Deep water — covers everything south of the dock reach
+  { x: 0, y: 272, w: 336, h: 64 },
 ];
