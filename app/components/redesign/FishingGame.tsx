@@ -2873,9 +2873,15 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
         const half = BOBBER_CELL / 2;
         const bobberDrawX = Math.round(bobberCX - half - camX);
         const bobberDrawY = Math.round(bobberCY - half - camY);
+        // Bobber index = first entry of the rod's pair (see
+        // ROD_BOBBER_PAIRS). Falls back to the global default
+        // BOBBER_INDEX if the rodType is somehow off-spec — keeps
+        // the line drawing even when the lookup misses.
+        const rodPair = ROD_BOBBER_PAIRS[characterConfig.rodType];
+        const bobberIdx = rodPair ? rodPair[0] : BOBBER_INDEX;
         ctx.drawImage(
           imgs.fishBobber,
-          BOBBER_INDEX * BOBBER_CELL, 0, BOBBER_CELL, BOBBER_CELL,
+          bobberIdx * BOBBER_CELL, 0, BOBBER_CELL, BOBBER_CELL,
           bobberDrawX, bobberDrawY, BOBBER_CELL, BOBBER_CELL,
         );
       }
@@ -6630,7 +6636,48 @@ function ExpBar({ fraction }: { fraction: number }) {
 // re-loads the chosen layer URLs on every draft change so the
 // player sees their pick reflected immediately. Save happens in
 // the parent's onConfirm — this component owns no Firestore I/O.
-function CharacterCreatorPreview({ draft }: { draft: CharacterConfig }) {
+// Korean hair-style display labels — keeps the in-data string keys
+// stable while showing localized names in the UI. Stored separately
+// from HAIR_STYLES so the underlying data (file paths, Firestore
+// values) doesn't drift if labels change.
+const HAIR_STYLE_LABELS: Record<HairStyle, string> = {
+  bob: "단발",
+  braids: "땋은머리",
+  buzzcut: "버즈컷",
+  curly: "곱슬",
+  emo: "이모",
+  extra_long: "긴생머리",
+  french_curl: "프렌치컬",
+  gentleman: "젠틀맨",
+  long_straight: "긴직모",
+  midiwave: "미디웨이브",
+  ponytail: "포니테일",
+  spacebuns: "스페이스번",
+  wavy: "웨이브",
+};
+const ROD_TYPE_LABELS: Record<RodType, string> = {
+  default: "기본",
+  blue: "파랑",
+  brown: "갈색",
+  pink: "분홍",
+};
+// Three previewable directions inside the customizer (left is
+// mirrored from right at draw time, so we don't need a fourth row).
+const PREVIEW_DIRS = [
+  { dir: "down" as Direction, label: "앞" },
+  { dir: "right" as Direction, label: "옆" },
+  { dir: "up" as Direction, label: "뒤" },
+];
+
+function CharacterCreatorPreview({
+  draft,
+  dir,
+  size,
+}: {
+  draft: CharacterConfig;
+  dir: Direction;
+  size: number;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const cv = canvasRef.current;
@@ -6638,11 +6685,10 @@ function CharacterCreatorPreview({ draft }: { draft: CharacterConfig }) {
     const ctx = cv.getContext("2d");
     if (!ctx) return;
     ctx.imageSmoothingEnabled = false;
-    const SIZE = 96;
     const CELL = SPRITE_CELL;
     const VAR_W = VARIANT_WIDTH;
-    const FRAME = 0; // walk-down idle
-    const ROW_Y = WALK_ROWS.down * CELL;
+    const FRAME = 0; // idle frame for the chosen direction
+    const ROW_Y = WALK_ROWS[dir] * CELL;
     const urls = characterAssetUrls(draft);
     const layers: Array<{ src: string; varX: number }> = [
       { src: urls.walkChar, varX: 0 },
@@ -6665,26 +6711,30 @@ function CharacterCreatorPreview({ draft }: { draft: CharacterConfig }) {
       ),
     ).then((imgs) => {
       if (cancelled) return;
-      ctx.clearRect(0, 0, SIZE, SIZE);
+      ctx.clearRect(0, 0, size, size);
       for (let i = 0; i < imgs.length; i++) {
         const sx = layers[i].varX + FRAME * CELL;
-        ctx.drawImage(imgs[i], sx, ROW_Y, CELL, CELL, 0, 0, SIZE, SIZE);
+        ctx.drawImage(imgs[i], sx, ROW_Y, CELL, CELL, 0, 0, size, size);
       }
     });
     return () => {
       cancelled = true;
     };
-  }, [draft]);
+  }, [draft, dir, size]);
   return (
     <canvas
       ref={canvasRef}
-      width={96}
-      height={96}
-      style={{ width: 96, height: 96, imageRendering: "pixelated" }}
+      width={size}
+      height={size}
+      style={{ width: size, height: size, imageRendering: "pixelated" }}
     />
   );
 }
 
+// Single option row in the customizer's scrollable list. Targets
+// 14 px label / value typography and 28×24 arrow hit boxes — large
+// enough for thumb taps on mobile while still fitting two rows
+// per visible scroll viewport at the chosen panel size.
 function CreatorOption({
   label,
   value,
@@ -6699,10 +6749,19 @@ function CreatorOption({
   return (
     <div
       className="flex items-center justify-between"
-      style={{ fontSize: 10, color: "#3d2c1c", fontWeight: 600 }}
+      style={{
+        color: "#3d2c1c",
+        fontWeight: 700,
+        paddingBlock: 4,
+      }}
     >
-      <span style={{ minWidth: 38 }}>{label}</span>
-      <div className="flex items-center" style={{ gap: 2 }}>
+      <span
+        className="font-serif"
+        style={{ fontSize: 14, minWidth: 56 }}
+      >
+        {label}
+      </span>
+      <div className="flex items-center" style={{ gap: 6 }}>
         <button
           type="button"
           onPointerDown={(e) => {
@@ -6710,10 +6769,10 @@ function CreatorOption({
             onPrev();
           }}
           aria-label={`${label} 이전`}
-          className="flex items-center justify-center"
+          className="flex items-center justify-center transition-transform active:scale-90"
           style={{
-            width: 18,
-            height: 14,
+            width: 28,
+            height: 24,
             padding: 0,
             border: "none",
             background: "transparent",
@@ -6725,8 +6784,8 @@ function CreatorOption({
             alt=""
             draggable={false}
             style={{
-              width: 18,
-              height: 14,
+              width: 24,
+              height: 18,
               imageRendering: "pixelated",
               transform: "scaleX(-1)",
               pointerEvents: "none",
@@ -6736,9 +6795,9 @@ function CreatorOption({
         <span
           className="font-serif"
           style={{
-            minWidth: 64,
+            minWidth: 92,
             textAlign: "center",
-            fontSize: 9,
+            fontSize: 13,
             color: "#3d2c1c",
           }}
         >
@@ -6751,10 +6810,10 @@ function CreatorOption({
             onNext();
           }}
           aria-label={`${label} 다음`}
-          className="flex items-center justify-center"
+          className="flex items-center justify-center transition-transform active:scale-90"
           style={{
-            width: 18,
-            height: 14,
+            width: 28,
+            height: 24,
             padding: 0,
             border: "none",
             background: "transparent",
@@ -6766,8 +6825,8 @@ function CreatorOption({
             alt=""
             draggable={false}
             style={{
-              width: 18,
-              height: 14,
+              width: 24,
+              height: 18,
               imageRendering: "pixelated",
               pointerEvents: "none",
             }}
@@ -6787,6 +6846,15 @@ function CharacterCreator({
   onChange: (next: CharacterConfig) => void;
   onConfirm: () => void;
 }) {
+  // Direction shown in the preview. Independent of the chosen
+  // character (which doesn't have a "direction" attribute) — purely
+  // a UI affordance to let the player rotate around their look.
+  const [previewDirIdx, setPreviewDirIdx] = useState(0);
+  const previewDir = PREVIEW_DIRS[previewDirIdx];
+  const cycleDir = (delta: number) => {
+    const len = PREVIEW_DIRS.length;
+    setPreviewDirIdx((cur) => ((cur + delta) % len + len) % len);
+  };
   const cycleNumber = (
     key: "charIndex" | "hairColor" | "shirtColor" | "pantsColor" | "shoesColor",
     delta: number,
@@ -6808,10 +6876,11 @@ function CharacterCreator({
     const nidx = ((idx + delta) % len + len) % len;
     onChange({ ...draft, rodType: ROD_TYPES[nidx] as RodType });
   };
-  const PANEL_W = 280;
-  const PANEL_H = 270;
+  const PANEL_W = 290;
+  const PANEL_H = 300;
   const left = (VIEWPORT - PANEL_W) / 2;
   const top = (VIEWPORT - PANEL_H) / 2;
+  const PREVIEW_SIZE = 96;
   return (
     <motion.div
       key="creator-root"
@@ -6839,118 +6908,212 @@ function CharacterCreator({
           width={PANEL_W}
           height={PANEL_H}
           style={{
-            paddingTop: 14,
-            paddingBottom: 12,
-            paddingInline: 16,
+            paddingTop: 12,
+            paddingBottom: 10,
+            paddingInline: 14,
             boxSizing: "border-box",
           }}
         >
           <div
             className="flex h-full w-full flex-col items-center"
-            style={{ gap: 8 }}
+            style={{ gap: 6 }}
           >
+            {/* Title */}
             <div
               className="font-serif font-bold leading-none"
-              style={{ fontSize: 13, color: "#3d2c1c" }}
+              style={{ fontSize: 14, color: "#3d2c1c" }}
             >
               캐릭터 생성
             </div>
+            {/* Preview area — character + direction toggle. Stays
+                fixed at the top while the option list scrolls. */}
             <div
-              className="flex w-full"
-              style={{ gap: 12, flex: 1, minHeight: 0 }}
+              className="flex w-full flex-col items-center"
+              style={{ gap: 4, flexShrink: 0 }}
             >
-              <div
-                className="flex flex-col items-center justify-center"
-                style={{ width: 96 }}
-              >
-                <CharacterCreatorPreview draft={draft} />
-              </div>
-              <div className="flex flex-1 flex-col" style={{ gap: 4 }}>
-                <CreatorOption
-                  label="캐릭터"
-                  value={`${draft.charIndex + 1} / ${CHARACTER_COUNT}`}
-                  onPrev={() => cycleNumber("charIndex", -1, CHARACTER_COUNT)}
-                  onNext={() => cycleNumber("charIndex", +1, CHARACTER_COUNT)}
-                />
-                <CreatorOption
-                  label="헤어"
-                  value={draft.hairStyle}
-                  onPrev={() => cycleStyle(-1)}
-                  onNext={() => cycleStyle(+1)}
-                />
-                <CreatorOption
-                  label="헤어색"
-                  value={`${draft.hairColor + 1} / ${HAIR_COLOR_COUNT}`}
-                  onPrev={() => cycleNumber("hairColor", -1, HAIR_COLOR_COUNT)}
-                  onNext={() => cycleNumber("hairColor", +1, HAIR_COLOR_COUNT)}
-                />
-                <CreatorOption
-                  label="상의색"
-                  value={`${draft.shirtColor + 1} / ${SHIRT_COLOR_COUNT}`}
-                  onPrev={() =>
-                    cycleNumber("shirtColor", -1, SHIRT_COLOR_COUNT)
-                  }
-                  onNext={() =>
-                    cycleNumber("shirtColor", +1, SHIRT_COLOR_COUNT)
-                  }
-                />
-                <CreatorOption
-                  label="하의색"
-                  value={`${draft.pantsColor + 1} / ${PANTS_COLOR_COUNT}`}
-                  onPrev={() =>
-                    cycleNumber("pantsColor", -1, PANTS_COLOR_COUNT)
-                  }
-                  onNext={() =>
-                    cycleNumber("pantsColor", +1, PANTS_COLOR_COUNT)
-                  }
-                />
-                <CreatorOption
-                  label="신발색"
-                  value={`${draft.shoesColor + 1} / ${SHOES_COLOR_COUNT}`}
-                  onPrev={() =>
-                    cycleNumber("shoesColor", -1, SHOES_COLOR_COUNT)
-                  }
-                  onNext={() =>
-                    cycleNumber("shoesColor", +1, SHOES_COLOR_COUNT)
-                  }
-                />
-                <CreatorOption
-                  label="낚시대"
-                  value={draft.rodType}
-                  onPrev={() => cycleRod(-1)}
-                  onNext={() => cycleRod(+1)}
-                />
+              <CharacterCreatorPreview
+                draft={draft}
+                dir={previewDir.dir}
+                size={PREVIEW_SIZE}
+              />
+              <div className="flex items-center" style={{ gap: 8 }}>
+                <button
+                  type="button"
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    cycleDir(-1);
+                  }}
+                  aria-label="이전 방향"
+                  className="flex items-center justify-center transition-transform active:scale-90"
+                  style={{
+                    width: 28,
+                    height: 24,
+                    padding: 0,
+                    border: "none",
+                    background: "transparent",
+                    cursor: "pointer",
+                  }}
+                >
+                  <img
+                    src={UI_ICON_ARROW}
+                    alt=""
+                    draggable={false}
+                    style={{
+                      width: 24,
+                      height: 18,
+                      imageRendering: "pixelated",
+                      transform: "scaleX(-1)",
+                      pointerEvents: "none",
+                    }}
+                  />
+                </button>
+                <span
+                  className="font-serif font-bold"
+                  style={{
+                    fontSize: 13,
+                    minWidth: 56,
+                    textAlign: "center",
+                    color: "#3d2c1c",
+                  }}
+                >
+                  {previewDir.label}
+                </span>
+                <button
+                  type="button"
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    cycleDir(+1);
+                  }}
+                  aria-label="다음 방향"
+                  className="flex items-center justify-center transition-transform active:scale-90"
+                  style={{
+                    width: 28,
+                    height: 24,
+                    padding: 0,
+                    border: "none",
+                    background: "transparent",
+                    cursor: "pointer",
+                  }}
+                >
+                  <img
+                    src={UI_ICON_ARROW}
+                    alt=""
+                    draggable={false}
+                    style={{
+                      width: 24,
+                      height: 18,
+                      imageRendering: "pixelated",
+                      pointerEvents: "none",
+                    }}
+                  />
+                </button>
               </div>
             </div>
-            <button
-              type="button"
-              onPointerDown={(e) => {
-                e.stopPropagation();
-                onConfirm();
-              }}
-              aria-label="확인"
-              className="flex items-center justify-center transition-transform active:scale-90"
+            {/* Scrollable options + confirm button. flex-1 + minHeight 0
+                lets the inner overflow:auto take whatever vertical
+                space remains under the preview. */}
+            <div
+              className="flex w-full flex-col"
               style={{
-                width: 34,
-                height: 28,
-                padding: 0,
-                border: "none",
-                background: "transparent",
-                cursor: "pointer",
+                flex: 1,
+                minHeight: 0,
+                overflowY: "auto",
+                paddingInline: 4,
               }}
+              onWheel={(e) => e.stopPropagation()}
             >
-              <img
-                src={UI_ICON_CHECK}
-                alt=""
-                draggable={false}
-                style={{
-                  imageRendering: "pixelated",
-                  width: 34,
-                  height: 28,
-                  pointerEvents: "none",
-                }}
+              <CreatorOption
+                label="캐릭터"
+                value={`${draft.charIndex + 1} / ${CHARACTER_COUNT}`}
+                onPrev={() => cycleNumber("charIndex", -1, CHARACTER_COUNT)}
+                onNext={() => cycleNumber("charIndex", +1, CHARACTER_COUNT)}
               />
-            </button>
+              <CreatorOption
+                label="헤어"
+                value={HAIR_STYLE_LABELS[draft.hairStyle]}
+                onPrev={() => cycleStyle(-1)}
+                onNext={() => cycleStyle(+1)}
+              />
+              <CreatorOption
+                label="헤어색"
+                value={`${draft.hairColor + 1} / ${HAIR_COLOR_COUNT}`}
+                onPrev={() => cycleNumber("hairColor", -1, HAIR_COLOR_COUNT)}
+                onNext={() => cycleNumber("hairColor", +1, HAIR_COLOR_COUNT)}
+              />
+              <CreatorOption
+                label="상의색"
+                value={`${draft.shirtColor + 1} / ${SHIRT_COLOR_COUNT}`}
+                onPrev={() =>
+                  cycleNumber("shirtColor", -1, SHIRT_COLOR_COUNT)
+                }
+                onNext={() =>
+                  cycleNumber("shirtColor", +1, SHIRT_COLOR_COUNT)
+                }
+              />
+              <CreatorOption
+                label="하의색"
+                value={`${draft.pantsColor + 1} / ${PANTS_COLOR_COUNT}`}
+                onPrev={() =>
+                  cycleNumber("pantsColor", -1, PANTS_COLOR_COUNT)
+                }
+                onNext={() =>
+                  cycleNumber("pantsColor", +1, PANTS_COLOR_COUNT)
+                }
+              />
+              <CreatorOption
+                label="신발색"
+                value={`${draft.shoesColor + 1} / ${SHOES_COLOR_COUNT}`}
+                onPrev={() =>
+                  cycleNumber("shoesColor", -1, SHOES_COLOR_COUNT)
+                }
+                onNext={() =>
+                  cycleNumber("shoesColor", +1, SHOES_COLOR_COUNT)
+                }
+              />
+              <CreatorOption
+                label="낚시대"
+                value={ROD_TYPE_LABELS[draft.rodType]}
+                onPrev={() => cycleRod(-1)}
+                onNext={() => cycleRod(+1)}
+              />
+              {/* Confirm sits at the bottom of the scroll content so
+                  it follows the option list — matches the spec
+                  "스크롤 맨 아래에 체크 버튼". */}
+              <div
+                className="flex w-full items-center justify-center"
+                style={{ marginTop: 8, marginBottom: 4 }}
+              >
+                <button
+                  type="button"
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    onConfirm();
+                  }}
+                  aria-label="확인"
+                  className="flex items-center justify-center transition-transform active:scale-90"
+                  style={{
+                    width: 44,
+                    height: 36,
+                    padding: 0,
+                    border: "none",
+                    background: "transparent",
+                    cursor: "pointer",
+                  }}
+                >
+                  <img
+                    src={UI_ICON_CHECK}
+                    alt=""
+                    draggable={false}
+                    style={{
+                      imageRendering: "pixelated",
+                      width: 44,
+                      height: 36,
+                      pointerEvents: "none",
+                    }}
+                  />
+                </button>
+              </div>
+            </div>
           </div>
         </Frame9Slice>
       </motion.div>
