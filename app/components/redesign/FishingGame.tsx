@@ -588,6 +588,10 @@ const UI_ICON_CHECK = encodeURI(UI_FLAT_BASE + "UI_Flat_IconCheck01a.png");
 // Inventory / info / ranking panel UI sprites.
 const UI_TAB_MARKER = encodeURI(UI_FLAT_BASE + "UI_Flat_FrameMarker01a.png");
 const UI_INV_SLOT = encodeURI(UI_FLAT_BASE + "UI_Flat_FrameSlot01c.png");
+// Sell panel uses the warmer Frame03a / Slot03c set so the shop UI
+// reads visually distinct from the player's own inventory panel.
+const UI_SELL_PANEL_FRAME = encodeURI(UI_FLAT_BASE + "UI_Flat_Frame03a.png");
+const UI_SELL_SLOT = encodeURI(UI_FLAT_BASE + "UI_Flat_FrameSlot03c.png");
 // 9×9 small cross — the larger 01a (15×15) felt too heavy as a
 // dedicated close button. 01b reads as a quiet dismiss control.
 const UI_ICON_CROSS = encodeURI(UI_FLAT_BASE + "UI_Flat_IconCross01b.png");
@@ -5216,14 +5220,17 @@ function SellPanel({
         onPointerDown={(e) => e.stopPropagation()}
       >
         <Frame9Slice
-          src={UI_POPUP_FRAME}
+          src={UI_SELL_PANEL_FRAME}
           cap={PANEL_FRAME_CAP}
           scale={PANEL_FRAME_SCALE}
           width={SELL_PANEL_WIDTH}
           height={SELL_PANEL_HEIGHT}
           style={{
             paddingTop: 12,
-            paddingBottom: 6,
+            // Larger paddingBottom — the sell/buy buttons sit a few
+            // px above the frame edge instead of flush against it,
+            // and the close X gets its own breathing room beneath.
+            paddingBottom: 14,
             paddingInline: PANEL_BORDER + 2,
             boxSizing: "border-box",
           }}
@@ -5265,17 +5272,9 @@ function SellPanel({
                 );
               })}
             </div>
-            {/* NPC headline — flips with the tab so the same
-                shopkeeper feels like they're saying the right line
-                for each transaction. */}
-            <div
-              className="font-serif font-bold leading-none"
-              style={{ fontSize: 12, color: "#3d2c1c", marginBottom: 4 }}
-            >
-              {tab === "sell"
-                ? "잡은 물고기를 살게요!"
-                : "필요한 물건이 있나요?"}
-            </div>
+            {/* NPC headline removed — shopkeeper greeting bubble
+                already covers the "어서오세요" line over the NPC
+                sprite, so the panel itself just shows the goods. */}
 
             {tab === "sell" ? (
             <>
@@ -5323,7 +5322,7 @@ function SellPanel({
                       }}
                     >
                       <img
-                        src={UI_INV_SLOT}
+                        src={UI_SELL_SLOT}
                         alt=""
                         draggable={false}
                         style={{
@@ -5446,10 +5445,11 @@ function SellPanel({
                 : "판매할 아이템을 선택하세요"}
             </div>
 
-            {/* Bottom action row — sell-one, sell-all, close X. */}
+            {/* Action button row — split off the close X so it
+                gets its own row beneath the panel buttons. */}
             <div
               className="mt-2 flex items-center justify-center"
-              style={{ gap: 8 }}
+              style={{ gap: 10 }}
             >
               <SellActionButton
                 label="선택 판매"
@@ -5464,38 +5464,11 @@ function SellPanel({
                 disabled={!hasItems}
                 onClick={onSellAll}
               />
-              <button
-                type="button"
-                onPointerDown={(e) => {
-                  e.stopPropagation();
-                  onClose();
-                }}
-                aria-label="닫기"
-                className="flex items-center justify-center transition-transform active:scale-90"
-                style={{
-                  width: 24,
-                  height: 24,
-                  padding: 0,
-                  border: "none",
-                  background: "transparent",
-                  cursor: "pointer",
-                  transform: externalPressed ? "scale(0.9)" : undefined,
-                  flexShrink: 0,
-                }}
-              >
-                <img
-                  src={UI_ICON_CROSS}
-                  alt=""
-                  draggable={false}
-                  style={{
-                    imageRendering: "pixelated",
-                    width: 18,
-                    height: 18,
-                    pointerEvents: "none",
-                  }}
-                />
-              </button>
             </div>
+            <SellCloseButton
+              onClose={onClose}
+              externalPressed={externalPressed}
+            />
             </>
             ) : (
             <BuyContent
@@ -5574,7 +5547,7 @@ function BuyContent({
                 }}
               >
                 <img
-                  src={UI_INV_SLOT}
+                  src={UI_SELL_SLOT}
                   alt=""
                   draggable={false}
                   style={{
@@ -5631,7 +5604,7 @@ function BuyContent({
       </div>
       <div
         className="mt-2 flex items-center justify-center"
-        style={{ gap: 8 }}
+        style={{ gap: 10 }}
       >
         <SellActionButton
           label="구매"
@@ -5640,39 +5613,57 @@ function BuyContent({
             if (selFood) onBuy(selFood.id);
           }}
         />
-        <button
-          type="button"
-          onPointerDown={(e) => {
-            e.stopPropagation();
-            onClose();
-          }}
-          aria-label="닫기"
-          className="flex items-center justify-center transition-transform active:scale-90"
-          style={{
-            width: 24,
-            height: 24,
-            padding: 0,
-            border: "none",
-            background: "transparent",
-            cursor: "pointer",
-            transform: externalPressed ? "scale(0.9)" : undefined,
-            flexShrink: 0,
-          }}
-        >
-          <img
-            src={UI_ICON_CROSS}
-            alt=""
-            draggable={false}
-            style={{
-              imageRendering: "pixelated",
-              width: 18,
-              height: 18,
-              pointerEvents: "none",
-            }}
-          />
-        </button>
       </div>
+      <SellCloseButton
+        onClose={onClose}
+        externalPressed={externalPressed}
+      />
     </>
+  );
+}
+
+// Shared close button for the sell panel — sits in its own row
+// beneath the action buttons with breathing room above and below.
+function SellCloseButton({
+  onClose,
+  externalPressed,
+}: {
+  onClose: () => void;
+  externalPressed: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        onClose();
+      }}
+      aria-label="닫기"
+      className="flex items-center justify-center transition-transform active:scale-90"
+      style={{
+        marginTop: 8,
+        width: 24,
+        height: 24,
+        padding: 0,
+        border: "none",
+        background: "transparent",
+        cursor: "pointer",
+        transform: externalPressed ? "scale(0.9)" : undefined,
+        flexShrink: 0,
+      }}
+    >
+      <img
+        src={UI_ICON_CROSS}
+        alt=""
+        draggable={false}
+        style={{
+          imageRendering: "pixelated",
+          width: 18,
+          height: 18,
+          pointerEvents: "none",
+        }}
+      />
+    </button>
   );
 }
 
