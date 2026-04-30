@@ -5499,15 +5499,10 @@ const SELL_PANEL_WIDTH = 256;
 // TAB_VISIBLE) = 8 px from the viewport top — see TabBookmark).
 const SELL_PANEL_HEIGHT = 220;
 const SELL_PANEL_LEFT = (VIEWPORT - SELL_PANEL_WIDTH) / 2;
-// Centre the visible silhouette (panel body PLUS the bookmark tab
-// that hangs above it) inside the viewport. Otherwise the tab
-// overhang lives outside the centred panel and the whole thing reads
-// as top-biased — which is what the user kept seeing. Top-overhang
-// equals the portion of the tab that sits above the panel border:
-// TAB_H − SHOP_TAB_VISIBLE.
-const SELL_PANEL_TAB_OVERHANG = TAB_H - SHOP_TAB_VISIBLE;
-const SELL_PANEL_TOP =
-  (VIEWPORT - SELL_PANEL_HEIGHT + SELL_PANEL_TAB_OVERHANG) / 2;
+// Centre the panel body itself inside the viewport. Tab bookmark
+// overhang is intentionally NOT factored in — the user prefers the
+// panel-only midpoint over the visual-silhouette midpoint.
+const SELL_PANEL_TOP = (VIEWPORT - SELL_PANEL_HEIGHT) / 2;
 const SELL_SLOTS_PER_PAGE = 10;     // 5 cols × 2 rows
 const SELL_SLOT_COLS = 5;
 const SELL_SLOT_ROWS = 2;
