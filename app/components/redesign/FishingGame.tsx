@@ -4389,6 +4389,13 @@ const TAB_SCALE = 1;
 // active tab paints over (zIndex 3), inactive tabs tuck behind
 // (zIndex 1) so the active tab visually "connects" to the panel.
 const TAB_VISIBLE = 12;
+// Shop-side override. The marker geometry is byte-identical to the
+// inventory marker (per opaque-pixel-row scan), but the warmer
+// Frame02a body + Marker02a blend visually obscures the bookmark
+// edge — the shop tab reads as "tucked inside" the frame top. We
+// pull the shop strip 4 extra px higher so the visible bookmark
+// portion stays distinct from the panel body.
+const SHOP_TAB_VISIBLE = 8;
 
 // Shared bookmark renderer for the panel-tab strip. Inventory and
 // shop both lay out tabs with the same active/inactive translateY,
@@ -5586,11 +5593,12 @@ function SellPanel({
         {/* Bookmark tabs above the frame top edge — same z-stacked
             pattern as the inventory panel: active tab pops up and
             sits above the frame border (zIndex 3), inactive tab
-            sinks down and dims (zIndex 1). FrameMarker03a matches
-            the warmer Frame03a body. */}
+            sinks down and dims (zIndex 1). Uses SHOP_TAB_VISIBLE
+            (vs the shared TAB_VISIBLE) so the bookmark hangs above
+            the warmer Frame02a body more clearly. */}
         <div
           className="absolute left-0 right-0 flex justify-center"
-          style={{ top: -(TAB_H - TAB_VISIBLE), gap: 0 }}
+          style={{ top: -(TAB_H - SHOP_TAB_VISIBLE), gap: 0 }}
         >
           {(["sell", "buy"] as const).map((t) => (
             <TabBookmark
