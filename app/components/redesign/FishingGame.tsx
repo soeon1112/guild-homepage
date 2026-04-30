@@ -1426,12 +1426,15 @@ export default function FishingGame({ open, onClose }: Props) {
       ctx.restore();
     };
 
-    // Fish shadow under water. Held at a fixed spot one tile beyond
-    // the bobber in the facing direction (deeper water from the
-    // player's POV) and just animates through its 15 frames in
-    // place — no orbit, no dive on bite. Visible once the lurking
-    // phase begins (waitElapsed ≥ shadowAt) and through both fake
-    // and real bites; hidden during success / fail.
+    // Fish shadow under water. Stays put through the entire lurk +
+    // bite sequence (wait → fakeBite → bite) so the player keeps
+    // seeing the fish while the bobber is being yanked. It's only
+    // hidden during success / fail messages.
+    //
+    // The position MUST land on a water (red-on-collision) pixel —
+    // we try a few tile-step candidates around the bobber and pick
+    // the first one that's water, so a bobber sitting next to a
+    // dock or pier never paints a fish on the planks/sand.
     const drawFishShadow = (
       footX: number,
       footY: number,
@@ -1452,12 +1455,36 @@ export default function FishingGame({ open, onClose }: Props) {
       const dy = dir === "down" ? 1 : dir === "up" ? -1 : 0;
       const bobberCX = footX + dx * BOBBER_DISTANCE;
       const bobberCY = footY + dy * BOBBER_DISTANCE;
-      // One tile (16 px) further into the water along facing dir.
-      const shadowCX = bobberCX + dx * 16;
-      const shadowCY = bobberCY + dy * 16;
+      // Candidate positions, ordered by preference:
+      //   1. one tile DEEPER (further from player along facing dir)
+      //   2. on the bobber (guaranteed water — canFish ensured it)
+      //   3. side tiles, then a tile back toward the player
+      // First red-on-collision hit wins; if none, the shadow is
+      // suppressed for that frame.
+      const candidates: Array<{ x: number; y: number }> = [
+        { x: bobberCX + dx * 16, y: bobberCY + dy * 16 },
+        { x: bobberCX, y: bobberCY },
+        { x: bobberCX + 16, y: bobberCY },
+        { x: bobberCX - 16, y: bobberCY },
+        { x: bobberCX, y: bobberCY + 16 },
+        { x: bobberCX, y: bobberCY - 16 },
+        { x: bobberCX - dx * 16, y: bobberCY - dy * 16 },
+      ];
+      let pickedX = 0;
+      let pickedY = 0;
+      let found = false;
+      for (const c of candidates) {
+        if (isBlockedPixel(imgs.collision, c.x, c.y)) {
+          pickedX = c.x;
+          pickedY = c.y;
+          found = true;
+          break;
+        }
+      }
+      if (!found) return;
       const half = FISH_SHADOW_CELL / 2;
-      const drawX = Math.round(shadowCX - half - camX);
-      const drawY = Math.round(shadowCY - half - camY);
+      const drawX = Math.round(pickedX - half - camX);
+      const drawY = Math.round(pickedY - half - camY);
       ctx.drawImage(
         imgs.fishShadow,
         shadowFrame * FISH_SHADOW_CELL, 0, FISH_SHADOW_CELL, FISH_SHADOW_CELL,
