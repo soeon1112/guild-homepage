@@ -640,9 +640,23 @@ const TORCH_POSITIONS: ReadonlyArray<{ x: number; y: number }> = [
 // walkable cell, samples them every SHORELINE_SAMPLE_PX so the
 // effect stays sparse, and assigns each point a random phase so
 // the breath of the waves desynchronises along the coast.
-const SHORELINE_SAMPLE_PX = 6;
+// Sampling interval for the water-edge probe — smaller means denser
+// foam dashes along the coast. 4 px gives ~200 points around the
+// outdoor map's shoreline + dock perimeters, dense enough to read
+// as a continuous ripple line without each dash overlapping its
+// neighbour.
+const SHORELINE_SAMPLE_PX = 4;
 const SHORELINE_WAVE_PERIOD_MS = 2600;
-const SHORELINE_WAVE_PEAK_ALPHA = 0.45;
+// Peak alpha for the breath cycle. The previous 0.45 produced a
+// barely-perceptible tint on the bright cyan water; 0.75 keeps the
+// dashes subtle (sin curve averages ~0.35 over a cycle) without
+// reading as decoration noise.
+const SHORELINE_WAVE_PEAK_ALPHA = 0.75;
+// Dash dimensions in unscaled map coords. Drawn at MAP_SCALE = 2 ×,
+// so 3 × 1 paints a 6 × 2 px ripple on screen — small enough to
+// read as foam, large enough to actually be visible against water.
+const SHORELINE_WAVE_W = 3;
+const SHORELINE_WAVE_H = 1;
 
 // Joystick is parked at a fixed bottom-left dock so the player can
 // always thumb-drag from a known spot. Outer diameter ≈ 24% of the
@@ -2969,9 +2983,14 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
             const phase =
               ((now / SHORELINE_WAVE_PERIOD_MS) + p.phase) * Math.PI * 2;
             const a = Math.max(0, Math.sin(phase)) * SHORELINE_WAVE_PEAK_ALPHA;
-            if (a < 0.04) continue;
+            if (a < 0.06) continue;
             ctx.globalAlpha = a;
-            ctx.fillRect(p.x - camX, p.y - camY, 2, 1);
+            ctx.fillRect(
+              p.x - camX,
+              p.y - camY,
+              SHORELINE_WAVE_W,
+              SHORELINE_WAVE_H,
+            );
           }
           ctx.globalAlpha = 1;
         }
