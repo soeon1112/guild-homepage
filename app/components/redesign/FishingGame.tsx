@@ -3131,11 +3131,11 @@ const TAB_VISIBLE = 12;
 // Where the panel sits inside the inner game pane (306×306).
 const PANEL_LEFT = (VIEWPORT - PANEL_WIDTH) / 2;
 const PANEL_TOP = 18;
-// Inventory slot-detail popup — sized to fit comfortably inside the
-// inventory tab's content area (panel inside ≈ 232 × 200) with room
-// for sprite + 4 short text lines + check button.
+// Inventory slot-detail popup — vertically stacked layout matching
+// the catch popup, sized so sprite + 4 centered text lines + the
+// check button all fit comfortably inside the inventory tab area.
 const DETAIL_WIDTH = 200;
-const DETAIL_HEIGHT = 116;
+const DETAIL_HEIGHT = 172;
 
 type PanelTab = "inventory" | "info" | "ranking";
 
@@ -3580,105 +3580,107 @@ function InventoryContent({
                 scale={2}
                 width={DETAIL_WIDTH}
                 height={DETAIL_HEIGHT}
+                className="flex flex-col items-center"
                 style={{
-                  paddingTop: 12,
-                  paddingBottom: 6,
+                  paddingTop: 14,
+                  paddingBottom: 10,
                   paddingInline: 12,
                   boxSizing: "border-box",
                 }}
               >
+                {/* Vertical stack: sprite → name → grade → price →
+                    count → check button. Mirrors the catch popup so
+                    the two card styles read as the same component
+                    family. Forage hides the price line (always 0). */}
                 <div
-                  className="flex h-full w-full flex-col"
-                  style={{ gap: 4 }}
+                  className="relative"
+                  style={{ width: 48, height: 48 }}
                 >
-                  <div
-                    className="flex items-center"
-                    style={{ flex: 1, gap: 10 }}
-                  >
-                    <div
-                      className="relative"
-                      style={{ width: 40, height: 40, flexShrink: 0 }}
-                    >
-                      <SlotSprite ref_={selectedRef} />
-                    </div>
-                    <div
-                      className="flex flex-1 flex-col"
-                      style={{ gap: 2, color: "#f4efff" }}
-                    >
-                      <div
-                        className="font-serif font-bold leading-none"
-                        style={{ fontSize: 12 }}
-                      >
-                        {selectedRef.data.nameKo}
-                      </div>
-                      <div
-                        className="font-bold leading-none"
-                        style={{
-                          fontSize: 10,
-                          color:
-                            selectedRef.kind === "fish"
-                              ? FISH_GRADE_COLOR[selectedRef.data.grade]
-                              : selectedRef.kind === "trash"
-                              ? "#94a3b8"
-                              : "#fde68a",
-                        }}
-                      >
-                        {selectedRef.kind === "fish"
-                          ? gradeLabel(selectedRef.data.grade)
-                          : selectedRef.kind === "trash"
-                          ? "쓰레기"
-                          : "해양 자원"}
-                      </div>
-                      <div
-                        className="leading-none"
-                        style={{ fontSize: 10, color: "#d8d4e8" }}
-                      >
-                        {selectedCount}개 보유
-                      </div>
-                      {selectedRef.kind === "fish" ? (
-                        <div
-                          className="leading-none"
-                          style={{ fontSize: 10, color: "#fde68a" }}
-                        >
-                          {selectedRef.data.price} 별빛
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-                  {/* Check button — bottom-right of the card. Transparent
-                      background, scale-down on press, no extra chrome. */}
-                  <div className="flex justify-end">
-                    <button
-                      type="button"
-                      onPointerDown={(e) => {
-                        e.stopPropagation();
-                        setSelected(null);
-                      }}
-                      aria-label="확인"
-                      className="flex items-center justify-center transition-transform active:scale-90"
-                      style={{
-                        width: 17 * 2,
-                        height: 14 * 2,
-                        padding: 0,
-                        border: "none",
-                        background: "transparent",
-                        cursor: "pointer",
-                      }}
-                    >
-                      <img
-                        src={UI_ICON_CHECK}
-                        alt=""
-                        draggable={false}
-                        style={{
-                          imageRendering: "pixelated",
-                          width: 17 * 2,
-                          height: 14 * 2,
-                          pointerEvents: "none",
-                        }}
-                      />
-                    </button>
-                  </div>
+                  <SlotSprite ref_={selectedRef} />
                 </div>
+                <div
+                  className="font-serif font-bold leading-none"
+                  style={{ marginTop: 6, fontSize: 13, color: "#f4efff" }}
+                >
+                  {selectedRef.data.nameKo}
+                </div>
+                <div
+                  className="font-bold leading-none"
+                  style={{
+                    marginTop: 4,
+                    fontSize: 10,
+                    letterSpacing: 1,
+                    color:
+                      selectedRef.kind === "fish"
+                        ? FISH_GRADE_COLOR[selectedRef.data.grade]
+                        : selectedRef.kind === "trash"
+                        ? "#94a3b8"
+                        : "#fde68a",
+                  }}
+                >
+                  {selectedRef.kind === "fish"
+                    ? gradeLabel(selectedRef.data.grade)
+                    : selectedRef.kind === "trash"
+                    ? "쓰레기"
+                    : "해양 자원"}
+                </div>
+                {selectedRef.kind === "fish" ? (
+                  <div
+                    className="leading-none"
+                    style={{
+                      marginTop: 4,
+                      fontSize: 10,
+                      color: "#fde68a",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {selectedRef.data.price} 별빛
+                  </div>
+                ) : null}
+                <div
+                  className="leading-none"
+                  style={{
+                    marginTop: 4,
+                    fontSize: 10,
+                    color: "#d8d4e8",
+                  }}
+                >
+                  {selectedCount}개 보유
+                </div>
+                {/* Check button — center-bottom of the card.
+                    Transparent background, scale-down on press, no
+                    extra chrome. Tapping it (or the backdrop)
+                    closes the detail card. */}
+                <button
+                  type="button"
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    setSelected(null);
+                  }}
+                  aria-label="확인"
+                  className="flex items-center justify-center transition-transform active:scale-90"
+                  style={{
+                    marginTop: 8,
+                    width: 17 * 2,
+                    height: 14 * 2,
+                    padding: 0,
+                    border: "none",
+                    background: "transparent",
+                    cursor: "pointer",
+                  }}
+                >
+                  <img
+                    src={UI_ICON_CHECK}
+                    alt=""
+                    draggable={false}
+                    style={{
+                      imageRendering: "pixelated",
+                      width: 17 * 2,
+                      height: 14 * 2,
+                      pointerEvents: "none",
+                    }}
+                  />
+                </button>
               </Frame9Slice>
             </motion.div>
           </motion.div>
