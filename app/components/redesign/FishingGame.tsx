@@ -904,6 +904,18 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
     y: FISHSHOP_INDOOR_SPAWN_Y,
   });
 
+  // Outdoor "return-from-shop" memory. Snapshotted on shop entry so
+  // that walking back outside drops the player exactly where they
+  // came in (in front of the door) instead of teleporting back to
+  // the hard-coded FISHSHOP_EXIT_SPAWN. Memory-only — Firestore's
+  // lastPosition is for cross-session persistence, this is just for
+  // the round-trip within a session.
+  const outdoorReturnRef = useRef<{
+    x: number;
+    y: number;
+    dir: Direction;
+  } | null>(null);
+
   // Boot-time position validation. Fires once `assets` is set after
   // Firestore restore + asset load both finish. If the player's
   // current foot pixel collides with the active scene's mask
@@ -1396,6 +1408,16 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
     (zone: Prompt) => {
       if (fadeRef.current.active) return;
       if (zone === "blueDoor") {
+        // Snapshot outdoor position BEFORE the scene swap so the
+        // exit transition can drop the player back here. Captured
+        // synchronously (outside startTransition's mid-fade
+        // callback) since stateRef.current still holds the
+        // pre-entry coords at this moment.
+        outdoorReturnRef.current = {
+          x: stateRef.current.x,
+          y: stateRef.current.y,
+          dir: stateRef.current.dir,
+        };
         startTransition(() => {
           sceneRef.current = "fishshop";
           // Use the centroid-derived spawn so the entry pixel is
@@ -1444,10 +1466,14 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
       } else if (zone === "exit") {
         startTransition(() => {
           sceneRef.current = "outdoor";
+          // Restore the position the player walked in from. Falls
+          // back to FISHSHOP_EXIT_SPAWN if no return memory exists
+          // (first-session restore from Firestore lastMap=fishshop).
+          const ret = outdoorReturnRef.current;
           stateRef.current = {
-            x: FISHSHOP_EXIT_SPAWN_X,
-            y: FISHSHOP_EXIT_SPAWN_Y,
-            dir: "down",
+            x: ret?.x ?? FISHSHOP_EXIT_SPAWN_X,
+            y: ret?.y ?? FISHSHOP_EXIT_SPAWN_Y,
+            dir: ret?.dir ?? "down",
             moving: false,
             frame: 0,
             frameAcc: 0,
@@ -3188,27 +3214,36 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                 player enters the shop, sits over the NPC's head, and
                 fades out after 3 s (or when the sell panel opens).
                 Two stacked CSS triangles render the downward tail
-                with a 2-px outer border. Position is updated every
-                rAF tick (see the bubbleRef effect) so it stays glued
-                to the NPC even as the camera scrolls. */}
+                with a 2-px outer border.
+                Two-div nesting: the OUTER div carries the static
+                `translate(-50%, -100%)` that anchors the bottom-
+                centre at the rAF-driven left/top, and the INNER
+                motion.div handles the fade-in. Earlier single-div
+                version had framer-motion's animated transform
+                clobbering the static translate, which is why the
+                bubble landed at the wrong pixel. The outer div
+                ignores collision since it's pure UI overlay — pixel
+                under the NPC sprite can be a wall, counter, or
+                walkable floor and the bubble still draws on top. */}
             {npcGreetingVisible && scene === "fishshop" && !sellOpen ? (
-              <motion.div
-                key="npc-greeting"
+              <div
                 ref={bubbleRef}
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 4 }}
-                transition={{ duration: 0.18, ease: "easeOut" }}
                 className="pointer-events-none absolute"
                 style={{
-                  // left/top are written each frame by the rAF
-                  // effect; translate(-50%, -100%) anchors the
-                  // bubble's bottom-center at that pixel.
+                  // Initial 0/0 — rAF effect overwrites within a
+                  // frame so the bubble doesn't flash at top-left.
+                  left: 0,
+                  top: 0,
                   transform: "translate(-50%, -100%)",
                   zIndex: 12,
                 }}
               >
-                <div
+                <motion.div
+                  key="npc-greeting"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
                   className="font-serif font-bold"
                   style={{
                     position: "relative",
@@ -3228,6 +3263,10 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                     lineHeight: 1.3,
                     boxShadow: "0 2px 4px rgba(11,8,33,0.45)",
                     imageRendering: "pixelated",
+                    // Framer's scale animation applies via
+                    // transform-origin: bottom-center so it grows
+                    // away from the tail tip (looks more natural).
+                    transformOrigin: "50% 100%",
                   }}
                 >
                   어서오세요!
@@ -3266,8 +3305,8 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                       borderTop: "8px solid #fff8e7",
                     }}
                   />
-                </div>
-              </motion.div>
+                </motion.div>
+              </div>
             ) : null}
 
             {/* Inventory / info / ranking panel — rendered inside
