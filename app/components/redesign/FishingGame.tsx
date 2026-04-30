@@ -474,7 +474,12 @@ export default function FishingGame({ open, onClose }: Props) {
       // Front layer — drawn last so any non-transparent pixel of
       // 배경_front.png covers the player at that location, giving
       // the depth illusion when walking behind tree canopies, roof
-      // eaves, parasol tops, etc.
+      // eaves, parasol tops, etc. Defensive: re-assert full alpha
+      // and the default compositing op so an earlier accidental
+      // mutation (e.g. a future feature toying with shadows) can't
+      // make the player bleed through occluders.
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = "source-over";
       ctx.drawImage(imgs.mapFront, -camX, -camY);
 
       ctx.restore();
