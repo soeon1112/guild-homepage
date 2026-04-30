@@ -5905,71 +5905,74 @@ function StatRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-// HP bar — same Bar01a + BarFill01a recipe as ExpBar but smaller,
-// always docked at the top-left of the canvas. Stamina text overlay
-// "HP n/100" inside the bar.
-const HP_BAR_WIDTH = 96;
-const HP_BAR_HEIGHT = 14;
+// HP bar — short Bar01a + BarFill01a sprite, docked top-left of the
+// canvas. Stamina text rides RIGHT of the bar (not overlaid) so it
+// can shrink to ~9 px without cramping. Whole row goes semi-
+// transparent so the bar doesn't fight the gameplay underneath.
+const HP_BAR_WIDTH = 60;
+const HP_BAR_HEIGHT = 12;
 function HpBar({ stamina }: { stamina: number }) {
   const ratio = Math.max(0, Math.min(1, stamina / MAX_STAMINA));
   const fillWidth = Math.round((HP_BAR_WIDTH - 4) * ratio);
   return (
     <div
-      className="pointer-events-none absolute"
+      className="pointer-events-none absolute flex items-center"
       style={{
         left: 6,
         top: 6,
-        width: HP_BAR_WIDTH,
-        height: HP_BAR_HEIGHT,
+        gap: 5,
+        opacity: 0.7,
         zIndex: 8,
       }}
     >
-      <img
-        src={UI_GAUGE_BAR}
-        alt=""
-        draggable={false}
-        style={{
-          imageRendering: "pixelated",
-          width: HP_BAR_WIDTH,
-          height: HP_BAR_HEIGHT,
-          pointerEvents: "none",
-          objectFit: "fill",
-        }}
-      />
-      {fillWidth > 0 ? (
+      <div
+        className="relative"
+        style={{ width: HP_BAR_WIDTH, height: HP_BAR_HEIGHT }}
+      >
         <img
-          src={UI_GAUGE_FILL}
+          src={UI_GAUGE_BAR}
           alt=""
           draggable={false}
-          className="absolute"
           style={{
-            left: 2,
-            top: 4,
-            width: fillWidth,
-            height: HP_BAR_HEIGHT - 8,
             imageRendering: "pixelated",
-            objectFit: "fill",
+            width: HP_BAR_WIDTH,
+            height: HP_BAR_HEIGHT,
             pointerEvents: "none",
-            transition: "width 240ms ease",
-            // Tint the green fill toward red so it reads as HP not
-            // a generic progress bar — works because BarFill01a is
-            // a near-uniform sprite.
-            filter: "hue-rotate(-110deg) saturate(1.4)",
+            objectFit: "fill",
           }}
         />
-      ) : null}
+        {fillWidth > 0 ? (
+          <img
+            src={UI_GAUGE_FILL}
+            alt=""
+            draggable={false}
+            className="absolute"
+            style={{
+              left: 2,
+              top: 4,
+              width: fillWidth,
+              height: HP_BAR_HEIGHT - 8,
+              imageRendering: "pixelated",
+              objectFit: "fill",
+              pointerEvents: "none",
+              transition: "width 240ms ease",
+              // Tint the green fill toward red so it reads as HP not
+              // a generic progress bar — works because BarFill01a is
+              // a near-uniform sprite.
+              filter: "hue-rotate(-110deg) saturate(1.4)",
+            }}
+          />
+        ) : null}
+      </div>
       <span
         aria-hidden
-        className="absolute font-serif font-bold leading-none"
+        className="font-serif font-bold leading-none"
         style={{
-          left: "50%",
-          top: "50%",
-          transform: "translate(-50%, -50%)",
           fontSize: 9,
           color: "#fff",
-          textShadow:
-            "1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000",
-          letterSpacing: 0.5,
+          textShadow: "1px 1px 0 rgba(11,8,33,0.85)",
+          letterSpacing: 0.3,
+          whiteSpace: "nowrap",
         }}
       >
         HP {Math.round(stamina)}/{MAX_STAMINA}
