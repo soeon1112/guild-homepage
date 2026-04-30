@@ -5169,9 +5169,14 @@ function CodexSprite({
 // transaction. Forage / trash are sellable for their (zero) price
 // so the player can also use this as inventory cleanup.
 const SELL_PANEL_WIDTH = 256;
-const SELL_PANEL_HEIGHT = 290;
+// 270 (down from 290) keeps the panel inside the 306-px viewport
+// while still leaving ~4 px of breathing room around the sell-tab
+// content stack (grid + page row + info row + buttons + close).
+// Top is offset enough to clear the tab bookmark, which pokes
+// (TAB_H - TAB_VISIBLE) = 20 px above the frame's top edge.
+const SELL_PANEL_HEIGHT = 270;
 const SELL_PANEL_LEFT = (VIEWPORT - SELL_PANEL_WIDTH) / 2;
-const SELL_PANEL_TOP = (VIEWPORT - SELL_PANEL_HEIGHT) / 2;
+const SELL_PANEL_TOP = 24;
 const SELL_SLOTS_PER_PAGE = 15;     // 5 cols × 3 rows
 const SELL_SLOT_COLS = 5;
 const SELL_SLOT_ROWS = 3;
