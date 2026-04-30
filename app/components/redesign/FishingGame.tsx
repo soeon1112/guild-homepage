@@ -649,22 +649,8 @@ export default function FishingGame({ open, onClose }: Props) {
     [startTransition],
   );
 
-  // E key — only meaningful for the NPC dialog (entry/exit/yellow
-  // are auto-triggered by walking into the zone). Doubles as
-  // dismiss-on-E when the dialog is already open.
-  const handleInteract = useCallback(() => {
-    if (npcDialog) {
-      setNpcDialog(false);
-      return;
-    }
-    if (fadeRef.current.active) return;
-    if (promptRef.current === "npc") {
-      setNpcDialog(true);
-    }
-  }, [npcDialog]);
-
-  // Spacebar / 🎣 button. Starts a cast when the player is on the
-  // outdoor map, currently walking, and facing water within ~2
+  // Spacebar / action button. Starts a cast when the player is on
+  // the outdoor map, currently walking, and facing water within ~2
   // tiles; otherwise (already fishing) it cancels back to walking.
   const toggleFishing = useCallback(() => {
     if (fadeRef.current.active || npcDialog) return;
@@ -692,6 +678,28 @@ export default function FishingGame({ open, onClose }: Props) {
     }
   }, [npcDialog]);
 
+  // Unified context action. Both the Space key and the floating
+  // action button call this; the icon/label decision in the UI also
+  // lives in `currentActionIcon` below so the two stay in sync.
+  //   • npcDialog open → close it
+  //   • fishing in progress OR facing water → toggleFishing
+  //   • standing in NPC zone → open dialog
+  const handleAction = useCallback(() => {
+    if (npcDialog) {
+      setNpcDialog(false);
+      return;
+    }
+    if (fadeRef.current.active) return;
+    const s = stateRef.current;
+    if (s.mode !== "walk" || canFishRef.current) {
+      toggleFishing();
+      return;
+    }
+    if (promptRef.current === "npc") {
+      setNpcDialog(true);
+    }
+  }, [npcDialog, toggleFishing]);
+
   // Keyboard input. We listen on window so focus on the canvas isn't
   // required — the panel is the foreground UI when open.
   useEffect(() => {
@@ -709,12 +717,9 @@ export default function FishingGame({ open, onClose }: Props) {
       } else if (KEY_RIGHT.has(e.key)) {
         keysRef.current.right = down;
         e.preventDefault();
-      } else if (down && (e.key === "e" || e.key === "E" || e.key === "ㄷ")) {
-        e.preventDefault();
-        handleInteract();
       } else if (down && (e.key === " " || e.code === "Space")) {
         e.preventDefault();
-        toggleFishing();
+        handleAction();
       } else if (down && e.key === "Escape") {
         if (npcDialog) {
           setNpcDialog(false);
@@ -733,7 +738,7 @@ export default function FishingGame({ open, onClose }: Props) {
       window.removeEventListener("keydown", kd);
       window.removeEventListener("keyup", ku);
     };
-  }, [open, onClose, handleInteract, npcDialog, toggleFishing]);
+  }, [open, onClose, handleAction, npcDialog, toggleFishing]);
 
   // Static-base virtual joystick. Pointer-down anywhere in the stage
   // captures the pointer; the input vector is computed from the
@@ -1386,63 +1391,54 @@ export default function FishingGame({ open, onClose }: Props) {
               }}
             />
 
-            {/* Fishing toggle — visible whenever the player is on
-                the outdoor map facing water within ~2 tiles. Tapping
-                or pressing Space starts the cast; tapping again
-                cancels back to walking. */}
-            {scene === "outdoor" &&
-            (canFish || mode !== "walk") &&
-            !npcDialog &&
-            prompt !== "npc" ? (
-              <button
-                type="button"
-                onPointerDown={(e) => {
-                  e.stopPropagation();
-                  toggleFishing();
-                }}
-                className="absolute right-3 top-3 flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold text-stardust transition-opacity hover:opacity-90"
-                style={{
-                  background: "rgba(26,15,61,0.85)",
-                  border: "1px solid rgba(216,150,200,0.55)",
-                  boxShadow: "0 0 12px rgba(255,229,196,0.30)",
-                }}
-                aria-label={mode === "walk" ? "낚시하기" : "낚시 취소"}
-              >
-                <span className="text-[14px] leading-none">🎣</span>
-                <span>{mode === "walk" ? "낚시" : "취소"}</span>
-              </button>
-            ) : null}
-
-            {/* Interaction prompt. Door entry, indoor exit, and the
-                yellow shop's "준비중" toast all auto-fire on zone
-                entry; the only zone that still needs a manual button
-                is the NPC, since talking is opt-in. */}
-            {prompt === "npc" ? (
-              <button
-                type="button"
-                onPointerDown={(e) => {
-                  e.stopPropagation();
-                  handleInteract();
-                }}
-                className="absolute right-3 top-3 flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold text-stardust transition-opacity hover:opacity-90"
-                style={{
-                  background: "rgba(26,15,61,0.85)",
-                  border: "1px solid rgba(216,150,200,0.55)",
-                  boxShadow: "0 0 12px rgba(255,229,196,0.30)",
-                }}
-              >
-                <span
-                  className="flex h-[18px] w-[18px] items-center justify-center rounded font-bold"
+            {/* Unified action button (bottom-right). Mirrors the
+                Space key — it's only rendered when there's something
+                meaningful to do, and the icon shifts with context:
+                  • 🎣 — fishing in progress, or facing water
+                  • 💬 — standing in the NPC interaction zone
+                Hidden during dialog (the dialog acts as its own tap
+                target) and during fade transitions. */}
+            {(() => {
+              if (npcDialog) return null;
+              const fishingActive = mode !== "walk";
+              const showFish =
+                scene === "outdoor" && (canFish || fishingActive);
+              const showTalk = !fishingActive && prompt === "npc";
+              if (!showFish && !showTalk) return null;
+              const icon = showFish ? "🎣" : "💬";
+              const label = showFish
+                ? mode === "walk"
+                  ? "낚시하기"
+                  : "낚시 취소"
+                : "대화하기";
+              return (
+                <motion.button
+                  type="button"
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    handleAction();
+                  }}
+                  whileTap={{ scale: 0.9 }}
+                  transition={{ duration: 0.08 }}
+                  aria-label={label}
+                  className="absolute right-3 bottom-3 flex items-center justify-center rounded-full text-stardust"
                   style={{
-                    background: "rgba(216,150,200,0.35)",
-                    border: "1px solid rgba(255,229,196,0.55)",
+                    width: 56,
+                    height: 56,
+                    background: "rgba(11,8,33,0.6)",
+                    border: "1px solid rgba(216,150,200,0.35)",
+                    boxShadow:
+                      "0 4px 14px rgba(11,8,33,0.55), inset 0 1px 0 rgba(255,229,196,0.10)",
+                    backdropFilter: "blur(4px)",
+                    WebkitBackdropFilter: "blur(4px)",
                   }}
                 >
-                  E
-                </span>
-                <span>대화</span>
-              </button>
-            ) : null}
+                  <span className="text-[24px] leading-none" aria-hidden>
+                    {icon}
+                  </span>
+                </motion.button>
+              );
+            })()}
 
             {/* "준비중입니다" toast — auto-dismisses after 1.6s */}
             {yellowToast ? (
@@ -1480,7 +1476,7 @@ export default function FishingGame({ open, onClose }: Props) {
                   {FISHSHOP_NPC_LINE}
                 </span>
                 <span className="text-[9px] text-text-sub">
-                  탭 또는 E로 닫기
+                  탭 또는 Space로 닫기
                 </span>
               </button>
             ) : null}
@@ -1491,8 +1487,8 @@ export default function FishingGame({ open, onClose }: Props) {
             style={{ borderTop: "1px solid rgba(216,150,200,0.20)" }}
           >
             {scene === "outdoor"
-              ? "WASD / 방향키 · 바다 앞에서 Space 또는 🎣"
-              : "E로 가게 주인과 대화 · 출구로 걸어가면 자동 퇴장"}
+              ? "WASD / 방향키 · Space 또는 우하단 🎣 버튼"
+              : "Space 또는 우하단 💬 버튼으로 대화 · 출구로 걸어가면 자동 퇴장"}
           </div>
         </motion.div>
       ) : null}
