@@ -16,23 +16,24 @@ import {
   ASSETS,
   CHAR_BBOX_HALF_W,
   CHAR_BBOX_HEIGHT,
+  COLLISION_BLUE_B_MIN,
+  COLLISION_BLUE_G_MAX,
+  COLLISION_BLUE_R_MAX,
   COLLISION_RED_GB_MAX,
   COLLISION_RED_R_MIN,
+  COLLISION_YELLOW_B_MAX,
+  COLLISION_YELLOW_RG_MIN,
   DEFAULT_EYES_COLOR,
   DEFAULT_HAIR_COLOR,
   DEFAULT_PANTS_COLOR,
   DEFAULT_SHIRT_COLOR,
   DEFAULT_SHOES_COLOR,
-  FISHSHOP_DOOR_ZONE,
   FISHSHOP_EXIT_SPAWN_X,
   FISHSHOP_EXIT_SPAWN_Y,
   FISHSHOP_EXIT_ZONE,
   FISHSHOP_INDOOR_SPAWN_X,
   FISHSHOP_INDOOR_SPAWN_Y,
   FISHSHOP_NPC_LINE,
-  FISHSHOP_NPC_X,
-  FISHSHOP_NPC_Y,
-  FISHSHOP_NPC_ZONE,
   INDOOR_MAP_HEIGHT,
   INDOOR_MAP_WIDTH,
   MAP_HEIGHT,
@@ -44,10 +45,6 @@ import {
   NPC_SHIRT_COLOR,
   NPC_SHOES_COLOR,
   SCENE_FADE_SECONDS,
-  SHOP_FLOOR_B_MAX,
-  SHOP_FLOOR_GB_DELTA_MIN,
-  SHOP_FLOOR_R_MIN,
-  SHOP_FLOOR_RG_DELTA_MIN,
   SPAWN_X,
   SPAWN_Y,
   SPRITE_CELL,
@@ -56,7 +53,6 @@ import {
   WALK_FRAMES,
   WALK_FRAME_MS,
   WALK_ROWS,
-  YELLOW_SHOP_DOOR_ZONE,
   YELLOW_SHOP_LINE,
   type Direction,
   type Rect,
@@ -72,7 +68,12 @@ type LoadedAssets = {
   mapFront: HTMLCanvasElement;
   collision: ImageData;
   shopInterior: HTMLImageElement;
-  shopInteriorData: ImageData;
+  shopCollision: ImageData;
+  // NPC anchor + interaction zone, both derived at load time from the
+  // yellow pixel cluster in shopCollision so the artist can move the
+  // marker without touching code.
+  npcFoot: { x: number; y: number };
+  npcZone: Rect;
   char: HTMLImageElement;
   npcChar: HTMLImageElement;
   eyes: HTMLImageElement;
@@ -89,26 +90,36 @@ function pointInRect(x: number, y: number, r: Rect): boolean {
   return x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h;
 }
 
-// Indoor walkability: the dark-brown wood floor is the only walkable
-// surface. The thresholds split (floor) from (counter / wall /
-// transparent border) at the pixel level — see fishingData.ts for the
-// reasoning behind each cut.
-function isShopFloor(data: ImageData, x: number, y: number): boolean {
+// Indoor blocked test: red OR yellow on shopCollision blocks the
+// player. Yellow is the NPC anchor, intentionally unwalkable so the
+// player stops at the counter front instead of overlapping the NPC.
+function isBlockedIndoorPixel(data: ImageData, x: number, y: number): boolean {
   const ix = x | 0;
   const iy = y | 0;
-  if (ix < 0 || iy < 0 || ix >= data.width || iy >= data.height) return false;
+  if (ix < 0 || iy < 0 || ix >= data.width || iy >= data.height) return true;
   const i = (iy * data.width + ix) * 4;
   const r = data.data[i];
   const g = data.data[i + 1];
   const b = data.data[i + 2];
   const a = data.data[i + 3];
   if (a < 50) return false;
-  return (
-    r >= SHOP_FLOOR_R_MIN &&
-    r - g >= SHOP_FLOOR_RG_DELTA_MIN &&
-    g - b >= SHOP_FLOOR_GB_DELTA_MIN &&
-    b <= SHOP_FLOOR_B_MAX
-  );
+  // Red = wall / counter / shelf
+  if (
+    r >= COLLISION_RED_R_MIN &&
+    g <= COLLISION_RED_GB_MAX &&
+    b <= COLLISION_RED_GB_MAX
+  ) {
+    return true;
+  }
+  // Yellow = NPC tile (player can't stand on the NPC)
+  if (
+    r >= COLLISION_YELLOW_RG_MIN &&
+    g >= COLLISION_YELLOW_RG_MIN &&
+    b <= COLLISION_YELLOW_B_MAX
+  ) {
+    return true;
+  }
+  return false;
 }
 
 function collidesIndoor(
@@ -120,13 +131,94 @@ function collidesIndoor(
   const by = footY - CHAR_BBOX_HEIGHT;
   const bw = CHAR_BBOX_HALF_W * 2;
   const bh = CHAR_BBOX_HEIGHT;
-  // Block the move unless ALL four foot-bbox corners are floor.
   return (
-    !isShopFloor(shopData, bx, by) ||
-    !isShopFloor(shopData, bx + bw, by) ||
-    !isShopFloor(shopData, bx, by + bh) ||
-    !isShopFloor(shopData, bx + bw, by + bh)
+    isBlockedIndoorPixel(shopData, bx, by) ||
+    isBlockedIndoorPixel(shopData, bx + bw, by) ||
+    isBlockedIndoorPixel(shopData, bx, by + bh) ||
+    isBlockedIndoorPixel(shopData, bx + bw, by + bh)
   );
+}
+
+// Outdoor blue door marker test. The collision PNG paints a blue
+// patch inside each shop's red footprint at the actual building door;
+// the foot-bbox overlapping that patch auto-fires the entry trigger.
+function isBluePixel(data: ImageData, x: number, y: number): boolean {
+  const ix = x | 0;
+  const iy = y | 0;
+  if (ix < 0 || iy < 0 || ix >= data.width || iy >= data.height) return false;
+  const i = (iy * data.width + ix) * 4;
+  const r = data.data[i];
+  const g = data.data[i + 1];
+  const b = data.data[i + 2];
+  const a = data.data[i + 3];
+  return (
+    a > 50 &&
+    b >= COLLISION_BLUE_B_MIN &&
+    r <= COLLISION_BLUE_R_MAX &&
+    g <= COLLISION_BLUE_G_MAX
+  );
+}
+
+function isBlueAtBbox(
+  footX: number,
+  footY: number,
+  data: ImageData,
+): boolean {
+  const bx = footX - CHAR_BBOX_HALF_W;
+  const by = footY - CHAR_BBOX_HEIGHT;
+  const bw = CHAR_BBOX_HALF_W * 2;
+  const bh = CHAR_BBOX_HEIGHT;
+  return (
+    isBluePixel(data, bx, by) ||
+    isBluePixel(data, bx + bw, by) ||
+    isBluePixel(data, bx, by + bh) ||
+    isBluePixel(data, bx + bw, by + bh)
+  );
+}
+
+// Yellow centroid scan — runs once at load. Returns null if the mask
+// has no yellow pixels (defensive fallback before any are painted).
+function scanYellowCentroid(
+  data: ImageData,
+): { foot: { x: number; y: number }; zone: Rect } | null {
+  let sumX = 0;
+  let sumY = 0;
+  let count = 0;
+  let maxY = -1;
+  for (let y = 0; y < data.height; y++) {
+    for (let x = 0; x < data.width; x++) {
+      const i = (y * data.width + x) * 4;
+      const r = data.data[i];
+      const g = data.data[i + 1];
+      const b = data.data[i + 2];
+      const a = data.data[i + 3];
+      if (
+        a > 50 &&
+        r >= COLLISION_YELLOW_RG_MIN &&
+        g >= COLLISION_YELLOW_RG_MIN &&
+        b <= COLLISION_YELLOW_B_MAX
+      ) {
+        sumX += x;
+        sumY += y;
+        count++;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  if (count === 0) return null;
+  const foot = {
+    x: Math.round(sumX / count),
+    y: Math.round(sumY / count),
+  };
+  // Interaction zone sits one pixel south of the yellow patch's
+  // bottom edge — that's where the player can stand and talk.
+  const zone: Rect = {
+    x: foot.x - 16,
+    y: maxY + 1,
+    w: 32,
+    h: 16,
+  };
+  return { foot, zone };
 }
 
 // Collision lookup. Out-of-bounds reads block (so the player can't
@@ -317,26 +409,12 @@ export default function FishingGame({ open, onClose }: Props) {
       cx.putImageData(data, 0, 0);
       return c;
     };
-    // Loads the shop interior twice: once as an HTMLImageElement for
-    // the renderer (so the PNG's anti-aliased edges look right) and
-    // once as ImageData for pixel-precise floor collision.
-    const loadShop = async (
-      src: string,
-    ): Promise<{ img: HTMLImageElement; data: ImageData }> => {
-      const img = await load(src);
-      const c = document.createElement("canvas");
-      c.width = img.width;
-      c.height = img.height;
-      const cx = c.getContext("2d");
-      if (!cx) throw new Error("shop: 2d context unavailable");
-      cx.drawImage(img, 0, 0);
-      return { img, data: cx.getImageData(0, 0, img.width, img.height) };
-    };
     Promise.all([
       load(ASSETS.background),
       loadOpaqueOverlay(ASSETS.mapFront),
       loadCollision(ASSETS.collision),
-      loadShop(ASSETS.shopInterior),
+      load(ASSETS.shopInterior),
+      loadCollision(ASSETS.shopCollision),
       load(ASSETS.charBase),
       load(ASSETS.npcChar),
       load(ASSETS.eyes),
@@ -346,14 +424,23 @@ export default function FishingGame({ open, onClose }: Props) {
       load(ASSETS.hair),
       load(ASSETS.shadow),
     ])
-      .then(([map, mapFront, collision, shop, char, npcChar, eyes, shirt, pants, shoes, hair, shadow]) => {
+      .then(([map, mapFront, collision, shopInterior, shopCollision, char, npcChar, eyes, shirt, pants, shoes, hair, shadow]) => {
         if (cancelled) return;
+        // Yellow patch → NPC anchor + interaction zone. Fallback is
+        // a sensible default position if the marker is missing so
+        // the scene still renders during asset iteration.
+        const npc = scanYellowCentroid(shopCollision) ?? {
+          foot: { x: 80, y: 80 },
+          zone: { x: 64, y: 88, w: 32, h: 16 },
+        };
         setAssets({
           map,
           mapFront,
           collision,
-          shopInterior: shop.img,
-          shopInteriorData: shop.data,
+          shopInterior,
+          shopCollision,
+          npcFoot: npc.foot,
+          npcZone: npc.zone,
           char,
           npcChar,
           eyes,
@@ -554,18 +641,20 @@ export default function FishingGame({ open, onClose }: Props) {
       raf = requestAnimationFrame(step);
     };
 
-    const shopData = assets.shopInteriorData;
+    const shopCollision = assets.shopCollision;
+    const npcZone = assets.npcZone;
 
     // Pick the right collision check for the active scene. Both are
-    // pixel-mask based: outdoor uses collision.png (red = blocked),
-    // indoor uses 생선가게.png itself (only floor pixels walkable).
+    // pixel-mask based: outdoor uses collision.png (red = blocked,
+    // blue = entry trigger), indoor uses 생선가게_collision.png
+    // (red = walls/counter, yellow = NPC tile).
     const sceneCollides = (
       currentScene: Scene,
       x: number,
       y: number,
     ): boolean => {
       if (currentScene === "outdoor") return collidesAt(x, y, collision);
-      return collidesIndoor(x, y, shopData);
+      return collidesIndoor(x, y, shopCollision);
     };
 
     // Determine which interaction prompt (if any) is active based on
@@ -576,11 +665,14 @@ export default function FishingGame({ open, onClose }: Props) {
       y: number,
     ): Prompt => {
       if (currentScene === "outdoor") {
-        if (pointInRect(x, y, FISHSHOP_DOOR_ZONE)) return "blueDoor";
-        if (pointInRect(x, y, YELLOW_SHOP_DOOR_ZONE)) return "yellowDoor";
+        // Blue marker → shop door. Disambiguate by x: left half of
+        // the map = fish shop, right half = yellow shop.
+        if (isBlueAtBbox(x, y, collision)) {
+          return x < MAP_WIDTH / 2 ? "blueDoor" : "yellowDoor";
+        }
         return null;
       }
-      if (pointInRect(x, y, FISHSHOP_NPC_ZONE)) return "npc";
+      if (pointInRect(x, y, npcZone)) return "npc";
       if (pointInRect(x, y, FISHSHOP_EXIT_ZONE)) return "exit";
       return null;
     };
@@ -751,23 +843,30 @@ export default function FishingGame({ open, onClose }: Props) {
         hair: NPC_HAIR_COLOR,
       };
 
+      // Both scenes render at MAP_SCALE (2x) with camera-follow.
+      // Map dimensions differ — outdoor 336², indoor 160². Indoor's
+      // 320×320 displayed size barely overflows the 306 viewport, so
+      // the camera scrolls only a few pixels near the edges.
+      const mapW = currentScene === "outdoor" ? MAP_WIDTH : INDOOR_MAP_WIDTH;
+      const mapH = currentScene === "outdoor" ? MAP_HEIGHT : INDOOR_MAP_HEIGHT;
+      const visibleW = VIEWPORT / MAP_SCALE;
+      const visibleH = VIEWPORT / MAP_SCALE;
+      const camX = clamp(
+        Math.round(s.x - visibleW / 2),
+        0,
+        Math.max(0, mapW - visibleW),
+      );
+      const camY = clamp(
+        Math.round(s.y - visibleH / 2),
+        0,
+        Math.max(0, mapH - visibleH),
+      );
+
+      ctx.save();
+      ctx.scale(MAP_SCALE, MAP_SCALE);
+      ctx.imageSmoothingEnabled = false;
+
       if (currentScene === "outdoor") {
-        // Outdoor: 2x scale, camera follows player, clamped to map.
-        const visibleW = VIEWPORT / MAP_SCALE;
-        const visibleH = VIEWPORT / MAP_SCALE;
-        const camX = clamp(
-          Math.round(s.x - visibleW / 2),
-          0,
-          Math.max(0, MAP_WIDTH - visibleW),
-        );
-        const camY = clamp(
-          Math.round(s.y - visibleH / 2),
-          0,
-          Math.max(0, MAP_HEIGHT - visibleH),
-        );
-        ctx.save();
-        ctx.scale(MAP_SCALE, MAP_SCALE);
-        ctx.imageSmoothingEnabled = false;
         ctx.drawImage(imgs.map, -camX, -camY);
         drawCharacter(imgs.char, s.x, s.y, camX, camY, s.frame, s.dir, playerColors);
         // Front layer — drawn last so any non-transparent pixel of
@@ -780,23 +879,15 @@ export default function FishingGame({ open, onClose }: Props) {
         ctx.globalAlpha = 1;
         ctx.globalCompositeOperation = "source-over";
         ctx.drawImage(imgs.mapFront, -camX, -camY);
-        ctx.restore();
       } else {
-        // Indoor: native 1:1, fixed camera, shop image centered with
-        // black borders. Faking a "negative camera" via the offset
-        // keeps the drawCharacter helper working unchanged.
-        const offsetX = Math.floor((VIEWPORT - INDOOR_MAP_WIDTH) / 2);
-        const offsetY = Math.floor((VIEWPORT - INDOOR_MAP_HEIGHT) / 2);
-        const camX = -offsetX;
-        const camY = -offsetY;
-        ctx.drawImage(imgs.shopInterior, offsetX, offsetY);
-        // NPC first so the player z-orders on top if they ever
-        // overlap; in practice the floor blocks the player from
-        // reaching the NPC's tile.
+        ctx.drawImage(imgs.shopInterior, -camX, -camY);
+        // NPC drawn before the player so the player z-orders on top
+        // if they ever overlap. The yellow tile blocks the player
+        // from reaching the NPC's anchor in practice.
         drawCharacter(
           imgs.npcChar,
-          FISHSHOP_NPC_X,
-          FISHSHOP_NPC_Y,
+          imgs.npcFoot.x,
+          imgs.npcFoot.y,
           camX,
           camY,
           0,
@@ -805,6 +896,8 @@ export default function FishingGame({ open, onClose }: Props) {
         );
         drawCharacter(imgs.char, s.x, s.y, camX, camY, s.frame, s.dir, playerColors);
       }
+
+      ctx.restore();
 
       // Fade overlay — black plane whose alpha follows a 0→1→0 ramp
       // across the SCENE_FADE_SECONDS window so transitions never

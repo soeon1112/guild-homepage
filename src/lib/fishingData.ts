@@ -39,6 +39,7 @@ export const ASSETS = {
   mapFront: encodeURI("/images/fishing/배경_front.png"),
   collision: encodeURI("/images/fishing/collision.png"),
   shopInterior: encodeURI("/images/fishing/생선가게.png"),
+  shopCollision: encodeURI("/images/fishing/생선가게_collision.png"),
   charBase: encodeURI("/images/fishing/Character assets/characters/char1.png"),
   npcChar: encodeURI("/images/fishing/Character assets/characters/char3.png"),
   eyes: encodeURI("/images/fishing/Character assets/eyes/eyes.png"),
@@ -52,16 +53,28 @@ export const ASSETS = {
 // Color gates for the collision mask. Anti-aliased edges in the PNG
 // land at intermediate values, so we keep the thresholds permissive.
 //
-// Red  → unwalkable (water, walls, trunks, etc.)
-// Green → walkable but the player is occluded by 배경_front.png in
-//         that region (canopy, roof eaves, parasol tops, …). The
-//         green is informational for game logic; the front layer
-//         renders on top of the player every frame regardless.
-// Anything else (white, fully transparent) → freely walkable.
+// Outdoor (collision.png):
+//   Red    → unwalkable (water, walls, trunks, etc.)
+//   Green  → walkable but the player is occluded by 배경_front.png
+//            in that region; informational for game logic.
+//   Blue   → shop door entry trigger (auto-enters on foot overlap).
+//            Left half = fish shop, right half = yellow shop.
+//
+// Indoor (생선가게_collision.png):
+//   Red    → unwalkable (walls, counter, shelves).
+//   Yellow → NPC anchor; also blocks so the player can't walk into
+//            the NPC. The centroid of the yellow patch defines where
+//            the NPC sprite is drawn at runtime.
+//   Anything else (transparent/black) → walkable floor.
 export const COLLISION_RED_R_MIN = 200;
 export const COLLISION_RED_GB_MAX = 100;
 export const COLLISION_GREEN_RB_MAX = 100;
 export const COLLISION_GREEN_G_MIN = 200;
+export const COLLISION_BLUE_B_MIN = 180;
+export const COLLISION_BLUE_R_MAX = 100;
+export const COLLISION_BLUE_G_MAX = 180;
+export const COLLISION_YELLOW_RG_MIN = 200;
+export const COLLISION_YELLOW_B_MAX = 100;
 
 // Sprite sheet: 256×1568, 32×32 cells, 8 cols × 49 rows. Each color
 // variant of eyes/clothes is a 256-wide block laid horizontally
@@ -129,55 +142,35 @@ export type Rect = { x: number; y: number; w: number; h: number };
 export type Scene = "outdoor" | "fishshop";
 
 // ── Indoor: 생선가게.png (fish shop interior) ────────────────
-// Image is 160×160. Indoor renders at native 1:1 scale and is
-// centered in the viewport with black borders; the camera does not
-// follow the player inside (the whole shop is on-screen at once).
+// Image is 160×160. Rendered at the same MAP_SCALE as outdoor for
+// visual consistency; with a 153-px visible window the camera
+// scrolls a few px near the edges but the player feels the same
+// size everywhere.
 export const INDOOR_MAP_WIDTH = 160;
 export const INDOOR_MAP_HEIGHT = 160;
 
-// Spawn coords. Indoor spawn is just below the counter front
-// (player faces UP looking at the shopkeeper). It sits ABOVE the
-// exit zone so re-entering doesn't immediately re-trigger the exit.
+// Spawn coords. Indoor spawn sits in the bottom-half of the floor
+// (player faces UP toward the shopkeeper). It's above the exit
+// strip so re-entering doesn't immediately re-trigger the exit.
 export const FISHSHOP_INDOOR_SPAWN_X = 80;
-export const FISHSHOP_INDOOR_SPAWN_Y = 110;
+export const FISHSHOP_INDOOR_SPAWN_Y = 130;
 
-// Where the player lands when leaving the shop — a tile in front of
-// the outdoor blue-shop door, OUTSIDE the door zone so the player
+// Where the player lands when leaving the shop — a couple of tiles
+// south of the LEFT blue marker (fish-shop door) so the player
 // doesn't bounce straight back inside.
 export const FISHSHOP_EXIT_SPAWN_X = 88;
-export const FISHSHOP_EXIT_SPAWN_Y = 178;
+export const FISHSHOP_EXIT_SPAWN_Y = 152;
 
-// Outdoor door zones — pinned to the actual door pixels on
-// collision.png (the white gap inside the building's red shape).
-// Reaching one auto-triggers the entry transition (no E key).
-export const FISHSHOP_DOOR_ZONE: Rect = { x: 76, y: 158, w: 24, h: 14 };
-export const YELLOW_SHOP_DOOR_ZONE: Rect = { x: 250, y: 144, w: 22, h: 14 };
+// Indoor exit zone — bottom strip of the floor. Walking south into
+// this zone auto-fires the exit transition.
+export const FISHSHOP_EXIT_ZONE: Rect = { x: 40, y: 144, w: 80, h: 16 };
 
-// Indoor exit zone — bottom of the floor area. Walk down into it
-// and the panel fades back outside.
-export const FISHSHOP_EXIT_ZONE: Rect = { x: 64, y: 128, w: 32, h: 16 };
-
-// Fish-shop NPC. Foot anchored ABOVE the counter front (in the
-// blue wall area) so the sprite reads as "behind the counter,
-// facing the customer". The interaction zone is the floor strip
-// directly below the counter where the player stands.
-export const FISHSHOP_NPC_X = 80;
-export const FISHSHOP_NPC_Y = 48;
-export const FISHSHOP_NPC_ZONE: Rect = { x: 64, y: 60, w: 32, h: 18 };
+// Fish-shop NPC dialog text. The NPC's foot position + interaction
+// zone are computed at load time from the yellow pixel cluster in
+// 생선가게_collision.png, so re-painting the marker moves the NPC
+// without code changes.
 export const FISHSHOP_NPC_LINE = "어서와! 잡은 물고기를 사줄게!";
 export const YELLOW_SHOP_LINE = "준비중입니다";
-
-// Indoor collision is sampled directly from the shop interior PNG:
-// only the dark-brown wood floor is walkable. The thresholds were
-// tuned from pixel samples — floor sits around (116, 72, 55), the
-// blue wall at (103, 154, 181), and the lighter wood counter at
-// (128, 93, 64). The R-G≥36 cut separates floor from counter; the
-// other cuts reject blue tiles, transparent borders, and over-bright
-// highlights.
-export const SHOP_FLOOR_R_MIN = 100;
-export const SHOP_FLOOR_RG_DELTA_MIN = 36;
-export const SHOP_FLOOR_GB_DELTA_MIN = 5;
-export const SHOP_FLOOR_B_MAX = 80;
 
 // NPC modular layer indices. Picked to read clearly different from
 // the player's default outfit (black shirt, brown pants, wavy hair).
