@@ -3296,7 +3296,7 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
       // too, but a fractional foot pixel was bleeding through here.
       // Future chat bubbles should stack ABOVE this baseline so the
       // tail still points at the head.
-      const NAMEPLATE_HEAD_OFFSET = 26;
+      const NAMEPLATE_HEAD_OFFSET = 20;
       if (nickname) {
         const nx = Math.round((s.x - camX) * MAP_SCALE);
         const ny = Math.round(
