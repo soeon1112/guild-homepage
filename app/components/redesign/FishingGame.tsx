@@ -378,22 +378,9 @@ const UI_ACTION_BUTTON_HOVER = encodeURI(
 const UI_ACTION_BUTTON_PRESSED = encodeURI(
   UI_FLAT_BASE + "UI_Flat_Button02a_1.png",
 );
-const UI_BANNER_BG = encodeURI(UI_FLAT_BASE + "UI_Flat_Banner03a.png");
 const UI_GAUGE_BAR = encodeURI(UI_FLAT_BASE + "UI_Flat_Bar01a.png");
 const UI_GAUGE_FILL = encodeURI(UI_FLAT_BASE + "UI_Flat_BarFill01a.png");
 const UI_GAUGE_MARKER = encodeURI(UI_FLAT_BASE + "UI_Flat_Handle06a.png");
-
-// 9-slice banner background. Source banner is 64×20 with ~4 px of
-// decorative edge per side; we slice 4 px and render the corners at
-// 8 px (2× scale) so the pixel art stays crisp.
-const bannerBgStyle: React.CSSProperties = {
-  borderImageSource: `url("${UI_BANNER_BG}")`,
-  borderImageSlice: "4 4 4 4 fill",
-  borderImageWidth: "8px",
-  borderImageRepeat: "stretch",
-  borderStyle: "solid",
-  imageRendering: "pixelated",
-};
 
 // Joystick is parked at a fixed bottom-left dock so the player can
 // always thumb-drag from a known spot. Outer diameter ≈ 24% of the
@@ -2153,17 +2140,28 @@ export default function FishingGame({ open, onClose }: Props) {
             })()}
 
             {/* Fishing result toast — shown during fishingSuccess.
-                Wrapped in a Flat-theme banner sprite via 9-slice
-                border-image so the cosmetic frame matches the rest
-                of the new UI. Fail renders no toast (silent retract). */}
+                Cosmic-themed translucent panel (banner asset rolled
+                back per request). Fail renders no toast. */}
             {fishingResult ? (
               <div
-                className="pointer-events-none absolute left-1/2 top-[28%] -translate-x-1/2 px-3 py-2 text-[12px] font-bold"
+                className="pointer-events-none absolute left-1/2 top-[28%] -translate-x-1/2 rounded-xl px-3 py-1.5 text-[12px] font-semibold"
                 style={{
-                  ...bannerBgStyle,
-                  color: "#3d2c1c",
-                  filter:
-                    "drop-shadow(0 3px 6px rgba(11,8,33,0.55))",
+                  background:
+                    fishingResult.kind === "success"
+                      ? "rgba(216,150,200,0.92)"
+                      : "rgba(11,8,33,0.92)",
+                  color:
+                    fishingResult.kind === "success"
+                      ? "#1a0f3d"
+                      : "#f4efff",
+                  border:
+                    fishingResult.kind === "success"
+                      ? "1px solid rgba(255,229,196,0.85)"
+                      : "1px solid rgba(216,150,200,0.50)",
+                  boxShadow:
+                    fishingResult.kind === "success"
+                      ? "0 4px 16px rgba(216,150,200,0.55)"
+                      : "0 4px 16px rgba(11,8,33,0.6)",
                 }}
               >
                 {fishingResult.text}
@@ -2173,20 +2171,19 @@ export default function FishingGame({ open, onClose }: Props) {
             {/* "준비중입니다" toast — auto-dismisses after 1.6s */}
             {yellowToast ? (
               <div
-                className="pointer-events-none absolute left-1/2 top-1/3 -translate-x-1/2 px-3 py-2 text-[12px] font-bold"
+                className="pointer-events-none absolute left-1/2 top-1/3 -translate-x-1/2 rounded-xl px-3 py-1.5 text-[12px] font-semibold text-stardust"
                 style={{
-                  ...bannerBgStyle,
-                  color: "#3d2c1c",
-                  filter:
-                    "drop-shadow(0 3px 6px rgba(11,8,33,0.55))",
+                  background: "rgba(11,8,33,0.92)",
+                  border: "1px solid rgba(216,150,200,0.50)",
+                  boxShadow: "0 4px 16px rgba(11,8,33,0.6)",
                 }}
               >
                 {YELLOW_SHOP_LINE}
               </div>
             ) : null}
 
-            {/* NPC dialog — Flat-theme banner background. Tap or
-                Space dismisses (handled by handleAction). */}
+            {/* NPC dialog — cosmic-themed panel; tap or Space
+                dismisses (handled by handleAction). */}
             {npcDialog ? (
               <button
                 type="button"
@@ -2194,21 +2191,20 @@ export default function FishingGame({ open, onClose }: Props) {
                   e.stopPropagation();
                   setNpcDialog(false);
                 }}
-                className="absolute bottom-3 left-3 right-3 flex flex-col gap-1 px-4 py-3 text-left"
+                className="absolute bottom-3 left-3 right-3 flex flex-col gap-1.5 rounded-xl px-3 py-2 text-left text-stardust"
                 style={{
-                  ...bannerBgStyle,
-                  color: "#3d2c1c",
-                  filter:
-                    "drop-shadow(0 6px 14px rgba(11,8,33,0.65))",
+                  background: "rgba(11,8,33,0.94)",
+                  border: "1px solid rgba(216,150,200,0.50)",
+                  boxShadow: "0 8px 28px rgba(11,8,33,0.7)",
                 }}
               >
-                <span className="text-[10px] font-bold tracking-widest text-[#7a4a1a]">
+                <span className="font-serif text-[10px] font-bold tracking-widest text-nebula-pink">
                   생선가게 주인
                 </span>
-                <span className="text-[12px] leading-snug font-semibold">
+                <span className="text-[12px] leading-snug">
                   {FISHSHOP_NPC_LINE}
                 </span>
-                <span className="text-[9px] opacity-70">
+                <span className="text-[9px] text-text-sub">
                   탭 또는 Space로 닫기
                 </span>
               </button>
