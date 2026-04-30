@@ -1062,14 +1062,23 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
           0,
           Math.max(0, mapH - visibleH),
         );
-        // Anchor: bubble bottom-center sits 6 px above the
-        // nameplate baseline. The nameplate baseline lives at
-        // (s.y - NAMEPLATE_HEAD_OFFSET) in unscaled foot-relative
-        // coords; with the bubble's CSS transform translate(-50%,
-        // -100%) the (left, top) coordinate IS the bubble's
-        // bottom-center anchor.
+        // Bubble sits ABOVE the nameplate. Nameplate baseline is
+        // at viewport-y = (s.y - 18) * MAP_SCALE; the rendered
+        // text spans roughly 12 viewport px upward from there
+        // (10 px font + 2 px stroke). Adding 4 px of breathing
+        // gap puts the bubble's bottom-center 16 px above the
+        // nameplate baseline so the player's name stays fully
+        // visible while a chat bubble is up. The CSS transform
+        // translate(-50%, -100%) makes (left, top) the bottom-
+        // center anchor.
+        const NAMEPLATE_OFFSET = 18;
+        const NAMEPLATE_HEIGHT_PX = 12;
+        const BUBBLE_NAMEPLATE_GAP = 4;
         const x = Math.round((s.x - camX) * MAP_SCALE);
-        const y = Math.round((s.y - 12 - camY) * MAP_SCALE) - 16;
+        const y =
+          Math.round((s.y - NAMEPLATE_OFFSET - camY) * MAP_SCALE) -
+          NAMEPLATE_HEIGHT_PX -
+          BUBBLE_NAMEPLATE_GAP;
         el.style.left = `${x}px`;
         el.style.top = `${y}px`;
       }
@@ -3780,7 +3789,7 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
       // too, but a fractional foot pixel was bleeding through here.
       // Future chat bubbles should stack ABOVE this baseline so the
       // tail still points at the head.
-      const NAMEPLATE_HEAD_OFFSET = 20;
+      const NAMEPLATE_HEAD_OFFSET = 18;
       if (nickname) {
         const nx = Math.round((s.x - camX) * MAP_SCALE);
         const ny = Math.round(
@@ -3831,10 +3840,12 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
             peer.chatMessage &&
             peer.chatExpiry > nowMs
           ) {
-            // Anchor the bubble's bottom-center 6 px above the
-            // nameplate top — nameplate text is ~10 px tall, so
-            // anchor sits at ny - 12.
-            drawPeerBubble(nx, ny - 12, peer.chatMessage);
+            // Anchor 16 px above the nameplate baseline so the
+            // bubble bottom (and its tail tip) sits above the
+            // nameplate text instead of overlapping it. Tail
+            // points DOWN at the nameplate — matches the spec
+            // "꼬리는 닉네임 쪽을 향하게".
+            drawPeerBubble(nx, ny - 16, peer.chatMessage);
           }
         }
       }
