@@ -81,7 +81,6 @@ import {
   WATER_R_MAX,
   FISHSHOP_EXIT_SPAWN_X,
   FISHSHOP_EXIT_SPAWN_Y,
-  FISHSHOP_EXIT_ZONE,
   FISHSHOP_INDOOR_SPAWN_X,
   FISHSHOP_INDOOR_SPAWN_Y,
   FISHSHOP_NPC_LINE,
@@ -574,12 +573,21 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
   const [codexCaught, setCodexCaught] = useState<Set<number>>(new Set());
   const [codexPage, setCodexPage] = useState(0);
   const [codexSelected, setCodexSelected] = useState<number | null>(null);
+  // Fish-shop sell UI state. Opens when the player presses action
+  // next to the shop NPC. Selection picks an inventory item to
+  // sell one stack of; "전체 판매" liquidates everything in one go
+  // and surfaces the total via the sale toast.
+  const [sellOpen, setSellOpen] = useState(false);
+  const [sellSelected, setSellSelected] = useState<string | null>(null);
+  const [sellPage, setSellPage] = useState(0);
+  const [sellToast, setSellToast] = useState<number | null>(null);
   // Panel-open ref read by the game loop to gate movement input
-  // without a re-render every frame.
+  // without a re-render every frame. Both inventory/codex/info/ranking
+  // and the shop sell panel pause movement when open.
   const panelOpenRef = useRef(false);
   useEffect(() => {
-    panelOpenRef.current = panelOpen;
-  }, [panelOpen]);
+    panelOpenRef.current = panelOpen || sellOpen;
+  }, [panelOpen, sellOpen]);
   // Joystick visual state mirrored into React for the DOM overlay.
   // Updates only on pointer events (not 60fps), so React isn't thrashed.
   // dx/dy here are knob offset in pixels relative to the static base.
@@ -602,6 +610,14 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
     const t = setTimeout(() => setLevelUpBanner(null), 1800);
     return () => clearTimeout(t);
   }, [levelUpBanner]);
+
+  // Sale toast — "X별빛 획득!" pop after a sell. Auto-clears after
+  // ~1.5s so it doesn't linger over the panel.
+  useEffect(() => {
+    if (sellToast == null) return;
+    const t = setTimeout(() => setSellToast(null), 1500);
+    return () => clearTimeout(t);
+  }, [sellToast]);
 
   // Screen shake on legendary/mythic catches. Mythic shakes harder
   // and longer than legendary — the rest of the visual flair (glow,
@@ -1326,13 +1342,13 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
     if (s.mode === "fishingSuccess" || s.mode === "fishingFail") {
       return;
     }
-    // walk mode — start cast or open NPC dialog
+    // walk mode — start cast or open the shop sell UI
     if (sceneRef.current === "outdoor" && canFishRef.current) {
       startCast();
       return;
     }
     if (promptRef.current === "npc") {
-      setNpcDialog(true);
+      setSellOpen(true);
     }
   }, [npcDialog, cancelFishingToWalk, startCast]);
 
@@ -1452,7 +1468,15 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
           setActionPressed(false);
         }
       } else if (down && e.key === "Escape") {
-        if (npcDialog) {
+        // Esc priority: close the topmost UI first.
+        if (sellOpen) {
+          setSellOpen(false);
+          setSellSelected(null);
+        } else if (panelOpen) {
+          setPanelOpen(false);
+          setInvSelected(null);
+          setCodexSelected(null);
+        } else if (npcDialog) {
           setNpcDialog(false);
         } else if (stateRef.current.mode !== "walk") {
           toggleFishing();
@@ -1479,6 +1503,8 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
     handleCatchPopupConfirm,
     invSelected,
     codexSelected,
+    sellOpen,
+    panelOpen,
   ]);
 
   // Static-base virtual joystick. Pointer-down anywhere in the stage
@@ -1635,7 +1661,12 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
         return null;
       }
       if (pointInRect(x, y, npcZone)) return "npc";
-      if (pointInRect(x, y, FISHSHOP_EXIT_ZONE)) return "exit";
+      // Indoor exit is now painted as blue pixels on the shop's
+      // collision mask (the artist narrowed the previous wide bottom
+      // strip down to a single tile in front of the door). Same
+      // bbox check the outdoor blue door uses — re-painting the mask
+      // in Photoshop moves the exit without touching code.
+      if (isBlueAtBbox(x, y, shopCollision)) return "exit";
       return null;
     };
 
@@ -2509,10 +2540,10 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
             {/* Static joystick dock — always rendered, low opacity
                 when idle ("살짝 숨겨지고") and full opacity while
                 dragging ("선명해지는"). 200ms fade matches the rest
-                of the cosmic UI's transition feel. Hidden while the
-                inventory / info / ranking panel is up — the game is
-                paused so the input UI shouldn't compete. */}
-            {!panelOpen ? (
+                of the cosmic UI's transition feel. Hidden while any
+                panel-style modal is up so the input UI doesn't
+                compete with the paused game. */}
+            {!panelOpen && !sellOpen ? (
               <>
                 <div
                   className="pointer-events-none absolute rounded-full"
@@ -2558,10 +2589,11 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
               // Hide the action button while the result popup is up —
               // its own confirm button is the only legal interaction.
               if (catchPopup) return null;
-              // Hide while the inventory / info / ranking modal is up;
-              // also hide while the small "open menu" button is showing
-              // next to the character so the two don't visually compete.
-              if (panelOpen || bagButton.visible) return null;
+              // Hide while any panel-style modal is up — inventory,
+              // sell, or the character-menu button. Otherwise the
+              // action button visually competes with whatever's on
+              // top.
+              if (panelOpen || sellOpen || bagButton.visible) return null;
               const fishingActive = mode !== "walk";
               const showFish =
                 scene === "outdoor" && (canFish || fishingActive);
@@ -2845,6 +2877,86 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                 />
               ) : null}
             </AnimatePresence>
+
+            {/* Shop sell panel — opens from the NPC interaction.
+                Lives inside the game pane like the inventory panel.
+                Selling adjusts inventory + totalStarlight; the
+                Firestore auto-save useEffect picks up the changes. */}
+            <AnimatePresence>
+              {sellOpen ? (
+                <SellPanel
+                  key="sell-panel"
+                  inventory={inventory}
+                  page={sellPage}
+                  setPage={setSellPage}
+                  selected={sellSelected}
+                  setSelected={setSellSelected}
+                  externalPressed={popupKeyPressed}
+                  onSellOne={(itemKey) => {
+                    const ref = resolveItemKey(itemKey);
+                    if (!ref) return;
+                    const price = ref.data.price;
+                    setInventory((prev) => {
+                      const cur = prev[itemKey] ?? 0;
+                      if (cur <= 0) return prev;
+                      const nextCount = cur - 1;
+                      const next = { ...prev };
+                      if (nextCount > 0) next[itemKey] = nextCount;
+                      else delete next[itemKey];
+                      return next;
+                    });
+                    if (price > 0) setTotalStarlight((s) => s + price);
+                    setSellToast(price);
+                    // If that was the last copy, drop the selection.
+                    setSellSelected((sel) => {
+                      const left = (inventory[itemKey] ?? 0) - 1;
+                      return left > 0 ? sel : null;
+                    });
+                  }}
+                  onSellAll={() => {
+                    let total = 0;
+                    for (const [k, v] of Object.entries(inventory)) {
+                      const ref = resolveItemKey(k);
+                      if (!ref) continue;
+                      total += ref.data.price * v;
+                    }
+                    setInventory({});
+                    setSellSelected(null);
+                    if (total > 0) setTotalStarlight((s) => s + total);
+                    setSellToast(total);
+                  }}
+                  onClose={() => {
+                    setSellOpen(false);
+                    setSellSelected(null);
+                  }}
+                />
+              ) : null}
+            </AnimatePresence>
+
+            {/* "X별빛 획득!" toast after a sell action. Centered above
+                the sell panel; auto-clears after ~1.5s. */}
+            {sellToast != null ? (
+              <motion.div
+                key={`sell-toast-${sellToast}`}
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-xl px-3 py-1.5 text-[12px] font-serif font-bold"
+                style={{
+                  background: "rgba(251,191,36,0.95)",
+                  color: "#3d2c1c",
+                  border: "1px solid rgba(255,229,196,0.85)",
+                  boxShadow:
+                    "0 0 18px rgba(251,191,36,0.7), 0 4px 12px rgba(11,8,33,0.5)",
+                  letterSpacing: 1,
+                  zIndex: 25,
+                }}
+              >
+                {sellToast > 0
+                  ? `${sellToast}별빛 획득!`
+                  : "별빛 획득은 없었다."}
+              </motion.div>
+            ) : null}
           </motion.div>
 
           <div
@@ -4311,6 +4423,404 @@ function CodexSprite({
         imageRendering: "pixelated",
       }}
     />
+  );
+}
+
+// ── Shop sell panel ──────────────────────────────────────────────
+// Floats inside the game canvas like the inventory panel. Player
+// taps a slot to select an item, then either sells one stack
+// (selected) or sells the entire inventory in a single bulk
+// transaction. Forage / trash are sellable for their (zero) price
+// so the player can also use this as inventory cleanup.
+const SELL_PANEL_WIDTH = 256;
+const SELL_PANEL_HEIGHT = 290;
+const SELL_PANEL_LEFT = (VIEWPORT - SELL_PANEL_WIDTH) / 2;
+const SELL_PANEL_TOP = (VIEWPORT - SELL_PANEL_HEIGHT) / 2;
+const SELL_SLOTS_PER_PAGE = 15;     // 5 cols × 3 rows
+const SELL_SLOT_COLS = 5;
+const SELL_SLOT_ROWS = 3;
+
+function SellPanel({
+  inventory,
+  page,
+  setPage,
+  selected,
+  setSelected,
+  externalPressed = false,
+  onSellOne,
+  onSellAll,
+  onClose,
+}: {
+  inventory: Record<string, number>;
+  page: number;
+  setPage: (n: number | ((p: number) => number)) => void;
+  selected: string | null;
+  setSelected: (s: string | null) => void;
+  externalPressed?: boolean;
+  onSellOne: (itemKey: string) => void;
+  onSellAll: () => void;
+  onClose: () => void;
+}) {
+  const items = Object.entries(inventory)
+    .filter(([, count]) => count > 0)
+    .sort((a, b) => a[0].localeCompare(b[0]));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(items.length / SELL_SLOTS_PER_PAGE),
+  );
+  const safePage = Math.min(page, totalPages - 1);
+  const start = safePage * SELL_SLOTS_PER_PAGE;
+  const slice = items.slice(start, start + SELL_SLOTS_PER_PAGE);
+  const selRef = selected ? resolveItemKey(selected) : null;
+  const selCount = selected ? inventory[selected] ?? 0 : 0;
+  const selPrice = selRef ? selRef.data.price : 0;
+  const hasItems = items.length > 0;
+  return (
+    <motion.div
+      key="sell-panel-root"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.18 }}
+      className="pointer-events-auto absolute inset-0 z-[22]"
+      style={{ background: "rgba(11,8,33,0.55)" }}
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        onClose();
+      }}
+    >
+      <motion.div
+        initial={{ scale: 0.9, y: 10 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.9, y: 10 }}
+        transition={{ duration: 0.22, ease: "easeOut" }}
+        className="pointer-events-auto absolute"
+        style={{
+          width: SELL_PANEL_WIDTH,
+          height: SELL_PANEL_HEIGHT,
+          left: SELL_PANEL_LEFT,
+          top: SELL_PANEL_TOP,
+        }}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        <Frame9Slice
+          src={UI_POPUP_FRAME}
+          cap={PANEL_FRAME_CAP}
+          scale={PANEL_FRAME_SCALE}
+          width={SELL_PANEL_WIDTH}
+          height={SELL_PANEL_HEIGHT}
+          style={{
+            paddingTop: 12,
+            paddingBottom: 6,
+            paddingInline: PANEL_BORDER + 2,
+            boxSizing: "border-box",
+          }}
+        >
+          <div className="flex h-full w-full flex-col items-center">
+            {/* NPC headline */}
+            <div
+              className="font-serif font-bold leading-none"
+              style={{ fontSize: 12, color: "#3d2c1c", marginBottom: 4 }}
+            >
+              잡은 물고기를 살게요!
+            </div>
+
+            {/* Slot grid + pagination — flex-1 area centers the
+                stack vertically so it sits between the headline and
+                the action buttons regardless of how full it is. */}
+            <div
+              className="flex w-full flex-col items-center"
+              style={{ flex: 1, justifyContent: "center", minHeight: 0 }}
+            >
+              <div
+                className="grid"
+                style={{
+                  gridTemplateColumns: `repeat(${SELL_SLOT_COLS}, ${SLOT_DISPLAY}px)`,
+                  gridTemplateRows: `repeat(${SELL_SLOT_ROWS}, ${SLOT_DISPLAY}px)`,
+                  gap: SLOT_GAP,
+                }}
+              >
+                {Array.from({ length: SELL_SLOTS_PER_PAGE }, (_, i) => {
+                  const entry = slice[i];
+                  const itemKey = entry?.[0];
+                  const count = entry?.[1] ?? 0;
+                  const ref = itemKey ? resolveItemKey(itemKey) : null;
+                  const isSelected = itemKey === selected;
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
+                        if (itemKey) setSelected(itemKey);
+                      }}
+                      aria-label={ref ? ref.data.nameKo : "빈 슬롯"}
+                      className="relative flex items-center justify-center"
+                      style={{
+                        width: SLOT_DISPLAY,
+                        height: SLOT_DISPLAY,
+                        padding: 0,
+                        border: "none",
+                        background: "transparent",
+                        // Highlight selected slot with a soft glow.
+                        filter: isSelected
+                          ? "drop-shadow(0 0 6px rgba(251,191,36,0.95))"
+                          : undefined,
+                      }}
+                    >
+                      <img
+                        src={UI_INV_SLOT}
+                        alt=""
+                        draggable={false}
+                        style={{
+                          imageRendering: "pixelated",
+                          width: SLOT_DISPLAY,
+                          height: SLOT_DISPLAY,
+                          pointerEvents: "none",
+                        }}
+                      />
+                      {ref ? <SlotSprite ref_={ref} /> : null}
+                      {count > 1 ? (
+                        <span
+                          aria-hidden
+                          className="absolute font-serif font-bold leading-none"
+                          style={{
+                            right: 4,
+                            bottom: 3,
+                            fontSize: 10,
+                            color: "#fff",
+                            textShadow:
+                              "1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000",
+                            pointerEvents: "none",
+                          }}
+                        >
+                          {count}
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Pagination row — same arrow + page-of-total layout
+                  the inventory tab uses. */}
+              <div
+                className="mt-1 flex items-center justify-center gap-2 text-[11px] font-serif font-bold"
+                style={{ color: "#3d2c1c" }}
+              >
+                <button
+                  type="button"
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    setPage((p) => Math.max(0, p - 1));
+                  }}
+                  disabled={safePage === 0}
+                  aria-label="이전 페이지"
+                  className="flex items-center justify-center"
+                  style={{
+                    width: 24,
+                    height: 18,
+                    padding: 0,
+                    border: "none",
+                    background: "transparent",
+                    opacity: safePage === 0 ? 0.3 : 1,
+                    cursor: safePage === 0 ? "default" : "pointer",
+                  }}
+                >
+                  <img
+                    src={UI_ICON_ARROW}
+                    alt=""
+                    draggable={false}
+                    style={{
+                      imageRendering: "pixelated",
+                      width: 24,
+                      height: 18,
+                      transform: "scaleX(-1)",
+                      pointerEvents: "none",
+                    }}
+                  />
+                </button>
+                <span style={{ minWidth: 40, textAlign: "center" }}>
+                  {safePage + 1}/{totalPages}
+                </span>
+                <button
+                  type="button"
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    setPage((p) => Math.min(totalPages - 1, p + 1));
+                  }}
+                  disabled={safePage >= totalPages - 1}
+                  aria-label="다음 페이지"
+                  className="flex items-center justify-center"
+                  style={{
+                    width: 24,
+                    height: 18,
+                    padding: 0,
+                    border: "none",
+                    background: "transparent",
+                    opacity: safePage >= totalPages - 1 ? 0.3 : 1,
+                    cursor: safePage >= totalPages - 1 ? "default" : "pointer",
+                  }}
+                >
+                  <img
+                    src={UI_ICON_ARROW}
+                    alt=""
+                    draggable={false}
+                    style={{
+                      imageRendering: "pixelated",
+                      width: 24,
+                      height: 18,
+                      pointerEvents: "none",
+                    }}
+                  />
+                </button>
+              </div>
+            </div>
+
+            {/* Selected item info row */}
+            <div
+              className="leading-none"
+              style={{
+                marginTop: 4,
+                fontSize: 10,
+                color: selRef ? "#3d2c1c" : "#7a6a4a",
+                textAlign: "center",
+              }}
+            >
+              {selRef
+                ? `${selRef.data.nameKo} 1개 판매: ${selPrice}별빛 (${selCount}개 보유)`
+                : "판매할 아이템을 선택하세요"}
+            </div>
+
+            {/* Bottom action row — sell-one, sell-all, close X. */}
+            <div
+              className="mt-2 flex items-center justify-center"
+              style={{ gap: 8 }}
+            >
+              <SellActionButton
+                label="선택 판매"
+                disabled={!selRef || selCount <= 0}
+                onClick={() => {
+                  if (!selected) return;
+                  onSellOne(selected);
+                }}
+              />
+              <SellActionButton
+                label="전체 판매"
+                disabled={!hasItems}
+                onClick={onSellAll}
+              />
+              <button
+                type="button"
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  onClose();
+                }}
+                aria-label="닫기"
+                className="flex items-center justify-center transition-transform active:scale-90"
+                style={{
+                  width: 30,
+                  height: 30,
+                  padding: 0,
+                  border: "none",
+                  background: "transparent",
+                  cursor: "pointer",
+                  transform: externalPressed ? "scale(0.9)" : undefined,
+                  flexShrink: 0,
+                }}
+              >
+                <img
+                  src={UI_ICON_CROSS}
+                  alt=""
+                  draggable={false}
+                  style={{
+                    imageRendering: "pixelated",
+                    width: 30,
+                    height: 30,
+                    pointerEvents: "none",
+                  }}
+                />
+              </button>
+            </div>
+          </div>
+        </Frame9Slice>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// Shared button used for "선택 판매" / "전체 판매". Reuses the
+// universal action-button sprite (UI_Flat_Button02a) at native size
+// with a Korean label centered on top — same visual language as the
+// in-game action button just smaller.
+function SellActionButton({
+  label,
+  disabled,
+  onClick,
+}: {
+  label: string;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  const [pressed, setPressed] = useState(false);
+  const src = pressed
+    ? UI_ACTION_BUTTON_PRESSED
+    : UI_ACTION_BUTTON_IDLE;
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        if (disabled) return;
+        setPressed(true);
+      }}
+      onPointerUp={(e) => {
+        e.stopPropagation();
+        setPressed(false);
+        if (!disabled) onClick();
+      }}
+      onPointerLeave={() => setPressed(false)}
+      onPointerCancel={() => setPressed(false)}
+      aria-label={label}
+      className="relative flex items-center justify-center"
+      style={{
+        width: 56,
+        height: 32,
+        padding: 0,
+        border: "none",
+        background: "transparent",
+        cursor: disabled ? "default" : "pointer",
+        opacity: disabled ? 0.45 : 1,
+        filter: "drop-shadow(0 2px 3px rgba(11,8,33,0.45))",
+        flexShrink: 0,
+      }}
+    >
+      <img
+        src={src}
+        alt=""
+        draggable={false}
+        style={{
+          imageRendering: "pixelated",
+          width: 56,
+          height: 32,
+          pointerEvents: "none",
+          objectFit: "fill",
+        }}
+      />
+      <span
+        aria-hidden
+        className="absolute font-serif font-bold leading-none"
+        style={{
+          fontSize: 10,
+          color: "#3d2c1c",
+          transform: `translateY(${pressed ? 0 : -2}px)`,
+          pointerEvents: "none",
+        }}
+      >
+        {label}
+      </span>
+    </button>
   );
 }
 
