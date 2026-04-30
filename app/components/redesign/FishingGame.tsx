@@ -19,23 +19,29 @@ import {
   BOBBER_DISTANCE,
   BOBBER_INDEX,
   FISH_BITE_DEPTH_PX,
-  FISH_BITE_REACTION_MS,
   FISH_BOBBER_BOB_AMP,
   FISH_BOBBER_BOB_FREQ,
+  FISH_FAIL_RETRACT_MS,
   FISH_FAKE_BITE_DEPTH_PX,
   FISH_FAKE_BITE_DURATION_MS,
   FISH_FAKE_BITE_MAX,
   FISH_FAKE_BITE_PROBABILITY,
+  FISH_GRADES,
+  FISH_GRADE_COLOR,
+  FISH_GRADE_LABEL,
   FISH_RESULT_MS,
   FISH_SHADOW_CELL,
   FISH_SHADOW_FRAME_MS,
   FISH_SHADOW_FRAMES,
   FISH_SHADOW_LEAD_MS,
   FISH_TEXT_CAUGHT,
-  FISH_TEXT_GOT_AWAY,
-  FISH_TEXT_TOO_EARLY,
   FISH_WAIT_MAX_MS,
   FISH_WAIT_MIN_MS,
+  GAUGE_BOTTOM_OFFSET,
+  GAUGE_HEIGHT,
+  GAUGE_MAX_EDGE_HITS,
+  GAUGE_WIDTH,
+  type FishGrade,
   CHAR_BBOX_HALF_W,
   CHAR_BBOX_HEIGHT,
   COLLISION_BLUE_B_MIN,
@@ -390,6 +396,19 @@ export default function FishingGame({ open, onClose }: Props) {
     shadowAt: 0,
     shadowFrame: 0,
     shadowAcc: 0,
+    // Catch-gauge minigame state. Activated when fishingBite begins;
+    // marker ping-pongs across the bar at gaugeBaseSpeed (modulated
+    // by gaugeJitter) and the action button checks markerPos
+    // against the success-zone window.
+    fishGrade: "common" as FishGrade,
+    gaugeMarkerPos: 0,
+    gaugeMarkerDir: 1,
+    gaugeBaseSpeed: 1.4,
+    gaugeJitter: 0.1,
+    gaugeSuccessStart: 0,
+    gaugeSuccessWidth: 0.4,
+    gaugeEdgeHits: 0,
+    gaugePhase: 0,
   });
   const keysRef = useRef({ up: false, down: false, left: false, right: false });
   const joyRef = useRef({
@@ -471,6 +490,15 @@ export default function FishingGame({ open, onClose }: Props) {
       shadowAt: 0,
       shadowFrame: 0,
       shadowAcc: 0,
+      fishGrade: "common",
+      gaugeMarkerPos: 0,
+      gaugeMarkerDir: 1,
+      gaugeBaseSpeed: 1.4,
+      gaugeJitter: 0.1,
+      gaugeSuccessStart: 0,
+      gaugeSuccessWidth: 0.4,
+      gaugeEdgeHits: 0,
+      gaugePhase: 0,
     };
     keysRef.current = { up: false, down: false, left: false, right: false };
     joyRef.current = { active: false, pointerId: -1, dx: 0, dy: 0 };
@@ -677,6 +705,15 @@ export default function FishingGame({ open, onClose }: Props) {
             shadowAt: 0,
             shadowFrame: 0,
             shadowAcc: 0,
+            fishGrade: "common",
+            gaugeMarkerPos: 0,
+            gaugeMarkerDir: 1,
+            gaugeBaseSpeed: 1.4,
+            gaugeJitter: 0.1,
+            gaugeSuccessStart: 0,
+            gaugeSuccessWidth: 0.4,
+            gaugeEdgeHits: 0,
+            gaugePhase: 0,
           };
           promptRef.current = null;
           canFishRef.current = false;
@@ -708,6 +745,15 @@ export default function FishingGame({ open, onClose }: Props) {
             shadowAt: 0,
             shadowFrame: 0,
             shadowAcc: 0,
+            fishGrade: "common",
+            gaugeMarkerPos: 0,
+            gaugeMarkerDir: 1,
+            gaugeBaseSpeed: 1.4,
+            gaugeJitter: 0.1,
+            gaugeSuccessStart: 0,
+            gaugeSuccessWidth: 0.4,
+            gaugeEdgeHits: 0,
+            gaugePhase: 0,
           };
           promptRef.current = null;
           canFishRef.current = false;
@@ -722,6 +768,36 @@ export default function FishingGame({ open, onClose }: Props) {
     },
     [startTransition],
   );
+
+  // Roll a fish grade weighted by FISH_GRADES.rollProbability and
+  // initialise the gauge state. Called when fishingBite begins.
+  const rollGauge = useCallback((s: typeof stateRef.current) => {
+    const r = Math.random();
+    let acc = 0;
+    let grade: FishGrade = "common";
+    for (const [g, cfg] of Object.entries(FISH_GRADES) as [
+      FishGrade,
+      typeof FISH_GRADES["common"],
+    ][]) {
+      acc += cfg.rollProbability;
+      if (r <= acc) {
+        grade = g;
+        break;
+      }
+    }
+    const cfg = FISH_GRADES[grade];
+    s.fishGrade = grade;
+    s.gaugeBaseSpeed = cfg.baseSpeed;
+    s.gaugeJitter = cfg.jitter;
+    s.gaugeSuccessWidth = cfg.width;
+    // Place the success zone anywhere along the bar (uniform).
+    s.gaugeSuccessStart = Math.random() * (1 - cfg.width);
+    // Marker starts somewhere in the left third moving right.
+    s.gaugeMarkerPos = Math.random() * 0.3;
+    s.gaugeMarkerDir = 1;
+    s.gaugeEdgeHits = 0;
+    s.gaugePhase = Math.random() * Math.PI * 2;
+  }, []);
 
   // Roll a new bite schedule when entering wait. Real bite drops in
   // [3..10]s, optionally preceded by 0..2 fake bites scattered
@@ -801,21 +877,33 @@ export default function FishingGame({ open, onClose }: Props) {
     }
     if (fadeRef.current.active) return;
     const s = stateRef.current;
-    if (s.mode === "fishingFakeBite") {
-      s.mode = "fishingFail";
-      s.subT = 0;
-      setMode("fishingFail");
-      setFishingResult({ text: FISH_TEXT_TOO_EARLY, kind: "fail" });
-      return;
-    }
     if (s.mode === "fishingBite") {
-      s.mode = "fishingSuccess";
-      s.subT = 0;
-      setMode("fishingSuccess");
-      setFishingResult({ text: FISH_TEXT_CAUGHT, kind: "success" });
+      // Gauge press — success only when marker is in the green zone.
+      const inZone =
+        s.gaugeMarkerPos >= s.gaugeSuccessStart &&
+        s.gaugeMarkerPos <= s.gaugeSuccessStart + s.gaugeSuccessWidth;
+      if (inZone) {
+        s.mode = "fishingSuccess";
+        s.subT = 0;
+        setMode("fishingSuccess");
+        setFishingResult({ text: FISH_TEXT_CAUGHT, kind: "success" });
+      } else {
+        // Silent retract — no toast per the new spec.
+        s.mode = "fishingFail";
+        s.subT = 0;
+        setMode("fishingFail");
+        setFishingResult(null);
+      }
       return;
     }
-    if (s.mode === "fishingWait" || s.mode === "fishingCast") {
+    if (
+      s.mode === "fishingWait" ||
+      s.mode === "fishingCast" ||
+      s.mode === "fishingFakeBite"
+    ) {
+      // Cast/wait/fake bite all just cancel back to walk; the old
+      // "press during fake bite = fail" rule is gone with the gauge
+      // minigame.
       cancelFishingToWalk();
       return;
     }
@@ -1069,6 +1157,8 @@ export default function FishingGame({ open, onClose }: Props) {
             s.mode = "fishingFakeBite";
             setMode("fishingFakeBite");
           } else {
+            // Roll the gauge minigame for this real bite.
+            rollGauge(s);
             s.mode = "fishingBite";
             setMode("fishingBite");
           }
@@ -1086,12 +1176,28 @@ export default function FishingGame({ open, onClose }: Props) {
       }
       if (s.mode === "fishingBite") {
         s.subT += dt * 1000;
-        if (s.subT >= FISH_BITE_REACTION_MS) {
-          // Player missed the reaction window — fish escapes.
+        // Animate the gauge marker. Speed is the base bar-widths
+        // per second, modulated by a sin term so the trip feels
+        // uneven (worse for higher-tier fish).
+        const speed =
+          s.gaugeBaseSpeed *
+          (1 + s.gaugeJitter * Math.sin(performance.now() * 0.003 + s.gaugePhase));
+        s.gaugeMarkerPos += s.gaugeMarkerDir * speed * dt;
+        if (s.gaugeMarkerPos >= 1) {
+          s.gaugeMarkerPos = 1;
+          s.gaugeMarkerDir = -1;
+          s.gaugeEdgeHits++;
+        } else if (s.gaugeMarkerPos <= 0) {
+          s.gaugeMarkerPos = 0;
+          s.gaugeMarkerDir = 1;
+          s.gaugeEdgeHits++;
+        }
+        if (s.gaugeEdgeHits >= GAUGE_MAX_EDGE_HITS) {
+          // Timeout — silent retract back to walk.
           s.mode = "fishingFail";
           s.subT = 0;
           setMode("fishingFail");
-          setFishingResult({ text: FISH_TEXT_GOT_AWAY, kind: "fail" });
+          setFishingResult(null);
         }
         return;
       }
@@ -1108,13 +1214,11 @@ export default function FishingGame({ open, onClose }: Props) {
       }
       if (s.mode === "fishingFail") {
         s.subT += dt * 1000;
-        if (s.subT >= FISH_RESULT_MS) {
-          // Bobber resets and a fresh schedule rolls so the player
-          // can keep fishing without re-casting.
-          s.mode = "fishingWait";
+        if (s.subT >= FISH_FAIL_RETRACT_MS) {
+          // Silent rod retract — straight to walk per the new spec.
+          s.mode = "walk";
           s.subT = 0;
-          scheduleFishingEvents(s);
-          setMode("fishingWait");
+          setMode("walk");
           setFishingResult(null);
         }
         return;
@@ -1649,6 +1753,52 @@ export default function FishingGame({ open, onClose }: Props) {
 
       ctx.restore();
 
+      // Catch gauge — drawn AFTER the scaled scene so the bar sits
+      // in viewport pixels (no 2x stretch), keeping the success
+      // zone and marker pixel-crisp regardless of MAP_SCALE.
+      if (s.mode === "fishingBite") {
+        const gaugeX = Math.round((VIEWPORT - GAUGE_WIDTH) / 2);
+        const gaugeY = VIEWPORT - GAUGE_BOTTOM_OFFSET;
+        // Background panel
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = "rgba(11,8,33,0.85)";
+        ctx.fillRect(gaugeX, gaugeY, GAUGE_WIDTH, GAUGE_HEIGHT);
+        // Border
+        ctx.strokeStyle = "rgba(216,150,200,0.55)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(
+          gaugeX + 0.5,
+          gaugeY + 0.5,
+          GAUGE_WIDTH - 1,
+          GAUGE_HEIGHT - 1,
+        );
+        // Success zone
+        const zoneX = Math.round(
+          gaugeX + s.gaugeSuccessStart * GAUGE_WIDTH,
+        );
+        const zoneW = Math.round(s.gaugeSuccessWidth * GAUGE_WIDTH);
+        ctx.fillStyle = "rgba(80,200,100,0.78)";
+        ctx.fillRect(zoneX, gaugeY + 2, zoneW, GAUGE_HEIGHT - 4);
+        // Marker — vertical white line that overshoots top/bottom
+        // for visibility against the success-zone fill.
+        const markerX = Math.round(
+          gaugeX + s.gaugeMarkerPos * GAUGE_WIDTH,
+        );
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fillRect(markerX - 1, gaugeY - 3, 2, GAUGE_HEIGHT + 6);
+        // Grade label centered above the bar.
+        ctx.font = "bold 10px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "alphabetic";
+        ctx.fillStyle = FISH_GRADE_COLOR[s.fishGrade];
+        ctx.strokeStyle = "rgba(11,8,33,0.85)";
+        ctx.lineWidth = 2;
+        const labelX = gaugeX + GAUGE_WIDTH / 2;
+        const labelY = gaugeY - 6;
+        ctx.strokeText(FISH_GRADE_LABEL[s.fishGrade], labelX, labelY);
+        ctx.fillText(FISH_GRADE_LABEL[s.fishGrade], labelX, labelY);
+      }
+
       // Fade overlay — black plane whose alpha follows a 0→1→0 ramp
       // across the SCENE_FADE_SECONDS window so transitions never
       // flash the old scene during fade-in.
@@ -1664,7 +1814,7 @@ export default function FishingGame({ open, onClose }: Props) {
 
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
-  }, [open, assets, triggerZone, scheduleFishingEvents]);
+  }, [open, assets, triggerZone, scheduleFishingEvents, rollGauge]);
 
   return (
     <AnimatePresence>

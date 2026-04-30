@@ -213,24 +213,76 @@ export const FISH_SHADOW_ORBIT_RADIUS = 14;
 
 // Bite-system tunables. The wait timer rolls a real-bite time in
 // [3..10]s and 0–2 fake bites scattered earlier; the shadow appears
-// FISH_SHADOW_LEAD_MS before the real bite. Reaction window is 2s.
+// FISH_SHADOW_LEAD_MS before the real bite. Real-bite reaction is
+// no longer a fixed window — see FISH_GRADES below for the gauge
+// minigame that replaces the simple timing press.
 export const FISH_WAIT_MIN_MS = 3000;
 export const FISH_WAIT_MAX_MS = 10000;
 export const FISH_FAKE_BITE_PROBABILITY = 0.5;
 export const FISH_FAKE_BITE_MAX = 2;
 export const FISH_FAKE_BITE_DURATION_MS = 200;
-export const FISH_BITE_REACTION_MS = 2000;
+// Success message duration (catch celebration). Fail uses
+// FISH_FAIL_RETRACT_MS instead — short and silent per the new spec.
 export const FISH_RESULT_MS = 1500;
+export const FISH_FAIL_RETRACT_MS = 500;
 export const FISH_SHADOW_LEAD_MS = 2500;
 export const FISH_BITE_DEPTH_PX = 7;        // bobber sinks this far on real bite
 export const FISH_FAKE_BITE_DEPTH_PX = 1.5; // fake bite peak dip
 export const FISH_BOBBER_BOB_AMP = 2;       // sin oscillation amplitude in wait
 export const FISH_BOBBER_BOB_FREQ = 0.005;  // sin frequency
 
-// Toast text shown during success / fail modes.
-export const FISH_TEXT_TOO_EARLY = "너무 빨랐다...";
-export const FISH_TEXT_GOT_AWAY = "물고기가 도망갔다...";
+// Catch text — only shown on success now (fail is silent).
 export const FISH_TEXT_CAUGHT = "물고기를 잡았다!";
+
+// ── Catch gauge minigame ───────────────────────────────────────
+// On a real bite the gauge bar opens at the bottom of the viewport.
+// A marker ping-pongs across it; pressing the action button while
+// the marker is over the green success zone catches the fish, any
+// other press (or 3 round trips of inactivity) silently retracts.
+
+export const GAUGE_WIDTH = 244;       // px (80% of 306 viewport)
+export const GAUGE_HEIGHT = 16;       // px
+export const GAUGE_BOTTOM_OFFSET = 24; // px from canvas bottom
+// 3 round trips = 6 edge bounces (left↔right counted on each hit).
+export const GAUGE_MAX_EDGE_HITS = 6;
+
+export type FishGrade =
+  | "common"
+  | "advanced"
+  | "rare"
+  | "legendary"
+  | "mythic";
+
+export type FishGradeConfig = {
+  width: number;            // success-zone width as fraction of bar (0..1)
+  baseSpeed: number;        // bar-widths traversed per second
+  jitter: number;           // 0..1 — speed sin amplitude (irregularity)
+  rollProbability: number;  // chance this grade rolls on a real bite
+};
+
+export const FISH_GRADES: Record<FishGrade, FishGradeConfig> = {
+  common:    { width: 0.40, baseSpeed: 1.4, jitter: 0.10, rollProbability: 0.60 },
+  advanced:  { width: 0.30, baseSpeed: 1.9, jitter: 0.18, rollProbability: 0.25 },
+  rare:      { width: 0.20, baseSpeed: 2.5, jitter: 0.28, rollProbability: 0.10 },
+  legendary: { width: 0.15, baseSpeed: 3.2, jitter: 0.42, rollProbability: 0.04 },
+  mythic:    { width: 0.10, baseSpeed: 4.0, jitter: 0.55, rollProbability: 0.01 },
+};
+
+export const FISH_GRADE_LABEL: Record<FishGrade, string> = {
+  common: "일반",
+  advanced: "고급",
+  rare: "희귀",
+  legendary: "전설",
+  mythic: "신화",
+};
+
+export const FISH_GRADE_COLOR: Record<FishGrade, string> = {
+  common: "#cbd5e1",
+  advanced: "#86efac",
+  rare: "#7dd3fc",
+  legendary: "#c4b5fd",
+  mythic: "#fbbf24",
+};
 
 // Fishing sprite sheet: 5 frames × 4 directions in a 160×128 block;
 // each color variant is laid out horizontally at FISH_VARIANT_WIDTH.
