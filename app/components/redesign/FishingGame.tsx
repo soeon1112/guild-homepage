@@ -4101,13 +4101,15 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
           className="fixed left-4 z-[200] flex flex-col overflow-hidden rounded-2xl border border-nebula-pink/30 backdrop-blur-md"
           style={{
             // Default bottom is 96 px (matches the `bottom-24`
-            // Tailwind utility). When the soft keyboard is up
-            // (keyboardLift > 0), shift the panel up by that
-            // many px + a tiny gap so its bottom edge sits
-            // directly above the keyboard instead of being
-            // clipped. The transition is fast enough to feel
-            // pinned without snapping.
-            bottom: keyboardLift > 0 ? keyboardLift + 8 : 96,
+            // Tailwind utility) so the panel sits above the
+            // BottomNav. When the soft keyboard is up, drop to
+            // `keyboardLift` exactly so the panel's bottom edge
+            // is flush with the keyboard top — no gap, no
+            // residual BottomNav-sized space (BottomNav is
+            // already hidden via the chatInputFocused bus). The
+            // transition is fast enough to feel pinned without
+            // snapping.
+            bottom: keyboardLift > 0 ? keyboardLift : 96,
             transition: "bottom 160ms ease",
             background:
               "linear-gradient(180deg, rgba(26,15,61,0.94) 0%, rgba(11,8,33,0.94) 100%)",

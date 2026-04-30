@@ -26,6 +26,7 @@ import {
   getOpenPanel,
   setChatInputFocused,
   setOpenPanel,
+  useChatInputFocused,
 } from "@/src/lib/uiBus";
 
 type ChatFileType = "image" | "gif" | "video";
@@ -203,6 +204,11 @@ export default function FloatingChat() {
   // PC users never satisfy `isMobile`, so neither effect fires there.
   const [inputFocused, setInputFocused] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  // Bus reflects ANY mobile chat input being focused — local
+  // FloatingChat input AND fishing-game chat input. Used to drop
+  // the FAB icon when the FishingGame chat focuses (own input
+  // already drops the panel via `inputFocused && isMobile`).
+  const anyChatInputFocused = useChatInputFocused();
   useEffect(() => {
     if (typeof window === "undefined") return;
     const update = () => {
@@ -564,8 +570,18 @@ export default function FloatingChat() {
                 }
               : { duration: 0.2 },
         }}
-        style={{ pointerEvents: open ? "none" : "auto" }}
-        className="group fixed right-4 bottom-24 z-[100] flex h-14 w-14 items-center justify-center rounded-full"
+        style={{
+          pointerEvents: open ? "none" : "auto",
+          // Drop to bottom: 8 whenever a chat input is focused on
+          // a mobile-class device (own input or fishing-game
+          // input — bus is gated on mobile inside both setters,
+          // so PC mouse focus never trips this). Otherwise stay
+          // at 96 to leave room for BottomNav. Animated for
+          // continuity with the chat panel's own bottom shift.
+          bottom: anyChatInputFocused ? 8 : 96,
+          transition: "bottom 160ms ease",
+        }}
+        className="group fixed right-4 z-[100] flex h-14 w-14 items-center justify-center rounded-full"
       >
         {/* Pulse ring — soft aura */}
         <span
