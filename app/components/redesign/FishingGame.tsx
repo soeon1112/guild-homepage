@@ -1762,7 +1762,13 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
       return;
     }
     if (promptRef.current === "counter") {
-      setSellOpen(true);
+      // Hold the pressed sprite briefly so the player sees the
+      // button press feedback before the sell modal mounts on top
+      // of the button and hides it.
+      window.setTimeout(() => {
+        setSellOpen(true);
+        setActionPressed(false);
+      }, 120);
     }
   }, [npcDialog, cancelFishingToWalk, startCast]);
 
@@ -5591,18 +5597,7 @@ function BuyContent({
                     pointerEvents: "none",
                   }}
                 />
-                <span
-                  aria-hidden
-                  className="pointer-events-none absolute leading-none"
-                  style={{
-                    left: "50%",
-                    top: "50%",
-                    transform: "translate(-50%, -55%)",
-                    fontSize: 22,
-                  }}
-                >
-                  {food.emoji}
-                </span>
+                <FoodSprite foodId={food.id} size={32} />
                 <span
                   aria-hidden
                   className="absolute font-serif font-bold leading-none"
@@ -5788,6 +5783,110 @@ function gradeLabel(g: FishGrade): string {
     : "신화";
 }
 
+// Hand-painted 16×16 pixel art for food items. Drawn so they sit
+// alongside the fish/forage sprite-sheet items without the system
+// emoji rendering breaking the pixel-art aesthetic.
+//   .  transparent
+//   bread:  O outline / H top highlight / B body / S underside shadow
+//   steak:  O outline / R meat / D dark meat / F fat trim / B bone / M grill mark
+const BREAD_PIXELS: readonly string[] = [
+  "................",
+  "....OOOOOOOO....",
+  "..OOHHHHHHHHOO..",
+  ".OHHHHHHHHHHHHO.",
+  "OHHBBBBBBBBBBHHO",
+  "OHBBBSBBBBSBBBHO",
+  "OBBBBBBBBBBBBBBO",
+  "OBSBBBBSBBBBSBBO",
+  "OBBBBBBBBBBBBBBO",
+  "OBSBBBSBBBSBBBBO",
+  "OBBBBBBBBBBBBBBO",
+  ".OBSBBSSBBSSBBO.",
+  ".OBSSSSSSSSSSBO.",
+  "..OOSSSSSSSSOO..",
+  "....OOOOOOOO....",
+  "................",
+];
+const BREAD_PALETTE: Record<string, string> = {
+  O: "#2a1810",
+  H: "#e8b06b",
+  B: "#b97532",
+  S: "#7a3d10",
+};
+const STEAK_PIXELS: readonly string[] = [
+  "................",
+  "....OOOOOOOO....",
+  "..OOFFFFFFFFOO..",
+  ".OFFRRRRRRRRFFO.",
+  "OFRRRRRRBRRRRRFO",
+  "OFRRMRRRBRRRMRFO",
+  "ORRRRRBBBBBRRRRO",
+  "ORRDRRBBBBBRDRRO",
+  "ORRRRRRBBBRRRRRO",
+  "ORRMRRRRBRRRRMRO",
+  "ORRRRRRRBRRRRRRO",
+  "OFRRRRRRBRRRRRFO",
+  ".OFFRRRRRRRRFFO.",
+  "..OOFFFFFFFFOO..",
+  "....OOOOOOOO....",
+  "................",
+];
+const STEAK_PALETTE: Record<string, string> = {
+  O: "#2a0a08",
+  R: "#b13a2a",
+  D: "#7a1818",
+  F: "#e8d6a8",
+  B: "#f8edd0",
+  M: "#4a1010",
+};
+
+function FoodSprite({ foodId, size }: { foodId: number; size: number }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const cv = canvasRef.current;
+    if (!cv) return;
+    const ctx = cv.getContext("2d");
+    if (!ctx) return;
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, 16, 16);
+    const pick =
+      foodId === 1
+        ? { rows: BREAD_PIXELS, palette: BREAD_PALETTE }
+        : foodId === 2
+        ? { rows: STEAK_PIXELS, palette: STEAK_PALETTE }
+        : null;
+    if (!pick) return;
+    for (let y = 0; y < 16; y++) {
+      const row = pick.rows[y] ?? "";
+      for (let x = 0; x < 16; x++) {
+        const ch = row[x];
+        if (!ch || ch === ".") continue;
+        const color = pick.palette[ch];
+        if (!color) continue;
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, 1, 1);
+      }
+    }
+  }, [foodId]);
+  return (
+    <canvas
+      ref={canvasRef}
+      width={16}
+      height={16}
+      aria-hidden
+      className="pointer-events-none absolute"
+      style={{
+        left: "50%",
+        top: "50%",
+        transform: "translate(-50%, -50%)",
+        width: size,
+        height: size,
+        imageRendering: "pixelated",
+      }}
+    />
+  );
+}
+
 // 16×16 sheet cell rendered at slot scale, cropped via background-
 // position (same trick the catch popup uses).
 function SlotSprite({
@@ -5800,24 +5899,8 @@ function SlotSprite({
   // Default sprite display fits comfortably inside a SLOT_DISPLAY-px
   // slot frame (slot has its own 4-px border + visual padding).
   const display = small ? 24 : 32;
-  // Food items don't have a sprite sheet — render their emoji glyph
-  // as text. Looks distinct enough next to the cropped fish/forage
-  // sprites to read as a different item class.
   if (ref_.kind === "food") {
-    return (
-      <span
-        aria-hidden
-        className="pointer-events-none absolute leading-none"
-        style={{
-          left: "50%",
-          top: "50%",
-          transform: "translate(-50%, -50%)",
-          fontSize: Math.floor(display * 0.95),
-        }}
-      >
-        {ref_.data.emoji}
-      </span>
-    );
+    return <FoodSprite foodId={ref_.data.id} size={Math.floor(display * 0.95)} />;
   }
   const isFish = ref_.kind === "fish";
   const sheetUrl = isFish
