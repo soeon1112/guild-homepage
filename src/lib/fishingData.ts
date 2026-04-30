@@ -4,12 +4,15 @@
 // Asset paths use literal spaces and Korean filenames; encodeURI lets
 // the browser fetch them without manual %-escaping at every call site.
 
-// Phase-1 soft-launch gate — fishing UI is only visible to this
-// nickname. Mirrors the PET_DEBUG_ADMIN_NICKNAME pattern in pets.ts.
-export const FISHING_ADMIN_NICKNAME = "언쏘";
+// Soft-launch gate — `null` opens fishing to every signed-in
+// member; setting this to a specific nickname re-restricts it to
+// that account (mirrors the PET_ADMIN_NICKNAME pattern in
+// pets.ts so the toggle is one constant per feature).
+export const FISHING_ADMIN_NICKNAME: string | null = null;
 
 export function canSeeFishing(nickname: string | null | undefined): boolean {
   if (!nickname) return false;
+  if (FISHING_ADMIN_NICKNAME === null) return true;
   // Hangul NFC vs NFD encoding can differ between iOS-stored
   // strings and source-literal strings — normalize both sides so
   // the gate doesn't silently fail when the bytes look identical
