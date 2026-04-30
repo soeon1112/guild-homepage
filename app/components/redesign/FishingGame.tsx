@@ -2809,6 +2809,34 @@ function CatchPopup({
   onConfirm: () => void;
 }) {
   const [pressed, setPressed] = useState(false);
+  // Space key acts on the check button while the popup is open:
+  // keydown → pressed (scale-down feedback), keyup → fire onConfirm
+  // and release. Mirrors the pointer flow so the visual is identical.
+  // Auto-repeat keydowns are ignored so holding Space doesn't thrash
+  // setState. Listener is attached only while a result is present, so
+  // it auto-cleans on dismount.
+  useEffect(() => {
+    if (!result) return;
+    const isSpace = (e: KeyboardEvent) =>
+      e.key === " " || e.code === "Space";
+    const onDown = (e: KeyboardEvent) => {
+      if (!isSpace(e)) return;
+      e.preventDefault();
+      if (!e.repeat) setPressed(true);
+    };
+    const onUp = (e: KeyboardEvent) => {
+      if (!isSpace(e)) return;
+      e.preventDefault();
+      setPressed(false);
+      onConfirm();
+    };
+    window.addEventListener("keydown", onDown);
+    window.addEventListener("keyup", onUp);
+    return () => {
+      window.removeEventListener("keydown", onDown);
+      window.removeEventListener("keyup", onUp);
+    };
+  }, [result, onConfirm]);
   return (
     <AnimatePresence>
       {result ? (
