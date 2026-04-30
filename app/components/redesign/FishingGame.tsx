@@ -38,7 +38,6 @@ import {
   FISH_WAIT_MAX_MS,
   FISH_WAIT_MIN_MS,
   GAUGE_BOTTOM_OFFSET,
-  GAUGE_HEIGHT,
   GAUGE_MAX_EDGE_HITS,
   GAUGE_WIDTH,
   type FishGrade,
@@ -133,6 +132,12 @@ type LoadedAssets = {
   fishRod: HTMLImageElement;
   fishBobber: HTMLImageElement;
   fishShadow: HTMLImageElement;
+  // Flat-theme gauge sprites — used for the canvas-rendered catch
+  // minigame. The button + banner sprites are loaded as plain <img>
+  // tags in JSX, so they're not stored here.
+  uiGaugeBar: HTMLImageElement;
+  uiGaugeFill: HTMLImageElement;
+  uiGaugeMarker: HTMLImageElement;
 };
 
 type Prompt = "blueDoor" | "yellowDoor" | "exit" | "npc" | null;
@@ -354,18 +359,25 @@ const KEY_RIGHT = new Set(["d", "D", "ㅇ", "ArrowRight"]);
 // VIEWPORT (306) ÷ MAP_SCALE (2) = 153px of map visible at a time.
 const MAP_SCALE = 2;
 
-// Flat-theme UI sprites used for the action button + text banners.
-// Paths use encodeURI so the literal "UI assets" space resolves
-// correctly in browsers and Next.js's static handler.
+// Flat-theme UI sprites used for the action button + text banners +
+// catch-gauge minigame. Paths use encodeURI so the literal "UI
+// assets" space resolves correctly in the browser and Next.js's
+// static handler.
+const UI_FLAT_BASE =
+  "/images/fishing/UI assets/01_Flat_Theme/Sprites/";
 const UI_ACTION_BUTTON_IDLE = encodeURI(
-  "/images/fishing/UI assets/01_Flat_Theme/Sprites/UI_Flat_Button02a_1.png",
+  UI_FLAT_BASE + "UI_Flat_Button02a_1.png",
+);
+const UI_ACTION_BUTTON_HOVER = encodeURI(
+  UI_FLAT_BASE + "UI_Flat_Button02a_2.png",
 );
 const UI_ACTION_BUTTON_PRESSED = encodeURI(
-  "/images/fishing/UI assets/01_Flat_Theme/Sprites/UI_Flat_Button02a_3.png",
+  UI_FLAT_BASE + "UI_Flat_Button02a_3.png",
 );
-const UI_BANNER_BG = encodeURI(
-  "/images/fishing/UI assets/01_Flat_Theme/Sprites/UI_Flat_Banner03a.png",
-);
+const UI_BANNER_BG = encodeURI(UI_FLAT_BASE + "UI_Flat_Banner03a.png");
+const UI_GAUGE_BAR = encodeURI(UI_FLAT_BASE + "UI_Flat_Bar01a.png");
+const UI_GAUGE_FILL = encodeURI(UI_FLAT_BASE + "UI_Flat_BarFill01a.png");
+const UI_GAUGE_MARKER = encodeURI(UI_FLAT_BASE + "UI_Flat_Handle06a.png");
 
 // 9-slice banner background. Source banner is 64×20 with ~4 px of
 // decorative edge per side; we slice 4 px and render the corners at
@@ -467,9 +479,11 @@ export default function FishingGame({ open, onClose }: Props) {
   const [mode, setMode] = useState<Mode>("walk");
   const [canFish, setCanFish] = useState(false);
   const canFishRef = useRef(false);
-  // Whether the floating action button is currently being held down.
-  // Drives the idle ↔ pressed sprite swap; resets on pointer up /
-  // leave / cancel.
+  // Floating action button visual state. `actionHover` switches the
+  // sprite to the hover variant on PC (mouse only); `actionPressed`
+  // takes priority and shows the pressed sprite while held down.
+  // Both reset on pointer up / leave / cancel.
+  const [actionHover, setActionHover] = useState(false);
   const [actionPressed, setActionPressed] = useState(false);
   // Result text shown during fishingSuccess / fishingFail. The kind
   // distinguishes styling but both auto-clear when the mode advances.
@@ -622,6 +636,9 @@ export default function FishingGame({ open, onClose }: Props) {
       load(ASSETS_FISH.rod),
       load(ASSETS_FISH.bobber),
       load(ASSETS_FISH.fishShadow),
+      load(UI_GAUGE_BAR),
+      load(UI_GAUGE_FILL),
+      load(UI_GAUGE_MARKER),
     ])
       .then(
         ([
@@ -647,6 +664,9 @@ export default function FishingGame({ open, onClose }: Props) {
           fishRod,
           fishBobber,
           fishShadow,
+          uiGaugeBar,
+          uiGaugeFill,
+          uiGaugeMarker,
         ]) => {
           if (cancelled) return;
           // Yellow patch → NPC anchor + interaction zone. Fallback is
@@ -682,6 +702,9 @@ export default function FishingGame({ open, onClose }: Props) {
             fishRod,
             fishBobber,
             fishShadow,
+            uiGaugeBar,
+            uiGaugeFill,
+            uiGaugeMarker,
           });
         },
       )
@@ -1782,40 +1805,90 @@ export default function FishingGame({ open, onClose }: Props) {
 
       ctx.restore();
 
-      // Catch gauge — drawn AFTER the scaled scene so the bar sits
-      // in viewport pixels (no 2x stretch), keeping the success
-      // zone and marker pixel-crisp regardless of MAP_SCALE.
+      // Catch gauge — Flat-theme sprites stretched to the gauge
+      // width via a horizontal 9-slice (4 px caps, middle stretched).
+      // Drawn AFTER the scaled scene so the bar sits in viewport
+      // pixels and stays crisp regardless of MAP_SCALE.
       if (s.mode === "fishingBite") {
         const gaugeX = Math.round((VIEWPORT - GAUGE_WIDTH) / 2);
         const gaugeY = VIEWPORT - GAUGE_BOTTOM_OFFSET;
-        // Background panel
         ctx.globalAlpha = 1;
-        ctx.fillStyle = "rgba(11,8,33,0.85)";
-        ctx.fillRect(gaugeX, gaugeY, GAUGE_WIDTH, GAUGE_HEIGHT);
-        // Border
-        ctx.strokeStyle = "rgba(216,150,200,0.55)";
-        ctx.lineWidth = 1;
-        ctx.strokeRect(
-          gaugeX + 0.5,
-          gaugeY + 0.5,
-          GAUGE_WIDTH - 1,
-          GAUGE_HEIGHT - 1,
-        );
-        // Success zone
+        ctx.imageSmoothingEnabled = false;
+
+        // 9-slice horizontal: source caps fixed, middle column
+        // stretched to fill the destination width.
+        const drawHoriz9 = (
+          img: HTMLImageElement,
+          capPx: number,
+          scale: number,
+          dx: number,
+          dy: number,
+          dstWidth: number,
+        ) => {
+          const sw = img.width;
+          const sh = img.height;
+          const capDst = capPx * scale;
+          const dstHeight = sh * scale;
+          // Left cap
+          ctx.drawImage(img, 0, 0, capPx, sh, dx, dy, capDst, dstHeight);
+          // Middle (stretched horizontally only)
+          const midSrc = sw - capPx * 2;
+          const midDst = dstWidth - capDst * 2;
+          if (midSrc > 0 && midDst > 0) {
+            ctx.drawImage(
+              img,
+              capPx, 0, midSrc, sh,
+              dx + capDst, dy, midDst, dstHeight,
+            );
+          }
+          // Right cap
+          ctx.drawImage(
+            img,
+            sw - capPx, 0, capPx, sh,
+            dx + dstWidth - capDst, dy, capDst, dstHeight,
+          );
+        };
+
+        // Bar background (UI_Flat_Bar01a: 32×8, 4 px caps).
+        drawHoriz9(imgs.uiGaugeBar, 4, 2, gaugeX, gaugeY, GAUGE_WIDTH);
+
+        // Success-zone fill (UI_Flat_BarFill01a: 32×3, bright green).
+        // Inset 2 px from each side and 4 px from top so the fill
+        // sits inside the bar frame.
         const zoneX = Math.round(
           gaugeX + s.gaugeSuccessStart * GAUGE_WIDTH,
         );
         const zoneW = Math.round(s.gaugeSuccessWidth * GAUGE_WIDTH);
-        ctx.fillStyle = "rgba(80,200,100,0.78)";
-        ctx.fillRect(zoneX, gaugeY + 2, zoneW, GAUGE_HEIGHT - 4);
-        // Marker — vertical white line that overshoots top/bottom
-        // for visibility against the success-zone fill.
+        if (zoneW > 0) {
+          drawHoriz9(
+            imgs.uiGaugeFill,
+            4,
+            2,
+            zoneX,
+            gaugeY + 4,
+            zoneW,
+          );
+        }
+
+        // Marker (UI_Flat_Handle06a: 4×7) — drawn at 2× and a touch
+        // taller than the bar so it overshoots top/bottom for
+        // visibility against the green fill.
+        const markerSrc = imgs.uiGaugeMarker;
+        const markerDstW = markerSrc.width * 2; // 8
+        const markerDstH = markerSrc.height * 2 + 4; // 18
         const markerX = Math.round(
           gaugeX + s.gaugeMarkerPos * GAUGE_WIDTH,
         );
-        ctx.fillStyle = "#FFFFFF";
-        ctx.fillRect(markerX - 1, gaugeY - 3, 2, GAUGE_HEIGHT + 6);
-        // Grade label centered above the bar.
+        ctx.drawImage(
+          markerSrc,
+          0, 0, markerSrc.width, markerSrc.height,
+          markerX - markerDstW / 2,
+          gaugeY - 1,
+          markerDstW,
+          markerDstH,
+        );
+
+        // Grade label centered above the bar (canvas text overlay).
         ctx.font = "bold 10px sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "alphabetic";
@@ -1964,7 +2037,7 @@ export default function FishingGame({ open, onClose }: Props) {
               const icon = showTalk
                 ? "💬"
                 : mode === "fishingBite"
-                ? "!"
+                ? "❗"
                 : "🎣";
               const label =
                 mode === "fishingBite"
@@ -1975,6 +2048,15 @@ export default function FishingGame({ open, onClose }: Props) {
                   ? "대화하기"
                   : "낚시하기";
               const isBite = mode === "fishingBite";
+              const buttonSrc = actionPressed
+                ? UI_ACTION_BUTTON_PRESSED
+                : actionHover
+                ? UI_ACTION_BUTTON_HOVER
+                : UI_ACTION_BUTTON_IDLE;
+              // The pressed sprite shifts the visible button face
+              // ~2 px down inside the cell. Sync the icon offset so
+              // the emoji travels with the press, not against it.
+              const iconOffsetY = actionPressed ? -1 : -3;
               return (
                 <motion.button
                   type="button"
@@ -1984,8 +2066,13 @@ export default function FishingGame({ open, onClose }: Props) {
                     handleAction();
                   }}
                   onPointerUp={() => setActionPressed(false)}
-                  onPointerLeave={() => setActionPressed(false)}
+                  onPointerLeave={() => {
+                    setActionPressed(false);
+                    setActionHover(false);
+                  }}
                   onPointerCancel={() => setActionPressed(false)}
+                  onMouseEnter={() => setActionHover(true)}
+                  onMouseLeave={() => setActionHover(false)}
                   whileTap={{ scale: 0.92 }}
                   animate={
                     isBite ? { scale: [1, 1.08, 1] } : { scale: 1 }
@@ -2011,11 +2098,7 @@ export default function FishingGame({ open, onClose }: Props) {
                   }}
                 >
                   <img
-                    src={
-                      actionPressed
-                        ? UI_ACTION_BUTTON_PRESSED
-                        : UI_ACTION_BUTTON_IDLE
-                    }
+                    src={buttonSrc}
                     alt=""
                     width={64}
                     height={64}
@@ -2031,11 +2114,8 @@ export default function FishingGame({ open, onClose }: Props) {
                     aria-hidden
                     className="absolute leading-none"
                     style={{
-                      // Nudge the icon slightly up so it sits in the
-                      // button's visual center (the sprite has a
-                      // bottom shadow strip that shifts the optical
-                      // center).
-                      transform: "translateY(-3px)",
+                      transform: `translateY(${iconOffsetY}px)`,
+                      transition: "transform 60ms ease-out",
                       fontSize: isBite ? 28 : 24,
                       fontWeight: isBite ? 800 : 600,
                       color: isBite ? "#c0392b" : "#3d2c1c",

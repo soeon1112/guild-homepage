@@ -240,9 +240,9 @@ export const FISH_TEXT_CAUGHT = "물고기를 잡았다!";
 // the marker is over the green success zone catches the fish, any
 // other press (or 3 round trips of inactivity) silently retracts.
 
-export const GAUGE_WIDTH = 244;       // px (80% of 306 viewport)
-export const GAUGE_HEIGHT = 16;       // px
-export const GAUGE_BOTTOM_OFFSET = 24; // px from canvas bottom
+export const GAUGE_WIDTH = 184;       // px (~60% of 306 viewport)
+export const GAUGE_HEIGHT = 16;       // px (Bar01a 8 px × 2 scale)
+export const GAUGE_BOTTOM_OFFSET = 28; // px from canvas bottom
 // 3 round trips = 6 edge bounces (left↔right counted on each hit).
 export const GAUGE_MAX_EDGE_HITS = 6;
 
