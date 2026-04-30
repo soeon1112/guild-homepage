@@ -1076,6 +1076,15 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
               }
             }
           }
+          if (Array.isArray(data.foodInventory)) {
+            for (const e of data.foodInventory) {
+              const id = (e as { foodId?: number }).foodId;
+              const c = (e as { count?: number }).count;
+              if (typeof id === "number" && typeof c === "number" && c > 0) {
+                inv[`food-${id}`] = c;
+              }
+            }
+          }
           setInventory(inv);
           setCodexCaught(
             new Set(
@@ -1142,12 +1151,15 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
     if (!saveEnabledRef.current || !open || !nickname) return;
     const inventoryArr: Array<{ fishId: number; count: number }> = [];
     const forageArr: Array<{ forageId: number; count: number }> = [];
+    const foodArr: Array<{ foodId: number; count: number }> = [];
     for (const [k, v] of Object.entries(inventory)) {
       if (v <= 0) continue;
       if (k.startsWith("fish-")) {
         inventoryArr.push({ fishId: Number(k.slice(5)), count: v });
       } else if (k.startsWith("forage-")) {
         forageArr.push({ forageId: Number(k.slice(7)), count: v });
+      } else if (k.startsWith("food-")) {
+        foodArr.push({ foodId: Number(k.slice(5)), count: v });
       }
     }
     const ref = doc(db, "users", nickname, "fishing", "current");
@@ -1156,6 +1168,7 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
       {
         inventory: inventoryArr,
         forageInventory: forageArr,
+        foodInventory: foodArr,
         codex: Array.from(codexCaught),
         exp: totalExp,
         level: levelFromTotalExp(totalExp).level,
