@@ -260,13 +260,29 @@ export type FishGradeConfig = {
   rollProbability: number;  // chance this grade rolls on a real bite
 };
 
+// rollProbability values are CONDITIONAL on the catch being a fish
+// (i.e. the forage roll has already failed). Sums to 1.0.
 export const FISH_GRADES: Record<FishGrade, FishGradeConfig> = {
-  common:    { width: 0.40, baseSpeed: 1.4, jitter: 0.10, rollProbability: 0.60 },
-  uncommon:  { width: 0.30, baseSpeed: 1.9, jitter: 0.18, rollProbability: 0.25 },
-  rare:      { width: 0.20, baseSpeed: 2.5, jitter: 0.28, rollProbability: 0.10 },
-  legendary: { width: 0.15, baseSpeed: 3.2, jitter: 0.42, rollProbability: 0.04 },
-  mythic:    { width: 0.10, baseSpeed: 4.0, jitter: 0.55, rollProbability: 0.01 },
+  common:    { width: 0.40, baseSpeed: 1.4, jitter: 0.10, rollProbability: 0.50 },
+  uncommon:  { width: 0.30, baseSpeed: 1.9, jitter: 0.18, rollProbability: 0.28 },
+  rare:      { width: 0.20, baseSpeed: 2.5, jitter: 0.28, rollProbability: 0.14 },
+  legendary: { width: 0.15, baseSpeed: 3.2, jitter: 0.42, rollProbability: 0.06 },
+  mythic:    { width: 0.10, baseSpeed: 4.0, jitter: 0.55, rollProbability: 0.02 },
 };
+
+// Top-level catch table. Each successful catch first rolls forage
+// vs fish at CATCH_FORAGE_PROBABILITY; on a forage hit, a second
+// roll at CATCH_TRASH_WITHIN_FORAGE decides treasure vs garbage.
+// Combined effective rates (per spec):
+//   forage treasure : 45 × 0.70 = 31.5%
+//   forage trash    : 45 × 0.30 = 13.5%
+//   fish common     : 55 × 0.50 = 27.5%
+//   fish uncommon   : 55 × 0.28 = 15.4%
+//   fish rare       : 55 × 0.14 =  7.7%
+//   fish legendary  : 55 × 0.06 =  3.3%
+//   fish mythic     : 55 × 0.02 =  1.1%
+export const CATCH_FORAGE_PROBABILITY = 0.45;
+export const CATCH_TRASH_WITHIN_FORAGE = 0.30;
 
 export const FISH_GRADE_LABEL: Record<FishGrade, string> = {
   common: "일반",
@@ -515,4 +531,79 @@ export const FISH_LIST: Fish[] = FISH_SEED.map((f) => ({
 // Lookup by id (1..100). Returns undefined for out-of-range ids.
 export function getFishById(id: number): Fish | undefined {
   return FISH_LIST[id - 1];
+}
+
+// ── Forage catalog (24 items) ──────────────────────────────────
+// Sourced from fishing assets/Fish Forage Items/forage list.txt and
+// the forage_all.png 16×16 sprite sheet (160×48 = 10×3 grid; only
+// the first 24 cells are used — row 2 is partial). list.txt order
+// is mostly treasure with four trash items (#7..#10) interleaved.
+export type ForageType = "treasure" | "trash";
+
+export type Forage = {
+  id: number;       // 1-based, matches forage list.txt
+  nameEn: string;
+  nameKo: string;
+  price: number;    // 0 for trash items (no shop value)
+  type: ForageType;
+  spriteX: number;
+  spriteY: number;
+};
+
+export const FORAGE_SPRITE_CELL = 16;
+export const FORAGE_SPRITE_COLS = 10;
+export const FORAGE_SPRITE_ROWS = 3;
+export const FORAGE_TOTAL = 24;
+
+export const ASSETS_FORAGE_CATALOG = {
+  forageAll: encodeURI(
+    "/images/fishing/fishing assets/Fish Forage Items/forage_all.png",
+  ),
+};
+
+export function forageSpriteCoords(id: number): { x: number; y: number } {
+  const n = id - 1;
+  return {
+    x: (n % FORAGE_SPRITE_COLS) * FORAGE_SPRITE_CELL,
+    y: Math.floor(n / FORAGE_SPRITE_COLS) * FORAGE_SPRITE_CELL,
+  };
+}
+
+type ForageSeed = Omit<Forage, "spriteX" | "spriteY">;
+
+const FORAGE_SEED: ForageSeed[] = [
+  { id: 1,  nameEn: "Sea Weed",            nameKo: "해초",          price: 1,  type: "treasure" },
+  { id: 2,  nameEn: "Algae",               nameKo: "말미잘",        price: 1,  type: "treasure" },
+  { id: 3,  nameEn: "Moss Ball",           nameKo: "이끼공",        price: 1,  type: "treasure" },
+  { id: 4,  nameEn: "Starfish",            nameKo: "불가사리",      price: 4,  type: "treasure" },
+  { id: 5,  nameEn: "Coral",               nameKo: "산호",          price: 7,  type: "treasure" },
+  { id: 6,  nameEn: "Pearl",               nameKo: "진주",          price: 20, type: "treasure" },
+  { id: 7,  nameEn: "Plastic Bag",         nameKo: "비닐봉지",      price: 0,  type: "trash"    },
+  { id: 8,  nameEn: "Can",                 nameKo: "빈 캔",         price: 0,  type: "trash"    },
+  { id: 9,  nameEn: "Wrapper",             nameKo: "과자봉지",      price: 0,  type: "trash"    },
+  { id: 10, nameEn: "Water Bottle",        nameKo: "페트병",        price: 0,  type: "trash"    },
+  { id: 11, nameEn: "Scallop",             nameKo: "가리비",        price: 5,  type: "treasure" },
+  { id: 12, nameEn: "Kings Crown Conch",   nameKo: "왕관소라",      price: 8,  type: "treasure" },
+  { id: 13, nameEn: "Oyster",              nameKo: "굴",            price: 4,  type: "treasure" },
+  { id: 14, nameEn: "Channeled Duck Clam", nameKo: "오리조개",      price: 4,  type: "treasure" },
+  { id: 15, nameEn: "Calico Clam",         nameKo: "얼룩조개",      price: 2,  type: "treasure" },
+  { id: 16, nameEn: "Bittersweet Clam",    nameKo: "쓴조개",        price: 2,  type: "treasure" },
+  { id: 17, nameEn: "Purple Varnish Clam", nameKo: "보라조개",      price: 5,  type: "treasure" },
+  { id: 18, nameEn: "Junonia",             nameKo: "주노니아",      price: 18, type: "treasure" },
+  { id: 19, nameEn: "Sand Dollar",         nameKo: "모래달러",      price: 4,  type: "treasure" },
+  { id: 20, nameEn: "Nautilus",            nameKo: "앵무조개",      price: 25, type: "treasure" },
+  { id: 21, nameEn: "Common Spirula",      nameKo: "나선조개",      price: 7,  type: "treasure" },
+  { id: 22, nameEn: "Lightning Dove",      nameKo: "번개비둘기고둥", price: 8,  type: "treasure" },
+  { id: 23, nameEn: "Sun Dial",            nameKo: "해시계고둥",    price: 5,  type: "treasure" },
+  { id: 24, nameEn: "Sharks Eye",          nameKo: "상어눈고둥",    price: 9,  type: "treasure" },
+];
+
+export const FORAGE_LIST: Forage[] = FORAGE_SEED.map((f) => ({
+  ...f,
+  ...((c) => ({ spriteX: c.x, spriteY: c.y }))(forageSpriteCoords(f.id)),
+}));
+
+// Lookup by id (1..24). Returns undefined for out-of-range ids.
+export function getForageById(id: number): Forage | undefined {
+  return FORAGE_LIST[id - 1];
 }
