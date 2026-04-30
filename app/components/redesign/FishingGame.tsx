@@ -3169,17 +3169,21 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
 
       // Player nameplate — drawn at viewport pixel scale (after the
       // ctx.restore that undoes MAP_SCALE) so the typography stays
-      // crisp instead of being upscaled with the sprite art. The
-      // 32×32 sprite cell holds the character around y=10..32 of
-      // the cell (head crown ≈ s.y - 22 in unscaled foot-relative
-      // coords); placing the text baseline 2 px above that puts it
-      // tight against the head instead of floating a full sprite-
-      // height above. Future chat bubbles should stack ABOVE this
-      // baseline so the tail still points at the head.
-      const NAMEPLATE_HEAD_OFFSET = 24;
+      // crisp instead of being upscaled with the sprite art.
+      // OFFSET is foot-relative — 22 puts the text bottom at the
+      // head crown of the 32×32 sprite (character occupies y=10..32
+      // of the cell), tight against the head with no visible gap.
+      // Math.round both axes so sub-pixel player movement doesn't
+      // jitter the text — drawCharacter rounds its draw position
+      // too, but a fractional foot pixel was bleeding through here.
+      // Future chat bubbles should stack ABOVE this baseline so the
+      // tail still points at the head.
+      const NAMEPLATE_HEAD_OFFSET = 22;
       if (nickname) {
-        const nx = (s.x - camX) * MAP_SCALE;
-        const ny = (s.y - NAMEPLATE_HEAD_OFFSET - camY) * MAP_SCALE;
+        const nx = Math.round((s.x - camX) * MAP_SCALE);
+        const ny = Math.round(
+          (s.y - NAMEPLATE_HEAD_OFFSET - camY) * MAP_SCALE,
+        );
         ctx.save();
         ctx.font =
           '700 10px "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif';
