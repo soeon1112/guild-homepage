@@ -222,9 +222,32 @@ export const BOBBER_FRAME_MS = 220;
 export const BOBBER_DISTANCE = 32;
 
 // "Can I fish here?" probe: the player must be facing water within
-// roughly two tiles. We test the collision mask 16 px and 32 px
-// ahead of the foot anchor in the current facing direction; any
-// red pixel counts as water-or-something-blocking, which is a fine
-// proxy for "edge of the beach / dock" until phase 2 introduces a
-// dedicated water mask.
+// roughly two tiles. We sample the BACKGROUND image (not the
+// collision mask) so building walls and tree trunks — which are
+// also red on collision.png — don't qualify. Water is detected by
+// the seafoam blue palette in 배경.png (R<100, G≥150, B≥200).
 export const FISH_PROBE_DISTANCES: readonly number[] = [16, 32];
+
+// Water color thresholds for 배경.png. Sampled at multiple shore
+// pixels: water sits at ~(72, 185, 221). Sand (227, 187, 77),
+// grass (99, 158, 60), and building stripes all fail at least one
+// of these cuts.
+export const WATER_R_MAX = 100;
+export const WATER_G_MIN = 150;
+export const WATER_B_MIN = 200;
+
+// Rod-tip offsets per facing direction, measured from the fishing
+// sprite cell's center on the LAST cast frame (frame 4) of
+// fishingrod.png. After the +4 fishing Y correction, the cell
+// origin lines up with (footX-16, footY-24); adding these offsets
+// gives the precise pixel where the rod tip is drawn, and that's
+// where the fishing line should start.
+export const ROD_TIP_OFFSETS: Record<
+  "down" | "up" | "left" | "right",
+  { x: number; y: number }
+> = {
+  down: { x: -1, y: 7 },
+  up: { x: -3, y: -17 },
+  right: { x: 13, y: 0 },
+  left: { x: -14, y: 0 },
+};

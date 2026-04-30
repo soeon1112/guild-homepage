@@ -37,6 +37,10 @@ import {
   FISH_TIMINGS_LR,
   FISH_TIMINGS_UD,
   FISH_VARIANT_WIDTH,
+  ROD_TIP_OFFSETS,
+  WATER_B_MIN,
+  WATER_G_MIN,
+  WATER_R_MAX,
   FISHSHOP_EXIT_SPAWN_X,
   FISHSHOP_EXIT_SPAWN_Y,
   FISHSHOP_EXIT_ZONE,
@@ -76,6 +80,9 @@ type LoadedAssets = {
   // why we pre-process the PNG instead of using the raw <img>.
   mapFront: HTMLCanvasElement;
   collision: ImageData;
+  // ImageData of the background art itself, used to sample water
+  // pixels for the can-fish probe.
+  backgroundData: ImageData;
   shopInterior: HTMLImageElement;
   shopCollision: ImageData;
   // NPC anchor + interaction zone, both derived at load time from the
@@ -156,6 +163,26 @@ function collidesIndoor(
     isBlockedIndoorPixel(shopData, bx + bw, by) ||
     isBlockedIndoorPixel(shopData, bx, by + bh) ||
     isBlockedIndoorPixel(shopData, bx + bw, by + bh)
+  );
+}
+
+// Water test against the BACKGROUND art (not collision). Used by
+// the can-fish probe so building walls and tree trunks (which are
+// also red on collision.png) don't qualify.
+function isWaterPixel(data: ImageData, x: number, y: number): boolean {
+  const ix = x | 0;
+  const iy = y | 0;
+  if (ix < 0 || iy < 0 || ix >= data.width || iy >= data.height) return false;
+  const i = (iy * data.width + ix) * 4;
+  const r = data.data[i];
+  const g = data.data[i + 1];
+  const b = data.data[i + 2];
+  const a = data.data[i + 3];
+  return (
+    a > 50 &&
+    r <= WATER_R_MAX &&
+    g >= WATER_G_MIN &&
+    b >= WATER_B_MIN
   );
 }
 
@@ -446,8 +473,22 @@ export default function FishingGame({ open, onClose }: Props) {
       cx.putImageData(data, 0, 0);
       return c;
     };
+    // Loader for the background ART that returns BOTH the image
+    // (for rendering) and ImageData (for sampling water pixels).
+    const loadBackground = async (
+      src: string,
+    ): Promise<{ img: HTMLImageElement; data: ImageData }> => {
+      const img = await load(src);
+      const c = document.createElement("canvas");
+      c.width = img.width;
+      c.height = img.height;
+      const cx = c.getContext("2d");
+      if (!cx) throw new Error("background: 2d context unavailable");
+      cx.drawImage(img, 0, 0);
+      return { img, data: cx.getImageData(0, 0, img.width, img.height) };
+    };
     Promise.all([
-      load(ASSETS.background),
+      loadBackground(ASSETS.background),
       loadOpaqueOverlay(ASSETS.mapFront),
       loadCollision(ASSETS.collision),
       load(ASSETS.shopInterior),
@@ -471,7 +512,7 @@ export default function FishingGame({ open, onClose }: Props) {
     ])
       .then(
         ([
-          map,
+          mapBundle,
           mapFront,
           collision,
           shopInterior,
@@ -502,7 +543,8 @@ export default function FishingGame({ open, onClose }: Props) {
             zone: { x: 64, y: 88, w: 32, h: 16 },
           };
           setAssets({
-            map,
+            map: mapBundle.img,
+            backgroundData: mapBundle.data,
             mapFront,
             collision,
             shopInterior,
@@ -934,7 +976,10 @@ export default function FishingGame({ open, onClose }: Props) {
         }
       }
 
-      // Can-fish probe: outdoor + walk mode only. Edge-triggered
+      // Can-fish probe: outdoor + walk mode only. Samples the
+      // background art a tile or two ahead in the FACING direction —
+      // only true water pixels qualify, so the player can't fish
+      // while facing a wall, tree, or open beach. Edge-triggered
       // setState keeps React from re-rendering on every tick.
       let nextCanFish = false;
       if (currentScene === "outdoor") {
@@ -942,7 +987,11 @@ export default function FishingGame({ open, onClose }: Props) {
         const dy = s.dir === "down" ? 1 : s.dir === "up" ? -1 : 0;
         for (const dist of FISH_PROBE_DISTANCES) {
           if (
-            isBlockedPixel(collision, s.x + dx * dist, s.y + dy * dist)
+            isWaterPixel(
+              assets.backgroundData,
+              s.x + dx * dist,
+              s.y + dy * dist,
+            )
           ) {
             nextCanFish = true;
             break;
@@ -1003,7 +1052,11 @@ export default function FishingGame({ open, onClose }: Props) {
 
     // Fishing-cast/wait composite. Mirrors drawCharacter but indexes
     // the 160-px-wide fishing variants and overlays the rod sprite
-    // last so it sits on top of the "without" base body.
+    // last so it sits on top of the "without" base body. The
+    // FISHING sheet draws the body 4 px higher inside the cell (per
+    // info.txt's "char moved up 4 px"), so we shift the destination
+    // Y down by an extra 4 px to keep the character's feet aligned
+    // with the walking pose.
     const drawFishingChar = (
       footX: number,
       footY: number,
@@ -1020,7 +1073,7 @@ export default function FishingGame({ open, onClose }: Props) {
       },
     ) => {
       const drawX = Math.round(footX - SPRITE_CELL / 2 - camX);
-      const drawY = Math.round(footY + 4 - SPRITE_CELL - camY);
+      const drawY = Math.round(footY + 4 - SPRITE_CELL - camY + 4);
       const sx = frameCol * SPRITE_CELL;
       const sy = WALK_ROWS[dir] * SPRITE_CELL;
       ctx.drawImage(
@@ -1055,8 +1108,8 @@ export default function FishingGame({ open, onClose }: Props) {
 
     // Bobber + fishing line. The bobber lands BOBBER_DISTANCE pixels
     // ahead of the player's foot in the facing direction; the line
-    // is a 1-px stroke from a "rod tip" approximation on the player
-    // sprite to the bobber's center.
+    // is a 1-px stroke from the rod-tip pixel (sampled from
+    // fishingrod.png's last cast frame) to the bobber's center.
     const drawBobberAndLine = (
       footX: number,
       footY: number,
@@ -1071,18 +1124,23 @@ export default function FishingGame({ open, onClose }: Props) {
       const bobberCY = footY + dy * BOBBER_DISTANCE - 4;
       const bobberDrawX = Math.round(bobberCX - 16 - camX);
       const bobberDrawY = Math.round(bobberCY - 16 - camY);
+      // Source rect crops EXACTLY the current 32×32 frame from the
+      // 128×32 sheet — destination rect is also 32×32 so only one
+      // bobber appears on screen, never the full strip.
+      const bobberSrcX = Math.floor(bobberFrame) * SPRITE_CELL;
       ctx.drawImage(
         imgs.fishBobber,
-        bobberFrame * SPRITE_CELL, 0, SPRITE_CELL, SPRITE_CELL,
+        bobberSrcX, 0, SPRITE_CELL, SPRITE_CELL,
         bobberDrawX, bobberDrawY, SPRITE_CELL, SPRITE_CELL,
       );
-      // Approximate rod tip — slightly above and offset toward the
-      // facing direction. Good enough for phase 1; phase 2 can read
-      // exact tip coords from the rod sprite.
-      const tipX = footX + dx * 6 - camX;
-      const tipY = footY - 18 + dy * 4 - camY;
+      // Rod tip — exact pixel from the cast's final frame, after
+      // applying the +4 fishing Y correction. Each direction has a
+      // hand-measured offset (see ROD_TIP_OFFSETS in fishingData.ts).
+      const tipOffset = ROD_TIP_OFFSETS[dir];
+      const tipX = footX + tipOffset.x - camX;
+      const tipY = footY + tipOffset.y - camY;
       ctx.save();
-      ctx.globalAlpha = 0.85;
+      ctx.globalAlpha = 0.9;
       ctx.strokeStyle = "#f4efff";
       ctx.lineWidth = 1;
       ctx.beginPath();
