@@ -873,6 +873,7 @@ export const FISHING_STAMINA_COST = 2;
 export const STAMINA_LOW_MESSAGE =
   "체력이 부족하다. 뭔가 먹어야 할 것 같다.";
 export const STAMINA_FULL_MESSAGE = "이미 체력이 가득 찼다.";
+export const STAMINA_HEAL_MESSAGE = "체력이 회복됐다!";
 export const STARLIGHT_INSUFFICIENT_MESSAGE = "별빛이 부족합니다.";
 
 export type Food = {

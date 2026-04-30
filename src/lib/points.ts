@@ -16,7 +16,8 @@ export type PointType =
   | "방명록"
   | "사진"
   | "게시글"
-  | "이벤트";
+  | "이벤트"
+  | "낚시";
 
 export async function addPoints(
   nickname: string | null | undefined,

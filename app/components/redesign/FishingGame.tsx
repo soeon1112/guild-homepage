@@ -14,6 +14,7 @@ import { X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
+import { addPoints } from "@/src/lib/points";
 import {
   ASSETS,
   ASSETS_FISH,
@@ -95,6 +96,7 @@ import {
   FISHING_STAMINA_COST,
   STAMINA_LOW_MESSAGE,
   STAMINA_FULL_MESSAGE,
+  STAMINA_HEAL_MESSAGE,
   STARLIGHT_INSUFFICIENT_MESSAGE,
   FOOD_LIST,
   getFoodById,
@@ -3510,6 +3512,7 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                       return next;
                     });
                     setInvSelected(null);
+                    setHintToast(STAMINA_HEAL_MESSAGE);
                   }}
                   assets={assets}
                   onClose={() => {
@@ -3548,7 +3551,19 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                       else delete next[itemKey];
                       return next;
                     });
-                    if (price > 0) setTotalStarlight((s) => s + price);
+                    if (price > 0) {
+                      setTotalStarlight((s) => s + price);
+                      // Mirror to the main-site point ledger so the
+                      // earnings show up in the user's homepage points
+                      // total. Fire-and-forget — sell UX shouldn't
+                      // block on Firestore round-trip.
+                      void addPoints(
+                        nickname,
+                        "낚시",
+                        price,
+                        `${ref.data.nameKo} 판매`,
+                      );
+                    }
                     setSellToast(price);
                     // If that was the last copy, drop the selection.
                     setSellSelected((sel) => {
@@ -3565,7 +3580,15 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                     }
                     setInventory({});
                     setSellSelected(null);
-                    if (total > 0) setTotalStarlight((s) => s + total);
+                    if (total > 0) {
+                      setTotalStarlight((s) => s + total);
+                      void addPoints(
+                        nickname,
+                        "낚시",
+                        total,
+                        "전체 판매",
+                      );
+                    }
                     setSellToast(total);
                   }}
                   onClose={() => {
