@@ -36,13 +36,15 @@ export const VARIANT_WIDTH = 256;
 export type Direction = "up" | "right" | "down" | "left";
 
 // WALK action lives at sheet rows 0..3, 8 frames per direction. Row
-// order verified visually from char1.png: 0=up, 1=right, 2=down,
-// 3=left. (info.txt names blocks but not directions; we picked the
-// order from the cropped first frame of each row.)
+// order corrected after in-browser testing: row 0 is the front/face
+// view (down), row 1 is the back-of-head view (up), row 2 is the
+// right profile, row 3 is the left profile. The initial guess
+// (up=0…) had row 0 and row 1 swapped because the back-of-head
+// sprite at small scale looks similar to a face-down sleep pose.
 export const WALK_ROWS: Record<Direction, number> = {
-  up: 0,
-  right: 1,
-  down: 2,
+  down: 0,
+  up: 1,
+  right: 2,
   left: 3,
 };
 export const WALK_FRAMES = 8;
