@@ -3833,12 +3833,69 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
             TORCH_FRAME_H,
           );
         }
-        // Peer characters in the outdoor scene. Drawn before self
-        // so the local player z-orders on top during overlap. Walk
-        // frame counters advance in tick() above; per-character
-        // sheets (walk char + walk hair OR fish char + fish hair)
-        // load lazily into the cache and the peer is skipped for
-        // the frame while any of them is still fetching.
+        // Depth-sorted character draw list. Self + peers go into
+        // the same array, sorted by foot Y ascending — characters
+        // with smaller Y (further north / "behind" in 2.5-D) paint
+        // first, and southern characters paint over them. Without
+        // this, the local player always rendered on top of every
+        // peer regardless of who was actually in front of whom.
+        type SceneDrawable = { y: number; draw: () => void };
+        const drawables: SceneDrawable[] = [];
+        drawables.push({
+          y: s.y,
+          draw: () => {
+            if (s.mode === "walk") {
+              drawCharacter(
+                imgs.char,
+                s.x,
+                s.y,
+                camX,
+                camY,
+                s.frame,
+                s.dir,
+                playerColors,
+              );
+              return;
+            }
+            // Fishing modes — character + shadow + line/bobber +
+            // bite indicator stay together in a single drawable
+            // anchored at s.y so the whole rig sorts as one
+            // entity.
+            drawFishingChar(
+              s.x,
+              s.y,
+              camX,
+              camY,
+              s.fishFrame,
+              s.dir,
+              playerColors,
+            );
+            drawFishShadow(
+              s.x,
+              s.y,
+              camX,
+              camY,
+              s.dir,
+              s.mode,
+              s.waitElapsed,
+              s.shadowAt,
+              s.shadowFrame,
+            );
+            drawBobberAndLine(
+              s.x,
+              s.y,
+              camX,
+              camY,
+              s.dir,
+              s.mode,
+              s.subT,
+              now,
+            );
+            if (s.mode === "fishingBite") {
+              drawBiteIndicator(s.x, s.y, camX, camY);
+            }
+          },
+        });
         for (const peer of peersRef.current.values()) {
           const peerUrls = characterAssetUrls(peer.character);
           const peerColors = {
@@ -3848,91 +3905,46 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
             shoes: peer.character.shoesColor,
             hair: peer.character.hairColor,
           };
-          if (peer.isFishing) {
-            const fc = getPeerImg(peerUrls.fishChar);
-            const fh = getPeerImg(peerUrls.fishHair);
-            if (fc && fh) {
-              drawPeerFish(
-                fc,
-                fh,
-                peer.x,
-                peer.y,
-                camX,
-                camY,
-                peer.fishingDir,
-                peerColors,
-              );
-            }
-          } else {
-            const wc = getPeerImg(peerUrls.walkChar);
-            const wh = getPeerImg(peerUrls.walkHair);
-            if (wc && wh) {
-              drawPeerWalk(
-                wc,
-                wh,
-                peer.x,
-                peer.y,
-                camX,
-                camY,
-                peer.frame,
-                peer.facing,
-                peerColors,
-              );
-            }
-          }
+          drawables.push({
+            y: peer.y,
+            draw: () => {
+              if (peer.isFishing) {
+                const fc = getPeerImg(peerUrls.fishChar);
+                const fh = getPeerImg(peerUrls.fishHair);
+                if (fc && fh) {
+                  drawPeerFish(
+                    fc,
+                    fh,
+                    peer.x,
+                    peer.y,
+                    camX,
+                    camY,
+                    peer.fishingDir,
+                    peerColors,
+                  );
+                }
+              } else {
+                const wc = getPeerImg(peerUrls.walkChar);
+                const wh = getPeerImg(peerUrls.walkHair);
+                if (wc && wh) {
+                  drawPeerWalk(
+                    wc,
+                    wh,
+                    peer.x,
+                    peer.y,
+                    camX,
+                    camY,
+                    peer.frame,
+                    peer.facing,
+                    peerColors,
+                  );
+                }
+              }
+            },
+          });
         }
-        if (s.mode === "walk") {
-          drawCharacter(
-            imgs.char,
-            s.x,
-            s.y,
-            camX,
-            camY,
-            s.frame,
-            s.dir,
-            playerColors,
-          );
-        } else {
-          // Fishing modes share the same per-direction 5-frame
-          // sheet; the wait/result modes lock to the last cast
-          // frame (frame 4 in raw order, frame 0 after the L/R
-          // reversal handled inside drawFishingChar).
-          drawFishingChar(
-            s.x,
-            s.y,
-            camX,
-            camY,
-            s.fishFrame,
-            s.dir,
-            playerColors,
-          );
-          // Underwater shadow first (so the bobber draws on top of
-          // it when they overlap during the bite-pull moment).
-          drawFishShadow(
-            s.x,
-            s.y,
-            camX,
-            camY,
-            s.dir,
-            s.mode,
-            s.waitElapsed,
-            s.shadowAt,
-            s.shadowFrame,
-          );
-          drawBobberAndLine(
-            s.x,
-            s.y,
-            camX,
-            camY,
-            s.dir,
-            s.mode,
-            s.subT,
-            now,
-          );
-          if (s.mode === "fishingBite") {
-            drawBiteIndicator(s.x, s.y, camX, camY);
-          }
-        }
+        drawables.sort((a, b) => a.y - b.y);
+        for (const d of drawables) d.draw();
         // Front layer — drawn last so any non-transparent pixel of
         // 배경_front.png covers the player at that location, giving
         // the depth illusion when walking behind tree canopies, roof
@@ -3945,22 +3957,41 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
         ctx.drawImage(imgs.mapFront, -camX, -camY);
       } else {
         ctx.drawImage(imgs.shopInterior, -camX, -camY);
-        // NPC drawn before the player so the player z-orders on top
-        // if they ever overlap. The yellow tile blocks the player
-        // from reaching the NPC's anchor in practice.
-        drawCharacter(
-          imgs.npcChar,
-          imgs.npcFoot.x,
-          imgs.npcFoot.y,
-          camX,
-          camY,
-          0,
-          "down",
-          npcColors,
-        );
-        // Peers in the shop scene — same loading + draw pattern
-        // as outdoor; subscription is already filtered by map so
-        // peer.x/y here are guaranteed to be indoor coords.
+        // Same depth-sorting strategy as the outdoor branch — NPC
+        // + every peer + self go into one list, sorted by foot Y.
+        // The yellow-tile collision keeps the player from reaching
+        // the NPC's anchor in practice, but if they ever overlap
+        // the lower-Y character now z-orders below correctly.
+        type SceneDrawable = { y: number; draw: () => void };
+        const drawables: SceneDrawable[] = [];
+        drawables.push({
+          y: imgs.npcFoot.y,
+          draw: () =>
+            drawCharacter(
+              imgs.npcChar,
+              imgs.npcFoot.x,
+              imgs.npcFoot.y,
+              camX,
+              camY,
+              0,
+              "down",
+              npcColors,
+            ),
+        });
+        drawables.push({
+          y: s.y,
+          draw: () =>
+            drawCharacter(
+              imgs.char,
+              s.x,
+              s.y,
+              camX,
+              camY,
+              s.frame,
+              s.dir,
+              playerColors,
+            ),
+        });
         for (const peer of peersRef.current.values()) {
           const peerUrls = characterAssetUrls(peer.character);
           const peerColors = {
@@ -3970,40 +4001,46 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
             shoes: peer.character.shoesColor,
             hair: peer.character.hairColor,
           };
-          if (peer.isFishing) {
-            const fc = getPeerImg(peerUrls.fishChar);
-            const fh = getPeerImg(peerUrls.fishHair);
-            if (fc && fh) {
-              drawPeerFish(
-                fc,
-                fh,
-                peer.x,
-                peer.y,
-                camX,
-                camY,
-                peer.fishingDir,
-                peerColors,
-              );
-            }
-          } else {
-            const wc = getPeerImg(peerUrls.walkChar);
-            const wh = getPeerImg(peerUrls.walkHair);
-            if (wc && wh) {
-              drawPeerWalk(
-                wc,
-                wh,
-                peer.x,
-                peer.y,
-                camX,
-                camY,
-                peer.frame,
-                peer.facing,
-                peerColors,
-              );
-            }
-          }
+          drawables.push({
+            y: peer.y,
+            draw: () => {
+              if (peer.isFishing) {
+                const fc = getPeerImg(peerUrls.fishChar);
+                const fh = getPeerImg(peerUrls.fishHair);
+                if (fc && fh) {
+                  drawPeerFish(
+                    fc,
+                    fh,
+                    peer.x,
+                    peer.y,
+                    camX,
+                    camY,
+                    peer.fishingDir,
+                    peerColors,
+                  );
+                }
+              } else {
+                const wc = getPeerImg(peerUrls.walkChar);
+                const wh = getPeerImg(peerUrls.walkHair);
+                if (wc && wh) {
+                  drawPeerWalk(
+                    wc,
+                    wh,
+                    peer.x,
+                    peer.y,
+                    camX,
+                    camY,
+                    peer.frame,
+                    peer.facing,
+                    peerColors,
+                  );
+                }
+              }
+            },
+          });
         }
-        drawCharacter(imgs.char, s.x, s.y, camX, camY, s.frame, s.dir, playerColors);
+        drawables.sort((a, b) => a.y - b.y);
+        for (const d of drawables) d.draw();
       }
 
       ctx.restore();
