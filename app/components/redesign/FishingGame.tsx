@@ -588,10 +588,14 @@ const UI_ICON_CHECK = encodeURI(UI_FLAT_BASE + "UI_Flat_IconCheck01a.png");
 // Inventory / info / ranking panel UI sprites.
 const UI_TAB_MARKER = encodeURI(UI_FLAT_BASE + "UI_Flat_FrameMarker01a.png");
 const UI_INV_SLOT = encodeURI(UI_FLAT_BASE + "UI_Flat_FrameSlot01c.png");
-// Sell panel uses the warmer Frame03a / Slot03c set so the shop UI
-// reads visually distinct from the player's own inventory panel.
+// Sell panel uses the warmer Frame03a / Slot03a / FrameMarker03a
+// set so the shop UI reads visually distinct from the player's own
+// inventory panel.
 const UI_SELL_PANEL_FRAME = encodeURI(UI_FLAT_BASE + "UI_Flat_Frame03a.png");
-const UI_SELL_SLOT = encodeURI(UI_FLAT_BASE + "UI_Flat_FrameSlot03c.png");
+const UI_SELL_SLOT = encodeURI(UI_FLAT_BASE + "UI_Flat_FrameSlot03a.png");
+const UI_SELL_TAB_MARKER = encodeURI(
+  UI_FLAT_BASE + "UI_Flat_FrameMarker03a.png",
+);
 // 9×9 small cross — the larger 01a (15×15) felt too heavy as a
 // dedicated close button. 01b reads as a quiet dismiss control.
 const UI_ICON_CROSS = encodeURI(UI_FLAT_BASE + "UI_Flat_IconCross01b.png");
@@ -5219,6 +5223,68 @@ function SellPanel({
         }}
         onPointerDown={(e) => e.stopPropagation()}
       >
+        {/* Bookmark tabs above the frame top edge — same z-stacked
+            pattern as the inventory panel: active tab pops up and
+            sits above the frame border (zIndex 3), inactive tab
+            sinks down and dims (zIndex 1). FrameMarker03a matches
+            the warmer Frame03a body. */}
+        <div
+          className="absolute left-0 right-0 flex justify-center"
+          style={{ top: -(TAB_H - TAB_VISIBLE), gap: 0 }}
+        >
+          {(["sell", "buy"] as const).map((t) => {
+            const active = tab === t;
+            const label = t === "sell" ? "판매" : "구매";
+            return (
+              <button
+                key={t}
+                type="button"
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  setTab(t);
+                  setSelected(null);
+                  setBuySelected(null);
+                }}
+                aria-label={label}
+                aria-pressed={active}
+                className="relative flex items-center justify-center"
+                style={{
+                  width: TAB_W,
+                  height: TAB_H,
+                  padding: 0,
+                  border: "none",
+                  background: "transparent",
+                  transform: active ? "translateY(-2px)" : "translateY(4px)",
+                  transition: "transform 140ms ease",
+                  filter: active
+                    ? "none"
+                    : "brightness(0.6) saturate(0.55)",
+                  zIndex: active ? 3 : 1,
+                }}
+              >
+                <Frame9Slice
+                  src={UI_SELL_TAB_MARKER}
+                  cap={TAB_CAP}
+                  scale={TAB_SCALE}
+                  width={TAB_W}
+                  height={TAB_H}
+                />
+                <span
+                  aria-hidden
+                  className="absolute font-serif font-bold leading-none"
+                  style={{
+                    fontSize: 12,
+                    color: "#3d2c1c",
+                    paddingBottom: 4,
+                  }}
+                >
+                  {label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
         <Frame9Slice
           src={UI_SELL_PANEL_FRAME}
           cap={PANEL_FRAME_CAP}
@@ -5226,52 +5292,20 @@ function SellPanel({
           width={SELL_PANEL_WIDTH}
           height={SELL_PANEL_HEIGHT}
           style={{
-            paddingTop: 12,
+            // paddingTop clears the (TAB_H - TAB_VISIBLE) px of tab
+            // that overlaps the frame top, plus a small breathing
+            // gap, so the content never sits under a tab.
+            paddingTop: TAB_H - TAB_VISIBLE + 4,
             // Larger paddingBottom — the sell/buy buttons sit a few
             // px above the frame edge instead of flush against it,
             // and the close X gets its own breathing room beneath.
             paddingBottom: 14,
             paddingInline: PANEL_BORDER + 2,
             boxSizing: "border-box",
+            zIndex: 2,
           }}
         >
           <div className="flex h-full w-full flex-col items-center">
-            {/* Tab switcher — 판매 (sell inventory) / 구매 (buy
-                food). Plain text-button toggle so we don't burn
-                another asset; active tab highlights with the
-                tan/cream palette. */}
-            <div
-              className="flex"
-              style={{ gap: 6, marginBottom: 4 }}
-            >
-              {(["sell", "buy"] as const).map((t) => {
-                const active = tab === t;
-                return (
-                  <button
-                    key={t}
-                    type="button"
-                    onPointerDown={(e) => {
-                      e.stopPropagation();
-                      setTab(t);
-                      setSelected(null);
-                      setBuySelected(null);
-                    }}
-                    className="font-serif font-bold leading-none"
-                    style={{
-                      fontSize: 11,
-                      padding: "3px 10px",
-                      border: "1px solid #3d2c1c",
-                      borderRadius: 3,
-                      background: active ? "#3d2c1c" : "transparent",
-                      color: active ? "#fde68a" : "#3d2c1c",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {t === "sell" ? "판매" : "구매"}
-                  </button>
-                );
-              })}
-            </div>
             {/* NPC headline removed — shopkeeper greeting bubble
                 already covers the "어서오세요" line over the NPC
                 sprite, so the panel itself just shows the goods. */}
