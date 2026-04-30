@@ -31,7 +31,6 @@ import {
   FISH_SHADOW_FRAME_MS,
   FISH_SHADOW_FRAMES,
   FISH_SHADOW_LEAD_MS,
-  FISH_SHADOW_ORBIT_RADIUS,
   FISH_TEXT_CAUGHT,
   FISH_TEXT_GOT_AWAY,
   FISH_TEXT_TOO_EARLY,
@@ -1356,25 +1355,15 @@ export default function FishingGame({ open, onClose }: Props) {
       return 0;
     };
 
-    // Whether the bobber should be drawn at all in the current mode.
-    // Hidden after the brief success pop-up so the catch animation
-    // ends with an empty surface.
-    const isBobberVisible = (m: Mode, subT: number): boolean => {
-      if (m === "fishingSuccess" && subT > 200) return false;
-      return (
-        m === "fishingWait" ||
-        m === "fishingFakeBite" ||
-        m === "fishingBite" ||
-        m === "fishingSuccess" ||
-        m === "fishingFail"
-      );
-    };
-
     // Bobber + fishing line. bobber.png is a 128×32 strip of EIGHT
     // distinct 16×16 bobber designs; we crop the first one and
     // render it statically. The Y position varies with mode (see
     // bobberYOffset above) so the bobber bobs in wait, dips on fake
     // bites, sinks on real bites, and pops up on success.
+    //
+    // On a real bite, the bobber sinks for 300 ms then HIDES — the
+    // line still draws through to the underwater anchor point so the
+    // rod looks like it's lifting a fish out of sight.
     const drawBobberAndLine = (
       footX: number,
       footY: number,
@@ -1385,7 +1374,16 @@ export default function FishingGame({ open, onClose }: Props) {
       subT: number,
       time: number,
     ) => {
-      if (!isBobberVisible(m, subT)) return;
+      const fishingActive =
+        m === "fishingWait" ||
+        m === "fishingFakeBite" ||
+        m === "fishingBite" ||
+        m === "fishingFail" ||
+        m === "fishingSuccess";
+      if (!fishingActive) return;
+      // After the success pop-up clears, both bobber and line are
+      // gone (the fish is "out of the water").
+      if (m === "fishingSuccess" && subT > 200) return;
       const dx = dir === "right" ? 1 : dir === "left" ? -1 : 0;
       const dy = dir === "down" ? 1 : dir === "up" ? -1 : 0;
       const baseCX = footX + dx * BOBBER_DISTANCE;
@@ -1393,36 +1391,47 @@ export default function FishingGame({ open, onClose }: Props) {
       const yOffset = bobberYOffset(m, subT, time);
       const bobberCX = baseCX;
       const bobberCY = baseCY + yOffset;
-      const half = BOBBER_CELL / 2;
-      const bobberDrawX = Math.round(bobberCX - half - camX);
-      const bobberDrawY = Math.round(bobberCY - half - camY);
-      ctx.drawImage(
-        imgs.fishBobber,
-        BOBBER_INDEX * BOBBER_CELL, 0, BOBBER_CELL, BOBBER_CELL,
-        bobberDrawX, bobberDrawY, BOBBER_CELL, BOBBER_CELL,
-      );
+      // Hide the bobber sprite once the bite-sink finishes — the
+      // fish has pulled it underwater.
+      const showBobber = !(m === "fishingBite" && subT > 300);
+      if (showBobber) {
+        const half = BOBBER_CELL / 2;
+        const bobberDrawX = Math.round(bobberCX - half - camX);
+        const bobberDrawY = Math.round(bobberCY - half - camY);
+        ctx.drawImage(
+          imgs.fishBobber,
+          BOBBER_INDEX * BOBBER_CELL, 0, BOBBER_CELL, BOBBER_CELL,
+          bobberDrawX, bobberDrawY, BOBBER_CELL, BOBBER_CELL,
+        );
+      }
       // Rod tip — exact pixel from the cast's final frame, after
       // applying the +4 fishing Y correction. Each direction has a
       // hand-measured offset (see ROD_TIP_OFFSETS in fishingData.ts).
+      // Line always draws even when the bobber is hidden; while the
+      // bobber is visible the line follows it, but once it disappears
+      // (real-bite sink complete) the line ends at the water surface
+      // — rod tip → sea level — so it reads as "line dipping in".
       const tipOffset = ROD_TIP_OFFSETS[dir];
       const tipX = footX + tipOffset.x - camX;
       const tipY = footY + tipOffset.y - camY;
+      const lineEndY = showBobber ? bobberCY : baseCY;
       ctx.save();
       ctx.globalAlpha = 0.9;
       ctx.strokeStyle = "#f4efff";
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(tipX, tipY);
-      ctx.lineTo(bobberCX - camX, bobberCY - camY);
+      ctx.lineTo(bobberCX - camX, lineEndY - camY);
       ctx.stroke();
       ctx.restore();
     };
 
-    // Fish shadow under water. Visible during the lurking phase
-    // (fishingWait once waitElapsed reaches shadowAt, and through
-    // fishingFakeBite / fishingBite). Orbits the bobber in an
-    // ellipse during wait; on a real bite it dives toward the
-    // bobber center and disappears once the catch resolves.
+    // Fish shadow under water. Held at a fixed spot one tile beyond
+    // the bobber in the facing direction (deeper water from the
+    // player's POV) and just animates through its 15 frames in
+    // place — no orbit, no dive on bite. Visible once the lurking
+    // phase begins (waitElapsed ≥ shadowAt) and through both fake
+    // and real bites; hidden during success / fail.
     const drawFishShadow = (
       footX: number,
       footY: number,
@@ -1430,52 +1439,30 @@ export default function FishingGame({ open, onClose }: Props) {
       camY: number,
       dir: Direction,
       m: Mode,
-      subT: number,
       waitElapsed: number,
       shadowAt: number,
       shadowFrame: number,
     ) => {
-      const showInWait =
-        (m === "fishingWait" || m === "fishingFakeBite") &&
-        waitElapsed >= shadowAt;
-      const showInBite = m === "fishingBite";
-      if (!showInWait && !showInBite) return;
+      const visible =
+        (m === "fishingWait" && waitElapsed >= shadowAt) ||
+        m === "fishingFakeBite" ||
+        m === "fishingBite";
+      if (!visible) return;
       const dx = dir === "right" ? 1 : dir === "left" ? -1 : 0;
       const dy = dir === "down" ? 1 : dir === "up" ? -1 : 0;
-      const baseCX = footX + dx * BOBBER_DISTANCE;
-      const baseCY = footY + dy * BOBBER_DISTANCE;
-      let shadowCX = baseCX;
-      let shadowCY = baseCY + 4; // a bit below water surface
-      if (showInWait) {
-        const t = (waitElapsed - shadowAt) / 1000;
-        shadowCX += Math.cos(t * 2.2) * FISH_SHADOW_ORBIT_RADIUS;
-        shadowCY +=
-          Math.sin(t * 2.2) * FISH_SHADOW_ORBIT_RADIUS * 0.55;
-      } else {
-        // bite: the shadow rushes from its last orbit position to
-        // the bobber center. Use a 300 ms ease-in.
-        const k = Math.min(subT / 300, 1);
-        const lastT = (shadowAt + FISH_SHADOW_LEAD_MS - shadowAt) / 1000;
-        const startCX =
-          baseCX + Math.cos(lastT * 2.2) * FISH_SHADOW_ORBIT_RADIUS;
-        const startCY =
-          baseCY +
-          4 +
-          Math.sin(lastT * 2.2) * FISH_SHADOW_ORBIT_RADIUS * 0.55;
-        shadowCX = startCX + (baseCX - startCX) * k;
-        shadowCY = startCY + (baseCY + 4 - startCY) * k;
-      }
+      const bobberCX = footX + dx * BOBBER_DISTANCE;
+      const bobberCY = footY + dy * BOBBER_DISTANCE;
+      // One tile (16 px) further into the water along facing dir.
+      const shadowCX = bobberCX + dx * 16;
+      const shadowCY = bobberCY + dy * 16;
       const half = FISH_SHADOW_CELL / 2;
       const drawX = Math.round(shadowCX - half - camX);
       const drawY = Math.round(shadowCY - half - camY);
-      ctx.save();
-      ctx.globalAlpha = 0.55;
       ctx.drawImage(
         imgs.fishShadow,
         shadowFrame * FISH_SHADOW_CELL, 0, FISH_SHADOW_CELL, FISH_SHADOW_CELL,
         drawX, drawY, FISH_SHADOW_CELL, FISH_SHADOW_CELL,
       );
-      ctx.restore();
     };
 
     // "!" exclamation above the player's head during a real bite —
@@ -1587,7 +1574,6 @@ export default function FishingGame({ open, onClose }: Props) {
             camY,
             s.dir,
             s.mode,
-            s.subT,
             s.waitElapsed,
             s.shadowAt,
             s.shadowFrame,

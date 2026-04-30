@@ -200,7 +200,7 @@ export const ASSETS_FISH = {
   hair: encodeURI("/images/fishing/Character assets/separate/fish/hair/wavy_fish.png"),
   rod: encodeURI("/images/fishing/Character assets/separate/fish/tool/fishingrod.png"),
   bobber: encodeURI("/images/fishing/Character assets/separate/fish/tool/bobber.png"),
-  fishShadow: encodeURI("/images/fishing/fishing assets/Fish Forage Items/fish_shadow.png"),
+  fishShadow: encodeURI("/images/fishing/fishing assets/Fish Forage Items/fish_shadow_transparent.png"),
 };
 
 // Fish-shadow filmstrip: 240×16 = 15 frames × 16×16, looped while a
