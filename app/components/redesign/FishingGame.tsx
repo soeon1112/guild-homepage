@@ -2943,7 +2943,15 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
         }
       }
       const len = Math.hypot(vx, vy);
-      const moving = len > 0.05;
+      // Deadzone — both axes must clear 0.2 (~20 % of the joystick
+      // throw) before a touch is treated as movement. The previous
+      // 0.05 threshold was sensitive enough that finger noise on
+      // a resting touch produced a jittery vx/vy stream and the
+      // character looked like it was vibrating in place. WASD
+      // input is unaffected: pressing a key sets vx or vy to ±1,
+      // trivially clearing the per-axis check.
+      const moving =
+        Math.abs(vx) >= 0.2 || Math.abs(vy) >= 0.2;
       if (len > 1) {
         vx /= len;
         vy /= len;
