@@ -601,10 +601,10 @@ const UI_INV_SLOT = encodeURI(UI_FLAT_BASE + "UI_Flat_FrameSlot01c.png");
 // Sell panel uses the warmer Frame03a / Slot03a / FrameMarker03a
 // set so the shop UI reads visually distinct from the player's own
 // inventory panel.
-const UI_SELL_PANEL_FRAME = encodeURI(UI_FLAT_BASE + "UI_Flat_Frame03a.png");
-const UI_SELL_SLOT = encodeURI(UI_FLAT_BASE + "UI_Flat_FrameSlot03c.png");
+const UI_SELL_PANEL_FRAME = encodeURI(UI_FLAT_BASE + "UI_Flat_Frame02a.png");
+const UI_SELL_SLOT = encodeURI(UI_FLAT_BASE + "UI_Flat_FrameSlot02c.png");
 const UI_SELL_TAB_MARKER = encodeURI(
-  UI_FLAT_BASE + "UI_Flat_FrameMarker03a.png",
+  UI_FLAT_BASE + "UI_Flat_FrameMarker02a.png",
 );
 // 9×9 small cross — the larger 01a (15×15) felt too heavy as a
 // dedicated close button. 01b reads as a quiet dismiss control.
