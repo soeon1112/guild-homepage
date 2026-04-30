@@ -241,18 +241,24 @@ export const WATER_R_MAX = 100;
 export const WATER_G_MIN = 150;
 export const WATER_B_MIN = 200;
 
-// Rod-tip offsets per facing direction, measured from the fishing
-// sprite cell's center on the LAST cast frame (frame 4) of
-// fishingrod.png. After the +4 fishing Y correction, the cell
-// origin lines up with (footX-16, footY-24); adding these offsets
-// to (footX, footY) gives the precise pixel where the rod tip is
-// drawn on screen — which is also where the fishing line starts.
+// Rod-tip offsets per facing direction, measured from each
+// direction's wait-pose frame in fishingrod.png. After the +4
+// fishing Y correction, the cell origin lines up with
+// (footX-16, footY-24); adding these offsets to (footX, footY)
+// gives the precise pixel where the rod tip is drawn on screen —
+// which is also where the fishing line starts.
+//
+// down / up wait at frame 4 (cast end) — rod tilts toward the
+// water vertically. left / right play the cast IN REVERSE so the
+// wait shows frame 0 (rod held high diagonally), and the line
+// drops naturally to the bobber below; their offsets reflect that
+// frame's tip pixel, not frame 4's.
 export const ROD_TIP_OFFSETS: Record<
   "down" | "up" | "left" | "right",
   { x: number; y: number }
 > = {
   down: { x: -1, y: 7 },
   up: { x: -3, y: -17 },
-  right: { x: 13, y: 0 },
-  left: { x: -14, y: 0 },
+  right: { x: 12, y: -10 },
+  left: { x: -13, y: -10 },
 };

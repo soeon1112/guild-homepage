@@ -876,19 +876,26 @@ export default function FishingGame({ open, onClose }: Props) {
           s.dir === "left" || s.dir === "right"
             ? FISH_TIMINGS_LR
             : FISH_TIMINGS_UD;
+        // Left/right play the cast in REVERSE so the wait pose ends
+        // on frame 0 (rod held high). The state-frame counter still
+        // advances 0→4, but each step's ms budget is read from the
+        // mirrored timing slot to keep per-frame durations matched
+        // to the visible animation.
+        const isReversed =
+          s.dir === "left" || s.dir === "right";
+        const timingForState = (stateFrame: number) =>
+          timings[isReversed ? FISH_FRAMES - 1 - stateFrame : stateFrame];
         s.fishFrameAcc += dt * 1000;
-        // Walk forward through the cast frames using their per-step
-        // ms budgets. The very last frame holds open until cancel.
         while (
           s.fishFrame < FISH_FRAMES - 1 &&
-          s.fishFrameAcc >= timings[s.fishFrame]
+          s.fishFrameAcc >= timingForState(s.fishFrame)
         ) {
-          s.fishFrameAcc -= timings[s.fishFrame];
+          s.fishFrameAcc -= timingForState(s.fishFrame);
           s.fishFrame++;
         }
         if (
           s.fishFrame === FISH_FRAMES - 1 &&
-          s.fishFrameAcc >= timings[FISH_FRAMES - 1]
+          s.fishFrameAcc >= timingForState(s.fishFrame)
         ) {
           s.mode = "fishingWait";
           s.fishFrameAcc = 0;
@@ -1077,7 +1084,16 @@ export default function FishingGame({ open, onClose }: Props) {
     ) => {
       const drawX = Math.round(footX - SPRITE_CELL / 2 - camX);
       const drawY = Math.round(footY + 4 - SPRITE_CELL - camY + 4);
-      const sx = frameCol * SPRITE_CELL;
+      // Left/right play the cast animation in reverse so the wait
+      // pose ends on frame 0 (rod tilted up — line then drops down
+      // naturally to the bobber). Up/down keep the original 0→4
+      // order. The state-frame counter is unchanged either way; the
+      // remap is purely a display transform.
+      const reversed = dir === "left" || dir === "right";
+      const displayFrame = reversed
+        ? FISH_FRAMES - 1 - frameCol
+        : frameCol;
+      const sx = displayFrame * SPRITE_CELL;
       const sy = WALK_ROWS[dir] * SPRITE_CELL;
       ctx.drawImage(
         imgs.fishBase,
