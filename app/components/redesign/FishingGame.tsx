@@ -6016,29 +6016,16 @@ function HpBar({ stamina }: { stamina: number }) {
 }
 
 // Mini exp-bar styled like the catch gauge but without the marker.
-// Width tuned for the compact info tab; gauge height matches the
-// in-game catch gauge so the visual language is consistent.
-const EXP_BAR_WIDTH = 200;
+// Width spans the full content area so the bar's right edge aligns
+// with the other stat rows ("생활 Lv.", "전투 Lv." etc.). Height
+// matches the in-game catch gauge so the visual language is consistent.
 const EXP_BAR_HEIGHT = 12;
 function ExpBar({ fraction }: { fraction: number }) {
-  // Defensive clamp — fraction should already be in [0, 1] but a
-  // stale prop or rounding could push it outside. Math.min/max
-  // here so a future caller bug never makes the fill overshoot.
   const ratio = Math.max(0, Math.min(1, fraction));
-  // Bar01a (32×8 source) renders edge-to-edge as the empty track —
-  // the cream-coloured background. BarFill01a (32×3 source) draws
-  // on top at fraction width, replacing the same in-game pattern
-  // the catch gauge uses on canvas. Using two simple <img>s with
-  // image-rendering: pixelated keeps both crisp at the stretched
-  // display size; objectFit: fill stretches uniformly, and inner
-  // fill width is computed from the bar's interior width so the
-  // 1-px Bar01a border isn't covered.
-  const innerWidth = EXP_BAR_WIDTH - 4; // 2-px Bar01a border each side
-  const fillWidth = Math.round(innerWidth * ratio);
   return (
     <div
       className="relative"
-      style={{ width: EXP_BAR_WIDTH, height: EXP_BAR_HEIGHT }}
+      style={{ width: "100%", height: EXP_BAR_HEIGHT }}
     >
       <img
         src={UI_GAUGE_BAR}
@@ -6046,13 +6033,13 @@ function ExpBar({ fraction }: { fraction: number }) {
         draggable={false}
         style={{
           imageRendering: "pixelated",
-          width: EXP_BAR_WIDTH,
+          width: "100%",
           height: EXP_BAR_HEIGHT,
           pointerEvents: "none",
           objectFit: "fill",
         }}
       />
-      {fillWidth > 0 ? (
+      {ratio > 0 ? (
         <img
           src={UI_GAUGE_FILL}
           alt=""
@@ -6061,7 +6048,7 @@ function ExpBar({ fraction }: { fraction: number }) {
           style={{
             left: 2,
             top: 4,
-            width: fillWidth,
+            width: `calc((100% - 4px) * ${ratio})`,
             height: EXP_BAR_HEIGHT - 8,
             imageRendering: "pixelated",
             objectFit: "fill",
