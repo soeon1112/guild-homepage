@@ -657,8 +657,15 @@ const PRESENCE_STALE_MS = 5 * 60 * 1000;
 
 type PeerData = {
   nickname: string;
+  // Rendered position — lerp'd toward (targetX, targetY) every
+  // tick so the peer glides between snapshots instead of teleporting
+  // every 300 ms.
   x: number;
   y: number;
+  // Latest server-reported position. Updated on snapshot, then
+  // approached smoothly via PEER_LERP each tick.
+  targetX: number;
+  targetY: number;
   facing: Direction;
   isMoving: boolean;
   isFishing: boolean;
@@ -1697,10 +1704,18 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
               ? fishingDirRaw
               : facing;
           const prev = peersRef.current.get(d.id);
+          const newX = typeof data.x === "number" ? data.x : 0;
+          const newY = typeof data.y === "number" ? data.y : 0;
           next.set(d.id, {
             nickname: d.id,
-            x: typeof data.x === "number" ? data.x : 0,
-            y: typeof data.y === "number" ? data.y : 0,
+            // Render position — preserve previous so the next tick
+            // lerp's smoothly toward the new target. New peers
+            // pop in at their first reported position (no lerp
+            // origin yet), which is fine on entry.
+            x: prev?.x ?? newX,
+            y: prev?.y ?? newY,
+            targetX: newX,
+            targetY: newY,
             facing,
             isMoving: !!data.isMoving,
             isFishing: !!data.isFishing,
@@ -2858,7 +2873,27 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
       // peers map directly is intentional — these fields are
       // client-only animation state and React doesn't need to see
       // them change.
+      // PEER_LERP — fraction of the remaining gap to closes per
+      // tick. 0.18 reaches ~99 % of target in ~24 frames (≈ 0.4 s),
+      // which is in the sweet spot between perceptible delay and
+      // visible jitter for the 300 ms presence cadence. Snap when
+      // the gap is within 0.5 px so the peer eventually lands on
+      // an integer pixel and the walk animation reads cleanly.
+      const PEER_LERP = 0.18;
+      const PEER_SNAP_PX = 0.5;
       for (const peer of peersRef.current.values()) {
+        const gx = peer.targetX - peer.x;
+        const gy = peer.targetY - peer.y;
+        if (Math.abs(gx) < PEER_SNAP_PX) {
+          peer.x = peer.targetX;
+        } else {
+          peer.x += gx * PEER_LERP;
+        }
+        if (Math.abs(gy) < PEER_SNAP_PX) {
+          peer.y = peer.targetY;
+        } else {
+          peer.y += gy * PEER_LERP;
+        }
         if (peer.isMoving && !peer.isFishing) {
           peer.frameAcc += dt * 1000;
           while (peer.frameAcc >= WALK_FRAME_MS) {
