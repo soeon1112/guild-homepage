@@ -172,6 +172,29 @@ export const FISHSHOP_EXIT_ZONE: Rect = { x: 40, y: 144, w: 80, h: 16 };
 export const FISHSHOP_NPC_LINE = "어서와! 잡은 물고기를 사줄게!";
 export const YELLOW_SHOP_LINE = "준비중입니다";
 
+// Shop greeting + random idle lines for the speech bubble that
+// appears over the shopkeeper. The greeting fires on entry; the
+// idle pool gets cycled through every 15-30 s while the player
+// stays in the shop. Punctuation kept light so the bubble's
+// max-width word-wrap reads naturally.
+export const FISHSHOP_GREETING = "어서오세요! 새벽빛 낚시상점입니다.";
+export const FISHSHOP_IDLE_LINES: readonly string[] = [
+  "요즘 날씨가 좋아서 물고기가 잘 잡히겠네요.",
+  "오늘은 어떤 물고기를 잡아오셨나요?",
+  "진주는 정말 귀한 거예요, 알고 계셨죠?",
+  "가끔 쓰레기가 낚이기도 하죠... 바다를 깨끗이 합시다!",
+  "전설의 물고기를 본 적 있으신가요? 저는 아직...",
+  "신화 등급 물고기는 정말 존재하는 걸까요?",
+  "좋은 하루 보내고 계신가요?",
+  "바다 냄새가 참 좋죠?",
+  "오래 계시네요, 편하게 구경하세요!",
+  "혹시 도감은 많이 채우셨나요?",
+];
+// Bubble timing — fixed display window, randomised inter-line gap.
+export const FISHSHOP_BUBBLE_VISIBLE_MS = 3000;
+export const FISHSHOP_IDLE_DELAY_MIN_MS = 15000;
+export const FISHSHOP_IDLE_DELAY_MAX_MS = 30000;
+
 // NPC modular layer indices. Picked to read clearly different from
 // the player's default outfit (black shirt, brown pants, wavy hair).
 export const NPC_EYES_COLOR = 3;

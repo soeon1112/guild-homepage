@@ -86,6 +86,11 @@ import {
   FISHSHOP_INDOOR_SPAWN_X,
   FISHSHOP_INDOOR_SPAWN_Y,
   FISHSHOP_NPC_LINE,
+  FISHSHOP_GREETING,
+  FISHSHOP_IDLE_LINES,
+  FISHSHOP_BUBBLE_VISIBLE_MS,
+  FISHSHOP_IDLE_DELAY_MIN_MS,
+  FISHSHOP_IDLE_DELAY_MAX_MS,
   INDOOR_MAP_HEIGHT,
   INDOOR_MAP_WIDTH,
   MAP_HEIGHT,
@@ -766,38 +771,59 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
     return () => clearTimeout(t);
   }, [sellToast]);
 
-  // NPC greeting speech bubble. Shows above the shopkeeper for 3 s
-  // each time the player walks into the shop. Position is no longer
-  // captured once — a rAF loop while visible repositions the bubble
-  // every frame against the latest camera so it stays glued to the
-  // NPC head even as the player walks around (which scrolls the
-  // indoor camera 0–7 px) or gets rescued post-load.
-  const [npcGreetingVisible, setNpcGreetingVisible] = useState(false);
+  // NPC speech bubble — string holds the current line (null = no
+  // bubble). Initial entry shows the greeting; while the player
+  // stays in the shop, idle lines cycle every 15-30 s. A rAF loop
+  // (separate effect below) keeps the bubble glued to the NPC head
+  // every frame so camera scroll / rescue teleports don't desync it.
+  const [npcMessage, setNpcMessage] = useState<string | null>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (scene !== "fishshop" || !assets) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setNpcGreetingVisible(false);
+      setNpcMessage(null);
       return;
     }
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setNpcGreetingVisible(true);
-    const t = setTimeout(() => setNpcGreetingVisible(false), 3000);
-    return () => clearTimeout(t);
+    // Greet on entry, then loop: visible for VISIBLE_MS → hidden
+    // for IDLE_DELAY (random 15-30 s) → next random line. All
+    // timers cleared on cleanup so leaving the shop or unmounting
+    // immediately stops the chain.
+    let visibleTimer: ReturnType<typeof setTimeout> | null = null;
+    let nextTimer: ReturnType<typeof setTimeout> | null = null;
+    const showLine = (line: string) => {
+      setNpcMessage(line);
+      visibleTimer = setTimeout(() => {
+        setNpcMessage(null);
+        const delay =
+          FISHSHOP_IDLE_DELAY_MIN_MS +
+          Math.random() *
+            (FISHSHOP_IDLE_DELAY_MAX_MS - FISHSHOP_IDLE_DELAY_MIN_MS);
+        nextTimer = setTimeout(() => {
+          const idx = Math.floor(Math.random() * FISHSHOP_IDLE_LINES.length);
+          showLine(FISHSHOP_IDLE_LINES[idx]);
+        }, delay);
+      }, FISHSHOP_BUBBLE_VISIBLE_MS);
+    };
+    showLine(FISHSHOP_GREETING);
+    return () => {
+      if (visibleTimer) clearTimeout(visibleTimer);
+      if (nextTimer) clearTimeout(nextTimer);
+    };
   }, [scene, assets]);
-  // Tapping the NPC (i.e. opening the sell UI) dismisses the
-  // greeting early so it doesn't reappear when the panel closes.
+  // Tapping the NPC (i.e. opening the sell UI) dismisses any
+  // currently-visible line. Idle scheduling continues underneath
+  // so the next line still fires after sell closes.
   useEffect(() => {
     if (sellOpen) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setNpcGreetingVisible(false);
+      setNpcMessage(null);
     }
   }, [sellOpen]);
   // While the bubble is up, recompute its screen position every
   // frame from the current camera and NPC foot pixel. Direct DOM
   // mutation via ref so this doesn't re-render React 60×/s.
   useEffect(() => {
-    if (!npcGreetingVisible || !assets || scene !== "fishshop") return;
+    if (!npcMessage || !assets || scene !== "fishshop") return;
     let raf = 0;
     const update = () => {
       const el = bubbleRef.current;
@@ -827,7 +853,7 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
     };
     raf = requestAnimationFrame(update);
     return () => cancelAnimationFrame(raf);
-  }, [npcGreetingVisible, assets, scene]);
+  }, [npcMessage, assets, scene]);
 
   // Screen shake on legendary/mythic catches. Mythic shakes harder
   // and longer than legendary — the rest of the visual flair (glow,
@@ -3225,7 +3251,7 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                 ignores collision since it's pure UI overlay — pixel
                 under the NPC sprite can be a wall, counter, or
                 walkable floor and the bubble still draws on top. */}
-            {npcGreetingVisible && scene === "fishshop" && !sellOpen ? (
+            {npcMessage && scene === "fishshop" && !sellOpen ? (
               <div
                 ref={bubbleRef}
                 className="pointer-events-none absolute"
@@ -3269,9 +3295,7 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                     transformOrigin: "50% 100%",
                   }}
                 >
-                  어서오세요!
-                  <br />
-                  새벽빛 낚시상점입니다.
+                  {npcMessage}
                   {/* Tail outer (border colour) — bigger triangle
                       sits below the bubble pointing down. */}
                   <div
