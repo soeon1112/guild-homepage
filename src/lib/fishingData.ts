@@ -28,8 +28,16 @@ export const MAP_HEIGHT = 336;
 // `clothes/basic.png` is just the shirt — pants and shoes are
 // independent sheets in the same folder, and a complete outfit needs
 // all three. Hair is a separate folder with one sheet per hairstyle.
+//
+// Collision and front-mask are authored as paint masks on top of the
+// map so non-rectangular boundaries (curved shorelines, building
+// silhouettes, eaves) are pixel-precise without listing dozens of
+// rectangles. See `COLLISION_RED_*` thresholds below for the color
+// gates that interpret those mask images at runtime.
 export const ASSETS = {
   background: encodeURI("/images/fishing/배경.png"),
+  mapFront: encodeURI("/images/fishing/배경_front.png"),
+  collision: encodeURI("/images/fishing/collision.png"),
   charBase: encodeURI("/images/fishing/Character assets/characters/char1.png"),
   eyes: encodeURI("/images/fishing/Character assets/eyes/eyes.png"),
   shirt: encodeURI("/images/fishing/Character assets/clothes/basic.png"),
@@ -38,6 +46,20 @@ export const ASSETS = {
   hair: encodeURI("/images/fishing/Character assets/hair/wavy.png"),
   shadow: encodeURI("/images/fishing/Character assets/shadow.png"),
 };
+
+// Color gates for the collision mask. Anti-aliased edges in the PNG
+// land at intermediate values, so we keep the thresholds permissive.
+//
+// Red  → unwalkable (water, walls, trunks, etc.)
+// Green → walkable but the player is occluded by 배경_front.png in
+//         that region (canopy, roof eaves, parasol tops, …). The
+//         green is informational for game logic; the front layer
+//         renders on top of the player every frame regardless.
+// Anything else (white, fully transparent) → freely walkable.
+export const COLLISION_RED_R_MIN = 200;
+export const COLLISION_RED_GB_MAX = 100;
+export const COLLISION_GREEN_RB_MAX = 100;
+export const COLLISION_GREEN_G_MIN = 200;
 
 // Sprite sheet: 256×1568, 32×32 cells, 8 cols × 49 rows. Each color
 // variant of eyes/clothes is a 256-wide block laid horizontally
@@ -92,54 +114,8 @@ export const CHAR_BBOX_HEIGHT = 6;
 export const SPAWN_X = 168;
 export const SPAWN_Y = 184;
 
-export type Rect = { x: number; y: number; w: number; h: number };
-
-// Unwalkable rects in map px (1x coordinates — the 2x render scale is
-// purely visual; collision math stays in native asset units). Each
-// rect was eyeballed off the 336×336 background with a 16-px grid
-// overlay, so most footprints are tile-aligned ±a few px.
-//
-// Two intentional walkable channels cut through the sea on the right:
-// the left dock (x≈200..232) and the right dock (x≈264..296), both
-// passable from y=184 (sand) down to y=272 (deep-water boundary).
-export const UNWALKABLE_RECTS: Rect[] = [
-  // ── Top edge: decorative grass strip with flowers ──
-  { x: 0, y: 0, w: 336, h: 24 },
-
-  // ── Standalone trees / flowers near the top edge ──
-  { x: 216, y: 0, w: 24, h: 40 },     // small tree right of fish-shop fence
-  { x: 264, y: 0, w: 24, h: 24 },     // red rose tuft
-  { x: 304, y: 8, w: 24, h: 32 },     // purple flower bush
-
-  // ── Building compounds (fence + structure + interior decor) ──
-  // Blue-roof house: fence runs y=64..168, x=16..160.
-  { x: 16, y: 64, w: 144, h: 104 },
-  // Yellow-roof fish shop: fence runs y=40..168, x=176..320.
-  { x: 176, y: 40, w: 144, h: 128 },
-
-  // ── Palm trees ──
-  { x: 128, y: 160, w: 24, h: 40 },   // bottom-left palm (between house and beach)
-  { x: 296, y: 128, w: 32, h: 40 },   // bottom-right palm (under fish shop)
-
-  // ── Beach decorations (BL quadrant) ──
-  { x: 8,  y: 192, w: 24, h: 56 },    // green/white parasol + chair
-  { x: 40, y: 192, w: 32, h: 56 },    // yellow parasol + chair
-  { x: 104, y: 216, w: 56, h: 48 },   // sandcastle + adjacent table
-
-  // ── Misc small objects on sand ──
-  { x: 176, y: 192, w: 16, h: 16 },   // basket near BR coast
-  { x: 304, y: 168, w: 16, h: 24 },   // dark barrel near right palm
-  { x: 24,  y: 304, w: 16, h: 16 },   // seagull at lower-left
-
-  // ── Sea (water) — multiple rects with dock channels left open ──
-  // BL bay where the coast curves inward — height bumped to 40 so it
-  // meets the deep-water rect at y=272 (avoids a 1-tile water seam
-  // the player could otherwise stand on).
-  { x: 80, y: 232, w: 120, h: 40 },
-  // BR water around the docks (channels at x=200..232 and x=264..296)
-  { x: 168, y: 216, w: 32, h: 56 },   // left of left dock
-  { x: 232, y: 216, w: 32, h: 56 },   // between docks
-  { x: 296, y: 216, w: 40, h: 56 },   // right of right dock
-  // Deep water — covers everything south of the dock reach
-  { x: 0, y: 272, w: 336, h: 64 },
-];
+// Collision is now sampled from collision.png pixel-by-pixel — see
+// FishingGame.tsx for the runtime ImageData lookup. The hand-painted
+// rectangle list previously here was removed because the mask gives
+// pixel-precise boundaries that match the curved shorelines and
+// irregular building silhouettes in the map art.

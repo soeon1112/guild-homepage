@@ -16,6 +16,8 @@ import {
   ASSETS,
   CHAR_BBOX_HALF_W,
   CHAR_BBOX_HEIGHT,
+  COLLISION_RED_GB_MAX,
+  COLLISION_RED_R_MIN,
   DEFAULT_EYES_COLOR,
   DEFAULT_HAIR_COLOR,
   DEFAULT_PANTS_COLOR,
@@ -27,20 +29,20 @@ import {
   SPAWN_X,
   SPAWN_Y,
   SPRITE_CELL,
-  UNWALKABLE_RECTS,
   VARIANT_WIDTH,
   VIEWPORT,
   WALK_FRAMES,
   WALK_FRAME_MS,
   WALK_ROWS,
   type Direction,
-  type Rect,
 } from "@/src/lib/fishingData";
 
 type Props = { open: boolean; onClose: () => void };
 
-type LoadedImages = {
+type LoadedAssets = {
   map: HTMLImageElement;
+  mapFront: HTMLImageElement;
+  collision: ImageData;
   char: HTMLImageElement;
   eyes: HTMLImageElement;
   shirt: HTMLImageElement;
@@ -50,30 +52,43 @@ type LoadedImages = {
   shadow: HTMLImageElement;
 };
 
-function rectsOverlap(
-  ax: number,
-  ay: number,
-  aw: number,
-  ah: number,
-  r: Rect,
-): boolean {
+// Collision lookup. Out-of-bounds reads block (so the player can't
+// leave the map even if they squeeze along an edge).
+function isBlockedPixel(data: ImageData, x: number, y: number): boolean {
+  const ix = x | 0;
+  const iy = y | 0;
+  if (ix < 0 || iy < 0 || ix >= data.width || iy >= data.height) return true;
+  const i = (iy * data.width + ix) * 4;
+  const r = data.data[i];
+  const g = data.data[i + 1];
+  const b = data.data[i + 2];
+  const a = data.data[i + 3];
   return (
-    ax + aw > r.x &&
-    ax < r.x + r.w &&
-    ay + ah > r.y &&
-    ay < r.y + r.h
+    a > 0 &&
+    r >= COLLISION_RED_R_MIN &&
+    g <= COLLISION_RED_GB_MAX &&
+    b <= COLLISION_RED_GB_MAX
   );
 }
 
-function collidesAt(footX: number, footY: number): boolean {
+// Sample the four corners of the foot bbox. One pixel per corner is
+// enough since the painted mask is conservative on edges (anti-alias
+// pixels read as red because of permissive thresholds).
+function collidesAt(
+  footX: number,
+  footY: number,
+  collision: ImageData,
+): boolean {
   const bx = footX - CHAR_BBOX_HALF_W;
   const by = footY - CHAR_BBOX_HEIGHT;
   const bw = CHAR_BBOX_HALF_W * 2;
   const bh = CHAR_BBOX_HEIGHT;
-  for (const r of UNWALKABLE_RECTS) {
-    if (rectsOverlap(bx, by, bw, bh, r)) return true;
-  }
-  return false;
+  return (
+    isBlockedPixel(collision, bx, by) ||
+    isBlockedPixel(collision, bx + bw, by) ||
+    isBlockedPixel(collision, bx, by + bh) ||
+    isBlockedPixel(collision, bx + bw, by + bh)
+  );
 }
 
 // ── Korean keyboard layout: ㅈ/ㄴ/ㅁ/ㅇ map to W/S/A/D when 한영 is on.
@@ -118,11 +133,10 @@ export default function FishingGame({ open, onClose }: Props) {
     dx: 0,
     dy: 0,
   });
-  // `images` lives in state (not a ref) so we re-render once assets
+  // `assets` lives in state (not a ref) so we re-render once assets
   // resolve. setState only fires inside the async .then() callback,
   // which sidesteps react-hooks/set-state-in-effect.
-  const [images, setImages] = useState<LoadedImages | null>(null);
-  const loaded = images !== null;
+  const [assets, setAssets] = useState<LoadedAssets | null>(null);
   // Joystick visual state mirrored into React for the DOM overlay.
   // Updates only on pointer events (not 60fps), so React isn't thrashed.
   // dx/dy here are knob offset in pixels relative to the static base.
@@ -151,8 +165,10 @@ export default function FishingGame({ open, onClose }: Props) {
   }, [open]);
 
   // Asset loader — runs each time the panel opens. The browser cache
-  // makes subsequent opens cheap; we keep the previous `images` in
-  // state during reload so the canvas doesn't flash empty.
+  // makes subsequent opens cheap; we keep the previous assets in
+  // state during reload so the canvas doesn't flash empty. The
+  // collision PNG is rasterised into ImageData here once so the game
+  // loop can do O(1) pixel lookups instead of re-decoding per frame.
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
@@ -163,8 +179,20 @@ export default function FishingGame({ open, onClose }: Props) {
         img.onerror = () => reject(new Error(`Failed: ${src}`));
         img.src = src;
       });
+    const loadCollision = async (src: string): Promise<ImageData> => {
+      const img = await load(src);
+      const c = document.createElement("canvas");
+      c.width = img.width;
+      c.height = img.height;
+      const cx = c.getContext("2d");
+      if (!cx) throw new Error("collision: 2d context unavailable");
+      cx.drawImage(img, 0, 0);
+      return cx.getImageData(0, 0, img.width, img.height);
+    };
     Promise.all([
       load(ASSETS.background),
+      load(ASSETS.mapFront),
+      loadCollision(ASSETS.collision),
       load(ASSETS.charBase),
       load(ASSETS.eyes),
       load(ASSETS.shirt),
@@ -173,9 +201,9 @@ export default function FishingGame({ open, onClose }: Props) {
       load(ASSETS.hair),
       load(ASSETS.shadow),
     ])
-      .then(([map, char, eyes, shirt, pants, shoes, hair, shadow]) => {
+      .then(([map, mapFront, collision, char, eyes, shirt, pants, shoes, hair, shadow]) => {
         if (cancelled) return;
-        setImages({ map, char, eyes, shirt, pants, shoes, hair, shadow });
+        setAssets({ map, mapFront, collision, char, eyes, shirt, pants, shoes, hair, shadow });
       })
       .catch((err) => {
         if (!cancelled) console.error("[fishing] asset load failed", err);
@@ -271,8 +299,9 @@ export default function FishingGame({ open, onClose }: Props) {
   // and dt is clamped to 50ms so a tab-switch pause doesn't teleport
   // the character through walls when we resume.
   useEffect(() => {
-    if (!open || !images) return;
-    const imgs = images;
+    if (!open || !assets) return;
+    const imgs = assets;
+    const collision = assets.collision;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -320,11 +349,11 @@ export default function FishingGame({ open, onClose }: Props) {
         // walls instead of getting stuck on a corner.
         if (dx !== 0) {
           const tryX = clamp(s.x + dx, 0, MAP_WIDTH);
-          if (!collidesAt(tryX, s.y)) s.x = tryX;
+          if (!collidesAt(tryX, s.y, collision)) s.x = tryX;
         }
         if (dy !== 0) {
           const tryY = clamp(s.y + dy, 0, MAP_HEIGHT);
-          if (!collidesAt(s.x, tryY)) s.y = tryY;
+          if (!collidesAt(s.x, tryY, collision)) s.y = tryY;
         }
         // Direction follows the dominant axis. Vertical wins ties so a
         // pure-down keypress doesn't accidentally show a side facing.
@@ -417,12 +446,18 @@ export default function FishingGame({ open, onClose }: Props) {
       drawLayer(imgs.shoes, DEFAULT_SHOES_COLOR);
       drawLayer(imgs.hair, DEFAULT_HAIR_COLOR);
 
+      // Front layer — drawn last so any non-transparent pixel of
+      // 배경_front.png covers the player at that location, giving
+      // the depth illusion when walking behind tree canopies, roof
+      // eaves, parasol tops, etc.
+      ctx.drawImage(imgs.mapFront, -camX, -camY);
+
       ctx.restore();
     };
 
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
-  }, [open, images]);
+  }, [open, assets]);
 
   return (
     <AnimatePresence>
@@ -484,7 +519,7 @@ export default function FishingGame({ open, onClose }: Props) {
                 height: VIEWPORT,
               }}
             />
-            {!loaded ? (
+            {!assets ? (
               <div className="absolute inset-0 flex items-center justify-center text-stardust text-[12px]">
                 불러오는 중…
               </div>
