@@ -1226,6 +1226,12 @@ export default function FishingGame({ open, onClose }: Props) {
       }
       if (s.mode === "fishingFakeBite") {
         s.subT += dt * 1000;
+        // Keep the fish-shadow flipbook animating during fake bites.
+        s.shadowAcc += dt * 1000;
+        while (s.shadowAcc >= FISH_SHADOW_FRAME_MS) {
+          s.shadowAcc -= FISH_SHADOW_FRAME_MS;
+          s.shadowFrame = (s.shadowFrame + 1) % FISH_SHADOW_FRAMES;
+        }
         if (s.subT >= FISH_FAKE_BITE_DURATION_MS) {
           s.mode = "fishingWait";
           s.subT = 0;
@@ -1235,6 +1241,12 @@ export default function FishingGame({ open, onClose }: Props) {
       }
       if (s.mode === "fishingBite") {
         s.subT += dt * 1000;
+        // Keep the fish-shadow flipbook animating while the gauge is up.
+        s.shadowAcc += dt * 1000;
+        while (s.shadowAcc >= FISH_SHADOW_FRAME_MS) {
+          s.shadowAcc -= FISH_SHADOW_FRAME_MS;
+          s.shadowFrame = (s.shadowFrame + 1) % FISH_SHADOW_FRAMES;
+        }
         // Animate the gauge marker. Speed is the base bar-widths
         // per second, modulated by a slow sin term so the marker
         // smoothly eases in and out rather than snapping between

@@ -240,11 +240,16 @@ export const FISH_TEXT_CAUGHT = "물고기를 잡았다!";
 // the marker is over the green success zone catches the fish, any
 // other press (or 3 round trips of inactivity) silently retracts.
 
-export const GAUGE_WIDTH = 184;       // px (~60% of 306 viewport)
+// Sized to slot horizontally between the joystick dock (left, ends
+// at x≈86) and the action button (right, starts at x≈239) — that
+// leaves ~150 px of clear space, so a 130 px bar lands centered
+// with comfortable margins on both sides.
+export const GAUGE_WIDTH = 130;       // px
 export const GAUGE_HEIGHT = 16;       // px (Bar01a 8 px × 2 scale)
-// Lift the gauge well above the bottom-right action button so the
-// sprite + marker don't visually collide with it.
-export const GAUGE_BOTTOM_OFFSET = 90; // px from canvas bottom
+// Sit near the bottom but a hair above it so the bar visually sits
+// "between" the joystick and the action button instead of running
+// flush with the canvas edge.
+export const GAUGE_BOTTOM_OFFSET = 36; // px from canvas bottom
 // 3 round trips = 6 edge bounces (left↔right counted on each hit).
 export const GAUGE_MAX_EDGE_HITS = 6;
 
