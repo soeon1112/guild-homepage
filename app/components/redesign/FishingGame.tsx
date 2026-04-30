@@ -2569,6 +2569,34 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                 레벨 업! Lv.{levelUpBanner}
               </motion.div>
             ) : null}
+
+            {/* Inventory / info / ranking panel — rendered inside
+                the game pane (absolute, not fixed) so it floats
+                inside the canvas viewport instead of overlaying the
+                whole site. AnimatePresence handles fade in/out. */}
+            <AnimatePresence>
+              {panelOpen ? (
+                <InventoryPanel
+                  key="inv-panel"
+                  nickname={nickname}
+                  inventory={inventory}
+                  totalExp={totalExp}
+                  totalCatches={totalCatches}
+                  totalStarlight={totalStarlight}
+                  tab={panelTab}
+                  onTab={setPanelTab}
+                  invPage={invPage}
+                  setInvPage={setInvPage}
+                  invSelected={invSelected}
+                  setInvSelected={setInvSelected}
+                  assets={assets}
+                  onClose={() => {
+                    setPanelOpen(false);
+                    setInvSelected(null);
+                  }}
+                />
+              ) : null}
+            </AnimatePresence>
           </motion.div>
 
           <div
@@ -2582,31 +2610,6 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
         </motion.div>
       ) : null}
 
-      {/* Inventory / info / ranking modal — fixed-position so it
-          isn't bounded by the 306×306 game canvas. Rendered as a
-          sibling inside the same AnimatePresence so it can fade
-          alongside the game when the parent closes. */}
-      {open && panelOpen ? (
-        <InventoryPanel
-          key="inv-panel"
-          nickname={nickname}
-          inventory={inventory}
-          totalExp={totalExp}
-          totalCatches={totalCatches}
-          totalStarlight={totalStarlight}
-          tab={panelTab}
-          onTab={setPanelTab}
-          invPage={invPage}
-          setInvPage={setInvPage}
-          invSelected={invSelected}
-          setInvSelected={setInvSelected}
-          assets={assets}
-          onClose={() => {
-            setPanelOpen(false);
-            setInvSelected(null);
-          }}
-        />
-      ) : null}
     </AnimatePresence>
   );
 }
@@ -3069,20 +3072,35 @@ function Sparkles() {
 // 306×306 game canvas. Three tab content blocks share the same
 // Frame9Slice container; tabs are bookmark-shaped FrameMarker sprites
 // sitting just above the panel top edge.
-const PANEL_WIDTH = 320;
-const PANEL_HEIGHT = 420;
+// Panel sized to fit inside the 306×306 game canvas. Tabs at native
+// (1×) scale and slots at 1.25× are downscaled compromises so the
+// 4×5 = 20-slot grid + tabs all fit the viewport at once. Native
+// scale on tabs avoids fractional rendering on the sprite that
+// matters most for tab readability; slots take the fractional hit
+// since each is small enough that nearest-neighbor unevenness is
+// barely perceptible.
+const PANEL_WIDTH = 280;
+const PANEL_HEIGHT = 288;
 const PANEL_FRAME_CAP = 4;
 const PANEL_FRAME_SCALE = 2;
 const PANEL_BORDER = PANEL_FRAME_CAP * PANEL_FRAME_SCALE;
-const SLOT_DISPLAY = 64;        // 32×32 source × 2×
-const SLOT_GAP = 0;             // slots touch — slot frame already has its own border
+const SLOT_DISPLAY = 40;        // 32×32 source × 1.25×
+const SLOT_GAP = 0;
 const SLOTS_PER_PAGE = 20;      // 4 cols × 5 rows
 const SLOT_COLS = 4;
 const SLOT_ROWS = 5;
-const TAB_W = 96;               // 64 source × 1.5×
-const TAB_H = 48;               // 32 source × 1.5×
+const TAB_W = 64;               // 64×32 source at 1×
+const TAB_H = 32;
 const TAB_CAP = 4;
-const TAB_SCALE = 1.5;
+const TAB_SCALE = 1;
+// How far the active tab sticks up above the panel top edge. The
+// remaining (TAB_H - TAB_VISIBLE) px overlap the panel's top edge —
+// active tab paints over (zIndex 3), inactive tabs tuck behind
+// (zIndex 1) so the active tab visually "connects" to the panel.
+const TAB_VISIBLE = 12;
+// Where the panel sits inside the inner game pane (306×306).
+const PANEL_LEFT = (VIEWPORT - PANEL_WIDTH) / 2;
+const PANEL_TOP = 18;
 
 type PanelTab = "inventory" | "info" | "ranking";
 
@@ -3121,29 +3139,44 @@ function InventoryPanel({
     { id: "ranking", label: "랭킹" },
   ];
   return (
+    // Backdrop fills the inner game pane (absolute, not fixed) so the
+    // panel lives inside the canvas viewport instead of overlaying
+    // the whole screen.
     <motion.div
       key="inv-panel-root"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.18 }}
-      className="pointer-events-none fixed inset-0 z-[300] flex items-center justify-center"
+      className="pointer-events-auto absolute inset-0 z-[20]"
       style={{ background: "rgba(11,8,33,0.55)" }}
+      onPointerDown={(e) => {
+        // Tap on the dim backdrop closes the panel; tapping inside
+        // the panel content stops propagation so we don't catch it.
+        e.stopPropagation();
+        onClose();
+      }}
     >
       <motion.div
-        initial={{ scale: 0.9, y: 18 }}
+        initial={{ scale: 0.9, y: 12 }}
         animate={{ scale: 1, y: 0 }}
-        exit={{ scale: 0.9, y: 18 }}
+        exit={{ scale: 0.9, y: 12 }}
         transition={{ duration: 0.22, ease: "easeOut" }}
-        className="pointer-events-auto relative"
-        style={{ width: PANEL_WIDTH, height: PANEL_HEIGHT }}
+        className="pointer-events-auto absolute"
+        style={{
+          width: PANEL_WIDTH,
+          height: PANEL_HEIGHT,
+          left: PANEL_LEFT,
+          top: PANEL_TOP,
+        }}
+        onPointerDown={(e) => e.stopPropagation()}
       >
-        {/* Tab bookmarks above the frame top edge. Active tab is
-            slightly raised + full brightness; inactive tabs sit
-            lower with reduced brightness/saturation. */}
+        {/* Tab bookmarks above the frame top edge. The selected tab
+            sits HIGHER (zIndex 3) so it visually connects to the
+            panel; inactive tabs slide BELOW (zIndex 1) and dim. */}
         <div
           className="absolute left-0 right-0 flex justify-center"
-          style={{ top: -(TAB_H - 6), gap: 2, zIndex: 2 }}
+          style={{ top: -(TAB_H - TAB_VISIBLE), gap: 2 }}
         >
           {tabs.map((t) => {
             const active = tab === t.id;
@@ -3165,11 +3198,15 @@ function InventoryPanel({
                   padding: 0,
                   border: "none",
                   background: "transparent",
-                  transform: active ? "translateY(-3px)" : "translateY(0px)",
-                  transition: "transform 120ms ease",
+                  // Active tab pops UP (negative translate) and sits
+                  // above the panel border; inactive tabs sink down
+                  // and tuck behind, dimmed.
+                  transform: active ? "translateY(-2px)" : "translateY(4px)",
+                  transition: "transform 140ms ease",
                   filter: active
                     ? "none"
-                    : "brightness(0.72) saturate(0.7)",
+                    : "brightness(0.6) saturate(0.55)",
+                  zIndex: active ? 3 : 1,
                 }}
               >
                 <Frame9Slice
@@ -3195,6 +3232,44 @@ function InventoryPanel({
           })}
         </div>
 
+        {/* Close button — sits OUTSIDE the panel, hanging off the
+            top-right corner. Offsets are smaller than the button
+            radius so part of it overlaps the frame border (the
+            "걸치는 느낌"). Stays clear of the slot grid below. */}
+        <button
+          type="button"
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
+          aria-label="닫기"
+          className="absolute flex items-center justify-center transition-transform active:scale-90"
+          style={{
+            top: -10,
+            right: -10,
+            width: 30,
+            height: 30,
+            padding: 0,
+            border: "none",
+            background: "transparent",
+            cursor: "pointer",
+            zIndex: 4,
+          }}
+        >
+          <img
+            src={UI_ICON_CROSS}
+            alt=""
+            draggable={false}
+            style={{
+              imageRendering: "pixelated",
+              width: 30,
+              height: 30,
+              pointerEvents: "none",
+              filter: "drop-shadow(0 1px 2px rgba(11,8,33,0.55))",
+            }}
+          />
+        </button>
+
         <Frame9Slice
           src={UI_POPUP_FRAME}
           cap={PANEL_FRAME_CAP}
@@ -3202,54 +3277,20 @@ function InventoryPanel({
           width={PANEL_WIDTH}
           height={PANEL_HEIGHT}
           style={{
-            paddingTop: PANEL_BORDER + 6,
-            paddingBottom: PANEL_BORDER + 6,
-            paddingInline: PANEL_BORDER + 6,
+            // paddingTop accounts for the (TAB_H - TAB_VISIBLE) px of
+            // tab visual that overlaps the panel top, plus a small
+            // breathing gap, so the slot grid never sits under a tab.
+            paddingTop: TAB_H - TAB_VISIBLE + 4,
+            paddingBottom: PANEL_BORDER + 4,
+            paddingInline: PANEL_BORDER + 4,
             boxSizing: "border-box",
+            // Panel itself sits below the active tab in z so the
+            // tab visually connects to it.
+            zIndex: 2,
           }}
         >
-          {/* Close button — top-right corner of the panel. No
-              backing rectangle: the cross icon is its own visual.
-              :active pseudo-class scales the whole button (img
-              inside rides along) for the press feedback. */}
-          <button
-            type="button"
-            onPointerDown={(e) => {
-              e.stopPropagation();
-              onClose();
-            }}
-            aria-label="닫기"
-            className="absolute flex items-center justify-center transition-transform active:scale-90"
-            style={{
-              top: PANEL_BORDER + 4,
-              right: PANEL_BORDER + 4,
-              width: 30,
-              height: 30,
-              padding: 0,
-              border: "none",
-              background: "transparent",
-              cursor: "pointer",
-              zIndex: 3,
-            }}
-          >
-            <img
-              src={UI_ICON_CROSS}
-              alt=""
-              draggable={false}
-              style={{
-                imageRendering: "pixelated",
-                width: 30,
-                height: 30,
-                pointerEvents: "none",
-              }}
-            />
-          </button>
-
           {/* Tab content */}
-          <div
-            className="flex h-full w-full flex-col items-center"
-            style={{ paddingTop: 20 }}
-          >
+          <div className="flex h-full w-full flex-col items-center">
             {tab === "inventory" ? (
               <InventoryContent
                 inventory={inventory}
@@ -3572,7 +3613,9 @@ function SlotSprite({
   ref_: ItemRef;
   small?: boolean;
 }) {
-  const display = small ? 24 : 48;
+  // Default sprite display fits comfortably inside a SLOT_DISPLAY-px
+  // slot frame (slot has its own 4-px border + visual padding).
+  const display = small ? 24 : 32;
   const isFish = ref_.kind === "fish";
   const sheetUrl = isFish
     ? ASSETS_FISH_CATALOG.fishAll
