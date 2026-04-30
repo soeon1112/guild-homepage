@@ -15,6 +15,11 @@
 // Optional flags:
 //   --cred=/path/to/serviceAccount.json   override credentials path
 //   --dry-run                              list affected users, no writes
+//   --clear-earned-stars                   wipe `earnedStars` instead of
+//                                          `character` (use after the
+//                                          buggy seed shipped values
+//                                          from totalStars and corrupted
+//                                          the income-only counter).
 //
 // Requires firebase-admin. Install transiently if needed:
 //   npm install --no-save firebase-admin
@@ -36,6 +41,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
 const credArg = args.find((a) => a.startsWith("--cred="));
 const dryRun = args.includes("--dry-run");
+const clearEarned = args.includes("--clear-earned-stars");
 
 function resolveCredentials() {
   if (credArg) return credArg.slice("--cred=".length);
@@ -102,19 +108,38 @@ async function main() {
         continue;
       }
       const data = fishingSnap.data() || {};
-      if (data.character == null) {
-        noCharacterField++;
-        continue;
-      }
-      if (dryRun) {
-        clearedNicknames.push(nickname);
+      // Decide what update to apply based on flags. --clear-earned-stars
+      // wipes the earnedStars field (leaves character intact); the
+      // default mode wipes the character field.
+      if (clearEarned) {
+        if (typeof data.earnedStars !== "number") {
+          noCharacterField++; // counter reused — "no field to clear"
+          continue;
+        }
+        if (dryRun) {
+          clearedNicknames.push(`${nickname}(earnedStars=${data.earnedStars})`);
+          cleared++;
+          continue;
+        }
+        await fishingRef.update({ earnedStars: FieldValue.delete() });
         cleared++;
-        continue;
+        clearedNicknames.push(nickname);
+        console.log(`[reset] cleared earnedStars for: ${nickname}`);
+      } else {
+        if (data.character == null) {
+          noCharacterField++;
+          continue;
+        }
+        if (dryRun) {
+          clearedNicknames.push(nickname);
+          cleared++;
+          continue;
+        }
+        await fishingRef.update({ character: FieldValue.delete() });
+        cleared++;
+        clearedNicknames.push(nickname);
+        console.log(`[reset] cleared character for: ${nickname}`);
       }
-      await fishingRef.update({ character: FieldValue.delete() });
-      cleared++;
-      clearedNicknames.push(nickname);
-      console.log(`[reset] cleared character for: ${nickname}`);
     } catch (err) {
       errors++;
       console.error(`[reset] failed for ${nickname}:`, err.message);
