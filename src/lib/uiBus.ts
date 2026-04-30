@@ -32,3 +32,35 @@ export function useOpenPanel(): FloatingPanel {
   }, []);
   return v;
 }
+
+// ── Chat input focus signal ──
+// BottomNav already fades out when visualViewport.height shrinks, but on
+// some Android browsers and across timing edges that detection fires
+// late, leaving the nav hovering over the chat panel as the keyboard
+// pushes both up the screen. FloatingChat now writes an explicit focus
+// flag so BottomNav can hide deterministically the moment the user taps
+// the chat input on a mobile device.
+let chatInputFocused = false;
+const focusSubs = new Set<() => void>();
+
+export function getChatInputFocused(): boolean {
+  return chatInputFocused;
+}
+
+export function setChatInputFocused(v: boolean): void {
+  if (chatInputFocused === v) return;
+  chatInputFocused = v;
+  focusSubs.forEach((fn) => fn());
+}
+
+export function useChatInputFocused(): boolean {
+  const [v, setV] = useState<boolean>(chatInputFocused);
+  useEffect(() => {
+    const fn = () => setV(chatInputFocused);
+    focusSubs.add(fn);
+    return () => {
+      focusSubs.delete(fn);
+    };
+  }, []);
+  return v;
+}

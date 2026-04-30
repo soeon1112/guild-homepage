@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useChatInputFocused } from "@/src/lib/uiBus";
 
 type NavItem = {
   id: string;
@@ -104,6 +105,17 @@ export function BottomNav() {
     };
   }, []);
 
+  // Belt + braces with the visualViewport check above. FloatingChat
+  // sets this true the moment the message input gains focus on a
+  // mobile-class device — useful when the keyboard is mid-animation
+  // and visualViewport hasn't shrunk past the 0.8 threshold yet, or
+  // when the browser keeps `interactive-widget=resizes-content` so
+  // window.innerHeight shrinks alongside the visual viewport and the
+  // ratio never crosses the threshold. The bus value is already
+  // gated on mobile inside FloatingChat, so PC never sees `true`.
+  const chatInputFocused = useChatInputFocused();
+  const hidden = keyboardOpen || chatInputFocused;
+
   const isActive = (item: NavItem) => {
     if (!pathname) return false;
     if (item.id === "notice") return pathname.startsWith("/notice");
@@ -121,12 +133,15 @@ export function BottomNav() {
       className="fixed inset-x-0 bottom-0 z-40 px-3 pb-3 pt-2"
       style={{
         // Hidden only on touch devices when the soft keyboard is
-        // detected. PC users always see the nav (the keyboardOpen
-        // state never flips to true on mouse devices — see effect
-        // above). pointer-events:none so a hidden nav can't catch
-        // taps that should reach the chat input behind it.
-        opacity: keyboardOpen ? 0 : 1,
-        pointerEvents: keyboardOpen ? "none" : "auto",
+        // detected (or when chat input focus reports the same on
+        // a mobile-class device — see hidden derivation above).
+        // PC users always see the nav: keyboardOpen never flips
+        // true on mouse devices, and chatInputFocused is gated on
+        // mobile inside FloatingChat. pointer-events:none so a
+        // hidden nav can't catch taps that should reach the chat
+        // input behind it.
+        opacity: hidden ? 0 : 1,
+        pointerEvents: hidden ? "none" : "auto",
         transition: "opacity 160ms ease",
       }}
     >

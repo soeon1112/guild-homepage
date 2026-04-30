@@ -22,7 +22,11 @@ import NicknameLink from "@/app/components/NicknameLink";
 import { CommentImageView } from "@/app/components/CommentImage";
 import { formatSmart } from "@/src/lib/formatSmart";
 import { handleEvent } from "@/src/lib/badgeCheck";
-import { getOpenPanel, setOpenPanel } from "@/src/lib/uiBus";
+import {
+  getOpenPanel,
+  setChatInputFocused,
+  setOpenPanel,
+} from "@/src/lib/uiBus";
 
 type ChatFileType = "image" | "gif" | "video";
 
@@ -190,6 +194,43 @@ export default function FloatingChat() {
   const [draft, setDraft] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [sending, setSending] = useState(false);
+  // Whether the message input currently holds focus AND the device is
+  // mobile-class. Drives two things:
+  //  1. The panel slides down to sit just above the keyboard top
+  //     (instead of leaving a 96px gap meant for the chat icon).
+  //  2. A bus signal (setChatInputFocused) tells BottomNav to hide
+  //     immediately, without waiting for visualViewport to shrink.
+  // PC users never satisfy `isMobile`, so neither effect fires there.
+  const [inputFocused, setInputFocused] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const update = () => {
+      const touch =
+        typeof window.matchMedia === "function" &&
+        window.matchMedia("(pointer: coarse)").matches;
+      const narrow = window.innerWidth < 768;
+      setIsMobile(touch || narrow);
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+  // Mirror inputFocused into the shared bus so BottomNav (any sibling
+  // tree) can subscribe without prop-drilling. Only emit `true` on
+  // mobile — desktop focus must never hide the nav.
+  useEffect(() => {
+    setChatInputFocused(inputFocused && isMobile);
+    return () => setChatInputFocused(false);
+  }, [inputFocused, isMobile]);
+  // Belt-and-braces: when the panel closes, drop the focus signal even
+  // if the input's onBlur fires after the unmount path.
+  useEffect(() => {
+    if (!open) {
+      setInputFocused(false);
+      setChatInputFocused(false);
+    }
+  }, [open]);
   // null = subscription hasn't delivered yet — keeps the badge dark while
   // Firestore loads on cold start instead of flashing every historical
   // message as unread for a few hundred ms.
@@ -613,10 +654,24 @@ export default function FloatingChat() {
       <AnimatePresence>
         {open && (
           <motion.div
-            className="fixed right-4 bottom-24 z-[200] flex flex-col overflow-hidden rounded-2xl"
+            className="fixed right-4 z-[200] flex flex-col overflow-hidden rounded-2xl"
             style={{
               width: "min(380px, calc(100vw - 2rem))",
-              height: "min(500px, calc(100vh - 7rem))",
+              // When the mobile keyboard is up we drop the 96 px reserve
+              // for the chat icon (the icon is hidden behind the panel
+              // anyway) so the panel bottom sits just above the keyboard
+              // top. `dvh` adjusts for the keyboard so the panel can't
+              // overflow the visible area on small phones — using `vh`
+              // here let it run off the top of a small iPhone with the
+              // keyboard up. Stay on `vh` + 96 px in the default
+              // (no-keyboard) case so the panel keeps its existing
+              // gap above the BottomNav.
+              bottom: inputFocused && isMobile ? 8 : 96,
+              height:
+                inputFocused && isMobile
+                  ? "min(500px, calc(100dvh - 1rem))"
+                  : "min(500px, calc(100vh - 7rem))",
+              transition: "bottom 200ms ease, height 200ms ease",
               background: "rgba(26,15,61,0.94)",
               border: "1px solid rgba(216,150,200,0.3)",
               boxShadow:
@@ -783,6 +838,8 @@ export default function FloatingChat() {
                     ref={messageInputRef}
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
+                    onFocus={() => setInputFocused(true)}
+                    onBlur={() => setInputFocused(false)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.nativeEvent.isComposing) {
                         e.preventDefault();
