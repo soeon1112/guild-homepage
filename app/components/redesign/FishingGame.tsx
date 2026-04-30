@@ -14,6 +14,10 @@ import { X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ASSETS,
+  ASSETS_FISH,
+  BOBBER_DISTANCE,
+  BOBBER_FRAME_MS,
+  BOBBER_FRAMES,
   CHAR_BBOX_HALF_W,
   CHAR_BBOX_HEIGHT,
   COLLISION_BLUE_B_MIN,
@@ -28,6 +32,11 @@ import {
   DEFAULT_PANTS_COLOR,
   DEFAULT_SHIRT_COLOR,
   DEFAULT_SHOES_COLOR,
+  FISH_FRAMES,
+  FISH_PROBE_DISTANCES,
+  FISH_TIMINGS_LR,
+  FISH_TIMINGS_UD,
+  FISH_VARIANT_WIDTH,
   FISHSHOP_EXIT_SPAWN_X,
   FISHSHOP_EXIT_SPAWN_Y,
   FISHSHOP_EXIT_ZONE,
@@ -82,9 +91,20 @@ type LoadedAssets = {
   shoes: HTMLImageElement;
   hair: HTMLImageElement;
   shadow: HTMLImageElement;
+  // Fishing minigame sprites (separate sheets at 160×128 — 5 frames
+  // × 4 directions per color variant).
+  fishBase: HTMLImageElement;
+  fishEyes: HTMLImageElement;
+  fishShirt: HTMLImageElement;
+  fishPants: HTMLImageElement;
+  fishShoes: HTMLImageElement;
+  fishHair: HTMLImageElement;
+  fishRod: HTMLImageElement;
+  fishBobber: HTMLImageElement;
 };
 
 type Prompt = "blueDoor" | "yellowDoor" | "exit" | "npc" | null;
+type Mode = "walk" | "fishingCast" | "fishingWait";
 
 function pointInRect(x: number, y: number, r: Rect): boolean {
   return x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h;
@@ -294,6 +314,14 @@ export default function FishingGame({ open, onClose }: Props) {
     moving: false,
     frame: 0,
     frameAcc: 0,
+    // Fishing state machine. mode = "walk" outside the minigame;
+    // "fishingCast" plays the 5-frame cast; "fishingWait" locks the
+    // last cast frame and loops the bobber.
+    mode: "walk" as Mode,
+    fishFrame: 0,
+    fishFrameAcc: 0,
+    bobberFrame: 0,
+    bobberAcc: 0,
   });
   const keysRef = useRef({ up: false, down: false, left: false, right: false });
   const joyRef = useRef({
@@ -324,6 +352,9 @@ export default function FishingGame({ open, onClose }: Props) {
   const [prompt, setPrompt] = useState<Prompt>(null);
   const [npcDialog, setNpcDialog] = useState(false);
   const [yellowToast, setYellowToast] = useState(false);
+  const [mode, setMode] = useState<Mode>("walk");
+  const [canFish, setCanFish] = useState(false);
+  const canFishRef = useRef(false);
   // Joystick visual state mirrored into React for the DOM overlay.
   // Updates only on pointer events (not 60fps), so React isn't thrashed.
   // dx/dy here are knob offset in pixels relative to the static base.
@@ -353,12 +384,18 @@ export default function FishingGame({ open, onClose }: Props) {
       moving: false,
       frame: 0,
       frameAcc: 0,
+      mode: "walk",
+      fishFrame: 0,
+      fishFrameAcc: 0,
+      bobberFrame: 0,
+      bobberAcc: 0,
     };
     keysRef.current = { up: false, down: false, left: false, right: false };
     joyRef.current = { active: false, pointerId: -1, dx: 0, dy: 0 };
     sceneRef.current = "outdoor";
     promptRef.current = null;
     fadeRef.current = { active: false, t: 0, midDone: false, onMid: null };
+    canFishRef.current = false;
   }, [open]);
 
   // Asset loader — runs each time the panel opens. The browser cache
@@ -423,24 +460,22 @@ export default function FishingGame({ open, onClose }: Props) {
       load(ASSETS.shoes),
       load(ASSETS.hair),
       load(ASSETS.shadow),
+      load(ASSETS_FISH.base),
+      load(ASSETS_FISH.eyes),
+      load(ASSETS_FISH.shirt),
+      load(ASSETS_FISH.pants),
+      load(ASSETS_FISH.shoes),
+      load(ASSETS_FISH.hair),
+      load(ASSETS_FISH.rod),
+      load(ASSETS_FISH.bobber),
     ])
-      .then(([map, mapFront, collision, shopInterior, shopCollision, char, npcChar, eyes, shirt, pants, shoes, hair, shadow]) => {
-        if (cancelled) return;
-        // Yellow patch → NPC anchor + interaction zone. Fallback is
-        // a sensible default position if the marker is missing so
-        // the scene still renders during asset iteration.
-        const npc = scanYellowCentroid(shopCollision) ?? {
-          foot: { x: 80, y: 80 },
-          zone: { x: 64, y: 88, w: 32, h: 16 },
-        };
-        setAssets({
+      .then(
+        ([
           map,
           mapFront,
           collision,
           shopInterior,
           shopCollision,
-          npcFoot: npc.foot,
-          npcZone: npc.zone,
           char,
           npcChar,
           eyes,
@@ -449,8 +484,50 @@ export default function FishingGame({ open, onClose }: Props) {
           shoes,
           hair,
           shadow,
-        });
-      })
+          fishBase,
+          fishEyes,
+          fishShirt,
+          fishPants,
+          fishShoes,
+          fishHair,
+          fishRod,
+          fishBobber,
+        ]) => {
+          if (cancelled) return;
+          // Yellow patch → NPC anchor + interaction zone. Fallback is
+          // a sensible default position if the marker is missing so
+          // the scene still renders during asset iteration.
+          const npc = scanYellowCentroid(shopCollision) ?? {
+            foot: { x: 80, y: 80 },
+            zone: { x: 64, y: 88, w: 32, h: 16 },
+          };
+          setAssets({
+            map,
+            mapFront,
+            collision,
+            shopInterior,
+            shopCollision,
+            npcFoot: npc.foot,
+            npcZone: npc.zone,
+            char,
+            npcChar,
+            eyes,
+            shirt,
+            pants,
+            shoes,
+            hair,
+            shadow,
+            fishBase,
+            fishEyes,
+            fishShirt,
+            fishPants,
+            fishShoes,
+            fishHair,
+            fishRod,
+            fishBobber,
+          });
+        },
+      )
       .catch((err) => {
         if (!cancelled) console.error("[fishing] asset load failed", err);
       });
@@ -487,10 +564,18 @@ export default function FishingGame({ open, onClose }: Props) {
             moving: false,
             frame: 0,
             frameAcc: 0,
+            mode: "walk",
+            fishFrame: 0,
+            fishFrameAcc: 0,
+            bobberFrame: 0,
+            bobberAcc: 0,
           };
           promptRef.current = null;
+          canFishRef.current = false;
           setScene("fishshop");
           setPrompt(null);
+          setMode("walk");
+          setCanFish(false);
         });
       } else if (zone === "exit") {
         startTransition(() => {
@@ -502,10 +587,18 @@ export default function FishingGame({ open, onClose }: Props) {
             moving: false,
             frame: 0,
             frameAcc: 0,
+            mode: "walk",
+            fishFrame: 0,
+            fishFrameAcc: 0,
+            bobberFrame: 0,
+            bobberAcc: 0,
           };
           promptRef.current = null;
+          canFishRef.current = false;
           setScene("outdoor");
           setPrompt(null);
+          setMode("walk");
+          setCanFish(false);
         });
       } else if (zone === "yellowDoor") {
         setYellowToast(true);
@@ -525,6 +618,35 @@ export default function FishingGame({ open, onClose }: Props) {
     if (fadeRef.current.active) return;
     if (promptRef.current === "npc") {
       setNpcDialog(true);
+    }
+  }, [npcDialog]);
+
+  // Spacebar / 🎣 button. Starts a cast when the player is on the
+  // outdoor map, currently walking, and facing water within ~2
+  // tiles; otherwise (already fishing) it cancels back to walking.
+  const toggleFishing = useCallback(() => {
+    if (fadeRef.current.active || npcDialog) return;
+    if (sceneRef.current !== "outdoor") return;
+    const s = stateRef.current;
+    if (s.mode === "walk") {
+      if (!canFishRef.current) return;
+      s.mode = "fishingCast";
+      s.fishFrame = 0;
+      s.fishFrameAcc = 0;
+      s.bobberFrame = 0;
+      s.bobberAcc = 0;
+      // Cancel any movement input so the cast plays cleanly.
+      keysRef.current = { up: false, down: false, left: false, right: false };
+      joyRef.current = { active: false, pointerId: -1, dx: 0, dy: 0 };
+      setJoyView({ active: false, dx: 0, dy: 0 });
+      setMode("fishingCast");
+    } else {
+      s.mode = "walk";
+      s.fishFrame = 0;
+      s.fishFrameAcc = 0;
+      s.bobberFrame = 0;
+      s.bobberAcc = 0;
+      setMode("walk");
     }
   }, [npcDialog]);
 
@@ -548,9 +670,14 @@ export default function FishingGame({ open, onClose }: Props) {
       } else if (down && (e.key === "e" || e.key === "E" || e.key === "ㄷ")) {
         e.preventDefault();
         handleInteract();
+      } else if (down && (e.key === " " || e.code === "Space")) {
+        e.preventDefault();
+        toggleFishing();
       } else if (down && e.key === "Escape") {
         if (npcDialog) {
           setNpcDialog(false);
+        } else if (stateRef.current.mode !== "walk") {
+          toggleFishing();
         } else {
           onClose();
         }
@@ -564,7 +691,7 @@ export default function FishingGame({ open, onClose }: Props) {
       window.removeEventListener("keydown", kd);
       window.removeEventListener("keyup", ku);
     };
-  }, [open, onClose, handleInteract, npcDialog]);
+  }, [open, onClose, handleInteract, npcDialog, toggleFishing]);
 
   // Static-base virtual joystick. Pointer-down anywhere in the stage
   // captures the pointer; the input vector is computed from the
@@ -700,6 +827,44 @@ export default function FishingGame({ open, onClose }: Props) {
         return;
       }
 
+      // Fishing modes — movement, zone triggers, and the can-fish
+      // probe are all skipped while the player is casting/waiting.
+      if (s.mode === "fishingCast") {
+        const timings =
+          s.dir === "left" || s.dir === "right"
+            ? FISH_TIMINGS_LR
+            : FISH_TIMINGS_UD;
+        s.fishFrameAcc += dt * 1000;
+        // Walk forward through the cast frames using their per-step
+        // ms budgets. The very last frame holds open until cancel.
+        while (
+          s.fishFrame < FISH_FRAMES - 1 &&
+          s.fishFrameAcc >= timings[s.fishFrame]
+        ) {
+          s.fishFrameAcc -= timings[s.fishFrame];
+          s.fishFrame++;
+        }
+        if (
+          s.fishFrame === FISH_FRAMES - 1 &&
+          s.fishFrameAcc >= timings[FISH_FRAMES - 1]
+        ) {
+          s.mode = "fishingWait";
+          s.fishFrameAcc = 0;
+          s.bobberFrame = 0;
+          s.bobberAcc = 0;
+          setMode("fishingWait");
+        }
+        return;
+      }
+      if (s.mode === "fishingWait") {
+        s.bobberAcc += dt * 1000;
+        while (s.bobberAcc >= BOBBER_FRAME_MS) {
+          s.bobberAcc -= BOBBER_FRAME_MS;
+          s.bobberFrame = (s.bobberFrame + 1) % BOBBER_FRAMES;
+        }
+        return;
+      }
+
       let vx = 0;
       let vy = 0;
       if (k.up) vy -= 1;
@@ -768,6 +933,26 @@ export default function FishingGame({ open, onClose }: Props) {
           triggerZone(newZone);
         }
       }
+
+      // Can-fish probe: outdoor + walk mode only. Edge-triggered
+      // setState keeps React from re-rendering on every tick.
+      let nextCanFish = false;
+      if (currentScene === "outdoor") {
+        const dx = s.dir === "right" ? 1 : s.dir === "left" ? -1 : 0;
+        const dy = s.dir === "down" ? 1 : s.dir === "up" ? -1 : 0;
+        for (const dist of FISH_PROBE_DISTANCES) {
+          if (
+            isBlockedPixel(collision, s.x + dx * dist, s.y + dy * dist)
+          ) {
+            nextCanFish = true;
+            break;
+          }
+        }
+      }
+      if (nextCanFish !== canFishRef.current) {
+        canFishRef.current = nextCanFish;
+        setCanFish(nextCanFish);
+      }
     };
 
     // Modular character composite. Used for both the player and the
@@ -814,6 +999,97 @@ export default function FishingGame({ open, onClose }: Props) {
       layer(imgs.pants, colors.pants);
       layer(imgs.shoes, colors.shoes);
       layer(imgs.hair, colors.hair);
+    };
+
+    // Fishing-cast/wait composite. Mirrors drawCharacter but indexes
+    // the 160-px-wide fishing variants and overlays the rod sprite
+    // last so it sits on top of the "without" base body.
+    const drawFishingChar = (
+      footX: number,
+      footY: number,
+      camX: number,
+      camY: number,
+      frameCol: number,
+      dir: Direction,
+      colors: {
+        eyes: number;
+        shirt: number;
+        pants: number;
+        shoes: number;
+        hair: number;
+      },
+    ) => {
+      const drawX = Math.round(footX - SPRITE_CELL / 2 - camX);
+      const drawY = Math.round(footY + 4 - SPRITE_CELL - camY);
+      const sx = frameCol * SPRITE_CELL;
+      const sy = WALK_ROWS[dir] * SPRITE_CELL;
+      ctx.drawImage(
+        imgs.shadow,
+        Math.round(footX - 8 - camX),
+        Math.round(footY - 6 - camY),
+      );
+      ctx.drawImage(
+        imgs.fishBase,
+        sx, sy, SPRITE_CELL, SPRITE_CELL,
+        drawX, drawY, SPRITE_CELL, SPRITE_CELL,
+      );
+      const layer = (img: HTMLImageElement, c: number) => {
+        ctx.drawImage(
+          img,
+          c * FISH_VARIANT_WIDTH + sx, sy, SPRITE_CELL, SPRITE_CELL,
+          drawX, drawY, SPRITE_CELL, SPRITE_CELL,
+        );
+      };
+      layer(imgs.fishEyes, colors.eyes);
+      layer(imgs.fishShirt, colors.shirt);
+      layer(imgs.fishPants, colors.pants);
+      layer(imgs.fishShoes, colors.shoes);
+      layer(imgs.fishHair, colors.hair);
+      // Rod is single-color (no variant offset).
+      ctx.drawImage(
+        imgs.fishRod,
+        sx, sy, SPRITE_CELL, SPRITE_CELL,
+        drawX, drawY, SPRITE_CELL, SPRITE_CELL,
+      );
+    };
+
+    // Bobber + fishing line. The bobber lands BOBBER_DISTANCE pixels
+    // ahead of the player's foot in the facing direction; the line
+    // is a 1-px stroke from a "rod tip" approximation on the player
+    // sprite to the bobber's center.
+    const drawBobberAndLine = (
+      footX: number,
+      footY: number,
+      camX: number,
+      camY: number,
+      dir: Direction,
+      bobberFrame: number,
+    ) => {
+      const dx = dir === "right" ? 1 : dir === "left" ? -1 : 0;
+      const dy = dir === "down" ? 1 : dir === "up" ? -1 : 0;
+      const bobberCX = footX + dx * BOBBER_DISTANCE;
+      const bobberCY = footY + dy * BOBBER_DISTANCE - 4;
+      const bobberDrawX = Math.round(bobberCX - 16 - camX);
+      const bobberDrawY = Math.round(bobberCY - 16 - camY);
+      ctx.drawImage(
+        imgs.fishBobber,
+        bobberFrame * SPRITE_CELL, 0, SPRITE_CELL, SPRITE_CELL,
+        bobberDrawX, bobberDrawY, SPRITE_CELL, SPRITE_CELL,
+      );
+      // Approximate rod tip — slightly above and offset toward the
+      // facing direction. Good enough for phase 1; phase 2 can read
+      // exact tip coords from the rod sprite.
+      const tipX = footX + dx * 6 - camX;
+      const tipY = footY - 18 + dy * 4 - camY;
+      ctx.save();
+      ctx.globalAlpha = 0.85;
+      ctx.strokeStyle = "#f4efff";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(tipX, tipY);
+      ctx.lineTo(bobberCX - camX, bobberCY - 4 - camY);
+      ctx.stroke();
+      ctx.restore();
     };
 
     const render = (ctx: CanvasRenderingContext2D) => {
@@ -868,7 +1144,25 @@ export default function FishingGame({ open, onClose }: Props) {
 
       if (currentScene === "outdoor") {
         ctx.drawImage(imgs.map, -camX, -camY);
-        drawCharacter(imgs.char, s.x, s.y, camX, camY, s.frame, s.dir, playerColors);
+        if (s.mode === "walk") {
+          drawCharacter(
+            imgs.char,
+            s.x,
+            s.y,
+            camX,
+            camY,
+            s.frame,
+            s.dir,
+            playerColors,
+          );
+        } else {
+          // Fishing modes share the same per-direction 5-frame
+          // sheet; "fishingWait" just locks the last frame.
+          drawFishingChar(s.x, s.y, camX, camY, s.fishFrame, s.dir, playerColors);
+          if (s.mode === "fishingWait") {
+            drawBobberAndLine(s.x, s.y, camX, camY, s.dir, s.bobberFrame);
+          }
+        }
         // Front layer — drawn last so any non-transparent pixel of
         // 배경_front.png covers the player at that location, giving
         // the depth illusion when walking behind tree canopies, roof
@@ -1016,6 +1310,33 @@ export default function FishingGame({ open, onClose }: Props) {
               }}
             />
 
+            {/* Fishing toggle — visible whenever the player is on
+                the outdoor map facing water within ~2 tiles. Tapping
+                or pressing Space starts the cast; tapping again
+                cancels back to walking. */}
+            {scene === "outdoor" &&
+            (canFish || mode !== "walk") &&
+            !npcDialog &&
+            prompt !== "npc" ? (
+              <button
+                type="button"
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  toggleFishing();
+                }}
+                className="absolute right-3 top-3 flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold text-stardust transition-opacity hover:opacity-90"
+                style={{
+                  background: "rgba(26,15,61,0.85)",
+                  border: "1px solid rgba(216,150,200,0.55)",
+                  boxShadow: "0 0 12px rgba(255,229,196,0.30)",
+                }}
+                aria-label={mode === "walk" ? "낚시하기" : "낚시 취소"}
+              >
+                <span className="text-[14px] leading-none">🎣</span>
+                <span>{mode === "walk" ? "낚시" : "취소"}</span>
+              </button>
+            ) : null}
+
             {/* Interaction prompt. Door entry, indoor exit, and the
                 yellow shop's "준비중" toast all auto-fire on zone
                 entry; the only zone that still needs a manual button
@@ -1094,8 +1415,8 @@ export default function FishingGame({ open, onClose }: Props) {
             style={{ borderTop: "1px solid rgba(216,150,200,0.20)" }}
           >
             {scene === "outdoor"
-              ? "WASD / 방향키 · 입구 앞에서 E 또는 탭"
-              : "E로 가게 주인과 대화 · 출구에서 E로 나가기"}
+              ? "WASD / 방향키 · 바다 앞에서 Space 또는 🎣"
+              : "E로 가게 주인과 대화 · 출구로 걸어가면 자동 퇴장"}
           </div>
         </motion.div>
       ) : null}

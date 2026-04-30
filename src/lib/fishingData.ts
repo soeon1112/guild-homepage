@@ -184,3 +184,47 @@ export const NPC_HAIR_COLOR = 11;     // pink
 // scene switch happens at the midpoint so the player never sees a
 // flicker of the old scene during fade-in.
 export const SCENE_FADE_SECONDS = 0.3;
+
+// ── Fishing minigame phase 1 ──────────────────────────────────
+// Cast/wait state assets live under
+// /images/fishing/Character assets/separate/fish/. The "without"
+// base is the body without the rod baked in; layering
+// tool/fishingrod.png on top renders the held rod. Color variants
+// are 160-px wide blocks (vs 256-px for the walk sheet).
+export const ASSETS_FISH = {
+  base: encodeURI("/images/fishing/Character assets/separate/fish/without/char1_fish_without.png"),
+  eyes: encodeURI("/images/fishing/Character assets/separate/fish/eyes/eyes_fish.png"),
+  shirt: encodeURI("/images/fishing/Character assets/separate/fish/clothes/basic_fish.png"),
+  pants: encodeURI("/images/fishing/Character assets/separate/fish/clothes/pants_fish.png"),
+  shoes: encodeURI("/images/fishing/Character assets/separate/fish/clothes/shoes_fish.png"),
+  hair: encodeURI("/images/fishing/Character assets/separate/fish/hair/wavy_fish.png"),
+  rod: encodeURI("/images/fishing/Character assets/separate/fish/tool/fishingrod.png"),
+  bobber: encodeURI("/images/fishing/Character assets/separate/fish/tool/bobber.png"),
+};
+
+// Fishing sprite sheet: 5 frames × 4 directions in a 160×128 block;
+// each color variant is laid out horizontally at FISH_VARIANT_WIDTH.
+export const FISH_VARIANT_WIDTH = 160;
+export const FISH_FRAMES = 5;
+
+// Per-direction cast frame durations (ms) — copied verbatim from
+// Character assets/info.txt (FISHING L/R and FISHING U/D rows).
+export const FISH_TIMINGS_LR: readonly number[] = [100, 100, 250, 60, 100];
+export const FISH_TIMINGS_UD: readonly number[] = [100, 250, 60, 100, 100];
+
+// Bobber: a single-row 128×32 sheet, 4 frames at 32×32 each, looped
+// while the player waits for a bite.
+export const BOBBER_FRAMES = 4;
+export const BOBBER_FRAME_MS = 220;
+
+// How far in front of the player's feet the bobber lands, in map
+// pixels. Two tiles forward keeps the line visibly slack.
+export const BOBBER_DISTANCE = 32;
+
+// "Can I fish here?" probe: the player must be facing water within
+// roughly two tiles. We test the collision mask 16 px and 32 px
+// ahead of the foot anchor in the current facing direction; any
+// red pixel counts as water-or-something-blocking, which is a fine
+// proxy for "edge of the beach / dock" until phase 2 introduces a
+// dedicated water mask.
+export const FISH_PROBE_DISTANCES: readonly number[] = [16, 32];
