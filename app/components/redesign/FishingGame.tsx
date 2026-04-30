@@ -4267,14 +4267,6 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
               전송
             </button>
           </form>
-          <div
-            className="px-3 py-1.5 text-[10px] text-text-sub"
-            style={{ borderTop: "1px solid rgba(216,150,200,0.20)" }}
-          >
-            {scene === "outdoor"
-              ? "WASD / 방향키 · Space 또는 우하단 액션 버튼"
-              : "Space 또는 우하단 액션 버튼으로 대화 · 출구로 걸어가면 자동 퇴장"}
-          </div>
         </motion.div>
       ) : null}
 
