@@ -566,6 +566,23 @@ export default function FishingGame({ open, onClose }: Props) {
         img.onerror = () => reject(new Error(`Failed: ${src}`));
         img.src = src;
       });
+    // Optional assets — game still boots if these 404. Returns a
+    // 1×1 transparent placeholder on failure so the rest of the
+    // Promise.all batch resolves and setAssets fires.
+    const PLACEHOLDER_PNG =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYGD4DwABBAEAfbLI3wAAAABJRU5ErkJggg==";
+    const loadOptional = (src: string) =>
+      new Promise<HTMLImageElement>((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => {
+          console.warn("[fishing] optional asset missing:", src);
+          const ph = new Image();
+          ph.onload = () => resolve(ph);
+          ph.src = PLACEHOLDER_PNG;
+        };
+        img.src = src;
+      });
     const loadCollision = async (src: string): Promise<ImageData> => {
       const img = await load(src);
       const c = document.createElement("canvas");
@@ -636,9 +653,9 @@ export default function FishingGame({ open, onClose }: Props) {
       load(ASSETS_FISH.rod),
       load(ASSETS_FISH.bobber),
       load(ASSETS_FISH.fishShadow),
-      load(UI_GAUGE_BAR),
-      load(UI_GAUGE_FILL),
-      load(UI_GAUGE_MARKER),
+      loadOptional(UI_GAUGE_BAR),
+      loadOptional(UI_GAUGE_FILL),
+      loadOptional(UI_GAUGE_MARKER),
     ])
       .then(
         ([
