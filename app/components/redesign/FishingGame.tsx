@@ -4836,6 +4836,45 @@ function InventoryContent({
                   boxSizing: "border-box",
                 }}
               >
+                {/* Food popups dismiss via a top-right X corner so
+                    the bottom row can be a single dedicated 사용
+                    button. Fish/forage/trash keep the bottom check
+                    button as their dismiss control — see the conditional
+                    below. */}
+                {selectedRef.kind === "food" ? (
+                  <button
+                    type="button"
+                    onPointerDown={(e) => {
+                      e.stopPropagation();
+                      setSelected(null);
+                    }}
+                    aria-label="닫기"
+                    className="absolute flex items-center justify-center transition-transform active:scale-90"
+                    style={{
+                      top: 6,
+                      right: 6,
+                      width: 18,
+                      height: 18,
+                      padding: 0,
+                      border: "none",
+                      background: "transparent",
+                      cursor: "pointer",
+                      zIndex: 2,
+                    }}
+                  >
+                    <img
+                      src={UI_ICON_CROSS}
+                      alt=""
+                      draggable={false}
+                      style={{
+                        imageRendering: "pixelated",
+                        width: 18,
+                        height: 18,
+                        pointerEvents: "none",
+                      }}
+                    />
+                  </button>
+                ) : null}
                 {/* Vertical stack: sprite → name → grade → price →
                     count → check button. Mirrors the catch popup so
                     the two card styles read as the same component
@@ -4899,9 +4938,10 @@ function InventoryContent({
                 >
                   {selectedCount}개 보유
                 </div>
-                {/* Bottom button row. Food adds a 사용 button next
-                    to the close X — tapping it eats one stack.
-                    Non-food items just have the close button. */}
+                {/* Bottom button row. Food gets a single dedicated
+                    사용 button (close is the corner X above); fish /
+                    forage / trash get the existing check button as
+                    the only control. */}
                 <div
                   className="flex items-center"
                   style={{ marginTop: 8, gap: 8 }}
@@ -4953,37 +4993,38 @@ function InventoryContent({
                         사용
                       </span>
                     </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    onPointerDown={(e) => {
-                      e.stopPropagation();
-                      setSelected(null);
-                    }}
-                    aria-label="확인"
-                    className="flex items-center justify-center transition-transform active:scale-90"
-                    style={{
-                      width: 17 * 2,
-                      height: 14 * 2,
-                      padding: 0,
-                      border: "none",
-                      background: "transparent",
-                      cursor: "pointer",
-                      transform: externalPressed ? "scale(0.9)" : undefined,
-                    }}
-                  >
-                    <img
-                      src={UI_ICON_CHECK}
-                      alt=""
-                      draggable={false}
+                  ) : (
+                    <button
+                      type="button"
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
+                        setSelected(null);
+                      }}
+                      aria-label="확인"
+                      className="flex items-center justify-center transition-transform active:scale-90"
                       style={{
-                        imageRendering: "pixelated",
                         width: 17 * 2,
                         height: 14 * 2,
-                        pointerEvents: "none",
+                        padding: 0,
+                        border: "none",
+                        background: "transparent",
+                        cursor: "pointer",
+                        transform: externalPressed ? "scale(0.9)" : undefined,
                       }}
-                    />
-                  </button>
+                    >
+                      <img
+                        src={UI_ICON_CHECK}
+                        alt=""
+                        draggable={false}
+                        style={{
+                          imageRendering: "pixelated",
+                          width: 17 * 2,
+                          height: 14 * 2,
+                          pointerEvents: "none",
+                        }}
+                      />
+                    </button>
+                  )}
                 </div>
               </Frame9Slice>
             </motion.div>
