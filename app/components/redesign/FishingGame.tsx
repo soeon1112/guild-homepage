@@ -19,6 +19,10 @@ import {
   addDoc,
   collection,
   serverTimestamp,
+  onSnapshot,
+  deleteDoc,
+  query,
+  where,
 } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
 import { addPoints } from "@/src/lib/points";
@@ -636,6 +640,39 @@ const UI_ICON_ARROW = encodeURI(UI_FLAT_BASE + "UI_Flat_IconArrow01a.png");
 // the full creator panel. Same theme as the inventory frame.
 const UI_INPUT_FIELD = encodeURI(UI_FLAT_BASE + "UI_Flat_InputField01a.png");
 
+// ── Multiplayer presence ─────────────────────────────────────────
+// fishing_players/{nickname} doc holds each connected member's
+// position, motion state, character config, and current chat
+// bubble. Each session writes its own doc on enter, throttled-
+// updates while playing, and deletes on close / unload. Peers
+// listen via onSnapshot filtered by current map.
+const PRESENCE_COLLECTION = "fishing_players";
+const PRESENCE_WRITE_INTERVAL_MS = 300;
+// 5-minute staleness gate — peers without a fresh lastUpdate are
+// dropped client-side so a crashed tab's ghost doesn't linger
+// forever even before its onUnload delete lands.
+const PRESENCE_STALE_MS = 5 * 60 * 1000;
+
+type PeerData = {
+  nickname: string;
+  x: number;
+  y: number;
+  facing: Direction;
+  isMoving: boolean;
+  isFishing: boolean;
+  fishingDir: Direction;
+  character: CharacterConfig;
+  chatMessage: string;
+  chatExpiry: number;
+  lastUpdate: number;
+  // Client-only animation state — frame counter for the walk
+  // sheet that advances locally between presence updates so the
+  // peer's stride animates smoothly even with 300 ms-throttled
+  // server writes.
+  frame: number;
+  frameAcc: number;
+};
+
 // ── Torch + shoreline animation ──────────────────────────────────
 // Torches in the outdoor map are baked into 배경.png at fixed cells.
 // We overlay an animated 5-frame strip from tiles_all.png on top of
@@ -876,6 +913,34 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
   const chatComposingRef = useRef(false);
   const chatBubbleRef = useRef<HTMLDivElement>(null);
   const chatBubbleClearRef = useRef<number | null>(null);
+  // Self chat bubble's expiry timestamp — mirrored to the player's
+  // presence doc so peers can show our bubble for the matching
+  // window without polling fishing_chat history.
+  const selfChatExpiryRef = useRef<number>(0);
+
+  // Peer state: nickname → live snapshot. Driven by the
+  // onSnapshot subscription below. peersRef shadows the state for
+  // fast access from the render loop and the asset cache.
+  const [peers, setPeers] = useState<ReadonlyMap<string, PeerData>>(
+    new Map(),
+  );
+  const peersRef = useRef<ReadonlyMap<string, PeerData>>(peers);
+  useEffect(() => {
+    peersRef.current = peers;
+  }, [peers]);
+  // Per-URL HTMLImageElement cache for peer-specific sheets
+  // (char base, hair, fish base, fish hair, fish rod). Shared
+  // sheets (eyes / shirt / pants / shoes / bobber / shadow) come
+  // straight from `imgs` — those are loaded once globally.
+  const peerAssetCacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
+  // Last presence-write timestamp (Date.now() ms). Throttle the
+  // tick-driven write so we don't burn Firestore quota at 60 fps.
+  const lastPresenceWriteRef = useRef(0);
+  // Mutable ref to the latest writePresence closure — the game-loop
+  // useEffect installs once and reads writePresenceRef.current()
+  // from inside its tick so character/scene/chat state changes
+  // always see the freshest closure without re-running the loop.
+  const writePresenceRef = useRef<(force: boolean) => void>(() => {});
   // Generic short-lived hint toast for stamina / shop edge cases
   // ("체력이 부족하다", "이미 체력이 가득 찼다", "별빛이 부족합니다").
   const [hintToast, setHintToast] = useState<string | null>(null);
@@ -1486,6 +1551,11 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
     if (!open || !nickname) return;
     const onUnload = () => {
       flushSave();
+      // Best-effort presence delete — Firestore queues the write
+      // through IndexedDB so a closing tab still ships the deletion
+      // when the network is reachable again. Worst case the 5-min
+      // staleness gate hides the ghost client-side.
+      void deleteDoc(doc(db, PRESENCE_COLLECTION, nickname));
     };
     window.addEventListener("beforeunload", onUnload);
     window.addEventListener("pagehide", onUnload);
@@ -1494,6 +1564,104 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
       window.removeEventListener("pagehide", onUnload);
     };
   }, [open, nickname, flushSave]);
+
+  // Presence subscription — listens for everyone on the same map
+  // and folds them into the peers map. Re-subscribes when the
+  // local scene flips so we don't pay to stream peers we won't
+  // render. Self entry is filtered client-side.
+  useEffect(() => {
+    if (!open || !nickname) return;
+    const mapKey = scene === "fishshop" ? "shop" : "outdoor";
+    const q = query(
+      collection(db, PRESENCE_COLLECTION),
+      where("map", "==", mapKey),
+    );
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const now = Date.now();
+        const next = new Map<string, PeerData>();
+        snap.forEach((d) => {
+          if (d.id === nickname) return;
+          const data = d.data() as Record<string, unknown>;
+          const lastUpdateRaw = data.lastUpdate;
+          // serverTimestamp resolves to a Firestore Timestamp once
+          // the write lands; if it hasn't yet, skip this snapshot
+          // entry — we'll see them next tick with a real time.
+          const lastUpdate =
+            lastUpdateRaw && typeof (lastUpdateRaw as { toMillis?: () => number }).toMillis === "function"
+              ? (lastUpdateRaw as { toMillis: () => number }).toMillis()
+              : 0;
+          if (lastUpdate === 0 || now - lastUpdate > PRESENCE_STALE_MS) {
+            return;
+          }
+          const facingRaw = typeof data.facing === "string" ? data.facing : "down";
+          const facing: Direction =
+            facingRaw === "up" ||
+            facingRaw === "down" ||
+            facingRaw === "left" ||
+            facingRaw === "right"
+              ? facingRaw
+              : "down";
+          const fishingDirRaw =
+            typeof data.fishingDir === "string" ? data.fishingDir : facing;
+          const fishingDir: Direction =
+            fishingDirRaw === "up" ||
+            fishingDirRaw === "down" ||
+            fishingDirRaw === "left" ||
+            fishingDirRaw === "right"
+              ? fishingDirRaw
+              : facing;
+          const prev = peersRef.current.get(d.id);
+          next.set(d.id, {
+            nickname: d.id,
+            x: typeof data.x === "number" ? data.x : 0,
+            y: typeof data.y === "number" ? data.y : 0,
+            facing,
+            isMoving: !!data.isMoving,
+            isFishing: !!data.isFishing,
+            fishingDir,
+            character: sanitizeCharacterConfig(data.character),
+            chatMessage:
+              typeof data.chatMessage === "string" ? data.chatMessage : "",
+            chatExpiry:
+              typeof data.chatExpiry === "number" ? data.chatExpiry : 0,
+            lastUpdate,
+            // Preserve client animation state across snapshot diffs
+            // so the walk frame doesn't reset to 0 every 300 ms.
+            frame: prev?.frame ?? 0,
+            frameAcc: prev?.frameAcc ?? 0,
+          });
+        });
+        setPeers(next);
+      },
+      (err) => console.error("[fishing] presence subscribe failed", err),
+    );
+    return () => unsub();
+  }, [open, nickname, scene]);
+
+  // Initial presence write + on-close delete. We also force-write
+  // when the panel first opens so peers see us immediately rather
+  // than waiting for the first tick to throttle in. Uses
+  // writePresenceRef.current rather than a direct closure capture
+  // so this effect can live above the writePresence useCallback
+  // declaration without forward-reference issues.
+  useEffect(() => {
+    if (!open || !nickname) return;
+    writePresenceRef.current(true);
+    return () => {
+      void deleteDoc(doc(db, PRESENCE_COLLECTION, nickname));
+    };
+  }, [open, nickname]);
+
+  // Force a fresh presence write whenever the local scene flips —
+  // stops peers in the previous map from seeing our stale "outdoor"
+  // entry while the listener has already moved us indoors.
+  useEffect(() => {
+    if (!open || !nickname) return;
+    if (!saveEnabledRef.current) return;
+    writePresenceRef.current(true);
+  }, [scene, open, nickname]);
 
   // Asset loader — runs each time the panel opens. The browser cache
   // makes subsequent opens cheap; we keep the previous assets in
@@ -2023,17 +2191,61 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
   // tapping back.
   const CHAT_BUBBLE_VISIBLE_MS = 4500;
   const CHAT_MAX_LENGTH = 100;
+
+  // Write our presence doc. `force=true` skips throttling — used on
+  // important state edges (chat send, scene change, mode change)
+  // so peers see them right away. The tick-driven path passes
+  // force=false and lets PRESENCE_WRITE_INTERVAL_MS gate the rate.
+  const writePresence = useCallback(
+    (force: boolean) => {
+      if (!nickname) return;
+      const now = Date.now();
+      if (!force && now - lastPresenceWriteRef.current < PRESENCE_WRITE_INTERVAL_MS) {
+        return;
+      }
+      lastPresenceWriteRef.current = now;
+      const s = stateRef.current;
+      const isFishing = s.mode !== "walk";
+      void setDoc(
+        doc(db, PRESENCE_COLLECTION, nickname),
+        {
+          nickname,
+          x: s.x,
+          y: s.y,
+          facing: s.dir,
+          map: sceneRef.current === "fishshop" ? "shop" : "outdoor",
+          isMoving: !!s.moving,
+          isFishing,
+          fishingDir: s.dir,
+          character: characterConfig,
+          chatMessage: selfChatMsg ?? "",
+          chatExpiry: selfChatExpiryRef.current,
+          lastUpdate: serverTimestamp(),
+        },
+        { merge: true },
+      ).catch((err) => console.error("[fishing] presence write failed", err));
+    },
+    [nickname, characterConfig, selfChatMsg],
+  );
+  // Always have the latest closure available to non-React callers
+  // (the rAF game tick lives in a useEffect captured once on mount).
+  writePresenceRef.current = writePresence;
+
   const sendChat = useCallback(() => {
     const msg = chatDraft.trim().slice(0, CHAT_MAX_LENGTH);
     if (!msg) return;
     setChatDraft("");
     setSelfChatMsg(msg);
+    selfChatExpiryRef.current = Date.now() + CHAT_BUBBLE_VISIBLE_MS;
     if (chatBubbleClearRef.current != null) {
       window.clearTimeout(chatBubbleClearRef.current);
     }
     chatBubbleClearRef.current = window.setTimeout(() => {
       setSelfChatMsg(null);
       chatBubbleClearRef.current = null;
+      // Push the empty message to peers when the bubble clears so
+      // their copy disappears in sync.
+      writePresence(true);
     }, CHAT_BUBBLE_VISIBLE_MS);
     if (nickname) {
       const s = stateRef.current;
@@ -2046,10 +2258,13 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
         console.error("[fishing] chat write failed", err),
       );
     }
+    // Force-write presence so peers see the chat immediately —
+    // bypasses the 300 ms throttle that the tick path uses.
+    writePresence(true);
     // Refocus on the next tick — the input may have momentarily lost
     // focus during the React state update / re-render.
     window.setTimeout(() => chatInputRef.current?.focus(), 0);
-  }, [chatDraft, nickname]);
+  }, [chatDraft, nickname, writePresence]);
 
   const handleAction = useCallback(() => {
     if (npcDialog) {
@@ -2426,6 +2641,10 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
       last = t;
       tick(dt);
       render(ctx);
+      // Throttled presence pulse — writePresence checks the
+      // throttle interval internally so calling every frame is
+      // safe (most calls are no-ops).
+      writePresenceRef.current(false);
       raf = requestAnimationFrame(step);
     };
 
@@ -2485,6 +2704,25 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
       const j = joyRef.current;
       const fade = fadeRef.current;
       const currentScene = sceneRef.current;
+
+      // Advance peer walk-frame counters in lockstep with the
+      // local frame counter so animation stays smooth between
+      // 300 ms-throttled snapshots. Mutating the values inside the
+      // peers map directly is intentional — these fields are
+      // client-only animation state and React doesn't need to see
+      // them change.
+      for (const peer of peersRef.current.values()) {
+        if (peer.isMoving && !peer.isFishing) {
+          peer.frameAcc += dt * 1000;
+          while (peer.frameAcc >= WALK_FRAME_MS) {
+            peer.frameAcc -= WALK_FRAME_MS;
+            peer.frame = (peer.frame + 1) % WALK_FRAMES;
+          }
+        } else {
+          peer.frame = 0;
+          peer.frameAcc = 0;
+        }
+      }
 
       // Advance the fade transition. Movement and prompts freeze
       // while a transition is in progress so input doesn't leak
@@ -3079,6 +3317,193 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
       ctx.restore();
     };
 
+    // ── Peer rendering helpers ───────────────────────────────
+    // Each helper closes over `ctx` + the shared `imgs.*` color
+    // sheets (eyes/shirt/pants/shoes — single PNGs with all
+    // colour variants) and only takes the per-peer base + hair
+    // sheets. Peer asset loads happen lazily on miss; while a
+    // sheet is still fetching the helper returns false so the
+    // caller can skip drawing for that frame.
+    const getPeerImg = (url: string): HTMLImageElement | null => {
+      let img = peerAssetCacheRef.current.get(url);
+      if (!img) {
+        img = new Image();
+        img.src = url;
+        peerAssetCacheRef.current.set(url, img);
+      }
+      return img.naturalWidth > 0 ? img : null;
+    };
+    const drawPeerWalk = (
+      charImg: HTMLImageElement,
+      hairImg: HTMLImageElement,
+      footX: number,
+      footY: number,
+      camX: number,
+      camY: number,
+      frameCol: number,
+      dir: Direction,
+      colors: {
+        eyes: number;
+        shirt: number;
+        pants: number;
+        shoes: number;
+        hair: number;
+      },
+    ) => {
+      const drawX = Math.round(footX - SPRITE_CELL / 2 - camX);
+      const drawY = Math.round(footY + 4 - SPRITE_CELL - camY);
+      const sx = frameCol * SPRITE_CELL;
+      const sy = WALK_ROWS[dir] * SPRITE_CELL;
+      ctx.drawImage(charImg, sx, sy, SPRITE_CELL, SPRITE_CELL, drawX, drawY, SPRITE_CELL, SPRITE_CELL);
+      const layer = (img: HTMLImageElement, c: number) => {
+        ctx.drawImage(
+          img,
+          c * VARIANT_WIDTH + sx,
+          sy,
+          SPRITE_CELL,
+          SPRITE_CELL,
+          drawX,
+          drawY,
+          SPRITE_CELL,
+          SPRITE_CELL,
+        );
+      };
+      layer(imgs.eyes, colors.eyes);
+      layer(imgs.shirt, colors.shirt);
+      layer(imgs.pants, colors.pants);
+      layer(imgs.shoes, colors.shoes);
+      layer(hairImg, colors.hair);
+    };
+    const drawPeerFish = (
+      charImg: HTMLImageElement,
+      hairImg: HTMLImageElement,
+      footX: number,
+      footY: number,
+      camX: number,
+      camY: number,
+      dir: Direction,
+      colors: {
+        eyes: number;
+        shirt: number;
+        pants: number;
+        shoes: number;
+        hair: number;
+      },
+    ) => {
+      // Mirrors drawFishingChar but always at frame 0 (no per-peer
+      // animation timing in V1) and without the rod/bobber/line
+      // overlays. Adds the +4 Y offset the fishing sheets bake in
+      // so the feet line up with the walking pose.
+      const drawX = Math.round(footX - SPRITE_CELL / 2 - camX);
+      const drawY = Math.round(footY + 4 - SPRITE_CELL - camY + 4);
+      const reversed = dir === "left" || dir === "right";
+      const displayFrame = reversed ? FISH_FRAMES - 1 : 0;
+      const sx = displayFrame * SPRITE_CELL;
+      const sy = WALK_ROWS[dir] * SPRITE_CELL;
+      ctx.drawImage(charImg, sx, sy, SPRITE_CELL, SPRITE_CELL, drawX, drawY, SPRITE_CELL, SPRITE_CELL);
+      const layer = (img: HTMLImageElement, c: number) => {
+        ctx.drawImage(
+          img,
+          c * FISH_VARIANT_WIDTH + sx,
+          sy,
+          SPRITE_CELL,
+          SPRITE_CELL,
+          drawX,
+          drawY,
+          SPRITE_CELL,
+          SPRITE_CELL,
+        );
+      };
+      layer(imgs.fishEyes, colors.eyes);
+      layer(imgs.fishShirt, colors.shirt);
+      layer(imgs.fishPants, colors.pants);
+      layer(imgs.fishShoes, colors.shoes);
+      layer(hairImg, colors.hair);
+    };
+    // Wraps a string into multi-line lines fitting maxWidth in
+    // the current ctx.font. Word-break by character so dense
+    // Korean / "ㅋㅋㅋㅋ" runs still wrap inside the bubble.
+    const wrapForBubble = (text: string, maxWidth: number): string[] => {
+      const lines: string[] = [];
+      let line = "";
+      for (const ch of text) {
+        if (ch === "\n") {
+          lines.push(line);
+          line = "";
+          continue;
+        }
+        const test = line + ch;
+        if (ctx.measureText(test).width <= maxWidth) {
+          line = test;
+        } else {
+          if (line) lines.push(line);
+          line = ch;
+        }
+      }
+      if (line) lines.push(line);
+      return lines;
+    };
+    // Rounded white bubble + lines of black text, anchored by its
+    // bottom-center at (anchorX, anchorY). Used for peer chat.
+    const drawPeerBubble = (
+      anchorX: number,
+      anchorY: number,
+      text: string,
+    ) => {
+      const fontSpec =
+        '600 11px "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif';
+      ctx.font = fontSpec;
+      const maxWidth = Math.round(VIEWPORT * 0.4) - 16;
+      const lines = wrapForBubble(text, maxWidth).slice(0, 4);
+      if (lines.length === 0) return;
+      const lineHeight = 14;
+      const padX = 8;
+      const padY = 5;
+      let widest = 0;
+      for (const line of lines) {
+        widest = Math.max(widest, ctx.measureText(line).width);
+      }
+      const boxW = Math.ceil(widest) + padX * 2;
+      const boxH = lines.length * lineHeight + padY * 2;
+      const bx = Math.round(anchorX - boxW / 2);
+      const by = Math.round(anchorY - boxH);
+      const r = 8;
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(bx + r, by);
+      ctx.lineTo(bx + boxW - r, by);
+      ctx.quadraticCurveTo(bx + boxW, by, bx + boxW, by + r);
+      ctx.lineTo(bx + boxW, by + boxH - r);
+      ctx.quadraticCurveTo(bx + boxW, by + boxH, bx + boxW - r, by + boxH);
+      ctx.lineTo(bx + r, by + boxH);
+      ctx.quadraticCurveTo(bx, by + boxH, bx, by + boxH - r);
+      ctx.lineTo(bx, by + r);
+      ctx.quadraticCurveTo(bx, by, bx + r, by);
+      ctx.closePath();
+      ctx.fillStyle = "rgba(255,255,255,0.96)";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(11,8,33,0.18)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      // Tail — small triangle pointing down at the anchor.
+      ctx.beginPath();
+      ctx.moveTo(anchorX - 4, by + boxH);
+      ctx.lineTo(anchorX + 4, by + boxH);
+      ctx.lineTo(anchorX, by + boxH + 5);
+      ctx.closePath();
+      ctx.fillStyle = "rgba(255,255,255,0.96)";
+      ctx.fill();
+      // Lines of text.
+      ctx.fillStyle = "#0b0821";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "alphabetic";
+      for (let i = 0; i < lines.length; i++) {
+        const ly = by + padY + (i + 1) * lineHeight - 3;
+        ctx.fillText(lines[i], bx + boxW / 2, ly);
+      }
+      ctx.restore();
+    };
+
     const render = (ctx: CanvasRenderingContext2D) => {
       const s = stateRef.current;
       const currentScene = sceneRef.current;
@@ -3169,6 +3594,54 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
             TORCH_FRAME_H,
           );
         }
+        // Peer characters in the outdoor scene. Drawn before self
+        // so the local player z-orders on top during overlap. Walk
+        // frame counters advance in tick() above; per-character
+        // sheets (walk char + walk hair OR fish char + fish hair)
+        // load lazily into the cache and the peer is skipped for
+        // the frame while any of them is still fetching.
+        for (const peer of peersRef.current.values()) {
+          const peerUrls = characterAssetUrls(peer.character);
+          const peerColors = {
+            eyes: DEFAULT_EYES_COLOR,
+            shirt: peer.character.shirtColor,
+            pants: peer.character.pantsColor,
+            shoes: peer.character.shoesColor,
+            hair: peer.character.hairColor,
+          };
+          if (peer.isFishing) {
+            const fc = getPeerImg(peerUrls.fishChar);
+            const fh = getPeerImg(peerUrls.fishHair);
+            if (fc && fh) {
+              drawPeerFish(
+                fc,
+                fh,
+                peer.x,
+                peer.y,
+                camX,
+                camY,
+                peer.fishingDir,
+                peerColors,
+              );
+            }
+          } else {
+            const wc = getPeerImg(peerUrls.walkChar);
+            const wh = getPeerImg(peerUrls.walkHair);
+            if (wc && wh) {
+              drawPeerWalk(
+                wc,
+                wh,
+                peer.x,
+                peer.y,
+                camX,
+                camY,
+                peer.frame,
+                peer.facing,
+                peerColors,
+              );
+            }
+          }
+        }
         if (s.mode === "walk") {
           drawCharacter(
             imgs.char,
@@ -3246,6 +3719,51 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
           "down",
           npcColors,
         );
+        // Peers in the shop scene — same loading + draw pattern
+        // as outdoor; subscription is already filtered by map so
+        // peer.x/y here are guaranteed to be indoor coords.
+        for (const peer of peersRef.current.values()) {
+          const peerUrls = characterAssetUrls(peer.character);
+          const peerColors = {
+            eyes: DEFAULT_EYES_COLOR,
+            shirt: peer.character.shirtColor,
+            pants: peer.character.pantsColor,
+            shoes: peer.character.shoesColor,
+            hair: peer.character.hairColor,
+          };
+          if (peer.isFishing) {
+            const fc = getPeerImg(peerUrls.fishChar);
+            const fh = getPeerImg(peerUrls.fishHair);
+            if (fc && fh) {
+              drawPeerFish(
+                fc,
+                fh,
+                peer.x,
+                peer.y,
+                camX,
+                camY,
+                peer.fishingDir,
+                peerColors,
+              );
+            }
+          } else {
+            const wc = getPeerImg(peerUrls.walkChar);
+            const wh = getPeerImg(peerUrls.walkHair);
+            if (wc && wh) {
+              drawPeerWalk(
+                wc,
+                wh,
+                peer.x,
+                peer.y,
+                camX,
+                camY,
+                peer.frame,
+                peer.facing,
+                peerColors,
+              );
+            }
+          }
+        }
         drawCharacter(imgs.char, s.x, s.y, camX, camY, s.frame, s.dir, playerColors);
       }
 
@@ -3281,6 +3799,44 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
         ctx.fillStyle = "#ffffff";
         ctx.fillText(nickname, nx, ny);
         ctx.restore();
+      }
+
+      // Peer name plates + chat bubbles. Same nameplate offset as
+      // self so everyone's tag sits at a consistent body height.
+      // Bubbles render on canvas (rather than DOM overlay) so they
+      // share the per-frame redraw and don't need a separate rAF
+      // tracker per peer.
+      if (peersRef.current.size > 0) {
+        const nowMs = Date.now();
+        for (const peer of peersRef.current.values()) {
+          const nx = Math.round((peer.x - camX) * MAP_SCALE);
+          const ny = Math.round(
+            (peer.y - NAMEPLATE_HEAD_OFFSET - camY) * MAP_SCALE,
+          );
+          ctx.save();
+          ctx.font =
+            '700 10px "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif';
+          ctx.textAlign = "center";
+          ctx.textBaseline = "bottom";
+          ctx.miterLimit = 2;
+          ctx.lineJoin = "round";
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = "rgba(11, 8, 33, 0.95)";
+          ctx.strokeText(peer.nickname, nx, ny);
+          ctx.fillStyle = "#ffffff";
+          ctx.fillText(peer.nickname, nx, ny);
+          ctx.restore();
+
+          if (
+            peer.chatMessage &&
+            peer.chatExpiry > nowMs
+          ) {
+            // Anchor the bubble's bottom-center 6 px above the
+            // nameplate top — nameplate text is ~10 px tall, so
+            // anchor sits at ny - 12.
+            drawPeerBubble(nx, ny - 12, peer.chatMessage);
+          }
+        }
       }
 
       // Catch gauge — Flat-theme sprites stretched to the gauge
