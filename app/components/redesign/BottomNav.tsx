@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 type NavItem = {
   id: string;
@@ -70,6 +71,38 @@ const items: NavItem[] = [
 
 export function BottomNav() {
   const pathname = usePathname();
+  // Hide-on-mobile-keyboard. visualViewport.height shrinks when
+  // the soft keyboard is up; layout.viewport.height stays the
+  // same as the device viewport. We treat "viewport ≤ 80 % of
+  // window height AND coarse-pointer device" as keyboard-open
+  // and hide the nav. Without the touch gate, desktop windows
+  // resized small (e.g. devtools dock) would also hide the nav,
+  // which the spec explicitly forbids.
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const isTouch =
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(pointer: coarse)").matches;
+    if (!isTouch) return; // PC — never hide the nav.
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => {
+      // 0.80 catches the iOS / Android keyboard heights (which
+      // typically take ~30–45 % of the screen) without triggering
+      // for browser chrome animations (URL bar hide/show takes
+      // ~10–15 % at most).
+      const ratio = vv.height / window.innerHeight;
+      setKeyboardOpen(ratio < 0.8);
+    };
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, []);
 
   const isActive = (item: NavItem) => {
     if (!pathname) return false;
@@ -86,6 +119,16 @@ export function BottomNav() {
     <nav
       aria-label="주요 내비게이션"
       className="fixed inset-x-0 bottom-0 z-40 px-3 pb-3 pt-2"
+      style={{
+        // Hidden only on touch devices when the soft keyboard is
+        // detected. PC users always see the nav (the keyboardOpen
+        // state never flips to true on mouse devices — see effect
+        // above). pointer-events:none so a hidden nav can't catch
+        // taps that should reach the chat input behind it.
+        opacity: keyboardOpen ? 0 : 1,
+        pointerEvents: keyboardOpen ? "none" : "auto",
+        transition: "opacity 160ms ease",
+      }}
     >
       <div
         className="relative mx-auto flex max-w-md items-center justify-around rounded-2xl border border-nebula-pink/25 bg-abyss/85 px-1.5 py-2 backdrop-blur-md"
