@@ -16,8 +16,11 @@ import {
   ASSETS,
   CHAR_BBOX_HALF_W,
   CHAR_BBOX_HEIGHT,
-  DEFAULT_CLOTHES_COLOR,
   DEFAULT_EYES_COLOR,
+  DEFAULT_HAIR_COLOR,
+  DEFAULT_PANTS_COLOR,
+  DEFAULT_SHIRT_COLOR,
+  DEFAULT_SHOES_COLOR,
   MAP_HEIGHT,
   MAP_WIDTH,
   MOVE_SPEED_PX_PER_SEC,
@@ -40,7 +43,10 @@ type LoadedImages = {
   map: HTMLImageElement;
   char: HTMLImageElement;
   eyes: HTMLImageElement;
-  clothes: HTMLImageElement;
+  shirt: HTMLImageElement;
+  pants: HTMLImageElement;
+  shoes: HTMLImageElement;
+  hair: HTMLImageElement;
   shadow: HTMLImageElement;
 };
 
@@ -161,12 +167,15 @@ export default function FishingGame({ open, onClose }: Props) {
       load(ASSETS.background),
       load(ASSETS.charBase),
       load(ASSETS.eyes),
-      load(ASSETS.clothes),
+      load(ASSETS.shirt),
+      load(ASSETS.pants),
+      load(ASSETS.shoes),
+      load(ASSETS.hair),
       load(ASSETS.shadow),
     ])
-      .then(([map, char, eyes, clothes, shadow]) => {
+      .then(([map, char, eyes, shirt, pants, shoes, hair, shadow]) => {
         if (cancelled) return;
-        setImages({ map, char, eyes, clothes, shadow });
+        setImages({ map, char, eyes, shirt, pants, shoes, hair, shadow });
       })
       .catch((err) => {
         if (!cancelled) console.error("[fishing] asset load failed", err);
@@ -380,23 +389,33 @@ export default function FishingGame({ open, onClose }: Props) {
         Math.round(s.y - 6 - camY),
       );
 
-      // Layer order per Character assets/info.txt: Characters → Eyes →
-      // Clothes → Hair (hair not implemented in phase 1).
+      // Layer order per Character assets/info.txt LAYERS section,
+      // bottom-to-top: char → eyes → shirt → pants → shoes → hair.
+      // Each modular sheet is 256-wide-per-color, so the source x is
+      // the chosen color's variant offset plus the frame's x within
+      // that variant.
+      const drawLayer = (
+        img: HTMLImageElement,
+        colorIndex: number,
+      ) => {
+        ctx.drawImage(
+          img,
+          colorIndex * VARIANT_WIDTH + sx, sy, SPRITE_CELL, SPRITE_CELL,
+          drawX, drawY, SPRITE_CELL, SPRITE_CELL,
+        );
+      };
+
+      // char1.png is a single-color base body — draw the raw frame.
       ctx.drawImage(
         imgs.char,
         sx, sy, SPRITE_CELL, SPRITE_CELL,
         drawX, drawY, SPRITE_CELL, SPRITE_CELL,
       );
-      ctx.drawImage(
-        imgs.eyes,
-        DEFAULT_EYES_COLOR * VARIANT_WIDTH + sx, sy, SPRITE_CELL, SPRITE_CELL,
-        drawX, drawY, SPRITE_CELL, SPRITE_CELL,
-      );
-      ctx.drawImage(
-        imgs.clothes,
-        DEFAULT_CLOTHES_COLOR * VARIANT_WIDTH + sx, sy, SPRITE_CELL, SPRITE_CELL,
-        drawX, drawY, SPRITE_CELL, SPRITE_CELL,
-      );
+      drawLayer(imgs.eyes, DEFAULT_EYES_COLOR);
+      drawLayer(imgs.shirt, DEFAULT_SHIRT_COLOR);
+      drawLayer(imgs.pants, DEFAULT_PANTS_COLOR);
+      drawLayer(imgs.shoes, DEFAULT_SHOES_COLOR);
+      drawLayer(imgs.hair, DEFAULT_HAIR_COLOR);
 
       ctx.restore();
     };

@@ -18,11 +18,24 @@ export const VIEWPORT = 306;
 export const MAP_WIDTH = 336;
 export const MAP_HEIGHT = 336;
 
+// Per Character assets/info.txt LAYERS section, the full character is
+// composited bottom-to-top as:
+//   1. char base
+//   2. eyes (+ optional blush/lipstick — skipped in phase 1)
+//   3. clothes: shirt → pants → shoes
+//   4. hair
+//   5. accessories (skipped in phase 1)
+// `clothes/basic.png` is just the shirt — pants and shoes are
+// independent sheets in the same folder, and a complete outfit needs
+// all three. Hair is a separate folder with one sheet per hairstyle.
 export const ASSETS = {
   background: encodeURI("/images/fishing/배경.png"),
   charBase: encodeURI("/images/fishing/Character assets/characters/char1.png"),
   eyes: encodeURI("/images/fishing/Character assets/eyes/eyes.png"),
-  clothes: encodeURI("/images/fishing/Character assets/clothes/basic.png"),
+  shirt: encodeURI("/images/fishing/Character assets/clothes/basic.png"),
+  pants: encodeURI("/images/fishing/Character assets/clothes/pants.png"),
+  shoes: encodeURI("/images/fishing/Character assets/clothes/shoes.png"),
+  hair: encodeURI("/images/fishing/Character assets/hair/wavy.png"),
   shadow: encodeURI("/images/fishing/Character assets/shadow.png"),
 };
 
@@ -53,9 +66,13 @@ export const WALK_FRAME_MS = 100;
 export const MOVE_SPEED_PX_PER_SEC = 80;
 
 // Default modular layer indices. Hardcoded for phase 1; later phases
-// will let the player pick from list.txt's color palette.
+// will let the player pick from list.txt's color palette (eyes 14
+// colors, clothes 10 colors, hair 14 colors).
 export const DEFAULT_EYES_COLOR = 0;
-export const DEFAULT_CLOTHES_COLOR = 0;
+export const DEFAULT_SHIRT_COLOR = 0;
+export const DEFAULT_PANTS_COLOR = 0;
+export const DEFAULT_SHOES_COLOR = 0;
+export const DEFAULT_HAIR_COLOR = 0;
 
 // Character bbox in sprite-cell-relative px. The 32×32 cell holds a
 // ~15×22 character centered horizontally with feet near the bottom.
