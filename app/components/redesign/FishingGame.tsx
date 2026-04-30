@@ -76,6 +76,13 @@ const KEY_DOWN = new Set(["s", "S", "ㄴ", "ArrowDown"]);
 const KEY_LEFT = new Set(["a", "A", "ㅁ", "ArrowLeft"]);
 const KEY_RIGHT = new Set(["d", "D", "ㅇ", "ArrowRight"]);
 
+// Visual zoom applied at render time. The map and character live in
+// 1x map coordinates (so collision rects, spawn point, and movement
+// math stay in native asset units) and we let the canvas scale up by
+// MAP_SCALE for display. Visible map area shrinks proportionally:
+// VIEWPORT (306) ÷ MAP_SCALE (2) = 153px of map visible at a time.
+const MAP_SCALE = 2;
+
 // Joystick is parked at a fixed bottom-left dock so the player can
 // always thumb-drag from a known spot. Outer diameter ≈ 24% of the
 // 306px viewport (per design note "20–25%"). Idle state fades to a
@@ -332,16 +339,34 @@ export default function FishingGame({ open, onClose }: Props) {
     const render = (ctx: CanvasRenderingContext2D) => {
       const s = stateRef.current;
 
-      // Camera top-left in map coords, clamped so we never scroll past
-      // the map edge — character drifts off-center near edges.
-      const camX = clamp(Math.round(s.x - VIEWPORT / 2), 0, MAP_WIDTH - VIEWPORT);
-      const camY = clamp(Math.round(s.y - VIEWPORT / 2), 0, MAP_HEIGHT - VIEWPORT);
+      // Visible map area in 1x map coords — half the viewport per axis
+      // because we draw at 2x. Camera clamps so the player drifts
+      // off-center near map edges instead of revealing dead space.
+      const visibleW = VIEWPORT / MAP_SCALE;
+      const visibleH = VIEWPORT / MAP_SCALE;
+      const camX = clamp(
+        Math.round(s.x - visibleW / 2),
+        0,
+        Math.max(0, MAP_WIDTH - visibleW),
+      );
+      const camY = clamp(
+        Math.round(s.y - visibleH / 2),
+        0,
+        Math.max(0, MAP_HEIGHT - visibleH),
+      );
 
       ctx.clearRect(0, 0, VIEWPORT, VIEWPORT);
+      ctx.save();
+      ctx.scale(MAP_SCALE, MAP_SCALE);
+      // Re-assert pixelated sampling under the scale matrix; some
+      // browsers reset this when the transform changes.
+      ctx.imageSmoothingEnabled = false;
+
       ctx.drawImage(imgs.map, -camX, -camY);
 
       // Sprite cell origin: feet at (s.x, s.y), sprite is 32×32 with
       // the character body sitting roughly 4px above the cell bottom.
+      // All draws happen in 1x space; ctx.scale handles the 2x bump.
       const drawX = Math.round(s.x - SPRITE_CELL / 2 - camX);
       const drawY = Math.round(s.y + 4 - SPRITE_CELL - camY);
 
@@ -372,6 +397,8 @@ export default function FishingGame({ open, onClose }: Props) {
         DEFAULT_CLOTHES_COLOR * VARIANT_WIDTH + sx, sy, SPRITE_CELL, SPRITE_CELL,
         drawX, drawY, SPRITE_CELL, SPRITE_CELL,
       );
+
+      ctx.restore();
     };
 
     raf = requestAnimationFrame(step);
