@@ -25,7 +25,7 @@ import {
   where,
 } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
-import { setChatInputFocused } from "@/src/lib/uiBus";
+import { setChatInputFocused, useChatInputFocused } from "@/src/lib/uiBus";
 import { addPoints } from "@/src/lib/points";
 import {
   ASSETS,
@@ -962,6 +962,14 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
   // clipped. On PC / no-keyboard this stays 0 → panel keeps its
   // default `bottom-24`.
   const [keyboardLift, setKeyboardLift] = useState(0);
+  // Bus reflects "any mobile chat input focused" — set by both
+  // FloatingChat and the fishing-game chat input (mobile gate
+  // baked into both setters). Used as a fallback when the
+  // browser is in `interactive-widget=resizes-content` mode and
+  // both window.innerHeight and visualViewport.height shrink in
+  // sync, leaving keyboardLift permanently at 0 even though the
+  // keyboard is up.
+  const anyChatInputFocused = useChatInputFocused();
   useEffect(() => {
     if (!open) return;
     if (typeof window === "undefined") return;
@@ -4127,16 +4135,26 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
           transition={{ duration: 0.18 }}
           className="fixed left-4 z-[200] flex flex-col overflow-hidden rounded-2xl border border-nebula-pink/30 backdrop-blur-md"
           style={{
-            // Default bottom is 96 px (matches the `bottom-24`
-            // Tailwind utility) so the panel sits above the
-            // BottomNav. When the soft keyboard is up, drop to
-            // `keyboardLift` exactly so the panel's bottom edge
-            // is flush with the keyboard top — no gap, no
-            // residual BottomNav-sized space (BottomNav is
-            // already hidden via the chatInputFocused bus). The
-            // transition is fast enough to feel pinned without
-            // snapping.
-            bottom: keyboardLift > 0 ? keyboardLift : 96,
+            // Two-mode keyboard handling:
+            //  • iOS Safari overlays mode: layout viewport stays
+            //    full-screen, visualViewport.height shrinks to
+            //    expose the keyboard area. keyboardLift > 0
+            //    measures the gap → panel rises by that much.
+            //  • Chrome / `interactive-widget=resizes-content`
+            //    mode: layout viewport itself shrinks, so
+            //    keyboardLift is 0 and `bottom: N` is already
+            //    measured from the keyboard top. We drop to
+            //    `bottom: 8` (matches FloatingChat) so the
+            //    panel hugs the keyboard instead of reserving
+            //    96 px for a now-hidden BottomNav.
+            // BottomNav is already hidden via the
+            // chatInputFocused bus in both modes.
+            bottom:
+              keyboardLift > 0
+                ? keyboardLift
+                : anyChatInputFocused
+                ? 8
+                : 96,
             transition: "bottom 160ms ease",
             background:
               "linear-gradient(180deg, rgba(26,15,61,0.94) 0%, rgba(11,8,33,0.94) 100%)",
