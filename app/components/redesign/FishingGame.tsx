@@ -547,6 +547,11 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
   const [inventory, setInventory] = useState<Record<string, number>>({});
   const [totalExp, setTotalExp] = useState(0);
   const [totalCatches, setTotalCatches] = useState(0);
+  // 별빛 is only granted when a fish is sold at the shop. The
+  // sale UX doesn't exist yet, so the setter is currently unused —
+  // wired up here so later phases can hook in without re-plumbing
+  // the panel props.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [totalStarlight, setTotalStarlight] = useState(0);
   // Brief level-up banner shown when totalExp crosses a threshold.
   const [levelUpBanner, setLevelUpBanner] = useState<number | null>(null);
@@ -2428,15 +2433,10 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                     [itemKey]: (prev[itemKey] ?? 0) + 1,
                   }));
                   setTotalCatches((c) => c + 1);
-                  const earnings =
-                    result.kind === "fish"
-                      ? result.fish.price
-                      : result.kind === "treasure"
-                      ? result.forage.price
-                      : 0;
-                  if (earnings > 0) {
-                    setTotalStarlight((sl) => sl + earnings);
-                  }
+                  // Catching a fish goes only into the inventory —
+                  // 별빛 is paid out by the fish-shop sale, not the
+                  // catch itself. Once the sale UX exists this is
+                  // where we'll wire it through. (Until then totalStarlight stays at 0.)
                   // Award xp; trigger the level-up banner if the
                   // catch crossed a threshold.
                   const xp = expForCatch(result);
@@ -3761,8 +3761,10 @@ function InfoContent({
   assets: LoadedAssets | null;
 }) {
   const lvl = levelFromTotalExp(totalExp);
+  // Codex tracks fish only — forage entries (forage-{id} keys) are
+  // skipped so the dex progress matches TOTAL_DEX_SPECIES (= 100).
   const dexCount = Object.keys(inventory).filter(
-    (k) => (inventory[k] ?? 0) > 0,
+    (k) => k.startsWith("fish-") && (inventory[k] ?? 0) > 0,
   ).length;
   const expFraction =
     lvl.expToNext > 0 ? Math.min(1, lvl.expInLevel / lvl.expToNext) : 0;

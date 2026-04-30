@@ -826,4 +826,6 @@ export function expForCatch(result: CatchResult): number {
 }
 
 // Total catalog size for the dex progress line in the info tab.
-export const TOTAL_DEX_SPECIES = FISH_LIST.length + FORAGE_LIST.length;
+// Only fish count toward the codex — forage is flavour and shows
+// up in the inventory but not in dex completion.
+export const TOTAL_DEX_SPECIES = FISH_LIST.length;
