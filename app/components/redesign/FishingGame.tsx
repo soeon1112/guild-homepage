@@ -1340,6 +1340,54 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
   // cancelFishingToWalk for any non-walk fishing state.
   const toggleFishing = cancelFishingToWalk;
 
+  // Catch-popup confirm. Lifted out of the JSX so the keyboard
+  // handler can call the same exit path the on-screen check button
+  // uses — Space while a popup is open should be 1:1 with a click.
+  const handleCatchPopupConfirm = useCallback(() => {
+    const s = stateRef.current;
+    const result = s.catchResult;
+    if (result) {
+      const itemKey =
+        result.kind === "fish"
+          ? `fish-${result.fish.id}`
+          : `forage-${result.forage.id}`;
+      setInventory((prev) => ({
+        ...prev,
+        [itemKey]: (prev[itemKey] ?? 0) + 1,
+      }));
+      if (result.kind === "fish") {
+        setCodexCaught((prev) => {
+          if (prev.has(result.fish.id)) return prev;
+          const next = new Set(prev);
+          next.add(result.fish.id);
+          return next;
+        });
+      }
+      setTotalCatches((c) => c + 1);
+      const xp = expForCatch(result);
+      if (xp > 0) {
+        setTotalExp((prev) => {
+          const before = levelFromTotalExp(prev).level;
+          const next = prev + xp;
+          const after = levelFromTotalExp(next).level;
+          if (after > before) setLevelUpBanner(after);
+          return next;
+        });
+      }
+    }
+    s.mode = "walk";
+    s.subT = 0;
+    s.catchResult = null;
+    setMode("walk");
+    setCatchPopup(null);
+  }, []);
+
+  // Keyboard-driven press feedback for the popup check buttons. The
+  // pointer flow tracks its own pressed state inside each popup;
+  // this state is set by Space keydown / cleared by keyup, and
+  // OR'd into the popup's local pressed state for the visual.
+  const [popupKeyPressed, setPopupKeyPressed] = useState(false);
+
   // Keyboard input. We listen on window so focus on the canvas isn't
   // required — the panel is the foreground UI when open.
   useEffect(() => {
@@ -1358,10 +1406,43 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
         keysRef.current.right = down;
         e.preventDefault();
       } else if (e.key === " " || e.code === "Space") {
-        // Mirror the mouse/touch pressed-state on the action button
-        // so Space gives the same visual feedback. Auto-repeat (held
-        // Space) shouldn't re-fire handleAction or thrash setState.
         e.preventDefault();
+        // Popup priority — Space resolves the topmost popup if any.
+        // Without this guard the same press would also fall through
+        // to handleAction (which is a no-op in fishingSuccess but
+        // still wastes setState) and the popup would never receive
+        // the keyup confirm. Order: catch popup → inventory detail
+        // → codex detail → regular game action.
+        if (catchPopup) {
+          if (down) {
+            if (!e.repeat) setPopupKeyPressed(true);
+          } else {
+            setPopupKeyPressed(false);
+            handleCatchPopupConfirm();
+          }
+          return;
+        }
+        if (invSelected != null) {
+          if (down) {
+            if (!e.repeat) setPopupKeyPressed(true);
+          } else {
+            setPopupKeyPressed(false);
+            setInvSelected(null);
+          }
+          return;
+        }
+        if (codexSelected != null) {
+          if (down) {
+            if (!e.repeat) setPopupKeyPressed(true);
+          } else {
+            setPopupKeyPressed(false);
+            setCodexSelected(null);
+          }
+          return;
+        }
+        // Regular game action — mirror the on-screen action button's
+        // pressed visual on Space and fire handleAction once on
+        // initial keydown (auto-repeat ignored).
         if (down) {
           if (!e.repeat) {
             setActionPressed(true);
@@ -1388,7 +1469,17 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
       window.removeEventListener("keydown", kd);
       window.removeEventListener("keyup", ku);
     };
-  }, [open, onClose, handleAction, npcDialog, toggleFishing]);
+  }, [
+    open,
+    onClose,
+    handleAction,
+    npcDialog,
+    toggleFishing,
+    catchPopup,
+    handleCatchPopupConfirm,
+    invSelected,
+    codexSelected,
+  ]);
 
   // Static-base virtual joystick. Pointer-down anywhere in the stage
   // captures the pointer; the input vector is computed from the
@@ -2597,55 +2688,8 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                 fishingSuccess mode. */}
             <CatchPopup
               result={catchPopup}
-              onConfirm={() => {
-                const s = stateRef.current;
-                const result = s.catchResult;
-                if (result) {
-                  // Stack into inventory under fish-{id} or forage-{id}.
-                  const itemKey =
-                    result.kind === "fish"
-                      ? `fish-${result.fish.id}`
-                      : `forage-${result.forage.id}`;
-                  setInventory((prev) => ({
-                    ...prev,
-                    [itemKey]: (prev[itemKey] ?? 0) + 1,
-                  }));
-                  // Codex records every NEW fish kind (forage doesn't
-                  // count toward the dex). Adding to a Set is
-                  // idempotent — repeat catches are a no-op for the
-                  // codex but still grow the inventory stack.
-                  if (result.kind === "fish") {
-                    setCodexCaught((prev) => {
-                      if (prev.has(result.fish.id)) return prev;
-                      const next = new Set(prev);
-                      next.add(result.fish.id);
-                      return next;
-                    });
-                  }
-                  setTotalCatches((c) => c + 1);
-                  // Catching a fish goes only into the inventory —
-                  // 별빛 is paid out by the fish-shop sale, not the
-                  // catch itself. Once the sale UX exists this is
-                  // where we'll wire it through. (Until then totalStarlight stays at 0.)
-                  // Award xp; trigger the level-up banner if the
-                  // catch crossed a threshold.
-                  const xp = expForCatch(result);
-                  if (xp > 0) {
-                    setTotalExp((prev) => {
-                      const before = levelFromTotalExp(prev).level;
-                      const next = prev + xp;
-                      const after = levelFromTotalExp(next).level;
-                      if (after > before) setLevelUpBanner(after);
-                      return next;
-                    });
-                  }
-                }
-                s.mode = "walk";
-                s.subT = 0;
-                s.catchResult = null;
-                setMode("walk");
-                setCatchPopup(null);
-              }}
+              externalPressed={popupKeyPressed}
+              onConfirm={handleCatchPopupConfirm}
             />
 
             {/* "준비중입니다" toast — auto-dismisses after 1.6s */}
@@ -2791,6 +2835,7 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                   setCodexPage={setCodexPage}
                   codexSelected={codexSelected}
                   setCodexSelected={setCodexSelected}
+                  externalPressed={popupKeyPressed}
                   assets={assets}
                   onClose={() => {
                     setPanelOpen(false);
@@ -3007,39 +3052,17 @@ function gradeFlair(result: CatchResult): GradeFlair {
 function CatchPopup({
   result,
   onConfirm,
+  externalPressed = false,
 }: {
   result: CatchResult | null;
   onConfirm: () => void;
+  // Set by the parent's Space-keyboard handler so the check button's
+  // press visual mirrors keyboard input. OR'd with the internal
+  // pointer-driven `pressed` so either source can scale the icon.
+  externalPressed?: boolean;
 }) {
   const [pressed, setPressed] = useState(false);
-  // Space key acts on the check button while the popup is open:
-  // keydown → pressed (scale-down feedback), keyup → fire onConfirm
-  // and release. Mirrors the pointer flow so the visual is identical.
-  // Auto-repeat keydowns are ignored so holding Space doesn't thrash
-  // setState. Listener is attached only while a result is present, so
-  // it auto-cleans on dismount.
-  useEffect(() => {
-    if (!result) return;
-    const isSpace = (e: KeyboardEvent) =>
-      e.key === " " || e.code === "Space";
-    const onDown = (e: KeyboardEvent) => {
-      if (!isSpace(e)) return;
-      e.preventDefault();
-      if (!e.repeat) setPressed(true);
-    };
-    const onUp = (e: KeyboardEvent) => {
-      if (!isSpace(e)) return;
-      e.preventDefault();
-      setPressed(false);
-      onConfirm();
-    };
-    window.addEventListener("keydown", onDown);
-    window.addEventListener("keyup", onUp);
-    return () => {
-      window.removeEventListener("keydown", onDown);
-      window.removeEventListener("keyup", onUp);
-    };
-  }, [result, onConfirm]);
+  const showPressed = pressed || externalPressed;
   return (
     <AnimatePresence>
       {result ? (
@@ -3114,7 +3137,7 @@ function CatchPopup({
                     width: 17 * 2,
                     height: 14 * 2,
                     pointerEvents: "none",
-                    transform: `scale(${pressed ? 0.9 : 1})`,
+                    transform: `scale(${showPressed ? 0.9 : 1})`,
                     transition: "transform 80ms ease",
                   }}
                 />
@@ -3360,6 +3383,7 @@ function InventoryPanel({
   setCodexPage,
   codexSelected,
   setCodexSelected,
+  externalPressed = false,
   assets,
   onClose,
 }: {
@@ -3379,6 +3403,7 @@ function InventoryPanel({
   setCodexPage: (n: number | ((p: number) => number)) => void;
   codexSelected: number | null;
   setCodexSelected: (s: number | null) => void;
+  externalPressed?: boolean;
   assets: LoadedAssets | null;
   onClose: () => void;
 }) {
@@ -3562,6 +3587,7 @@ function InventoryPanel({
                 setPage={setInvPage}
                 selected={invSelected}
                 setSelected={setInvSelected}
+                externalPressed={externalPressed}
               />
             ) : tab === "codex" ? (
               <CodexContent
@@ -3570,6 +3596,7 @@ function InventoryPanel({
                 setPage={setCodexPage}
                 selected={codexSelected}
                 setSelected={setCodexSelected}
+                externalPressed={externalPressed}
               />
             ) : tab === "info" ? (
               <InfoContent
@@ -3621,12 +3648,14 @@ function InventoryContent({
   setPage,
   selected,
   setSelected,
+  externalPressed = false,
 }: {
   inventory: Record<string, number>;
   page: number;
   setPage: (n: number | ((p: number) => number)) => void;
   selected: string | null;
   setSelected: (s: string | null) => void;
+  externalPressed?: boolean;
 }) {
   // Stable ordering — sort by item key so the same key always lands
   // in the same slot across re-renders (no jumping when a new item
@@ -3903,6 +3932,7 @@ function InventoryContent({
                     border: "none",
                     background: "transparent",
                     cursor: "pointer",
+                    transform: externalPressed ? "scale(0.9)" : undefined,
                   }}
                 >
                   <img
@@ -3939,12 +3969,14 @@ function CodexContent({
   setPage,
   selected,
   setSelected,
+  externalPressed = false,
 }: {
   caught: Set<number>;
   page: number;
   setPage: (n: number | ((p: number) => number)) => void;
   selected: number | null;
   setSelected: (s: number | null) => void;
+  externalPressed?: boolean;
 }) {
   const totalPages = Math.max(
     1,
@@ -4221,6 +4253,7 @@ function CodexContent({
                     border: "none",
                     background: "transparent",
                     cursor: "pointer",
+                    transform: externalPressed ? "scale(0.9)" : undefined,
                   }}
                 >
                   <img
