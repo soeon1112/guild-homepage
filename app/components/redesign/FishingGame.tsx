@@ -1824,6 +1824,19 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
   // OR'd into the popup's local pressed state for the visual.
   const [popupKeyPressed, setPopupKeyPressed] = useState(false);
 
+  // Timestamp of the most recent catch-popup open. The same Space
+  // press that resolves the gauge bar lands the bite-mode confirm
+  // and *also* fires keyup on the catch popup if we don't gate it —
+  // closing the popup before the player can read it. We swallow
+  // Space keydown/keyup for a short window after the popup mounts.
+  const catchPopupOpenedAtRef = useRef<number>(0);
+  useEffect(() => {
+    if (catchPopup) {
+      catchPopupOpenedAtRef.current = Date.now();
+    }
+  }, [catchPopup]);
+  const CATCH_POPUP_KEY_LOCKOUT_MS = 300;
+
   // Keyboard input. We listen on window so focus on the canvas isn't
   // required — the panel is the foreground UI when open.
   useEffect(() => {
@@ -1850,6 +1863,15 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
         // the keyup confirm. Order: catch popup → inventory detail
         // → codex detail → regular game action.
         if (catchPopup) {
+          // Eat the Space press for a brief window so the gauge-bar
+          // press that opened this popup doesn't immediately confirm
+          // and dismiss it. Both keydown and keyup are dropped — if
+          // we let keydown through and gated only keyup the popup
+          // would still close on the next keyup after the lockout.
+          const sincePopup = Date.now() - catchPopupOpenedAtRef.current;
+          if (sincePopup < CATCH_POPUP_KEY_LOCKOUT_MS) {
+            return;
+          }
           if (down) {
             if (!e.repeat) setPopupKeyPressed(true);
           } else {
