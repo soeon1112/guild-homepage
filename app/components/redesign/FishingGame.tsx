@@ -2964,15 +2964,52 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
         const speed = MOVE_SPEED_PX_PER_SEC;
         const dx = vx * speed * dt;
         const dy = vy * speed * dt;
+        // Peer-overlap probe — true only when the candidate
+        // (x, y) sits within PEER_COLLIDE_RADIUS of another
+        // player AND the candidate is *closer* than the current
+        // position. The "closer than" guard means an already-
+        // overlapping peer (e.g., they snapshot-spawned right
+        // on top of us) doesn't deadlock movement: stepping
+        // away is always allowed, only stepping further into
+        // them is blocked. 8 px keeps the gate tight enough
+        // that players can stand shoulder-to-shoulder or pass
+        // each other on a 16 px tile boundary.
+        const PEER_COLLIDE_RADIUS = 8;
+        const PEER_RADIUS_SQ = PEER_COLLIDE_RADIUS * PEER_COLLIDE_RADIUS;
+        const peerCollides = (px: number, py: number) => {
+          for (const peer of peersRef.current.values()) {
+            const ddx = peer.x - px;
+            const ddy = peer.y - py;
+            const distNewSq = ddx * ddx + ddy * ddy;
+            if (distNewSq >= PEER_RADIUS_SQ) continue;
+            const fdx = peer.x - s.x;
+            const fdy = peer.y - s.y;
+            const distOldSq = fdx * fdx + fdy * fdy;
+            if (distNewSq < distOldSq) return true;
+          }
+          return false;
+        };
         // Try x and y independently so the player can slide along
-        // walls instead of getting stuck on a corner.
+        // walls instead of getting stuck on a corner. Peer check
+        // is folded into the same gate so a player can also
+        // slide ALONG another player when they touch.
         if (dx !== 0) {
           const tryX = clamp(s.x + dx, 0, mapW);
-          if (!sceneCollides(currentScene, tryX, s.y)) s.x = tryX;
+          if (
+            !sceneCollides(currentScene, tryX, s.y) &&
+            !peerCollides(tryX, s.y)
+          ) {
+            s.x = tryX;
+          }
         }
         if (dy !== 0) {
           const tryY = clamp(s.y + dy, 0, mapH);
-          if (!sceneCollides(currentScene, s.x, tryY)) s.y = tryY;
+          if (
+            !sceneCollides(currentScene, s.x, tryY) &&
+            !peerCollides(s.x, tryY)
+          ) {
+            s.y = tryY;
+          }
         }
         // Direction follows the dominant axis. Vertical wins ties so a
         // pure-down keypress doesn't accidentally show a side facing.
