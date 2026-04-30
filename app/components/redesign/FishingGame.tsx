@@ -5477,18 +5477,17 @@ function CodexSprite({
 // transaction. Forage / trash are sellable for their (zero) price
 // so the player can also use this as inventory cleanup.
 const SELL_PANEL_WIDTH = 256;
-// Match the inventory panel exactly (256×256, top=28) so the tab
-// bookmarks line up with the frame's top edge identically and the
-// shop reads as the same component family. The sell-tab content
-// stack (grid + page row + info row + buttons + close) is trimmed
-// at the margin level (see button row mt and close marginTop below)
-// to fit the smaller inner area.
-const SELL_PANEL_HEIGHT = 256;
+// Width matches the inventory panel; height is sized to the trimmed
+// 5×2 slot grid so the tab bookmarks meet the frame's top edge in
+// the same proportions inventory does. Top stays at 28 so the tabs
+// land at the same Y as the inventory tabs (panel-top + -(TAB_H -
+// TAB_VISIBLE) = 8 px from the viewport top — see TabBookmark).
+const SELL_PANEL_HEIGHT = 220;
 const SELL_PANEL_LEFT = (VIEWPORT - SELL_PANEL_WIDTH) / 2;
 const SELL_PANEL_TOP = 28;
-const SELL_SLOTS_PER_PAGE = 15;     // 5 cols × 3 rows
+const SELL_SLOTS_PER_PAGE = 10;     // 5 cols × 2 rows
 const SELL_SLOT_COLS = 5;
-const SELL_SLOT_ROWS = 3;
+const SELL_SLOT_ROWS = 2;
 
 function SellPanel({
   inventory,
@@ -5852,18 +5851,43 @@ function BuyContent({
         className="flex w-full flex-col items-center"
         style={{ flex: 1, justifyContent: "center", minHeight: 0 }}
       >
-        {/* Food slot grid — only two items today, but the same
-            slot frame keeps the visual language consistent with
-            the sell tab. */}
+        {/* Food slot grid — fixed 5×2 to match the sell tab's grid
+            shape. The two food entries fill the first two cells; the
+            remaining cells render as empty FrameSlot02c placeholders
+            so future shop items can drop straight in without changing
+            the layout. */}
         <div
           className="grid"
           style={{
             gridTemplateColumns: `repeat(${SELL_SLOT_COLS}, ${SLOT_DISPLAY}px)`,
-            gridAutoRows: `${SLOT_DISPLAY}px`,
+            gridTemplateRows: `repeat(${SELL_SLOT_ROWS}, ${SLOT_DISPLAY}px)`,
             gap: SLOT_GAP,
           }}
         >
-          {FOOD_LIST.map((food) => {
+          {Array.from({ length: SELL_SLOTS_PER_PAGE }, (_, i) => {
+            const food = FOOD_LIST[i];
+            if (!food) {
+              return (
+                <div
+                  key={`empty-${i}`}
+                  className="relative"
+                  style={{ width: SLOT_DISPLAY, height: SLOT_DISPLAY }}
+                  aria-hidden
+                >
+                  <img
+                    src={UI_SELL_SLOT}
+                    alt=""
+                    draggable={false}
+                    style={{
+                      imageRendering: "pixelated",
+                      width: SLOT_DISPLAY,
+                      height: SLOT_DISPLAY,
+                      pointerEvents: "none",
+                    }}
+                  />
+                </div>
+              );
+            }
             const isSel = buySelected === food.id;
             return (
               <button
