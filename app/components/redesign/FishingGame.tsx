@@ -2678,11 +2678,17 @@ function Frame9Slice({
     }
   }, [img, width, height, cap, scale]);
 
+  // Why the wrapper-inside-wrapper: in CSS painting order a
+  // positioned (absolute) descendant paints AFTER its non-positioned
+  // siblings. With the canvas positioned absolute and the children
+  // un-positioned, the canvas drew over the text and buttons. Putting
+  // the children inside their own absolute wrapper with a higher
+  // z-index keeps the canvas behind everything author-rendered. The
+  // outer div carries no padding so absolute children inset to its
+  // edges; padding/flex passed via the caller's style/className apply
+  // to the inner wrapper so layout is unaffected.
   return (
-    <div
-      className={className}
-      style={{ position: "relative", width, height, ...style }}
-    >
+    <div style={{ position: "relative", width, height }}>
       <canvas
         ref={canvasRef}
         width={width}
@@ -2694,9 +2700,20 @@ function Frame9Slice({
           height,
           imageRendering: "pixelated",
           pointerEvents: "none",
+          zIndex: 0,
         }}
       />
-      {children}
+      <div
+        className={className}
+        style={{
+          position: "absolute",
+          inset: 0,
+          zIndex: 1,
+          ...style,
+        }}
+      >
+        {children}
+      </div>
     </div>
   );
 }
