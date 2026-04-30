@@ -973,15 +973,18 @@ export default function FishingGame({ open, onClose }: Props) {
         }
       }
 
-      // Can-fish probe: outdoor + walk mode only. Samples the
-      // background art a tile or two ahead in the FACING direction —
-      // only true water pixels qualify, so the player can't fish
-      // while facing a wall, tree, or open beach. Edge-triggered
-      // setState keeps React from re-rendering on every tick.
+      // Can-fish probe: outdoor + walk mode only. Two gates that
+      // must BOTH pass: the player has to be adjacent to water (any
+      // probe distance) AND the bobber's eventual landing position
+      // (BOBBER_DISTANCE ahead) has to be on water too — so casting
+      // onto open sand or just past the shoreline never activates.
+      // Edge-triggered setState keeps React from re-rendering every
+      // tick.
       let nextCanFish = false;
       if (currentScene === "outdoor") {
         const dx = s.dir === "right" ? 1 : s.dir === "left" ? -1 : 0;
         const dy = s.dir === "down" ? 1 : s.dir === "up" ? -1 : 0;
+        let nearWater = false;
         for (const dist of FISH_PROBE_DISTANCES) {
           if (
             isWaterPixel(
@@ -990,10 +993,18 @@ export default function FishingGame({ open, onClose }: Props) {
               s.y + dy * dist,
             )
           ) {
-            nextCanFish = true;
+            nearWater = true;
             break;
           }
         }
+        const bobberOnWater =
+          nearWater &&
+          isWaterPixel(
+            assets.backgroundData,
+            s.x + dx * BOBBER_DISTANCE,
+            s.y + dy * BOBBER_DISTANCE,
+          );
+        nextCanFish = nearWater && bobberOnWater;
       }
       if (nextCanFish !== canFishRef.current) {
         canFishRef.current = nextCanFish;

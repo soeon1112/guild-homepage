@@ -222,12 +222,16 @@ export const BOBBER_INDEX = 0;
 // pixels. Two tiles forward keeps the line visibly slack.
 export const BOBBER_DISTANCE = 32;
 
-// "Can I fish here?" probe: the player must be facing water within
-// roughly two tiles. We sample the BACKGROUND image (not the
-// collision mask) so building walls and tree trunks — which are
-// also red on collision.png — don't qualify. Water is detected by
-// the seafoam blue palette in 배경.png (R<100, G≥150, B≥200).
-export const FISH_PROBE_DISTANCES: readonly number[] = [16, 32];
+// "Can I fish here?" probe: the player must be RIGHT next to water
+// (within ~1 tile in front). We sample the BACKGROUND image so
+// building walls and tree trunks — which are also red on
+// collision.png — don't qualify. Water is detected by the seafoam
+// blue palette in 배경.png (R<100, G≥150, B≥200).
+//
+// Two-stage gate: the probe distances below ensure the player is
+// adjacent to water; the bobber-landing check (at BOBBER_DISTANCE)
+// also has to land on water, so casting onto sand never activates.
+export const FISH_PROBE_DISTANCES: readonly number[] = [8, 16];
 
 // Water color thresholds for 배경.png. Sampled at multiple shore
 // pixels: water sits at ~(72, 185, 221). Sand (227, 187, 77),
