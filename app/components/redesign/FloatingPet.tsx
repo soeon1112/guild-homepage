@@ -609,15 +609,24 @@ export default function FloatingPet() {
       <motion.button
         type="button"
         onClick={() => {
-          if (!canFish) {
-            setOpen((v) => !v);
-            return;
-          }
+          // Explicit branching keeps the touch path resilient — on
+          // mobile a `setShowMenu((v) => !v)` toggle could land
+          // mid-render and read a stale value, hiding the menu we
+          // just opened. Each branch sets a final value so the
+          // outcome is the same regardless of dispatch order.
           if (open) {
             setOpen(false);
             return;
           }
-          setShowMenu((v) => !v);
+          if (!canFish) {
+            setOpen(true);
+            return;
+          }
+          // canFish + nothing else open → surface the menu so the
+          // player can pick 펫 keep / 낚시. Setting true rather than
+          // toggling means a stray double-tap can't immediately
+          // close it.
+          setShowMenu(true);
         }}
         aria-label={open ? "펫 닫기" : "펫 열기"}
         initial={{ scale: 0.8, opacity: 0 }}
@@ -657,6 +666,19 @@ export default function FloatingPet() {
       {/* ── Two-button menu (gated to fishing admin) ── */}
       <AnimatePresence>
         {canFish && showMenu && !open && !fishingOpen ? (
+          <>
+            {/* Tap-anywhere backdrop — closes the menu. Vital on
+                mobile where there's no escape key and the FAB is
+                an "open-only" button now (no toggle-close). */}
+            <motion.div
+              key="pet-menu-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.12 }}
+              className="fixed inset-0 z-[140]"
+              onClick={() => setShowMenu(false)}
+            />
           <motion.div
             key="pet-menu"
             initial={{ opacity: 0, y: 8, scale: 0.92 }}
@@ -708,6 +730,7 @@ export default function FloatingPet() {
               </span>
             </button>
           </motion.div>
+          </>
         ) : null}
       </AnimatePresence>
 
