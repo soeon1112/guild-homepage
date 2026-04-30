@@ -25,6 +25,7 @@ import {
   where,
 } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
+import { setChatInputFocused } from "@/src/lib/uiBus";
 import { addPoints } from "@/src/lib/points";
 import {
   ASSETS,
@@ -943,6 +944,37 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
   // from inside its tick so character/scene/chat state changes
   // always see the freshest closure without re-running the loop.
   const writePresenceRef = useRef<(force: boolean) => void>(() => {});
+
+  // Mobile-keyboard-aware panel offset. iOS/Android pop the soft
+  // keyboard on top of fixed elements, which would cover the
+  // bottom of the fishing panel (the chat input + game viewport
+  // bottom). When the keyboard is up we lift the panel so its
+  // bottom sits directly above the keyboard instead of being
+  // clipped. On PC / no-keyboard this stays 0 → panel keeps its
+  // default `bottom-24`.
+  const [keyboardLift, setKeyboardLift] = useState(0);
+  useEffect(() => {
+    if (!open) return;
+    if (typeof window === "undefined") return;
+    const isTouch =
+      window.matchMedia &&
+      window.matchMedia("(pointer: coarse)").matches;
+    if (!isTouch) return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => {
+      const occluded = window.innerHeight - (vv.offsetTop + vv.height);
+      setKeyboardLift(Math.max(0, Math.round(occluded)));
+    };
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+      setKeyboardLift(0);
+    };
+  }, [open]);
   // Generic short-lived hint toast for stamina / shop edge cases
   // ("체력이 부족하다", "이미 체력이 가득 찼다", "별빛이 부족합니다").
   const [hintToast, setHintToast] = useState<string | null>(null);
@@ -4066,17 +4098,21 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 12, scale: 0.96 }}
           transition={{ duration: 0.18 }}
-          className="fixed left-4 bottom-24 z-[200] flex flex-col overflow-hidden rounded-2xl border border-nebula-pink/30 backdrop-blur-md"
+          className="fixed left-4 z-[200] flex flex-col overflow-hidden rounded-2xl border border-nebula-pink/30 backdrop-blur-md"
           style={{
+            // Default bottom is 96 px (matches the `bottom-24`
+            // Tailwind utility). When the soft keyboard is up
+            // (keyboardLift > 0), shift the panel up by that
+            // many px + a tiny gap so its bottom edge sits
+            // directly above the keyboard instead of being
+            // clipped. The transition is fast enough to feel
+            // pinned without snapping.
+            bottom: keyboardLift > 0 ? keyboardLift + 8 : 96,
+            transition: "bottom 160ms ease",
             background:
               "linear-gradient(180deg, rgba(26,15,61,0.94) 0%, rgba(11,8,33,0.94) 100%)",
             boxShadow:
               "0 24px 60px rgba(11,8,33,0.7), 0 0 40px rgba(107,75,168,0.30), inset 0 1px 0 rgba(255,229,196,0.06)",
-            // Block native scroll/zoom gestures across the whole
-            // panel — the chat input scroll list re-enables
-            // pan-y locally where it needs scroll. Without this,
-            // a touch-drag on the FAB header (above the canvas)
-            // could still trigger pull-to-refresh.
             touchAction: "none",
             overscrollBehavior: "contain",
           }}
@@ -4937,9 +4973,24 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
               onChange={(e) => setChatDraft(e.target.value)}
               onFocus={() => {
                 chatFocusedRef.current = true;
+                // Notify the global UI bus so BottomNav can hide
+                // itself the moment the soft keyboard begins to
+                // animate in — visualViewport on iOS / Android
+                // sometimes doesn't shrink past the 0.8 threshold
+                // until after the keyboard finishes opening.
+                // Mobile-class detection is gated here so PC
+                // mouse focus never sets the bus.
+                if (
+                  typeof window !== "undefined" &&
+                  window.matchMedia &&
+                  window.matchMedia("(pointer: coarse)").matches
+                ) {
+                  setChatInputFocused(true);
+                }
               }}
               onBlur={() => {
                 chatFocusedRef.current = false;
+                setChatInputFocused(false);
               }}
               onCompositionStart={() => {
                 chatComposingRef.current = true;
