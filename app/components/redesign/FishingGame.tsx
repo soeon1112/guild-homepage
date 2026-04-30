@@ -3743,6 +3743,18 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                     setHintToast(
                       `${food.nameKo} 구매! (-${food.price} 별빛)`,
                     );
+                    // Mirror the deduction to the main-site point
+                    // ledger so users/{nickname}.points stays in
+                    // lockstep with the in-game star count, and the
+                    // pointHistory subcollection records the buy as
+                    // a "낚시" entry visible on the MY 포인트 내역
+                    // page.
+                    void addPoints(
+                      nickname,
+                      "낚시",
+                      -food.price,
+                      `${food.nameKo} 구매`,
+                    );
                   }}
                 />
               ) : null}
