@@ -863,3 +863,34 @@ export function expForCatch(result: CatchResult): number {
 // Only fish count toward the codex — forage is flavour and shows
 // up in the inventory but not in dex completion.
 export const TOTAL_DEX_SPECIES = FISH_LIST.length;
+
+// ── Stamina + food ────────────────────────────────────────────────
+// Each cast burns FISHING_STAMINA_COST regardless of outcome; once
+// stamina drops below the cost the player needs to eat. Food never
+// regenerates passively, so the loop is "fish → eat → fish".
+export const MAX_STAMINA = 100;
+export const FISHING_STAMINA_COST = 2;
+export const STAMINA_LOW_MESSAGE =
+  "체력이 부족하다. 뭔가 먹어야 할 것 같다.";
+export const STAMINA_FULL_MESSAGE = "이미 체력이 가득 찼다.";
+export const STARLIGHT_INSUFFICIENT_MESSAGE = "별빛이 부족합니다.";
+
+export type Food = {
+  id: number;
+  nameKo: string;
+  price: number;
+  healAmount: number;
+  // Glyph used for the inventory / shop slot. Emoji is rendered as
+  // text — works at any scale, no asset to bundle, and reads as a
+  // food sprite at small sizes.
+  emoji: string;
+};
+
+export const FOOD_LIST: readonly Food[] = [
+  { id: 1, nameKo: "빵",       price: 3, healAmount: 30, emoji: "🍞" },
+  { id: 2, nameKo: "스테이크", price: 8, healAmount: 80, emoji: "🥩" },
+];
+
+export function getFoodById(id: number): Food | undefined {
+  return FOOD_LIST.find((f) => f.id === id);
+}

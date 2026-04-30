@@ -91,6 +91,14 @@ import {
   FISHSHOP_BUBBLE_VISIBLE_MS,
   FISHSHOP_IDLE_DELAY_MIN_MS,
   FISHSHOP_IDLE_DELAY_MAX_MS,
+  MAX_STAMINA,
+  FISHING_STAMINA_COST,
+  STAMINA_LOW_MESSAGE,
+  STAMINA_FULL_MESSAGE,
+  STARLIGHT_INSUFFICIENT_MESSAGE,
+  FOOD_LIST,
+  getFoodById,
+  type Food,
   INDOOR_MAP_HEIGHT,
   INDOOR_MAP_WIDTH,
   MAP_HEIGHT,
@@ -733,6 +741,25 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
   const [sellSelected, setSellSelected] = useState<string | null>(null);
   const [sellPage, setSellPage] = useState(0);
   const [sellToast, setSellToast] = useState<number | null>(null);
+  // Sell panel sub-tab — 판매 (sell) vs 구매 (buy from shop).
+  const [sellTab, setSellTab] = useState<"sell" | "buy">("sell");
+  const [buySelected, setBuySelected] = useState<number | null>(null);
+  // Stamina — spent on each cast. Floor of FISHING_STAMINA_COST
+  // means no more casts until the player eats. Defaults to MAX
+  // when no Firestore value exists.
+  const [stamina, setStamina] = useState(MAX_STAMINA);
+  const staminaRef = useRef(MAX_STAMINA);
+  useEffect(() => {
+    staminaRef.current = stamina;
+  }, [stamina]);
+  // Generic short-lived hint toast for stamina / shop edge cases
+  // ("체력이 부족하다", "이미 체력이 가득 찼다", "별빛이 부족합니다").
+  const [hintToast, setHintToast] = useState<string | null>(null);
+  useEffect(() => {
+    if (!hintToast) return;
+    const t = setTimeout(() => setHintToast(null), 1800);
+    return () => clearTimeout(t);
+  }, [hintToast]);
   // Panel-open ref read by the game loop to gate movement input
   // without a re-render every frame. Both inventory/codex/info/ranking
   // and the shop sell panel pause movement when open.
@@ -1064,6 +1091,11 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
             setTotalCatches(data.totalCaught);
           if (typeof data.totalStars === "number")
             setTotalStarlight(data.totalStars);
+          if (typeof data.stamina === "number") {
+            // Clamp restored stamina to [0, MAX_STAMINA] so a stale
+            // doc with an out-of-range value doesn't break the bar.
+            setStamina(Math.max(0, Math.min(MAX_STAMINA, data.stamina)));
+          }
           // Position — restore lastMap first so collision/render
           // pick up the right scene, then drop the player at the
           // saved foot pixel. Defensive: invalid scenes fall back
@@ -1129,6 +1161,7 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
         level: levelFromTotalExp(totalExp).level,
         totalCaught: totalCatches,
         totalStars: totalStarlight,
+        stamina,
       },
       { merge: true },
     ).catch((err) => console.error("[fishing] save state failed", err));
@@ -1138,6 +1171,7 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
     totalExp,
     totalCatches,
     totalStarlight,
+    stamina,
     open,
     nickname,
   ]);
@@ -1627,6 +1661,13 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
   // Start a new cast. Movement input is cleared so the animation
   // plays without dragging.
   const startCast = useCallback(() => {
+    // Stamina gate — show the low-stamina hint instead of casting
+    // when the player can't afford another swing.
+    if (staminaRef.current < FISHING_STAMINA_COST) {
+      setHintToast(STAMINA_LOW_MESSAGE);
+      return;
+    }
+    setStamina((cur) => Math.max(0, cur - FISHING_STAMINA_COST));
     const s = stateRef.current;
     s.mode = "fishingCast";
     s.subT = 0;
@@ -3255,6 +3296,28 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
               </motion.div>
             ) : null}
 
+            {/* HP bar — top-left of the canvas, always visible.
+                Bar01a as full-width track, BarFill01a as the
+                proportional red-orange fill, "HP n/100" overlay. */}
+            <HpBar stamina={stamina} />
+
+            {/* Hint toast — short-lived "체력이 부족", "이미 가득",
+                "별빛 부족" lines. Centered near the top so it
+                doesn't clash with the HP bar at the corner. */}
+            {hintToast ? (
+              <div
+                className="pointer-events-none absolute left-1/2 top-[28%] -translate-x-1/2 rounded-xl px-3 py-1.5 text-[12px] font-semibold text-stardust"
+                style={{
+                  background: "rgba(11,8,33,0.92)",
+                  border: "1px solid rgba(216,150,200,0.50)",
+                  boxShadow: "0 4px 16px rgba(11,8,33,0.6)",
+                  zIndex: 26,
+                }}
+              >
+                {hintToast}
+              </div>
+            ) : null}
+
             {/* Shopkeeper greeting bubble — pops up the moment the
                 player enters the shop, sits over the NPC's head, and
                 fades out after 3 s (or when the sell panel opens).
@@ -3378,6 +3441,27 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                   codexSelected={codexSelected}
                   setCodexSelected={setCodexSelected}
                   externalPressed={popupKeyPressed}
+                  onUseFood={(itemKey) => {
+                    const ref = resolveItemKey(itemKey);
+                    if (!ref || ref.kind !== "food") return;
+                    if (staminaRef.current >= MAX_STAMINA) {
+                      setHintToast(STAMINA_FULL_MESSAGE);
+                      return;
+                    }
+                    const heal = ref.data.healAmount;
+                    setStamina((cur) =>
+                      Math.min(MAX_STAMINA, cur + heal),
+                    );
+                    setInventory((prev) => {
+                      const cur = prev[itemKey] ?? 0;
+                      if (cur <= 0) return prev;
+                      const next = { ...prev };
+                      if (cur > 1) next[itemKey] = cur - 1;
+                      else delete next[itemKey];
+                      return next;
+                    });
+                    setInvSelected(null);
+                  }}
                   assets={assets}
                   onClose={() => {
                     setPanelOpen(false);
@@ -3438,6 +3522,29 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                   onClose={() => {
                     setSellOpen(false);
                     setSellSelected(null);
+                    setBuySelected(null);
+                  }}
+                  tab={sellTab}
+                  setTab={setSellTab}
+                  buySelected={buySelected}
+                  setBuySelected={setBuySelected}
+                  totalStarlight={totalStarlight}
+                  onBuy={(foodId) => {
+                    const food = getFoodById(foodId);
+                    if (!food) return;
+                    if (totalStarlight < food.price) {
+                      setHintToast(STARLIGHT_INSUFFICIENT_MESSAGE);
+                      return;
+                    }
+                    setTotalStarlight((s) => s - food.price);
+                    setInventory((prev) => {
+                      const key = `food-${food.id}`;
+                      return { ...prev, [key]: (prev[key] ?? 0) + 1 };
+                    });
+                    setBuySelected(null);
+                    setHintToast(
+                      `${food.nameKo} 구매! (-${food.price} 별빛)`,
+                    );
                   }}
                 />
               ) : null}
@@ -4006,6 +4113,7 @@ function InventoryPanel({
   codexSelected,
   setCodexSelected,
   externalPressed = false,
+  onUseFood,
   assets,
   onClose,
 }: {
@@ -4026,6 +4134,7 @@ function InventoryPanel({
   codexSelected: number | null;
   setCodexSelected: (s: number | null) => void;
   externalPressed?: boolean;
+  onUseFood?: (itemKey: string) => void;
   assets: LoadedAssets | null;
   onClose: () => void;
 }) {
@@ -4180,6 +4289,7 @@ function InventoryPanel({
                   selected={invSelected}
                   setSelected={setInvSelected}
                   externalPressed={externalPressed}
+                  onUse={onUseFood}
                 />
               ) : tab === "codex" ? (
                 <CodexContent
@@ -4251,7 +4361,8 @@ function InventoryPanel({
 type ItemRef =
   | { kind: "fish"; data: Fish }
   | { kind: "treasure"; data: Forage }
-  | { kind: "trash"; data: Forage };
+  | { kind: "trash"; data: Forage }
+  | { kind: "food"; data: Food };
 
 function resolveItemKey(key: string): ItemRef | null {
   if (key.startsWith("fish-")) {
@@ -4266,6 +4377,12 @@ function resolveItemKey(key: string): ItemRef | null {
     if (!f) return null;
     return { kind: f.type === "trash" ? "trash" : "treasure", data: f };
   }
+  if (key.startsWith("food-")) {
+    const id = parseInt(key.slice(5), 10);
+    const f = getFoodById(id);
+    if (!f) return null;
+    return { kind: "food", data: f };
+  }
   return null;
 }
 
@@ -4276,6 +4393,7 @@ function InventoryContent({
   selected,
   setSelected,
   externalPressed = false,
+  onUse,
 }: {
   inventory: Record<string, number>;
   page: number;
@@ -4283,6 +4401,9 @@ function InventoryContent({
   selected: string | null;
   setSelected: (s: string | null) => void;
   externalPressed?: boolean;
+  // Optional handler to consume one stack of a food item — fired
+  // by the 사용 button rendered inside the slot detail card.
+  onUse?: (itemKey: string) => void;
 }) {
   // Stable ordering — sort by item key so the same key always lands
   // in the same slot across re-renders (no jumping when a new item
@@ -4505,6 +4626,8 @@ function InventoryContent({
                     color:
                       selectedRef.kind === "fish"
                         ? FISH_GRADE_COLOR[selectedRef.data.grade]
+                        : selectedRef.kind === "food"
+                        ? "#86efac"
                         : selectedRef.kind === "trash"
                         ? "#94a3b8"
                         : "#fde68a",
@@ -4512,6 +4635,8 @@ function InventoryContent({
                 >
                   {selectedRef.kind === "fish"
                     ? gradeLabel(selectedRef.data.grade)
+                    : selectedRef.kind === "food"
+                    ? `음식 · 체력 +${selectedRef.data.healAmount}`
                     : selectedRef.kind === "trash"
                     ? "쓰레기"
                     : "해양 자원"}
@@ -4539,41 +4664,92 @@ function InventoryContent({
                 >
                   {selectedCount}개 보유
                 </div>
-                {/* Check button — center-bottom of the card.
-                    Transparent background, scale-down on press, no
-                    extra chrome. Tapping it (or the backdrop)
-                    closes the detail card. */}
-                <button
-                  type="button"
-                  onPointerDown={(e) => {
-                    e.stopPropagation();
-                    setSelected(null);
-                  }}
-                  aria-label="확인"
-                  className="flex items-center justify-center transition-transform active:scale-90"
-                  style={{
-                    marginTop: 8,
-                    width: 17 * 2,
-                    height: 14 * 2,
-                    padding: 0,
-                    border: "none",
-                    background: "transparent",
-                    cursor: "pointer",
-                    transform: externalPressed ? "scale(0.9)" : undefined,
-                  }}
+                {/* Bottom button row. Food adds a 사용 button next
+                    to the close X — tapping it eats one stack.
+                    Non-food items just have the close button. */}
+                <div
+                  className="flex items-center"
+                  style={{ marginTop: 8, gap: 8 }}
                 >
-                  <img
-                    src={UI_ICON_CHECK}
-                    alt=""
-                    draggable={false}
+                  {selectedRef.kind === "food" && onUse && selected ? (
+                    <button
+                      type="button"
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
+                      }}
+                      onPointerUp={(e) => {
+                        e.stopPropagation();
+                        if (selected) onUse(selected);
+                      }}
+                      aria-label="사용"
+                      className="relative flex items-center justify-center transition-transform active:scale-95"
+                      style={{
+                        width: 56,
+                        height: 32,
+                        padding: 0,
+                        border: "none",
+                        background: "transparent",
+                        cursor: "pointer",
+                        filter: "drop-shadow(0 2px 3px rgba(11,8,33,0.45))",
+                      }}
+                    >
+                      <img
+                        src={UI_ACTION_BUTTON_IDLE}
+                        alt=""
+                        draggable={false}
+                        style={{
+                          imageRendering: "pixelated",
+                          width: 56,
+                          height: 32,
+                          pointerEvents: "none",
+                          objectFit: "fill",
+                        }}
+                      />
+                      <span
+                        aria-hidden
+                        className="absolute font-serif font-bold leading-none"
+                        style={{
+                          fontSize: 10,
+                          color: "#3d2c1c",
+                          transform: "translateY(-2px)",
+                          pointerEvents: "none",
+                        }}
+                      >
+                        사용
+                      </span>
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onPointerDown={(e) => {
+                      e.stopPropagation();
+                      setSelected(null);
+                    }}
+                    aria-label="확인"
+                    className="flex items-center justify-center transition-transform active:scale-90"
                     style={{
-                      imageRendering: "pixelated",
                       width: 17 * 2,
                       height: 14 * 2,
-                      pointerEvents: "none",
+                      padding: 0,
+                      border: "none",
+                      background: "transparent",
+                      cursor: "pointer",
+                      transform: externalPressed ? "scale(0.9)" : undefined,
                     }}
-                  />
-                </button>
+                  >
+                    <img
+                      src={UI_ICON_CHECK}
+                      alt=""
+                      draggable={false}
+                      style={{
+                        imageRendering: "pixelated",
+                        width: 17 * 2,
+                        height: 14 * 2,
+                        pointerEvents: "none",
+                      }}
+                    />
+                  </button>
+                </div>
               </Frame9Slice>
             </motion.div>
           </motion.div>
@@ -4961,6 +5137,12 @@ function SellPanel({
   onSellOne,
   onSellAll,
   onClose,
+  tab,
+  setTab,
+  buySelected,
+  setBuySelected,
+  totalStarlight,
+  onBuy,
 }: {
   inventory: Record<string, number>;
   page: number;
@@ -4971,6 +5153,12 @@ function SellPanel({
   onSellOne: (itemKey: string) => void;
   onSellAll: () => void;
   onClose: () => void;
+  tab: "sell" | "buy";
+  setTab: (t: "sell" | "buy") => void;
+  buySelected: number | null;
+  setBuySelected: (id: number | null) => void;
+  totalStarlight: number;
+  onBuy: (foodId: number) => void;
 }) {
   const items = Object.entries(inventory)
     .filter(([, count]) => count > 0)
@@ -5028,14 +5216,56 @@ function SellPanel({
           }}
         >
           <div className="flex h-full w-full flex-col items-center">
-            {/* NPC headline */}
+            {/* Tab switcher — 판매 (sell inventory) / 구매 (buy
+                food). Plain text-button toggle so we don't burn
+                another asset; active tab highlights with the
+                tan/cream palette. */}
+            <div
+              className="flex"
+              style={{ gap: 6, marginBottom: 4 }}
+            >
+              {(["sell", "buy"] as const).map((t) => {
+                const active = tab === t;
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onPointerDown={(e) => {
+                      e.stopPropagation();
+                      setTab(t);
+                      setSelected(null);
+                      setBuySelected(null);
+                    }}
+                    className="font-serif font-bold leading-none"
+                    style={{
+                      fontSize: 11,
+                      padding: "3px 10px",
+                      border: "1px solid #3d2c1c",
+                      borderRadius: 3,
+                      background: active ? "#3d2c1c" : "transparent",
+                      color: active ? "#fde68a" : "#3d2c1c",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {t === "sell" ? "판매" : "구매"}
+                  </button>
+                );
+              })}
+            </div>
+            {/* NPC headline — flips with the tab so the same
+                shopkeeper feels like they're saying the right line
+                for each transaction. */}
             <div
               className="font-serif font-bold leading-none"
               style={{ fontSize: 12, color: "#3d2c1c", marginBottom: 4 }}
             >
-              잡은 물고기를 살게요!
+              {tab === "sell"
+                ? "잡은 물고기를 살게요!"
+                : "필요한 물건이 있나요?"}
             </div>
 
+            {tab === "sell" ? (
+            <>
             {/* Slot grid + pagination — flex-1 area centers the
                 stack vertically so it sits between the headline and
                 the action buttons regardless of how full it is. */}
@@ -5253,10 +5483,183 @@ function SellPanel({
                 />
               </button>
             </div>
+            </>
+            ) : (
+            <BuyContent
+              buySelected={buySelected}
+              setBuySelected={setBuySelected}
+              totalStarlight={totalStarlight}
+              onBuy={onBuy}
+              onClose={onClose}
+              externalPressed={externalPressed}
+            />
+            )}
           </div>
         </Frame9Slice>
       </motion.div>
     </motion.div>
+  );
+}
+
+// Buy tab — small grid of food shop items + their prices, with a
+// "구매" SellActionButton mirroring the sell tab's bottom row.
+function BuyContent({
+  buySelected,
+  setBuySelected,
+  totalStarlight,
+  onBuy,
+  onClose,
+  externalPressed,
+}: {
+  buySelected: number | null;
+  setBuySelected: (id: number | null) => void;
+  totalStarlight: number;
+  onBuy: (foodId: number) => void;
+  onClose: () => void;
+  externalPressed: boolean;
+}) {
+  const selFood = buySelected != null ? getFoodById(buySelected) : null;
+  const canAfford = selFood ? totalStarlight >= selFood.price : false;
+  return (
+    <>
+      <div
+        className="flex w-full flex-col items-center"
+        style={{ flex: 1, justifyContent: "center", minHeight: 0 }}
+      >
+        {/* Food slot grid — only two items today, but the same
+            slot frame keeps the visual language consistent with
+            the sell tab. */}
+        <div
+          className="grid"
+          style={{
+            gridTemplateColumns: `repeat(${SELL_SLOT_COLS}, ${SLOT_DISPLAY}px)`,
+            gridAutoRows: `${SLOT_DISPLAY}px`,
+            gap: SLOT_GAP,
+          }}
+        >
+          {FOOD_LIST.map((food) => {
+            const isSel = buySelected === food.id;
+            return (
+              <button
+                key={food.id}
+                type="button"
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  setBuySelected(food.id);
+                }}
+                aria-label={food.nameKo}
+                className="relative flex items-center justify-center"
+                style={{
+                  width: SLOT_DISPLAY,
+                  height: SLOT_DISPLAY,
+                  padding: 0,
+                  border: "none",
+                  background: "transparent",
+                  filter: isSel
+                    ? "drop-shadow(0 0 6px rgba(251,191,36,0.95))"
+                    : undefined,
+                }}
+              >
+                <img
+                  src={UI_INV_SLOT}
+                  alt=""
+                  draggable={false}
+                  style={{
+                    imageRendering: "pixelated",
+                    width: SLOT_DISPLAY,
+                    height: SLOT_DISPLAY,
+                    pointerEvents: "none",
+                  }}
+                />
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute leading-none"
+                  style={{
+                    left: "50%",
+                    top: "50%",
+                    transform: "translate(-50%, -55%)",
+                    fontSize: 22,
+                  }}
+                >
+                  {food.emoji}
+                </span>
+                <span
+                  aria-hidden
+                  className="absolute font-serif font-bold leading-none"
+                  style={{
+                    right: 3,
+                    bottom: 2,
+                    fontSize: 9,
+                    color: "#fde68a",
+                    textShadow:
+                      "1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000",
+                    pointerEvents: "none",
+                  }}
+                >
+                  {food.price}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div
+        className="leading-none"
+        style={{
+          marginTop: 4,
+          fontSize: 10,
+          color: selFood ? "#3d2c1c" : "#7a6a4a",
+          textAlign: "center",
+        }}
+      >
+        {selFood
+          ? `${selFood.nameKo} 구매: ${selFood.price}별빛 (체력 +${selFood.healAmount})`
+          : "구매할 아이템을 선택하세요"}
+      </div>
+      <div
+        className="mt-2 flex items-center justify-center"
+        style={{ gap: 8 }}
+      >
+        <SellActionButton
+          label="구매"
+          disabled={!selFood || !canAfford}
+          onClick={() => {
+            if (selFood) onBuy(selFood.id);
+          }}
+        />
+        <button
+          type="button"
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
+          aria-label="닫기"
+          className="flex items-center justify-center transition-transform active:scale-90"
+          style={{
+            width: 24,
+            height: 24,
+            padding: 0,
+            border: "none",
+            background: "transparent",
+            cursor: "pointer",
+            transform: externalPressed ? "scale(0.9)" : undefined,
+            flexShrink: 0,
+          }}
+        >
+          <img
+            src={UI_ICON_CROSS}
+            alt=""
+            draggable={false}
+            style={{
+              imageRendering: "pixelated",
+              width: 18,
+              height: 18,
+              pointerEvents: "none",
+            }}
+          />
+        </button>
+      </div>
+    </>
   );
 }
 
@@ -5359,6 +5762,25 @@ function SlotSprite({
   // Default sprite display fits comfortably inside a SLOT_DISPLAY-px
   // slot frame (slot has its own 4-px border + visual padding).
   const display = small ? 24 : 32;
+  // Food items don't have a sprite sheet — render their emoji glyph
+  // as text. Looks distinct enough next to the cropped fish/forage
+  // sprites to read as a different item class.
+  if (ref_.kind === "food") {
+    return (
+      <span
+        aria-hidden
+        className="pointer-events-none absolute leading-none"
+        style={{
+          left: "50%",
+          top: "50%",
+          transform: "translate(-50%, -50%)",
+          fontSize: Math.floor(display * 0.95),
+        }}
+      >
+        {ref_.data.emoji}
+      </span>
+    );
+  }
   const isFish = ref_.kind === "fish";
   const sheetUrl = isFish
     ? ASSETS_FISH_CATALOG.fishAll
@@ -5475,6 +5897,79 @@ function StatRow({ label, value }: { label: string; value: string }) {
     <div className="flex w-full justify-between font-bold">
       <span>{label}</span>
       <span>{value}</span>
+    </div>
+  );
+}
+
+// HP bar — same Bar01a + BarFill01a recipe as ExpBar but smaller,
+// always docked at the top-left of the canvas. Stamina text overlay
+// "HP n/100" inside the bar.
+const HP_BAR_WIDTH = 96;
+const HP_BAR_HEIGHT = 14;
+function HpBar({ stamina }: { stamina: number }) {
+  const ratio = Math.max(0, Math.min(1, stamina / MAX_STAMINA));
+  const fillWidth = Math.round((HP_BAR_WIDTH - 4) * ratio);
+  return (
+    <div
+      className="pointer-events-none absolute"
+      style={{
+        left: 6,
+        top: 6,
+        width: HP_BAR_WIDTH,
+        height: HP_BAR_HEIGHT,
+        zIndex: 8,
+      }}
+    >
+      <img
+        src={UI_GAUGE_BAR}
+        alt=""
+        draggable={false}
+        style={{
+          imageRendering: "pixelated",
+          width: HP_BAR_WIDTH,
+          height: HP_BAR_HEIGHT,
+          pointerEvents: "none",
+          objectFit: "fill",
+        }}
+      />
+      {fillWidth > 0 ? (
+        <img
+          src={UI_GAUGE_FILL}
+          alt=""
+          draggable={false}
+          className="absolute"
+          style={{
+            left: 2,
+            top: 4,
+            width: fillWidth,
+            height: HP_BAR_HEIGHT - 8,
+            imageRendering: "pixelated",
+            objectFit: "fill",
+            pointerEvents: "none",
+            transition: "width 240ms ease",
+            // Tint the green fill toward red so it reads as HP not
+            // a generic progress bar — works because BarFill01a is
+            // a near-uniform sprite.
+            filter: "hue-rotate(-110deg) saturate(1.4)",
+          }}
+        />
+      ) : null}
+      <span
+        aria-hidden
+        className="absolute font-serif font-bold leading-none"
+        style={{
+          left: "50%",
+          top: "50%",
+          transform: "translate(-50%, -50%)",
+          fontSize: 9,
+          color: "#fff",
+          textShadow:
+            "1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000",
+          letterSpacing: 0.5,
+        }}
+      >
+        HP {Math.round(stamina)}/{MAX_STAMINA}
+      </span>
     </div>
   );
 }
