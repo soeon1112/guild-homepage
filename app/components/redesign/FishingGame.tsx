@@ -1110,8 +1110,12 @@ export default function FishingGame({ open, onClose }: Props) {
     // bobber sits BOBBER_DISTANCE pixels ahead of the player's foot
     // along the facing direction's unit vector.
     //
-    // Direction vectors use canvas orientation: +y is downward, so
-    // dir="down" → dy=+1 places the bobber south of the player.
+    // Direction vectors are INVERTED relative to the canvas norm:
+    // even though canvas +y is downward, the cast/wait sprite poses
+    // visually face the OPPOSITE side from what we'd compute from
+    // dir alone (the in-pose body twist puts "forward" on the
+    // mirror of the walking-row convention). Negating both axes
+    // here keeps bobber + line aligned with the visible cast.
     const drawBobberAndLine = (
       footX: number,
       footY: number,
@@ -1119,8 +1123,8 @@ export default function FishingGame({ open, onClose }: Props) {
       camY: number,
       dir: Direction,
     ) => {
-      const dx = dir === "right" ? 1 : dir === "left" ? -1 : 0;
-      const dy = dir === "down" ? 1 : dir === "up" ? -1 : 0;
+      const dx = dir === "right" ? -1 : dir === "left" ? 1 : 0;
+      const dy = dir === "down" ? -1 : dir === "up" ? 1 : 0;
       const bobberCX = footX + dx * BOBBER_DISTANCE;
       const bobberCY = footY + dy * BOBBER_DISTANCE;
       // 16×16 crop, centered on the bobber's intended water position.

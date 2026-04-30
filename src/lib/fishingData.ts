@@ -241,18 +241,17 @@ export const WATER_R_MAX = 100;
 export const WATER_G_MIN = 150;
 export const WATER_B_MIN = 200;
 
-// Rod-tip offsets per facing direction, measured from the fishing
-// sprite cell's center on the LAST cast frame (frame 4) of
-// fishingrod.png. After the +4 fishing Y correction, the cell
-// origin lines up with (footX-16, footY-24); adding these offsets
-// gives the precise pixel where the rod tip is drawn, and that's
-// where the fishing line should start.
+// Rod-tip offsets per facing direction. The raw tip pixels measured
+// from fishingrod.png's last cast frame point in the canvas-natural
+// direction, but the cast/wait pose visually mirrors that — so we
+// negate both axes here to keep the line and bobber on the same
+// side of the player as the sprite's visible rod.
 export const ROD_TIP_OFFSETS: Record<
   "down" | "up" | "left" | "right",
   { x: number; y: number }
 > = {
-  down: { x: -1, y: 7 },
-  up: { x: -3, y: -17 },
-  right: { x: 13, y: 0 },
-  left: { x: -14, y: 0 },
+  down: { x: 1, y: -7 },
+  up: { x: 3, y: 17 },
+  right: { x: -13, y: 0 },
+  left: { x: 14, y: 0 },
 };
