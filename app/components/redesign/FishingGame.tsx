@@ -401,11 +401,11 @@ const FAIL_TOAST_DURATION_MS = 1500;
 const UI_GAUGE_BAR = encodeURI(UI_FLAT_BASE + "UI_Flat_Bar01a.png");
 const UI_GAUGE_FILL = encodeURI(UI_FLAT_BASE + "UI_Flat_BarFill01a.png");
 const UI_GAUGE_MARKER = encodeURI(UI_FLAT_BASE + "UI_Flat_Handle06a.png");
-// Result popup frame. Frame02a is a 96×64 mid-tone slab with a 1-px
-// outer border, 1-px highlight and 1-px shadow — i.e. ~3-4 px caps
-// for 9-slice. Painted via CSS border-image so we can stretch it to
-// fit the popup contents instead of fitting the popup to the asset.
-const UI_POPUP_FRAME = encodeURI(UI_FLAT_BASE + "UI_Flat_Frame02a.png");
+// Result popup frame. Frame01a is a 96×64 light-gray slab with a 1-px
+// outer border, 2-px highlight and 1-px shadow — i.e. ~4 px caps for
+// 9-slice. Painted via CSS border-image so we can stretch it to fit
+// the popup contents instead of fitting the popup to the asset.
+const UI_POPUP_FRAME = encodeURI(UI_FLAT_BASE + "UI_Flat_Frame01a.png");
 
 // Joystick is parked at a fixed bottom-left dock so the player can
 // always thumb-drag from a known spot. Outer diameter ≈ 24% of the
@@ -2307,10 +2307,13 @@ function clamp(v: number, lo: number, hi: number): number {
 // the parent div's background-position; both sheets use 16×16 cells
 // indexed by Fish.spriteX/Y or Forage.spriteX/Y. Per-grade flair is
 // layered on top via box-shadow glows + (mythic) sparkle particles.
-const POPUP_WIDTH = 220;
-const POPUP_HEIGHT = 168;
-const POPUP_FRAME_CAP = 4;        // px in source — Frame02a 9-slice
-const POPUP_FRAME_SCALE = 4;       // 4× upscale, source 96×64 → tiles
+// Sized for a 306-wide viewport: 240 wide + 8 px borders on each side
+// = 256 visible width, leaving ~25 px margins. Height fits sprite +
+// 4 text rows + the confirm button overhang without clipping.
+const POPUP_WIDTH = 240;
+const POPUP_HEIGHT = 180;
+const POPUP_FRAME_CAP = 4;        // px in source — Frame01a 9-slice
+const POPUP_FRAME_SCALE = 2;       // 2× upscale per spec, pixelated
 const SPRITE_DISPLAY_SIZE = 64;    // px shown on screen — 4× of 16×16
 const FISH_SHEET_W = 160;
 const FISH_SHEET_H = 160;
@@ -2377,83 +2380,93 @@ function CatchPopup({
   return (
     <AnimatePresence>
       {result ? (
-        <motion.div
-          key="catch-popup"
-          initial={{ opacity: 0, scale: 0.85, y: 6 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.92, y: -4 }}
-          transition={{ duration: 0.22, ease: "easeOut" }}
-          className="absolute left-1/2 top-1/2 z-10 flex flex-col items-center"
-          style={{
-            width: POPUP_WIDTH,
-            height: POPUP_HEIGHT,
-            transform: "translate(-50%, -50%)",
-            // 9-slice border-image on the frame asset. Source caps
-            // are ~4 px; with imageRendering pixelated the border
-            // stays crisp at 4× scale.
-            borderStyle: "solid",
-            borderWidth: POPUP_FRAME_CAP * POPUP_FRAME_SCALE,
-            borderImage: `url(${UI_POPUP_FRAME}) ${POPUP_FRAME_CAP} fill stretch`,
-            imageRendering: "pixelated",
-            boxShadow: gradeFlair(result).glow,
-            paddingTop: 6,
-            paddingBottom: 6,
-            paddingInline: 14,
-          }}
+        // Flex-center wrapper handles positioning so framer-motion's
+        // animate transforms (scale/opacity) don't fight a CSS
+        // translate(-50%,-50%). Without this split the animated y/x
+        // values overwrite the centering transform and the popup ends
+        // up offset to the bottom-right of the viewport.
+        <div
+          key="catch-popup-anchor"
+          className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center"
         >
-          <PopupContents result={result} />
-          {gradeFlair(result).sparkles ? <Sparkles /> : null}
-          <button
-            type="button"
-            onPointerDown={(e) => {
-              e.stopPropagation();
-              setPressed(true);
-            }}
-            onPointerUp={(e) => {
-              e.stopPropagation();
-              setPressed(false);
-              onConfirm();
-            }}
-            onPointerLeave={() => setPressed(false)}
-            onPointerCancel={() => setPressed(false)}
-            aria-label="확인"
-            className="absolute -bottom-3 left-1/2 flex items-center justify-center"
+          <motion.div
+            key="catch-popup"
+            initial={{ opacity: 0, scale: 0.85 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.92 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="pointer-events-auto relative flex flex-col items-center"
             style={{
-              transform: "translateX(-50%)",
-              width: 56,
-              height: 32,
-              padding: 0,
-              border: "none",
-              background: "transparent",
-              filter: "drop-shadow(0 3px 6px rgba(11,8,33,0.55))",
+              width: POPUP_WIDTH,
+              height: POPUP_HEIGHT,
+              boxSizing: "border-box",
+              // 9-slice border-image on the frame asset. Source caps
+              // are 4 px; with imageRendering pixelated the border
+              // stays crisp at the 2× display scale (8 px thick).
+              borderStyle: "solid",
+              borderWidth: POPUP_FRAME_CAP * POPUP_FRAME_SCALE,
+              borderImage: `url(${UI_POPUP_FRAME}) ${POPUP_FRAME_CAP} fill stretch`,
+              imageRendering: "pixelated",
+              boxShadow: gradeFlair(result).glow,
+              paddingTop: 8,
+              paddingBottom: 8,
+              paddingInline: 16,
             }}
           >
-            <img
-              src={pressed ? UI_ACTION_BUTTON_PRESSED : UI_ACTION_BUTTON_IDLE}
-              alt=""
-              draggable={false}
+            <PopupContents result={result} />
+            {gradeFlair(result).sparkles ? <Sparkles /> : null}
+            <button
+              type="button"
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                setPressed(true);
+              }}
+              onPointerUp={(e) => {
+                e.stopPropagation();
+                setPressed(false);
+                onConfirm();
+              }}
+              onPointerLeave={() => setPressed(false)}
+              onPointerCancel={() => setPressed(false)}
+              aria-label="확인"
+              className="absolute -bottom-3 left-1/2 flex items-center justify-center"
               style={{
-                imageRendering: "pixelated",
+                transform: "translateX(-50%)",
                 width: 56,
                 height: 32,
-                pointerEvents: "none",
-                objectFit: "fill",
-              }}
-            />
-            <span
-              aria-hidden
-              className="absolute font-serif font-bold leading-none"
-              style={{
-                transform: `translateY(${pressed ? 0 : -2}px)`,
-                fontSize: 12,
-                color: "#3d2c1c",
-                pointerEvents: "none",
+                padding: 0,
+                border: "none",
+                background: "transparent",
+                filter: "drop-shadow(0 3px 6px rgba(11,8,33,0.55))",
               }}
             >
-              확인
-            </span>
-          </button>
-        </motion.div>
+              <img
+                src={pressed ? UI_ACTION_BUTTON_PRESSED : UI_ACTION_BUTTON_IDLE}
+                alt=""
+                draggable={false}
+                style={{
+                  imageRendering: "pixelated",
+                  width: 56,
+                  height: 32,
+                  pointerEvents: "none",
+                  objectFit: "fill",
+                }}
+              />
+              <span
+                aria-hidden
+                className="absolute font-serif font-bold leading-none"
+                style={{
+                  transform: `translateY(${pressed ? 0 : -2}px)`,
+                  fontSize: 12,
+                  color: "#3d2c1c",
+                  pointerEvents: "none",
+                }}
+              >
+                확인
+              </span>
+            </button>
+          </motion.div>
+        </div>
       ) : null}
     </AnimatePresence>
   );
