@@ -4240,8 +4240,19 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
           ctx.restore();
         }
         // Pass 2 — chat bubbles only, on top of every nameplate.
+        // Sorted by chatExpiry ascending so the most recently sent
+        // bubble (largest expiry) paints last and lands on top of
+        // older bubbles when positions overlap. Without this the
+        // map iteration order (insertion order from snapshots) put
+        // earlier speakers in front, hiding fresh messages behind
+        // stale ones — the opposite of what users expect.
+        const activeBubbles: PeerData[] = [];
         for (const peer of peersRef.current.values()) {
           if (!peer.chatMessage || peer.chatExpiry <= nowMs) continue;
+          activeBubbles.push(peer);
+        }
+        activeBubbles.sort((a, b) => a.chatExpiry - b.chatExpiry);
+        for (const peer of activeBubbles) {
           const nx = Math.round((peer.x - camX) * MAP_SCALE);
           const ny = Math.round(
             (peer.y - NAMEPLATE_HEAD_OFFSET - camY) * MAP_SCALE,
