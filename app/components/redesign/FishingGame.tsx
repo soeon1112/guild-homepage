@@ -8713,57 +8713,86 @@ function RankingContent({
       return a.nickname.localeCompare(b.nickname);
     });
   })();
-  const rows = merged.slice(0, 20).map((r, i) => ({ rank: i + 1, ...r }));
+  const rows = merged.slice(0, 10).map((r, i) => ({ rank: i + 1, ...r }));
   return (
+    // Outer fills the panel's content area (flex:1 inside the panel
+    // wrapper at line ~6029) so the bottom ✕ button stays anchored
+    // and never scrolls out of view, even when the ranking list is
+    // long. Header stays fixed; only the rows list scrolls.
     <div
       className="flex w-full flex-col"
-      style={{ color: "#3d2c1c", fontSize: 12, gap: 4 }}
+      style={{
+        color: "#3d2c1c",
+        fontSize: 12,
+        gap: 4,
+        flex: 1,
+        minHeight: 0,
+      }}
     >
       <div
         className="text-center font-serif font-bold"
-        style={{ fontSize: 13, marginBottom: 4 }}
+        style={{ fontSize: 13, flexShrink: 0 }}
       >
         낚시 레벨 랭킹
       </div>
-      {rows.map((r) => {
-        const isSelf = r.nickname === nickname;
-        return (
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          // Scrollable rows region. `WebkitOverflowScrolling: touch`
+          // restores iOS momentum scrolling for legacy WebViews —
+          // otherwise the swipe drags the underlying canvas/body
+          // instead of the list.
+          overflowY: "auto",
+          WebkitOverflowScrolling: "touch",
+          touchAction: "pan-y",
+          display: "flex",
+          flexDirection: "column",
+          gap: 4,
+          paddingRight: 2,
+        }}
+      >
+        {rows.map((r) => {
+          const isSelf = r.nickname === nickname;
+          return (
+            <div
+              key={r.nickname}
+              className="flex items-center justify-between rounded px-3 py-2"
+              style={{
+                background:
+                  r.rank === 1
+                    ? "rgba(251,191,36,0.20)"
+                    : isSelf
+                    ? "rgba(216,150,200,0.18)"
+                    : "rgba(0,0,0,0.05)",
+                border:
+                  r.rank === 1
+                    ? "1px solid rgba(251,191,36,0.55)"
+                    : isSelf
+                    ? "1px solid rgba(216,150,200,0.55)"
+                    : "1px solid rgba(61,44,28,0.20)",
+                flexShrink: 0,
+              }}
+            >
+              <span className="font-serif font-bold" style={{ width: 36 }}>
+                {r.rank}위
+              </span>
+              <span className="flex-1 truncate px-2">
+                {r.nickname || "이름 없음"}
+              </span>
+              <span className="font-bold">Lv.{r.level}</span>
+            </div>
+          );
+        })}
+        {rows.length === 0 ? (
           <div
-            key={r.nickname}
-            className="flex items-center justify-between rounded px-3 py-2"
-            style={{
-              background:
-                r.rank === 1
-                  ? "rgba(251,191,36,0.20)"
-                  : isSelf
-                  ? "rgba(216,150,200,0.18)"
-                  : "rgba(0,0,0,0.05)",
-              border:
-                r.rank === 1
-                  ? "1px solid rgba(251,191,36,0.55)"
-                  : isSelf
-                  ? "1px solid rgba(216,150,200,0.55)"
-                  : "1px solid rgba(61,44,28,0.20)",
-            }}
+            className="mt-2 text-center"
+            style={{ fontSize: 10, color: "#7a6a4a" }}
           >
-            <span className="font-serif font-bold" style={{ width: 36 }}>
-              {r.rank}위
-            </span>
-            <span className="flex-1 truncate px-2">
-              {r.nickname || "이름 없음"}
-            </span>
-            <span className="font-bold">Lv.{r.level}</span>
+            아직 등록된 낚시꾼이 없습니다
           </div>
-        );
-      })}
-      {rows.length === 0 ? (
-        <div
-          className="mt-2 text-center"
-          style={{ fontSize: 10, color: "#7a6a4a" }}
-        >
-          아직 등록된 낚시꾼이 없습니다
-        </div>
-      ) : null}
+        ) : null}
+      </div>
     </div>
   );
 }
