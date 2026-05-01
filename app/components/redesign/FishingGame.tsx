@@ -3623,6 +3623,12 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
     const drawPeerFish = (
       charImg: HTMLImageElement,
       hairImg: HTMLImageElement,
+      // Rod sheet is per-rodType — fishingrod_blue.png /
+      // fishingrod_brown.png / etc. Pass null while still
+      // loading and we skip the rod overlay (the body still
+      // draws so the peer is visible without a rod for one
+      // load tick instead of disappearing entirely).
+      rodImg: HTMLImageElement | null,
       footX: number,
       footY: number,
       camX: number,
@@ -3636,17 +3642,17 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
         hair: number;
       },
     ) => {
-      // Mirrors drawFishingChar — always at the wait-pose frame
-      // (no peer mode/sub-mode sync, just "currently fishing"
-      // boolean) but now WITH the rod overlay. Without the rod
-      // overlay the peer looked like they were standing still in
-      // an idle posture; the rod is the visual cue that ties the
-      // pose to fishing. The bobber + line are a separate
-      // helper (drawPeerBobberAndLine) so they z-sort independently.
+      // Mirrors drawFishingChar's WAIT pose. Self's cast plays
+      // 0→4 normally for up/down and 4→0 for left/right (reversed
+      // remap), so when the cast settles into the wait state the
+      // visible frame is FISH_FRAMES-1 for up/down and 0 for
+      // left/right. We mirror that exact mapping here — the prior
+      // version had it inverted, which made peers facing left or
+      // right hold the rod TIP-DOWN instead of tip-up.
       const drawX = Math.round(footX - SPRITE_CELL / 2 - camX);
       const drawY = Math.round(footY + 4 - SPRITE_CELL - camY + 4);
       const reversed = dir === "left" || dir === "right";
-      const displayFrame = reversed ? FISH_FRAMES - 1 : 0;
+      const displayFrame = reversed ? 0 : FISH_FRAMES - 1;
       const sx = displayFrame * SPRITE_CELL;
       const sy = WALK_ROWS[dir] * SPRITE_CELL;
       ctx.drawImage(charImg, sx, sy, SPRITE_CELL, SPRITE_CELL, drawX, drawY, SPRITE_CELL, SPRITE_CELL);
@@ -3668,14 +3674,19 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
       layer(imgs.fishPants, colors.pants);
       layer(imgs.fishShoes, colors.shoes);
       layer(hairImg, colors.hair);
-      // Rod is single-color and shared across characters — same
-      // sheet self uses (imgs.fishRod). Cropped at the same
-      // (sx, sy) cell so the rod aligns with the body frame.
-      ctx.drawImage(
-        imgs.fishRod,
-        sx, sy, SPRITE_CELL, SPRITE_CELL,
-        drawX, drawY, SPRITE_CELL, SPRITE_CELL,
-      );
+      // Rod overlay using the PEER's per-rodType sheet (resolved
+      // from peer.character.rodType via characterAssetUrls).
+      // Previously we reused `imgs.fishRod` here — but that's
+      // self's rod sheet, baked from self's rodType, so every peer
+      // appeared holding self's rod. Now each peer paints with
+      // their own selected rod's sprite.
+      if (rodImg) {
+        ctx.drawImage(
+          rodImg,
+          sx, sy, SPRITE_CELL, SPRITE_CELL,
+          drawX, drawY, SPRITE_CELL, SPRITE_CELL,
+        );
+      }
     };
     // Peer bobber + line. Simpler than drawBobberAndLine because
     // we don't sync the peer's fishing sub-mode (wait/fakeBite/
@@ -3976,10 +3987,12 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
               if (peer.isFishing) {
                 const fc = getPeerImg(peerUrls.fishChar);
                 const fh = getPeerImg(peerUrls.fishHair);
+                const fr = getPeerImg(peerUrls.fishRod);
                 if (fc && fh) {
                   drawPeerFish(
                     fc,
                     fh,
+                    fr,
                     peer.x,
                     peer.y,
                     camX,
@@ -3987,16 +4000,25 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                     peer.fishingDir,
                     peerColors,
                   );
-                  drawPeerBobberAndLine(
-                    peer.x,
-                    peer.y,
-                    camX,
-                    camY,
-                    peer.fishingDir,
-                    peer.character.rodType,
-                    performance.now(),
-                  );
                 }
+                // Draw the bobber + line WHENEVER the peer is
+                // fishing — independent of per-peer asset load
+                // state. The shared bobber sheet (imgs.fishBobber)
+                // is always preloaded with self's assets, so this
+                // never has a "still loading" gap. Previous gating
+                // on `fc && fh` was producing the inconsistent
+                // visibility users reported (some peers had a line,
+                // others didn't, depending on whose char/hair
+                // sheets had finished loading on the local client).
+                drawPeerBobberAndLine(
+                  peer.x,
+                  peer.y,
+                  camX,
+                  camY,
+                  peer.fishingDir,
+                  peer.character.rodType,
+                  performance.now(),
+                );
               } else {
                 const wc = getPeerImg(peerUrls.walkChar);
                 const wh = getPeerImg(peerUrls.walkHair);
@@ -4081,10 +4103,12 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
               if (peer.isFishing) {
                 const fc = getPeerImg(peerUrls.fishChar);
                 const fh = getPeerImg(peerUrls.fishHair);
+                const fr = getPeerImg(peerUrls.fishRod);
                 if (fc && fh) {
                   drawPeerFish(
                     fc,
                     fh,
+                    fr,
                     peer.x,
                     peer.y,
                     camX,
@@ -4092,16 +4116,25 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                     peer.fishingDir,
                     peerColors,
                   );
-                  drawPeerBobberAndLine(
-                    peer.x,
-                    peer.y,
-                    camX,
-                    camY,
-                    peer.fishingDir,
-                    peer.character.rodType,
-                    performance.now(),
-                  );
                 }
+                // Draw the bobber + line WHENEVER the peer is
+                // fishing — independent of per-peer asset load
+                // state. The shared bobber sheet (imgs.fishBobber)
+                // is always preloaded with self's assets, so this
+                // never has a "still loading" gap. Previous gating
+                // on `fc && fh` was producing the inconsistent
+                // visibility users reported (some peers had a line,
+                // others didn't, depending on whose char/hair
+                // sheets had finished loading on the local client).
+                drawPeerBobberAndLine(
+                  peer.x,
+                  peer.y,
+                  camX,
+                  camY,
+                  peer.fishingDir,
+                  peer.character.rodType,
+                  performance.now(),
+                );
               } else {
                 const wc = getPeerImg(peerUrls.walkChar);
                 const wh = getPeerImg(peerUrls.walkHair);
