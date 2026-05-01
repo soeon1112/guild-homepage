@@ -15,22 +15,31 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
+// `duration` + `delay` drive the subtle twinkle. Hand-picked
+// asymmetric values (no two stars share both fields) so the field
+// never lines up into a synchronised pulse — calmer than CosmicBackground's
+// 90-star drift but visually consistent with it. To roll back to a
+// purely static field, drop these two fields and remove the
+// `animation` line on the star <div> below + the `@keyframes
+// fishing-loading-star-twinkle` block at the bottom of <style>.
 const STARS: {
   top?: string;
   left?: string;
   right?: string;
   bottom?: string;
   size: number;
+  duration: number;
+  delay: number;
 }[] = [
-  { top: "8%", left: "18%", size: 2 },
-  { top: "14%", right: "12%", size: 3 },
-  { top: "10%", right: "32%", size: 1 },
-  { top: "22%", left: "8%", size: 2 },
-  { top: "20%", left: "55%", size: 3 },
-  { bottom: "28%", left: "20%", size: 2 },
-  { bottom: "22%", right: "16%", size: 4 },
-  { bottom: "12%", left: "46%", size: 1 },
-  { bottom: "32%", left: "78%", size: 2 },
+  { top: "8%", left: "18%", size: 2, duration: 4.0, delay: 0 },
+  { top: "14%", right: "12%", size: 3, duration: 4.5, delay: 1.2 },
+  { top: "10%", right: "32%", size: 1, duration: 3.5, delay: 0.5 },
+  { top: "22%", left: "8%", size: 2, duration: 4.2, delay: 2.1 },
+  { top: "20%", left: "55%", size: 3, duration: 5.0, delay: 0.8 },
+  { bottom: "28%", left: "20%", size: 2, duration: 3.8, delay: 1.6 },
+  { bottom: "22%", right: "16%", size: 4, duration: 4.6, delay: 2.5 },
+  { bottom: "12%", left: "46%", size: 1, duration: 3.2, delay: 0.3 },
+  { bottom: "32%", left: "78%", size: 2, duration: 4.4, delay: 1.9 },
 ];
 
 function Overlay() {
@@ -45,7 +54,8 @@ function Overlay() {
         overflow: "hidden",
       }}
     >
-      {/* Static star field — same layout as the RN version. */}
+      {/* Star field — gentle twinkle (opacity 0.4 ↔ 1). Per-star
+          delay/duration gives an asymmetric, calm rhythm. */}
       {STARS.map((s, i) => (
         <div
           key={i}
@@ -63,6 +73,7 @@ function Overlay() {
               s.size >= 3
                 ? "0 0 6px rgba(255,229,196,0.9), 0 0 12px rgba(255,229,196,0.4)"
                 : "none",
+            animation: `fishing-loading-star-twinkle ${s.duration}s ease-in-out ${s.delay}s infinite`,
           }}
         />
       ))}
@@ -176,6 +187,10 @@ function Overlay() {
       <style>{`
         @keyframes fishing-loading-spin {
           to { transform: rotate(360deg); }
+        }
+        @keyframes fishing-loading-star-twinkle {
+          0%, 100% { opacity: 0.4; }
+          50%      { opacity: 1; }
         }
       `}</style>
     </div>
