@@ -61,6 +61,12 @@ import {
   GAUGE_WIDTH,
   rollCatchResult,
   gradeForGauge,
+  getCurrentPhase,
+  getNightIntensity,
+  canDebugFishing,
+  CATCH_FORAGE_PROBABILITY,
+  CATCH_FORAGE_PROBABILITY_NIGHT,
+  type DayNightPhase,
   expForCatch,
   levelFromTotalExp,
   TOTAL_DEX_SPECIES,
@@ -753,6 +759,28 @@ const JOYSTICK_DEAD_ZONE = 8;
 
 export default function FishingGame({ open, onClose, nickname }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // ── Day / night ──────────────────────────────────────────────
+  // Time-based phase syncs every concurrent client (Date.now() %
+  // CYCLE). Admin can force a phase from the in-game toggle for
+  // local validation; debugPhase=null = follow real time.
+  const [debugPhase, setDebugPhase] = useState<DayNightPhase | null>(null);
+  // Refs are read by the canvas loop every frame without forcing
+  // React re-renders. Updated on each phase tick + whenever the
+  // debug toggle changes.
+  const debugPhaseRef = useRef<DayNightPhase | null>(null);
+  useEffect(() => {
+    debugPhaseRef.current = debugPhase;
+  }, [debugPhase]);
+  // 1Hz ticker re-renders the toggle button label only — the
+  // animated overlay reads Date.now() directly each frame from
+  // the loop, so this interval doesn't affect canvas smoothness.
+  const [, setPhaseTick] = useState(0);
+  useEffect(() => {
+    if (!open) return;
+    const id = setInterval(() => setPhaseTick((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, [open]);
 
   // Loop-owned state lives in refs to avoid React re-renders at 60fps.
   const stateRef = useRef({
@@ -2234,7 +2262,17 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
   // grade and the popup can show the actual item on success — we
   // never re-roll on press.
   const rollGauge = useCallback((s: typeof stateRef.current) => {
-    const result = rollCatchResult();
+    // Phase-aware forage/fish split — admin override > time-based.
+    // Hard boundary on the phase boolean (no fade) so the bite
+    // mechanics stay deterministic mid-night vs mid-day.
+    const phase: DayNightPhase =
+      debugPhaseRef.current ?? getCurrentPhase(Date.now());
+    const result = rollCatchResult({
+      forageProbability:
+        phase === "night"
+          ? CATCH_FORAGE_PROBABILITY_NIGHT
+          : CATCH_FORAGE_PROBABILITY,
+    });
     s.catchResult = result;
     const grade = gradeForGauge(result);
     const cfg = FISH_GRADES[grade];
@@ -4083,6 +4121,68 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
         ctx.globalAlpha = 1;
         ctx.globalCompositeOperation = "source-over";
         ctx.drawImage(imgs.mapFront, -camX, -camY);
+        // ── Night overlay + torch glows ──
+        // Dark blue tint over the whole viewport at intensity → 1.
+        // Torch positions then punch warm radial gradients on top
+        // (additive blend) so the area near each torch reads as
+        // illuminated. Indoor scene skips this entirely; the shop
+        // interior is its own self-lit space and the torches don't
+        // exist there. Drawn AFTER characters + front layer so the
+        // glows sit on top — characters near a torch look lit
+        // rather than walking through a dark mask.
+        {
+          const nIntensity =
+            debugPhaseRef.current === "day"
+              ? 0
+              : debugPhaseRef.current === "night"
+              ? 1
+              : getNightIntensity(Date.now());
+          if (nIntensity > 0) {
+            // Dark blue tint, peak alpha 0.42 so the world is
+            // clearly dimmer at night without losing readability.
+            ctx.fillStyle = `rgba(8, 12, 48, ${nIntensity * 0.42})`;
+            ctx.fillRect(0, 0, VIEWPORT, VIEWPORT);
+            // Soft warm radial glow per torch. Centre at the
+            // flame portion of the sprite (~8 px from cell top,
+            // 8 px from cell left = mid-flame). Pulse the radius
+            // with the same torch frame index so the glow
+            // breathes in sync with the flame animation.
+            const tFrame =
+              Math.floor(now / TORCH_FRAME_MS) % TORCH_FRAME_COUNT;
+            const pulse = 1 + 0.08 * Math.sin((tFrame / TORCH_FRAME_COUNT) * Math.PI * 2);
+            const glowRadius = 36 * pulse;
+            ctx.globalCompositeOperation = "lighter";
+            for (const t of TORCH_POSITIONS) {
+              const cx = t.x - camX + TORCH_FRAME_W / 2;
+              const cy = t.y - camY + 8;
+              const grad = ctx.createRadialGradient(
+                cx,
+                cy,
+                0,
+                cx,
+                cy,
+                glowRadius,
+              );
+              grad.addColorStop(
+                0,
+                `rgba(255, 200, 110, ${nIntensity * 0.55})`,
+              );
+              grad.addColorStop(
+                0.5,
+                `rgba(255, 150, 70, ${nIntensity * 0.22})`,
+              );
+              grad.addColorStop(1, "rgba(255, 140, 60, 0)");
+              ctx.fillStyle = grad;
+              ctx.fillRect(
+                cx - glowRadius,
+                cy - glowRadius,
+                glowRadius * 2,
+                glowRadius * 2,
+              );
+            }
+            ctx.globalCompositeOperation = "source-over";
+          }
+        }
       } else {
         ctx.drawImage(imgs.shopInterior, -camX, -camY);
         // Same depth-sorting strategy as the outdoor branch — NPC
@@ -4485,6 +4585,47 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
               <div className="absolute inset-0 flex items-center justify-center text-stardust text-[12px]">
                 불러오는 중…
               </div>
+            ) : null}
+
+            {/* Day/night debug toggle — only the FISHING_DEBUG_ADMIN
+                nickname sees this. Cycles auto → day → night → auto.
+                The forced phase is local to this session: other
+                players keep seeing the time-based phase. */}
+            {canDebugFishing(nickname) ? (
+              <button
+                type="button"
+                onClick={() =>
+                  setDebugPhase((p) =>
+                    p === null ? "day" : p === "day" ? "night" : null,
+                  )
+                }
+                title={
+                  debugPhase === null
+                    ? `자동 (${getCurrentPhase(Date.now()) === "night" ? "밤" : "낮"})`
+                    : debugPhase === "day"
+                    ? "낮 강제"
+                    : "밤 강제"
+                }
+                style={{
+                  position: "absolute",
+                  top: 6,
+                  right: 6,
+                  zIndex: 50,
+                  width: 26,
+                  height: 26,
+                  fontSize: 13,
+                  lineHeight: "24px",
+                  borderRadius: 999,
+                  background: "rgba(11,8,33,0.7)",
+                  border: "1px solid rgba(216,150,200,0.4)",
+                  color: "#FFE5C4",
+                  cursor: "pointer",
+                  textAlign: "center",
+                  padding: 0,
+                }}
+              >
+                {debugPhase === null ? "🌗" : debugPhase === "day" ? "☀" : "🌙"}
+              </button>
             ) : null}
 
             {/* Static joystick dock — always rendered, low opacity

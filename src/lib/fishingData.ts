@@ -23,6 +23,63 @@ export function canSeeFishing(nickname: string | null | undefined): boolean {
   );
 }
 
+// ── Day / night cycle ────────────────────────────────────────────
+// 30 min day + 5 min night = 35 min cycle, synchronised across
+// every concurrent client by computing `Date.now() % CYCLE` —
+// no Firestore coordination, identical phase regardless of who
+// is connected when. Refresh-resilient (cycle position derives
+// from wall clock, not session start).
+export const DAY_DURATION_MS = 30 * 60 * 1000;
+export const NIGHT_DURATION_MS = 5 * 60 * 1000;
+export const CYCLE_DURATION_MS = DAY_DURATION_MS + NIGHT_DURATION_MS;
+
+// Linear blend window at each phase boundary. The night-overlay
+// alpha eases 0 ↔ 1 across this many ms so dawn/dusk read as a
+// dim rather than a snap.
+export const PHASE_FADE_MS = 1500;
+
+export type DayNightPhase = "day" | "night";
+
+export function getCycleTime(now: number = Date.now()): number {
+  return now % CYCLE_DURATION_MS;
+}
+
+export function getCurrentPhase(now: number = Date.now()): DayNightPhase {
+  return getCycleTime(now) < DAY_DURATION_MS ? "day" : "night";
+}
+
+// 0 (full day) → 1 (full night). Linear ramp across PHASE_FADE_MS
+// at each boundary — used only for the overlay/torch-glow alpha,
+// NOT for the catch probability flip (that snaps on the boundary).
+export function getNightIntensity(now: number = Date.now()): number {
+  const t = getCycleTime(now);
+  if (t < DAY_DURATION_MS - PHASE_FADE_MS) return 0;
+  if (t < DAY_DURATION_MS) {
+    return (t - (DAY_DURATION_MS - PHASE_FADE_MS)) / PHASE_FADE_MS;
+  }
+  if (t < CYCLE_DURATION_MS - PHASE_FADE_MS) return 1;
+  return 1 - (t - (CYCLE_DURATION_MS - PHASE_FADE_MS)) / PHASE_FADE_MS;
+}
+
+// Forage vs fish probability at night (foraging easier by day,
+// fish bite more at night). Grade-within-fish (70/18/8/3/1) is
+// unchanged — the spec only flips the top-level forage/fish split.
+export const CATCH_FORAGE_PROBABILITY_NIGHT = 0.45;
+
+// Per-admin debug toggle for the day/night view, mirroring
+// PET_DEBUG_ADMIN_NICKNAME in pets.ts. Lets the admin force a
+// phase from the game UI without waiting up to 30 min for the
+// real cycle to roll over. Toggle is local to that session only —
+// other clients still see the time-based phase.
+export const FISHING_DEBUG_ADMIN_NICKNAME = "언쏘";
+export function canDebugFishing(nickname: string | null | undefined): boolean {
+  if (!nickname) return false;
+  return (
+    nickname.normalize("NFC") ===
+    FISHING_DEBUG_ADMIN_NICKNAME.normalize("NFC")
+  );
+}
+
 export const TILE_SIZE = 16;
 export const VIEWPORT = 306;
 export const MAP_WIDTH = 336;
@@ -939,8 +996,11 @@ function rollFishGrade(): FishGrade {
 // stands per the new spec. Returns null only if the data set is empty
 // for the rolled grade (defensive — every grade has fish in
 // FISH_LIST).
-export function rollCatchResult(): CatchResult {
-  if (Math.random() < CATCH_FORAGE_PROBABILITY) {
+export function rollCatchResult(opts?: {
+  forageProbability?: number;
+}): CatchResult {
+  const forageP = opts?.forageProbability ?? CATCH_FORAGE_PROBABILITY;
+  if (Math.random() < forageP) {
     const isTrash = Math.random() < CATCH_TRASH_WITHIN_FORAGE;
     const pool = FORAGE_LIST.filter((f) =>
       isTrash ? f.type === "trash" : f.type === "treasure",
