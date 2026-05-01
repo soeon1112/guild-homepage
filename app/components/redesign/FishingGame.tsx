@@ -3151,23 +3151,44 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
         // walls instead of getting stuck on a corner. Peer check
         // is folded into the same gate so a player can also
         // slide ALONG another player when they touch.
+        //
+        // Each axis steps 1 px at a time to prevent tunneling
+        // through narrow red strips on collision.png. With
+        // MOVE_SPEED 80 px/s and the 50 ms dt clamp, dx/dy can
+        // reach ~4 px/frame — a single jump from s.x to s.x+4
+        // would only sample the destination bbox and could
+        // straddle a 1–3 px-wide blocker (e.g. a thin shoreline
+        // patch). Stepping caps effective penetration at 1 px so
+        // the bbox always overlaps any red the player crossed.
         if (dx !== 0) {
-          const tryX = clamp(s.x + dx, 0, mapW);
-          if (
-            !sceneCollides(currentScene, tryX, s.y) &&
-            !peerCollides(tryX, s.y)
-          ) {
-            s.x = tryX;
+          const stepX = dx > 0 ? 1 : -1;
+          let curX = s.x;
+          for (let i = 0; i < Math.abs(dx); i++) {
+            const nextX = clamp(curX + stepX, 0, mapW);
+            if (
+              sceneCollides(currentScene, nextX, s.y) ||
+              peerCollides(nextX, s.y)
+            ) {
+              break;
+            }
+            curX = nextX;
           }
+          s.x = curX;
         }
         if (dy !== 0) {
-          const tryY = clamp(s.y + dy, 0, mapH);
-          if (
-            !sceneCollides(currentScene, s.x, tryY) &&
-            !peerCollides(s.x, tryY)
-          ) {
-            s.y = tryY;
+          const stepY = dy > 0 ? 1 : -1;
+          let curY = s.y;
+          for (let i = 0; i < Math.abs(dy); i++) {
+            const nextY = clamp(curY + stepY, 0, mapH);
+            if (
+              sceneCollides(currentScene, s.x, nextY) ||
+              peerCollides(s.x, nextY)
+            ) {
+              break;
+            }
+            curY = nextY;
           }
+          s.y = curY;
         }
         // Direction follows the dominant axis. Vertical wins ties so a
         // pure-down keypress doesn't accidentally show a side facing.
