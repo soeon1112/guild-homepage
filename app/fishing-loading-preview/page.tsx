@@ -3,8 +3,17 @@
 // design can be iterated on from a phone browser without rebuilding
 // the APK each time. Delete once the design is finalised.
 //
-// `position: fixed; inset: 0; z-index: 9999` covers the global
-// BottomNav / FloatingChat / FloatingPet from layout.tsx.
+// Rendering strategy: portal into document.body. The page itself
+// lives inside ChromeShell's <main className="relative z-10 ...">,
+// which establishes a stacking context — any z-index inside it can't
+// climb above the sibling TopHeader / BottomNav. Portalling makes
+// the overlay a direct child of body, escaping main's context so a
+// modest z-index reliably covers all layout chrome.
+
+"use client";
+
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 const STARS: {
   top?: string;
@@ -24,20 +33,19 @@ const STARS: {
   { bottom: "32%", left: "78%", size: 2 },
 ];
 
-export default function FishingLoadingPreviewPage() {
+function Overlay() {
   return (
     <div
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: 9999,
+        zIndex: 99999,
         background:
           "linear-gradient(180deg, #0B0821 0%, #140A33 50%, #1A0F3D 100%)",
         overflow: "hidden",
       }}
     >
-      {/* Static star field — same layout as the RN version. No
-          animation; the splash only flashes for ~1–2 s in production. */}
+      {/* Static star field — same layout as the RN version. */}
       {STARS.map((s, i) => (
         <div
           key={i}
@@ -59,7 +67,8 @@ export default function FishingLoadingPreviewPage() {
         />
       ))}
 
-      {/* Centred glass card */}
+      {/* Centred glass card — translucent so the cosmic background
+          shows through. Inner content stays opaque/glowing for legibility. */}
       <div
         style={{
           position: "absolute",
@@ -71,43 +80,40 @@ export default function FishingLoadingPreviewPage() {
       >
         <div
           style={{
-            width: "70%",
-            maxWidth: 320,
+            width: "60%",
+            maxWidth: 260,
             position: "relative",
-            padding: "28px 24px",
+            padding: "22px 20px",
             borderRadius: 20,
             overflow: "hidden",
-            backgroundColor: "rgba(26,15,61,0.55)",
-            border: "1px solid rgba(216,150,200,0.25)",
+            backgroundColor: "rgba(26,15,61,0.20)",
+            border: "1px solid rgba(216,150,200,0.22)",
             boxShadow:
-              "0 0 48px rgba(216,150,200,0.45), 0 12px 32px rgba(11,8,33,0.6)",
-            backdropFilter: "blur(8px)",
-            WebkitBackdropFilter: "blur(8px)",
+              "0 0 48px rgba(216,150,200,0.40), 0 12px 32px rgba(11,8,33,0.55)",
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
           }}
         >
-          {/* Inner purple→pink gradient (= LinearGradient inside the
-              RN card body) */}
+          {/* Inner purple→pink gradient (subtle, lets bg show through) */}
           <div
             style={{
               position: "absolute",
               inset: 0,
               background:
-                "linear-gradient(135deg, rgba(107,75,168,0.55) 0%, rgba(216,150,200,0.30) 100%)",
+                "linear-gradient(135deg, rgba(107,75,168,0.25) 0%, rgba(216,150,200,0.15) 100%)",
               pointerEvents: "none",
             }}
           />
-          {/* CardNebula equivalent — two corner-anchored radial glows
-              (top-left pink, bottom-right peach) for the frosted-glass
-              "interior glow" effect that CardNebula.tsx provides on RN */}
+          {/* CardNebula equivalent — corner-anchored radial glows */}
           <div
             style={{
               position: "absolute",
               inset: 0,
               background:
-                "radial-gradient(circle at 15% 20%, rgba(216,150,200,0.18) 0%, transparent 60%), radial-gradient(circle at 85% 80%, rgba(255,181,167,0.14) 0%, transparent 60%)",
+                "radial-gradient(circle at 15% 20%, rgba(216,150,200,0.16) 0%, transparent 60%), radial-gradient(circle at 85% 80%, rgba(255,181,167,0.12) 0%, transparent 60%)",
               pointerEvents: "none",
             }}
           />
@@ -121,15 +127,15 @@ export default function FishingLoadingPreviewPage() {
               alignItems: "center",
             }}
           >
-            {/* 4-point sparkle star — same SVG path as RN StarBurst */}
+            {/* 4-point sparkle star */}
             <div
               style={{
-                marginBottom: 14,
-                filter: "drop-shadow(0 0 6px rgba(255,229,196,0.8))",
+                marginBottom: 10,
+                filter: "drop-shadow(0 0 6px rgba(255,229,196,0.85))",
                 lineHeight: 0,
               }}
             >
-              <svg width={28} height={28} viewBox="0 0 24 24">
+              <svg width={26} height={26} viewBox="0 0 24 24">
                 <path
                   d="M12 1 L13.5 10.5 L23 12 L13.5 13.5 L12 23 L10.5 13.5 L1 12 L10.5 10.5 Z"
                   fill="#FFE5C4"
@@ -137,7 +143,7 @@ export default function FishingLoadingPreviewPage() {
               </svg>
             </div>
 
-            {/* Title — Noto Serif KR matches the homepage's serif headers */}
+            {/* Title */}
             <div
               style={{
                 color: "#FFE5C4",
@@ -150,15 +156,14 @@ export default function FishingLoadingPreviewPage() {
               별빛 부두로...
             </div>
 
-            {/* Spinner — CSS equivalent of RN ActivityIndicator,
-                cosmic-pink top arc rotating on a faint track */}
-            <div style={{ marginTop: 14 }}>
+            {/* Spinner */}
+            <div style={{ marginTop: 10 }}>
               <div
                 style={{
-                  width: 24,
-                  height: 24,
+                  width: 22,
+                  height: 22,
                   borderRadius: "50%",
-                  border: "2px solid rgba(216,150,200,0.25)",
+                  border: "2px solid rgba(216,150,200,0.22)",
                   borderTopColor: "#D896C8",
                   animation: "fishing-loading-spin 0.9s linear infinite",
                 }}
@@ -175,4 +180,15 @@ export default function FishingLoadingPreviewPage() {
       `}</style>
     </div>
   );
+}
+
+export default function FishingLoadingPreviewPage() {
+  // Portal target = document.body. Mount-after-hydrate guard avoids
+  // SSR mismatch (document is undefined on the server).
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  if (!mounted) return null;
+  return createPortal(<Overlay />, document.body);
 }
