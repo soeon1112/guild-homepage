@@ -3112,31 +3112,6 @@ select {
   font-weight: 600;
 }
 
-.mypage-exchange {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.mypage-exchange-btn {
-  min-width: 180px;
-}
-
-.mypage-exchange-hint {
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 0.8rem;
-  margin: 0;
-}
-
-.mypage-exchange-msg {
-  color: #daa520;
-  font-size: 0.85rem;
-  text-align: center;
-  margin: 0;
-  line-height: 1.4;
-}
-
 .mypage-section-title {
   color: #ffffff;
   font-size: 1.1rem;

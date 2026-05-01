@@ -1,22 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/app/components/AuthProvider";
 import { db } from "@/src/lib/firebase";
 import { formatSmart } from "@/src/lib/formatSmart";
 import {
-  addDoc,
   collection,
   doc,
   limit,
   onSnapshot,
   orderBy,
   query,
-  serverTimestamp,
   Timestamp,
-  increment,
-  setDoc,
 } from "firebase/firestore";
 
 type HistoryEntry = {
@@ -32,14 +28,10 @@ function formatDate(ts: Timestamp | null): string {
   return formatSmart(ts.toDate());
 }
 
-const EXCHANGE_COST = 150;
-
 export default function MyPage() {
   const { nickname, ready } = useAuth();
   const [points, setPoints] = useState(0);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
-  const [requesting, setRequesting] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!nickname) return;
@@ -65,42 +57,6 @@ export default function MyPage() {
     return () => unsub();
   }, [nickname]);
 
-  const handleExchange = useCallback(async () => {
-    if (!nickname) return;
-    if (points < EXCHANGE_COST) return;
-    if (!confirm(`${EXCHANGE_COST} 별빛을 차감하여 환전을 신청하시겠습니까?`)) {
-      return;
-    }
-    setRequesting(true);
-    setMessage(null);
-    try {
-      await addDoc(collection(db, "exchangeRequests"), {
-        nickname,
-        points: EXCHANGE_COST,
-        status: "대기중",
-        createdAt: serverTimestamp(),
-      });
-      await setDoc(
-        doc(db, "users", nickname),
-        { points: increment(-EXCHANGE_COST) },
-        { merge: true },
-      );
-      await addDoc(collection(db, "users", nickname, "pointHistory"), {
-        type: "환전",
-        points: -EXCHANGE_COST,
-        description: "캐시 환전 신청",
-        createdAt: serverTimestamp(),
-      });
-      setMessage(
-        "환전 신청이 완료되었습니다. 길드마스터가 확인 후 캐시를 선물해드립니다.",
-      );
-    } catch (e) {
-      console.error(e);
-      setMessage("환전 신청에 실패했습니다. 잠시 후 다시 시도해주세요.");
-    }
-    setRequesting(false);
-  }, [nickname, points]);
-
   if (!ready) {
     return (
       <div className="mypage-content">
@@ -117,8 +73,6 @@ export default function MyPage() {
     );
   }
 
-  const canExchange = points >= EXCHANGE_COST;
-
   return (
     <div className="mypage-content">
       <section className="mypage-card">
@@ -127,23 +81,6 @@ export default function MyPage() {
           <span className="mypage-points-label">총 별빛</span>
           <span className="mypage-points">{points.toLocaleString()}</span>
           <span className="mypage-points-unit">별빛</span>
-        </div>
-
-        <div className="mypage-exchange">
-          <button
-            type="button"
-            className="minihome-btn mypage-exchange-btn"
-            onClick={handleExchange}
-            disabled={!canExchange || requesting}
-          >
-            {requesting ? "신청 중..." : "캐시 환전 신청"}
-          </button>
-          {!canExchange && (
-            <p className="mypage-exchange-hint">
-              {EXCHANGE_COST} 별빛 이상 필요합니다. (현재 {points} 별빛)
-            </p>
-          )}
-          {message && <p className="mypage-exchange-msg">{message}</p>}
         </div>
       </section>
 
