@@ -4160,13 +4160,22 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
         ctx.restore();
       }
 
-      // Peer name plates + chat bubbles. Same nameplate offset as
+      // Peer name plates + chat bubbles. Two passes so a peer
+      // standing BEHIND another can never have their nameplate
+      // text occlude the front peer's bubble: a single-pass
+      // (nameplate-then-bubble per peer) draw order let each
+      // subsequent iteration paint its nameplate over an earlier
+      // peer's bubble whenever positions overlapped. Splitting
+      // the loop guarantees every nameplate lands first, every
+      // bubble lands on top — the chat layer stays at the very
+      // surface regardless of Y order. Same nameplate offset as
       // self so everyone's tag sits at a consistent body height.
-      // Bubbles render on canvas (rather than DOM overlay) so they
-      // share the per-frame redraw and don't need a separate rAF
-      // tracker per peer.
+      // Bubbles render on canvas (rather than DOM overlay) so
+      // they share the per-frame redraw and don't need a
+      // separate rAF tracker per peer.
       if (peersRef.current.size > 0) {
         const nowMs = Date.now();
+        // Pass 1 — nameplates only.
         for (const peer of peersRef.current.values()) {
           const nx = Math.round((peer.x - camX) * MAP_SCALE);
           const ny = Math.round(
@@ -4185,18 +4194,20 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
           ctx.fillStyle = "#ffffff";
           ctx.fillText(peer.nickname, nx, ny);
           ctx.restore();
-
-          if (
-            peer.chatMessage &&
-            peer.chatExpiry > nowMs
-          ) {
-            // Anchor 16 px above the nameplate baseline so the
-            // bubble bottom (and its tail tip) sits above the
-            // nameplate text instead of overlapping it. Tail
-            // points DOWN at the nameplate — matches the spec
-            // "꼬리는 닉네임 쪽을 향하게".
-            drawPeerBubble(nx, ny - 16, peer.chatMessage);
-          }
+        }
+        // Pass 2 — chat bubbles only, on top of every nameplate.
+        for (const peer of peersRef.current.values()) {
+          if (!peer.chatMessage || peer.chatExpiry <= nowMs) continue;
+          const nx = Math.round((peer.x - camX) * MAP_SCALE);
+          const ny = Math.round(
+            (peer.y - NAMEPLATE_HEAD_OFFSET - camY) * MAP_SCALE,
+          );
+          // Anchor 16 px above the nameplate baseline so the
+          // bubble bottom (and its tail tip) sits above the
+          // nameplate text instead of overlapping it. Tail
+          // points DOWN at the nameplate — matches the spec
+          // "꼬리는 닉네임 쪽을 향하게".
+          drawPeerBubble(nx, ny - 16, peer.chatMessage);
         }
       }
 
