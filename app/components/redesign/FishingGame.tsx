@@ -4247,9 +4247,9 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
         if (nIntensity > 0) {
           ctx.globalAlpha = 1;
           ctx.globalCompositeOperation = "source-over";
-          // Dark blue tint over the whole viewport. Peak alpha 0.42
+          // Dark blue tint over the whole viewport. Peak alpha 0.52
           // dims clearly without crushing sprite readability.
-          ctx.fillStyle = `rgba(8, 12, 48, ${nIntensity * 0.42})`;
+          ctx.fillStyle = `rgba(8, 12, 48, ${nIntensity * 0.52})`;
           ctx.fillRect(0, 0, VIEWPORT, VIEWPORT);
 
           // Convert torch (map-space) → viewport-pixel centre.
