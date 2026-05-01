@@ -428,11 +428,12 @@ export const FISH_SHADOW_ORBIT_RADIUS = 14;
 // FISH_SHADOW_LEAD_MS before the real bite. Real-bite reaction is
 // no longer a fixed window — see FISH_GRADES below for the gauge
 // minigame that replaces the simple timing press. History: 3–10s
-// felt rushed, 5–15s settled it; 8–20s gives the cast even more
-// breathing room so the wait reads as a contemplative beat rather
-// than a quick QTE between casts.
-export const FISH_WAIT_MIN_MS = 8000;
-export const FISH_WAIT_MAX_MS = 20000;
+// felt rushed, 5–15s settled it; 8–20s gave the cast more breathing
+// room; 10–25s pushes the wait further so each catch feels earned
+// — slows the catch rate and makes peers' fishing animations more
+// visible to others walking by.
+export const FISH_WAIT_MIN_MS = 10000;
+export const FISH_WAIT_MAX_MS = 25000;
 export const FISH_FAKE_BITE_PROBABILITY = 0.5;
 export const FISH_FAKE_BITE_MAX = 2;
 export const FISH_FAKE_BITE_DURATION_MS = 200;
