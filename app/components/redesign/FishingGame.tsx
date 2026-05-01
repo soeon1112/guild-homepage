@@ -4121,68 +4121,6 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
         ctx.globalAlpha = 1;
         ctx.globalCompositeOperation = "source-over";
         ctx.drawImage(imgs.mapFront, -camX, -camY);
-        // ── Night overlay + torch glows ──
-        // Dark blue tint over the whole viewport at intensity → 1.
-        // Torch positions then punch warm radial gradients on top
-        // (additive blend) so the area near each torch reads as
-        // illuminated. Indoor scene skips this entirely; the shop
-        // interior is its own self-lit space and the torches don't
-        // exist there. Drawn AFTER characters + front layer so the
-        // glows sit on top — characters near a torch look lit
-        // rather than walking through a dark mask.
-        {
-          const nIntensity =
-            debugPhaseRef.current === "day"
-              ? 0
-              : debugPhaseRef.current === "night"
-              ? 1
-              : getNightIntensity(Date.now());
-          if (nIntensity > 0) {
-            // Dark blue tint, peak alpha 0.42 so the world is
-            // clearly dimmer at night without losing readability.
-            ctx.fillStyle = `rgba(8, 12, 48, ${nIntensity * 0.42})`;
-            ctx.fillRect(0, 0, VIEWPORT, VIEWPORT);
-            // Soft warm radial glow per torch. Centre at the
-            // flame portion of the sprite (~8 px from cell top,
-            // 8 px from cell left = mid-flame). Pulse the radius
-            // with the same torch frame index so the glow
-            // breathes in sync with the flame animation.
-            const tFrame =
-              Math.floor(now / TORCH_FRAME_MS) % TORCH_FRAME_COUNT;
-            const pulse = 1 + 0.08 * Math.sin((tFrame / TORCH_FRAME_COUNT) * Math.PI * 2);
-            const glowRadius = 36 * pulse;
-            ctx.globalCompositeOperation = "lighter";
-            for (const t of TORCH_POSITIONS) {
-              const cx = t.x - camX + TORCH_FRAME_W / 2;
-              const cy = t.y - camY + 8;
-              const grad = ctx.createRadialGradient(
-                cx,
-                cy,
-                0,
-                cx,
-                cy,
-                glowRadius,
-              );
-              grad.addColorStop(
-                0,
-                `rgba(255, 200, 110, ${nIntensity * 0.55})`,
-              );
-              grad.addColorStop(
-                0.5,
-                `rgba(255, 150, 70, ${nIntensity * 0.22})`,
-              );
-              grad.addColorStop(1, "rgba(255, 140, 60, 0)");
-              ctx.fillStyle = grad;
-              ctx.fillRect(
-                cx - glowRadius,
-                cy - glowRadius,
-                glowRadius * 2,
-                glowRadius * 2,
-              );
-            }
-            ctx.globalCompositeOperation = "source-over";
-          }
-        }
       } else {
         ctx.drawImage(imgs.shopInterior, -camX, -camY);
         // Same depth-sorting strategy as the outdoor branch — NPC
@@ -4292,6 +4230,80 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
       }
 
       ctx.restore();
+
+      // ── Night overlay + torch glows (viewport scale) ──
+      // Drawn AFTER ctx.restore() so coordinates are 1:1 canvas
+      // pixels — sidesteps the scaled-context clipping quirks that
+      // were swallowing the overlay when this lived inside the
+      // MAP_SCALE save/restore block. Outdoor scene only; indoor
+      // shop is treated as self-lit (no torches, no night dimming).
+      if (currentScene === "outdoor") {
+        const nIntensity =
+          debugPhaseRef.current === "day"
+            ? 0
+            : debugPhaseRef.current === "night"
+            ? 1
+            : getNightIntensity(Date.now());
+        if (nIntensity > 0) {
+          ctx.globalAlpha = 1;
+          ctx.globalCompositeOperation = "source-over";
+          // Dark blue tint over the whole viewport. Peak alpha 0.42
+          // dims clearly without crushing sprite readability.
+          ctx.fillStyle = `rgba(8, 12, 48, ${nIntensity * 0.42})`;
+          ctx.fillRect(0, 0, VIEWPORT, VIEWPORT);
+
+          // Convert torch (map-space) → viewport-pixel centre.
+          //   screen_x = (map_x + 8 - camX) * MAP_SCALE
+          // Centre is 8 px right of the cell origin (sprite is 16
+          // wide; flame sits ~middle horizontally) and 8 px down
+          // from the top (flame top ≈ y=4..16 within the 32-tall
+          // cell — 8 puts the glow centre at the mid-flame). Pulse
+          // radius with the torch flame frame so the glow breathes
+          // in lockstep with the animation. `performance.now()`
+          // again because the outdoor-branch `now` went out of
+          // scope at ctx.restore — cheap call, fine to redo.
+          const nowMs = performance.now();
+          const torchFrameNow =
+            Math.floor(nowMs / TORCH_FRAME_MS) % TORCH_FRAME_COUNT;
+          const pulse =
+            1 +
+            0.08 *
+              Math.sin(
+                (torchFrameNow / TORCH_FRAME_COUNT) * Math.PI * 2,
+              );
+          const glowRadius = 56 * pulse;
+          ctx.globalCompositeOperation = "lighter";
+          for (const t of TORCH_POSITIONS) {
+            const cx = (t.x + TORCH_FRAME_W / 2 - camX) * MAP_SCALE;
+            const cy = (t.y + 8 - camY) * MAP_SCALE;
+            const grad = ctx.createRadialGradient(
+              cx,
+              cy,
+              0,
+              cx,
+              cy,
+              glowRadius,
+            );
+            grad.addColorStop(
+              0,
+              `rgba(255, 200, 110, ${nIntensity * 0.6})`,
+            );
+            grad.addColorStop(
+              0.45,
+              `rgba(255, 150, 70, ${nIntensity * 0.28})`,
+            );
+            grad.addColorStop(1, "rgba(255, 140, 60, 0)");
+            ctx.fillStyle = grad;
+            ctx.fillRect(
+              cx - glowRadius,
+              cy - glowRadius,
+              glowRadius * 2,
+              glowRadius * 2,
+            );
+          }
+          ctx.globalCompositeOperation = "source-over";
+        }
+      }
 
       // Player nameplate — drawn at viewport pixel scale (after the
       // ctx.restore that undoes MAP_SCALE) so the typography stays
@@ -4594,11 +4606,21 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
             {canDebugFishing(nickname) ? (
               <button
                 type="button"
-                onClick={() =>
+                // Stop pointer events from bubbling to the motion.div
+                // joystick handler — without this, tapping the toggle
+                // captures the pointer for joystick mode and the
+                // click side effect (state change) still fires but
+                // the parent's setPointerCapture grabs subsequent
+                // events. stopPropagation keeps the button feeling
+                // like a button, not a fishing-area tap.
+                onPointerDown={(e) => e.stopPropagation()}
+                onPointerUp={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
                   setDebugPhase((p) =>
                     p === null ? "day" : p === "day" ? "night" : null,
-                  )
-                }
+                  );
+                }}
                 title={
                   debugPhase === null
                     ? `자동 (${getCurrentPhase(Date.now()) === "night" ? "밤" : "낮"})`
@@ -4611,17 +4633,18 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                   top: 6,
                   right: 6,
                   zIndex: 50,
-                  width: 26,
-                  height: 26,
-                  fontSize: 13,
-                  lineHeight: "24px",
+                  width: 28,
+                  height: 28,
+                  fontSize: 14,
+                  lineHeight: "26px",
                   borderRadius: 999,
-                  background: "rgba(11,8,33,0.7)",
-                  border: "1px solid rgba(216,150,200,0.4)",
+                  background: "rgba(11,8,33,0.85)",
+                  border: "1px solid rgba(216,150,200,0.5)",
                   color: "#FFE5C4",
                   cursor: "pointer",
                   textAlign: "center",
                   padding: 0,
+                  touchAction: "manipulation",
                 }}
               >
                 {debugPhase === null ? "🌗" : debugPhase === "day" ? "☀" : "🌙"}
