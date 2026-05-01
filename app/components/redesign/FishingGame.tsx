@@ -5081,13 +5081,25 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                     });
                   }}
                   onSellAll={() => {
+                    // Food (빵/스테이크) is excluded from "전체 판매" — players
+                    // buy it to use as bait/buffs, so a one-tap liquidate
+                    // would too easily wipe their stash. Individual "선택
+                    // 판매" still allows it.
                     let total = 0;
+                    const kept: Record<string, number> = {};
                     for (const [k, v] of Object.entries(inventory)) {
+                      if (k.startsWith("food-")) {
+                        kept[k] = v;
+                        continue;
+                      }
                       const ref = resolveItemKey(k);
-                      if (!ref) continue;
+                      if (!ref) {
+                        kept[k] = v;
+                        continue;
+                      }
                       total += ref.data.price * v;
                     }
-                    setInventory({});
+                    setInventory(kept);
                     setSellSelected(null);
                     if (total > 0) {
                       setTotalStarlight((s) => s + total);
@@ -7043,6 +7055,11 @@ function SellPanel({
   const selCount = selected ? inventory[selected] ?? 0 : 0;
   const selPrice = selRef ? selRef.data.price : 0;
   const hasItems = items.length > 0;
+  // "전체 판매" excludes food, so the button should only enable when
+  // at least one non-food stack exists. If only 빵/스테이크 remain,
+  // sell-all has nothing to do — keep it disabled instead of firing
+  // a "0별빛 획득" toast.
+  const hasSellAllItems = items.some(([k]) => !k.startsWith("food-"));
   return (
     <motion.div
       key="sell-panel-root"
@@ -7317,7 +7334,7 @@ function SellPanel({
               />
               <SellActionButton
                 label="전체 판매"
-                disabled={!hasItems}
+                disabled={!hasSellAllItems}
                 onClick={onSellAll}
               />
             </div>
