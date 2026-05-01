@@ -2551,6 +2551,17 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
       // listener fires regardless of where focus lives, so we
       // explicitly opt out here when chat is active.
       if (chatFocusedRef.current) return;
+      // Enter (game-mode side) — pop into chat. WASD then types
+      // into the input naturally because the early-return above
+      // gates this listener off as soon as the input grabs focus.
+      // Desktop only — mobile has no Enter key on the soft kbd
+      // and the on-screen joystick + tap-to-focus already handle
+      // the equivalent flow.
+      if (down && e.key === "Enter" && !e.repeat) {
+        e.preventDefault();
+        chatInputRef.current?.focus();
+        return;
+      }
       if (KEY_UP.has(e.key)) {
         keysRef.current.up = down;
         e.preventDefault();
@@ -5296,7 +5307,17 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                 e.stopPropagation();
                 if (e.key === "Enter" && !chatComposingRef.current) {
                   e.preventDefault();
-                  sendChat();
+                  // Empty draft + Enter exits chat mode (blurs the
+                  // input) so the next keypress controls the game
+                  // again — Enter acts as a chat-mode toggle. Non-
+                  // empty Enter still sends and keeps focus (sendChat
+                  // re-focuses the input on a 0-ms timeout) so the
+                  // player can keep typing without retapping.
+                  if (!chatDraft.trim()) {
+                    chatInputRef.current?.blur();
+                  } else {
+                    sendChat();
+                  }
                 }
               }}
               style={{
