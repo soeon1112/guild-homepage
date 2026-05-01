@@ -263,6 +263,8 @@ export const BACK_WORDS: TitleWord[] = [
   { id: "back_eldest_sis", word: "맏언니", type: "back", price: 4 },
   { id: "back_tamer", word: "조련사", type: "back", price: 4 },
   { id: "back_chief", word: "대장", type: "back", price: 4 },
+  { id: "back_ja", word: "자", type: "back", price: 4 },
+  { id: "back_na", word: "나", type: "back", price: 4 },
 
   { id: "back_greatsword", word: "대검전사", type: "back", price: 6 },
   { id: "back_mage", word: "마법사", type: "back", price: 6 },
