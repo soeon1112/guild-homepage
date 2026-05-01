@@ -11,6 +11,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, X } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import {
   collection,
   doc,
@@ -193,6 +194,8 @@ const CATEGORY_LABELS: Record<ItemCategory, string> = {
 
 export default function FloatingPet() {
   const { nickname, ready } = useAuth();
+  const pathname = usePathname();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   // Phase-1 fishing soft-launch — for the gated nickname the FAB
   // expands a two-button menu (펫 키우기 / 낚시하기) instead of
@@ -201,6 +204,22 @@ export default function FloatingPet() {
   const [showMenu, setShowMenu] = useState(false);
   const [fishingOpen, setFishingOpen] = useState(false);
   const canFish = canSeeFishing(nickname);
+  // Auto-open fishing when the route is /fishing. This is the entry
+  // point used by the mobile app's WebView (app/fishing.tsx) — landing
+  // on /fishing must equal "user tapped FAB → 낚시하기" on the home
+  // page. Guarded by a ref so closing the modal doesn't immediately
+  // reopen it; the ref resets when the user leaves /fishing.
+  const autoOpenedFishingRef = useRef(false);
+  useEffect(() => {
+    if (pathname === "/fishing") {
+      if (canFish && !autoOpenedFishingRef.current) {
+        setFishingOpen(true);
+        autoOpenedFishingRef.current = true;
+      }
+    } else {
+      autoOpenedFishingRef.current = false;
+    }
+  }, [pathname, canFish]);
   // Mirror open state into the shared uiBus and hide the pet icon
   // whenever chat owns the screen.
   // FAB icons stay visible always. When a panel opens, its higher
@@ -738,7 +757,15 @@ export default function FloatingPet() {
       {canFish ? (
         <FishingGame
           open={fishingOpen}
-          onClose={() => setFishingOpen(false)}
+          onClose={() => {
+            setFishingOpen(false);
+            // When entered via the /fishing route (mobile WebView
+            // entry point), closing the modal should also leave the
+            // route — otherwise the URL stays /fishing while showing
+            // home content underneath. On any other route, just
+            // close the modal (preserves existing behaviour).
+            if (pathname === "/fishing") router.replace("/");
+          }}
           nickname={nickname ?? ""}
         />
       ) : null}
