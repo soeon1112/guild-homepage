@@ -2336,7 +2336,7 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
   // bubbles when guild members are simultaneously online), and
   // refocuses the input so the player can keep typing without
   // tapping back.
-  const CHAT_BUBBLE_VISIBLE_MS = 4500;
+  const CHAT_BUBBLE_VISIBLE_MS = 7500;
   const CHAT_MAX_LENGTH = 100;
 
   // Write our presence doc. `force=true` skips throttling — used on
