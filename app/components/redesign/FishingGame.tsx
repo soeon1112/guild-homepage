@@ -649,7 +649,11 @@ const UI_INPUT_FIELD = encodeURI(UI_FLAT_BASE + "UI_Flat_InputField01a.png");
 // updates while playing, and deletes on close / unload. Peers
 // listen via onSnapshot filtered by current map.
 const PRESENCE_COLLECTION = "fishing_players";
-const PRESENCE_WRITE_INTERVAL_MS = 300;
+// 200 ms — peers see each other's position twice as often as the
+// rendered frame budget allows, so the lerp catch-up below has less
+// distance to cover per snapshot. Combined with a slower lerp, peers
+// glide smoothly even on slightly-spotty connections.
+const PRESENCE_WRITE_INTERVAL_MS = 200;
 // 5-minute staleness gate — peers without a fresh lastUpdate are
 // dropped client-side so a crashed tab's ghost doesn't linger
 // forever even before its onUnload delete lands.
@@ -2874,12 +2878,15 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
       // client-only animation state and React doesn't need to see
       // them change.
       // PEER_LERP — fraction of the remaining gap to closes per
-      // tick. 0.18 reaches ~99 % of target in ~24 frames (≈ 0.4 s),
-      // which is in the sweet spot between perceptible delay and
-      // visible jitter for the 300 ms presence cadence. Snap when
-      // the gap is within 0.5 px so the peer eventually lands on
-      // an integer pixel and the walk animation reads cleanly.
-      const PEER_LERP = 0.18;
+      // tick. 0.10 reaches ~99 % of target in ~44 frames (≈ 0.7 s).
+      // Paired with the 200 ms presence write interval (writes are
+      // twice as frequent, lerp half as aggressive) the peer slides
+      // smoothly between snapshots without the perceptible jerk a
+      // higher coefficient introduced when a snapshot landed mid-
+      // catch-up. Snap when the gap is within 0.5 px so the peer
+      // eventually lands on an integer pixel and the walk animation
+      // reads cleanly.
+      const PEER_LERP = 0.1;
       const PEER_SNAP_PX = 0.5;
       for (const peer of peersRef.current.values()) {
         const gx = peer.targetX - peer.x;
@@ -3629,10 +3636,13 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
         hair: number;
       },
     ) => {
-      // Mirrors drawFishingChar but always at frame 0 (no per-peer
-      // animation timing in V1) and without the rod/bobber/line
-      // overlays. Adds the +4 Y offset the fishing sheets bake in
-      // so the feet line up with the walking pose.
+      // Mirrors drawFishingChar — always at the wait-pose frame
+      // (no peer mode/sub-mode sync, just "currently fishing"
+      // boolean) but now WITH the rod overlay. Without the rod
+      // overlay the peer looked like they were standing still in
+      // an idle posture; the rod is the visual cue that ties the
+      // pose to fishing. The bobber + line are a separate
+      // helper (drawPeerBobberAndLine) so they z-sort independently.
       const drawX = Math.round(footX - SPRITE_CELL / 2 - camX);
       const drawY = Math.round(footY + 4 - SPRITE_CELL - camY + 4);
       const reversed = dir === "left" || dir === "right";
@@ -3658,6 +3668,61 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
       layer(imgs.fishPants, colors.pants);
       layer(imgs.fishShoes, colors.shoes);
       layer(hairImg, colors.hair);
+      // Rod is single-color and shared across characters — same
+      // sheet self uses (imgs.fishRod). Cropped at the same
+      // (sx, sy) cell so the rod aligns with the body frame.
+      ctx.drawImage(
+        imgs.fishRod,
+        sx, sy, SPRITE_CELL, SPRITE_CELL,
+        drawX, drawY, SPRITE_CELL, SPRITE_CELL,
+      );
+    };
+    // Peer bobber + line. Simpler than drawBobberAndLine because
+    // we don't sync the peer's fishing sub-mode (wait/fakeBite/
+    // bite/success/fail). The bobber always does the gentle "wait"
+    // sin oscillation and the line always runs from rod tip to
+    // bobber. Bobber sprite index follows the peer's rodType from
+    // ROD_BOBBER_PAIRS — same lookup self uses, so each member's
+    // chosen rod paints the matching bobber colour.
+    const drawPeerBobberAndLine = (
+      footX: number,
+      footY: number,
+      camX: number,
+      camY: number,
+      dir: Direction,
+      rodType: RodType,
+      time: number,
+    ) => {
+      const dx = dir === "right" ? 1 : dir === "left" ? -1 : 0;
+      const dy = dir === "down" ? 1 : dir === "up" ? -1 : 0;
+      const baseCX = footX + dx * BOBBER_DISTANCE;
+      const baseCY = footY + dy * BOBBER_DISTANCE;
+      const yOffset =
+        Math.sin(time * FISH_BOBBER_BOB_FREQ) * FISH_BOBBER_BOB_AMP;
+      const bobberCX = baseCX;
+      const bobberCY = baseCY + yOffset;
+      const half = BOBBER_CELL / 2;
+      const bobberDrawX = Math.round(bobberCX - half - camX);
+      const bobberDrawY = Math.round(bobberCY - half - camY);
+      const rodPair = ROD_BOBBER_PAIRS[rodType];
+      const bobberIdx = rodPair ? rodPair[0] : BOBBER_INDEX;
+      ctx.drawImage(
+        imgs.fishBobber,
+        bobberIdx * BOBBER_CELL, 0, BOBBER_CELL, BOBBER_CELL,
+        bobberDrawX, bobberDrawY, BOBBER_CELL, BOBBER_CELL,
+      );
+      const tipOffset = ROD_TIP_OFFSETS[dir];
+      const tipX = footX + tipOffset.x - camX;
+      const tipY = footY + tipOffset.y - camY;
+      ctx.save();
+      ctx.globalAlpha = 0.9;
+      ctx.strokeStyle = "#f4efff";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(tipX, tipY);
+      ctx.lineTo(bobberCX - camX, bobberCY - camY);
+      ctx.stroke();
+      ctx.restore();
     };
     // Wraps a string into multi-line lines fitting maxWidth in
     // the current ctx.font. Word-break by character so dense
@@ -3922,6 +3987,15 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                     peer.fishingDir,
                     peerColors,
                   );
+                  drawPeerBobberAndLine(
+                    peer.x,
+                    peer.y,
+                    camX,
+                    camY,
+                    peer.fishingDir,
+                    peer.character.rodType,
+                    performance.now(),
+                  );
                 }
               } else {
                 const wc = getPeerImg(peerUrls.walkChar);
@@ -4017,6 +4091,15 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                     camY,
                     peer.fishingDir,
                     peerColors,
+                  );
+                  drawPeerBobberAndLine(
+                    peer.x,
+                    peer.y,
+                    camX,
+                    camY,
+                    peer.fishingDir,
+                    peer.character.rodType,
+                    performance.now(),
                   );
                 }
               } else {
