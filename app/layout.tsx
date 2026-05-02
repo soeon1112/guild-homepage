@@ -6,6 +6,7 @@ import FloatingChat from "./components/redesign/FloatingChat";
 import FloatingPet from "./components/redesign/FloatingPet";
 import { ChromeShell } from "./components/redesign/ChromeShell";
 import BadgeToast from "./components/BadgeToast";
+import KeyboardScrollGuard from "./components/KeyboardScrollGuard";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -47,6 +48,7 @@ export default function RootLayout({
       <body className="relative min-h-full flex flex-col">
         <AuthProvider>
           <ScrollRestorer />
+          <KeyboardScrollGuard />
           <ChromeShell>{children}</ChromeShell>
           <FloatingChat />
           <FloatingPet />
