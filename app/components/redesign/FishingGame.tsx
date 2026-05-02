@@ -65,7 +65,6 @@ import {
   gradeForGauge,
   getCurrentPhase,
   getNightIntensity,
-  canDebugFishing,
   CATCH_FORAGE_PROBABILITY,
   CATCH_FORAGE_PROBABILITY_NIGHT,
   type DayNightPhase,
@@ -960,11 +959,12 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
   // window without polling fishing_chat history.
   const selfChatExpiryRef = useRef<number>(0);
 
-  // Chat history viewer (debug-gated). Independent of the
-  // self/peer bubble system above — it only *reads* fishing_chat
-  // and renders a separate panel. Entry time is captured on open
-  // so older chats stay out of view; refreshing the page resets it.
-  // Cap at 50 most recent entries kept in memory.
+  // Chat history viewer. Independent of the self/peer bubble
+  // system above — it only *reads* fishing_chat and renders a
+  // separate panel. Entry time is captured on open so older chats
+  // stay out of view; refreshing the page resets it. Cap at 50
+  // most recent entries kept in memory. Available to every signed-
+  // in member.
   type ChatHistoryEntry = {
     id: string;
     nickname: string;
@@ -979,7 +979,7 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
   // to the bottom; flips to false the moment the user scrolls up,
   // and back to true once they return within ~8 px of the bottom.
   const chatHistoryStickyRef = useRef(true);
-  const showChatHistoryFeature = canDebugFishing(nickname);
+  const showChatHistoryFeature = !!nickname;
 
   // Peer state: nickname → live snapshot. Driven by the
   // onSnapshot subscription below. peersRef shadows the state for
