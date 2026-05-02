@@ -961,10 +961,11 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
 
   // Chat history viewer. Independent of the self/peer bubble
   // system above — it only *reads* fishing_chat and renders a
-  // separate panel. Entry time is captured on open so older chats
-  // stay out of view; refreshing the page resets it. Cap at 50
-  // most recent entries kept in memory. Available to every signed-
-  // in member.
+  // separate panel. Persisted server-side, so refreshing the page
+  // or joining mid-session still shows the last ~100 messages
+  // (the Cloud Function `pruneOldFishingChats` keeps the
+  // collection at FISHING_CHAT_MAX_KEEP). Available to every
+  // signed-in member.
   type ChatHistoryEntry = {
     id: string;
     nickname: string;
@@ -973,7 +974,6 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
   };
   const [chatHistory, setChatHistory] = useState<ChatHistoryEntry[]>([]);
   const [chatHistoryOpen, setChatHistoryOpen] = useState(false);
-  const chatHistoryEntryTimeRef = useRef<number>(0);
   const chatHistoryListRef = useRef<HTMLDivElement>(null);
   // Sticky-bottom flag — when true, a new message scrolls the list
   // to the bottom; flips to false the moment the user scrolls up,
@@ -1694,35 +1694,31 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
     };
   }, [open, nickname, flushSave]);
 
-  // Chat history — capture entry timestamp on each `open`, so
-  // refreshing the page (or closing/reopening the panel) clears
-  // the in-memory history. The subscription below filters out
-  // anything older than this so users only see chat that happened
-  // during the current session.
+  // On entering the game, reset the panel UI state. The history
+  // itself is server-persisted so we don't clear `chatHistory` —
+  // the existing list stays visible until the snapshot below
+  // refreshes it, avoiding an empty-state flash on re-entry.
   useEffect(() => {
     if (!open) return;
-    chatHistoryEntryTimeRef.current = Date.now();
-    setChatHistory([]);
-    // Reset sticky-bottom flag and viewer-open state on every fresh
-    // entry so the next session starts at the bottom and closed.
     chatHistoryStickyRef.current = true;
     setChatHistoryOpen(false);
   }, [open]);
 
-  // Subscribe to fishing_chat (debug-gated viewer only). Reads
-  // newest 60 docs and filters by entry time client-side, then
-  // sorts oldest→newest for natural top-to-bottom display.
+  // Subscribe to fishing_chat. Reads the newest 100 docs server-
+  // side (the Cloud Function prunes the collection to ~200 so this
+  // is cheap), then sorts oldest→newest for natural top-to-bottom
+  // display. Subscribes as soon as the game opens so the history
+  // panel is ready the first time the user toggles it.
   useEffect(() => {
     if (!open || !showChatHistoryFeature) return;
     const q = query(
       collection(db, "fishing_chat"),
       orderBy("createdAt", "desc"),
-      limit(60),
+      limit(100),
     );
     const unsub = onSnapshot(
       q,
       (snap) => {
-        const entryTime = chatHistoryEntryTimeRef.current;
         const items: ChatHistoryEntry[] = [];
         snap.forEach((d) => {
           const data = d.data() as Record<string, unknown>;
@@ -1732,14 +1728,14 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
             | undefined;
           const ms =
             ts && typeof ts.toMillis === "function" ? ts.toMillis() : 0;
-          if (ms === 0 || ms < entryTime) return;
+          if (ms === 0) return;
           const nick = typeof data.nickname === "string" ? data.nickname : "?";
           const msg = typeof data.message === "string" ? data.message : "";
           if (!msg) return;
           items.push({ id: d.id, nickname: nick, message: msg, createdAt: ms });
         });
         items.sort((a, b) => a.createdAt - b.createdAt);
-        setChatHistory(items.slice(-50));
+        setChatHistory(items);
       },
       (err) => console.error("[fishing] chat history subscribe failed", err),
     );
