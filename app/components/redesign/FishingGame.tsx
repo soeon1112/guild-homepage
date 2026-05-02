@@ -24,6 +24,8 @@ import {
   query,
   where,
   collectionGroup,
+  orderBy,
+  limit,
 } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
 import { setChatInputFocused, useChatInputFocused } from "@/src/lib/uiBus";
@@ -975,6 +977,27 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
   // window without polling fishing_chat history.
   const selfChatExpiryRef = useRef<number>(0);
 
+  // Chat history viewer (debug-gated). Independent of the
+  // self/peer bubble system above — it only *reads* fishing_chat
+  // and renders a separate panel. Entry time is captured on open
+  // so older chats stay out of view; refreshing the page resets it.
+  // Cap at 50 most recent entries kept in memory.
+  type ChatHistoryEntry = {
+    id: string;
+    nickname: string;
+    message: string;
+    createdAt: number;
+  };
+  const [chatHistory, setChatHistory] = useState<ChatHistoryEntry[]>([]);
+  const [chatHistoryOpen, setChatHistoryOpen] = useState(false);
+  const chatHistoryEntryTimeRef = useRef<number>(0);
+  const chatHistoryListRef = useRef<HTMLDivElement>(null);
+  // Sticky-bottom flag — when true, a new message scrolls the list
+  // to the bottom; flips to false the moment the user scrolls up,
+  // and back to true once they return within ~8 px of the bottom.
+  const chatHistoryStickyRef = useRef(true);
+  const showChatHistoryFeature = canDebugFishing(nickname);
+
   // Peer state: nickname → live snapshot. Driven by the
   // onSnapshot subscription below. peersRef shadows the state for
   // fast access from the render loop and the asset cache.
@@ -1687,6 +1710,83 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
       window.removeEventListener("pagehide", onUnload);
     };
   }, [open, nickname, flushSave]);
+
+  // Chat history — capture entry timestamp on each `open`, so
+  // refreshing the page (or closing/reopening the panel) clears
+  // the in-memory history. The subscription below filters out
+  // anything older than this so users only see chat that happened
+  // during the current session.
+  useEffect(() => {
+    if (!open) return;
+    chatHistoryEntryTimeRef.current = Date.now();
+    setChatHistory([]);
+    // Reset sticky-bottom flag and viewer-open state on every fresh
+    // entry so the next session starts at the bottom and closed.
+    chatHistoryStickyRef.current = true;
+    setChatHistoryOpen(false);
+  }, [open]);
+
+  // Subscribe to fishing_chat (debug-gated viewer only). Reads
+  // newest 60 docs and filters by entry time client-side, then
+  // sorts oldest→newest for natural top-to-bottom display.
+  useEffect(() => {
+    if (!open || !showChatHistoryFeature) return;
+    const q = query(
+      collection(db, "fishing_chat"),
+      orderBy("createdAt", "desc"),
+      limit(60),
+    );
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const entryTime = chatHistoryEntryTimeRef.current;
+        const items: ChatHistoryEntry[] = [];
+        snap.forEach((d) => {
+          const data = d.data() as Record<string, unknown>;
+          const ts = data.createdAt as
+            | { toMillis?: () => number }
+            | null
+            | undefined;
+          const ms =
+            ts && typeof ts.toMillis === "function" ? ts.toMillis() : 0;
+          if (ms === 0 || ms < entryTime) return;
+          const nick = typeof data.nickname === "string" ? data.nickname : "?";
+          const msg = typeof data.message === "string" ? data.message : "";
+          if (!msg) return;
+          items.push({ id: d.id, nickname: nick, message: msg, createdAt: ms });
+        });
+        items.sort((a, b) => a.createdAt - b.createdAt);
+        setChatHistory(items.slice(-50));
+      },
+      (err) => console.error("[fishing] chat history subscribe failed", err),
+    );
+    return () => unsub();
+  }, [open, showChatHistoryFeature]);
+
+  // Auto-scroll on new messages — only if the user hasn't scrolled
+  // up. RAF lets the new <div> mount before we measure scrollHeight.
+  useEffect(() => {
+    if (!chatHistoryOpen) return;
+    if (!chatHistoryStickyRef.current) return;
+    const el = chatHistoryListRef.current;
+    if (!el) return;
+    const id = requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight;
+    });
+    return () => cancelAnimationFrame(id);
+  }, [chatHistory, chatHistoryOpen]);
+
+  // On open, jump to the bottom and reset the sticky flag so the
+  // session always starts pinned to the latest message.
+  useEffect(() => {
+    if (!chatHistoryOpen) return;
+    chatHistoryStickyRef.current = true;
+    const id = requestAnimationFrame(() => {
+      const el = chatHistoryListRef.current;
+      if (el) el.scrollTop = el.scrollHeight;
+    });
+    return () => cancelAnimationFrame(id);
+  }, [chatHistoryOpen]);
 
   // Presence subscription — listens for everyone on the same map
   // and folds them into the peers map. Re-subscribes when the
@@ -5039,6 +5139,142 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                 Bar01a as full-width track, BarFill01a as the
                 proportional red-orange fill, "HP n/100" overlay. */}
             <HpBar stamina={stamina} />
+
+            {/* Chat history viewer (debug-gated) — speech-bubble
+                icon docked just below the HP bar; tap to open a
+                small in-canvas panel listing chat from this
+                session. Independent of the existing 7.5 s self/
+                peer chat bubble system: this viewer only reads
+                fishing_chat for retrospective view. */}
+            {showChatHistoryFeature ? (
+              <>
+                <button
+                  type="button"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={() => setChatHistoryOpen((v) => !v)}
+                  aria-label="채팅 이력"
+                  className="absolute"
+                  style={{
+                    left: 6,
+                    top: 22,
+                    width: 24,
+                    height: 24,
+                    borderRadius: 6,
+                    background: chatHistoryOpen
+                      ? "rgba(216,150,200,0.65)"
+                      : "rgba(11,8,33,0.65)",
+                    border: "1px solid rgba(216,150,200,0.55)",
+                    color: "#FFE5C4",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    padding: 0,
+                    fontSize: 13,
+                    lineHeight: 1,
+                    zIndex: 10,
+                  }}
+                >
+                  <span aria-hidden>💬</span>
+                </button>
+                {chatHistoryOpen ? (
+                  <div
+                    onPointerDown={(e) => e.stopPropagation()}
+                    className="absolute"
+                    style={{
+                      left: 6,
+                      top: 50,
+                      width: 200,
+                      height: 150,
+                      background: "rgba(0,0,0,0.55)",
+                      border: "1px solid rgba(216,150,200,0.45)",
+                      borderRadius: 6,
+                      color: "#FFE5C4",
+                      display: "flex",
+                      flexDirection: "column",
+                      fontSize: 10,
+                      zIndex: 12,
+                      boxShadow: "0 4px 12px rgba(11,8,33,0.55)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "3px 4px 3px 6px",
+                        borderBottom: "1px solid rgba(216,150,200,0.25)",
+                        fontSize: 9,
+                        opacity: 0.85,
+                        flexShrink: 0,
+                      }}
+                    >
+                      <span>채팅 이력</span>
+                      <button
+                        type="button"
+                        onClick={() => setChatHistoryOpen(false)}
+                        aria-label="닫기"
+                        style={{
+                          background: "transparent",
+                          border: "none",
+                          color: "#FFE5C4",
+                          cursor: "pointer",
+                          fontSize: 13,
+                          lineHeight: 1,
+                          padding: "0 2px",
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                    <div
+                      ref={chatHistoryListRef}
+                      onScroll={(e) => {
+                        const el = e.currentTarget;
+                        const dist =
+                          el.scrollHeight - el.scrollTop - el.clientHeight;
+                        chatHistoryStickyRef.current = dist < 8;
+                      }}
+                      style={{
+                        flex: 1,
+                        minHeight: 0,
+                        overflowY: "auto",
+                        overscrollBehavior: "contain",
+                        padding: "4px 6px",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 3,
+                        lineHeight: 1.3,
+                      }}
+                    >
+                      {chatHistory.length === 0 ? (
+                        <span style={{ opacity: 0.55 }}>
+                          아직 메시지가 없어요
+                        </span>
+                      ) : (
+                        chatHistory.map((m) => (
+                          <div
+                            key={m.id}
+                            style={{
+                              wordBreak: "break-word",
+                              whiteSpace: "pre-wrap",
+                            }}
+                          >
+                            <span
+                              style={{ color: "#D896C8", fontWeight: 600 }}
+                            >
+                              {m.nickname}
+                            </span>
+                            <span style={{ opacity: 0.65 }}>: </span>
+                            <span>{m.message}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                ) : null}
+              </>
+            ) : null}
 
             {/* Hint toast — short-lived "체력이 부족", "이미 가득",
                 "별빛 부족" lines. Centered near the top so it
