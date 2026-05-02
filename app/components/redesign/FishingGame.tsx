@@ -764,25 +764,8 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
 
   // ── Day / night ──────────────────────────────────────────────
   // Time-based phase syncs every concurrent client (Date.now() %
-  // CYCLE). Admin can force a phase from the in-game toggle for
-  // local validation; debugPhase=null = follow real time.
-  const [debugPhase, setDebugPhase] = useState<DayNightPhase | null>(null);
-  // Refs are read by the canvas loop every frame without forcing
-  // React re-renders. Updated on each phase tick + whenever the
-  // debug toggle changes.
-  const debugPhaseRef = useRef<DayNightPhase | null>(null);
-  useEffect(() => {
-    debugPhaseRef.current = debugPhase;
-  }, [debugPhase]);
-  // 1Hz ticker re-renders the toggle button label only — the
-  // animated overlay reads Date.now() directly each frame from
-  // the loop, so this interval doesn't affect canvas smoothness.
-  const [, setPhaseTick] = useState(0);
-  useEffect(() => {
-    if (!open) return;
-    const id = setInterval(() => setPhaseTick((t) => t + 1), 1000);
-    return () => clearInterval(id);
-  }, [open]);
+  // CYCLE). Phase is read directly each frame from the canvas
+  // loop / catch resolver — no React state involved.
 
   // Loop-owned state lives in refs to avoid React re-renders at 60fps.
   const stateRef = useRef({
@@ -2362,11 +2345,10 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
   // grade and the popup can show the actual item on success — we
   // never re-roll on press.
   const rollGauge = useCallback((s: typeof stateRef.current) => {
-    // Phase-aware forage/fish split — admin override > time-based.
-    // Hard boundary on the phase boolean (no fade) so the bite
+    // Phase-aware forage/fish split — time-based only. Hard
+    // boundary on the phase boolean (no fade) so the bite
     // mechanics stay deterministic mid-night vs mid-day.
-    const phase: DayNightPhase =
-      debugPhaseRef.current ?? getCurrentPhase(Date.now());
+    const phase: DayNightPhase = getCurrentPhase(Date.now());
     const result = rollCatchResult({
       forageProbability:
         phase === "night"
@@ -4338,12 +4320,7 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
       // MAP_SCALE save/restore block. Outdoor scene only; indoor
       // shop is treated as self-lit (no torches, no night dimming).
       if (currentScene === "outdoor") {
-        const nIntensity =
-          debugPhaseRef.current === "day"
-            ? 0
-            : debugPhaseRef.current === "night"
-            ? 1
-            : getNightIntensity(Date.now());
+        const nIntensity = getNightIntensity(Date.now());
         if (nIntensity > 0) {
           ctx.globalAlpha = 1;
           ctx.globalCompositeOperation = "source-over";
@@ -4697,58 +4674,6 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
               <div className="absolute inset-0 flex items-center justify-center text-stardust text-[12px]">
                 불러오는 중…
               </div>
-            ) : null}
-
-            {/* Day/night debug toggle — only the FISHING_DEBUG_ADMIN
-                nickname sees this. Cycles auto → day → night → auto.
-                The forced phase is local to this session: other
-                players keep seeing the time-based phase. */}
-            {canDebugFishing(nickname) ? (
-              <button
-                type="button"
-                // Stop pointer events from bubbling to the motion.div
-                // joystick handler — without this, tapping the toggle
-                // captures the pointer for joystick mode and the
-                // click side effect (state change) still fires but
-                // the parent's setPointerCapture grabs subsequent
-                // events. stopPropagation keeps the button feeling
-                // like a button, not a fishing-area tap.
-                onPointerDown={(e) => e.stopPropagation()}
-                onPointerUp={(e) => e.stopPropagation()}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setDebugPhase((p) =>
-                    p === null ? "day" : p === "day" ? "night" : null,
-                  );
-                }}
-                title={
-                  debugPhase === null
-                    ? `자동 (${getCurrentPhase(Date.now()) === "night" ? "밤" : "낮"})`
-                    : debugPhase === "day"
-                    ? "낮 강제"
-                    : "밤 강제"
-                }
-                style={{
-                  position: "absolute",
-                  top: 6,
-                  right: 6,
-                  zIndex: 50,
-                  width: 28,
-                  height: 28,
-                  fontSize: 14,
-                  lineHeight: "26px",
-                  borderRadius: 999,
-                  background: "rgba(11,8,33,0.85)",
-                  border: "1px solid rgba(216,150,200,0.5)",
-                  color: "#FFE5C4",
-                  cursor: "pointer",
-                  textAlign: "center",
-                  padding: 0,
-                  touchAction: "manipulation",
-                }}
-              >
-                {debugPhase === null ? "🌗" : debugPhase === "day" ? "☀" : "🌙"}
-              </button>
             ) : null}
 
             {/* Static joystick dock — always rendered, low opacity
@@ -5140,111 +5065,140 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                 proportional red-orange fill, "HP n/100" overlay. */}
             <HpBar stamina={stamina} />
 
-            {/* Chat history viewer (debug-gated) — speech-bubble
-                icon docked just below the HP bar; tap to open a
-                small in-canvas panel listing chat from this
-                session. Independent of the existing 7.5 s self/
-                peer chat bubble system: this viewer only reads
-                fishing_chat for retrospective view. */}
+            {/* Chat history viewer (debug-gated) — pixel speech-
+                bubble icon docked at the top-right corner of the
+                viewport (same slot the day/night debug toggle used
+                to occupy). Toggle reopens/closes the panel; the
+                panel itself is title-less, has no close button, and
+                is pointer-events-none on its outer chrome so taps
+                pass through to the game underneath — the inner
+                scroll list is the only part that captures pointers
+                (so vertical scroll works inside it). Independent
+                of the existing 7.5 s self/peer bubble system. */}
             {showChatHistoryFeature ? (
               <>
+                <style>{`
+                  .fish-chat-history-scroll::-webkit-scrollbar {
+                    width: 4px;
+                  }
+                  .fish-chat-history-scroll::-webkit-scrollbar-track {
+                    background: transparent;
+                  }
+                  .fish-chat-history-scroll::-webkit-scrollbar-thumb {
+                    background: rgba(255, 255, 255, 0.18);
+                    border-radius: 2px;
+                  }
+                  .fish-chat-history-scroll::-webkit-scrollbar-thumb:hover {
+                    background: rgba(255, 255, 255, 0.32);
+                  }
+                `}</style>
                 <button
                   type="button"
                   onPointerDown={(e) => e.stopPropagation()}
-                  onClick={() => setChatHistoryOpen((v) => !v)}
+                  onPointerUp={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setChatHistoryOpen((v) => !v);
+                  }}
                   aria-label="채팅 이력"
+                  aria-pressed={chatHistoryOpen}
                   className="absolute"
                   style={{
-                    left: 6,
-                    top: 22,
+                    top: 6,
+                    right: 6,
                     width: 24,
                     height: 24,
-                    borderRadius: 6,
+                    borderRadius: 4,
                     background: chatHistoryOpen
-                      ? "rgba(216,150,200,0.65)"
-                      : "rgba(11,8,33,0.65)",
+                      ? "rgba(216,150,200,0.55)"
+                      : "rgba(11,8,33,0.7)",
                     border: "1px solid rgba(216,150,200,0.55)",
-                    color: "#FFE5C4",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     cursor: "pointer",
                     padding: 0,
-                    fontSize: 13,
-                    lineHeight: 1,
-                    zIndex: 10,
+                    touchAction: "manipulation",
+                    zIndex: 50,
                   }}
                 >
-                  <span aria-hidden>💬</span>
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 14 14"
+                    fill="none"
+                    shapeRendering="crispEdges"
+                    style={{ imageRendering: "pixelated", display: "block" }}
+                    aria-hidden
+                  >
+                    <rect x="1" y="1" width="12" height="9" fill="#FFE5C4" />
+                    <rect x="1" y="0" width="12" height="1" fill="#3d2c1c" />
+                    <rect x="0" y="1" width="1" height="9" fill="#3d2c1c" />
+                    <rect x="13" y="1" width="1" height="9" fill="#3d2c1c" />
+                    <rect x="1" y="10" width="2" height="1" fill="#3d2c1c" />
+                    <rect x="6" y="10" width="7" height="1" fill="#3d2c1c" />
+                    <rect x="3" y="10" width="3" height="1" fill="#FFE5C4" />
+                    <rect x="3" y="11" width="2" height="1" fill="#FFE5C4" />
+                    <rect x="3" y="12" width="1" height="1" fill="#FFE5C4" />
+                    <rect x="5" y="11" width="1" height="1" fill="#3d2c1c" />
+                    <rect x="4" y="12" width="1" height="1" fill="#3d2c1c" />
+                    <rect x="3" y="13" width="1" height="1" fill="#3d2c1c" />
+                    <rect x="3" y="4" width="2" height="2" fill="#3d2c1c" />
+                    <rect x="6" y="4" width="2" height="2" fill="#3d2c1c" />
+                    <rect x="9" y="4" width="2" height="2" fill="#3d2c1c" />
+                  </svg>
                 </button>
                 {chatHistoryOpen ? (
                   <div
-                    onPointerDown={(e) => e.stopPropagation()}
                     className="absolute"
                     style={{
-                      left: 6,
-                      top: 50,
+                      top: 36,
+                      right: 6,
                       width: 200,
                       height: 150,
-                      background: "rgba(0,0,0,0.55)",
-                      border: "1px solid rgba(216,150,200,0.45)",
-                      borderRadius: 6,
-                      color: "#FFE5C4",
-                      display: "flex",
-                      flexDirection: "column",
-                      fontSize: 10,
+                      // Outer wrapper is click-through; only the
+                      // inner scroll list captures pointer events.
+                      pointerEvents: "none",
                       zIndex: 12,
-                      boxShadow: "0 4px 12px rgba(11,8,33,0.55)",
                     }}
                   >
                     <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        padding: "3px 4px 3px 6px",
-                        borderBottom: "1px solid rgba(216,150,200,0.25)",
-                        fontSize: 9,
-                        opacity: 0.85,
-                        flexShrink: 0,
-                      }}
-                    >
-                      <span>채팅 이력</span>
-                      <button
-                        type="button"
-                        onClick={() => setChatHistoryOpen(false)}
-                        aria-label="닫기"
-                        style={{
-                          background: "transparent",
-                          border: "none",
-                          color: "#FFE5C4",
-                          cursor: "pointer",
-                          fontSize: 13,
-                          lineHeight: 1,
-                          padding: "0 2px",
-                        }}
-                      >
-                        ×
-                      </button>
-                    </div>
-                    <div
                       ref={chatHistoryListRef}
+                      onPointerDown={(e) => e.stopPropagation()}
                       onScroll={(e) => {
                         const el = e.currentTarget;
                         const dist =
                           el.scrollHeight - el.scrollTop - el.clientHeight;
                         chatHistoryStickyRef.current = dist < 8;
                       }}
+                      className="fish-chat-history-scroll"
                       style={{
-                        flex: 1,
-                        minHeight: 0,
+                        width: "100%",
+                        height: "100%",
+                        boxSizing: "border-box",
+                        background: "rgba(0,0,0,0.55)",
+                        border: "1px solid rgba(216,150,200,0.45)",
+                        borderRadius: 6,
+                        color: "#FFE5C4",
+                        fontSize: 10,
+                        lineHeight: 1.3,
+                        padding: "5px 7px",
                         overflowY: "auto",
                         overscrollBehavior: "contain",
-                        padding: "4px 6px",
+                        touchAction: "pan-y",
+                        // Inner scroll list is the only pointer-active
+                        // surface so taps elsewhere pass through.
+                        pointerEvents: "auto",
+                        // Modern thin scrollbar (Firefox / Chromium 121+).
+                        // ::-webkit-scrollbar overrides above cover
+                        // older WebView builds.
+                        scrollbarWidth: "thin",
+                        scrollbarColor:
+                          "rgba(255,255,255,0.18) transparent",
+                        boxShadow: "0 4px 12px rgba(11,8,33,0.55)",
                         display: "flex",
                         flexDirection: "column",
                         gap: 3,
-                        lineHeight: 1.3,
                       }}
                     >
                       {chatHistory.length === 0 ? (
@@ -5252,23 +5206,32 @@ export default function FishingGame({ open, onClose, nickname }: Props) {
                           아직 메시지가 없어요
                         </span>
                       ) : (
-                        chatHistory.map((m) => (
-                          <div
-                            key={m.id}
-                            style={{
-                              wordBreak: "break-word",
-                              whiteSpace: "pre-wrap",
-                            }}
-                          >
-                            <span
-                              style={{ color: "#D896C8", fontWeight: 600 }}
+                        chatHistory.map((m) => {
+                          const isSelf =
+                            !!nickname &&
+                            m.nickname.normalize("NFC") ===
+                              nickname.normalize("NFC");
+                          return (
+                            <div
+                              key={m.id}
+                              style={{
+                                wordBreak: "break-word",
+                                whiteSpace: "pre-wrap",
+                              }}
                             >
-                              {m.nickname}
-                            </span>
-                            <span style={{ opacity: 0.65 }}>: </span>
-                            <span>{m.message}</span>
-                          </div>
-                        ))
+                              <span
+                                style={{
+                                  color: isSelf ? "#FFD96E" : "#D896C8",
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {m.nickname}
+                              </span>
+                              <span style={{ opacity: 0.65 }}>: </span>
+                              <span>{m.message}</span>
+                            </div>
+                          );
+                        })
                       )}
                     </div>
                   </div>
