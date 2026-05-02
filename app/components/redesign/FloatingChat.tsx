@@ -547,6 +547,7 @@ export default function FloatingChat() {
       <motion.button
         type="button"
         onClick={openPanel}
+        data-floating-fab="chat"
         aria-label={
           hasUnread
             ? `길드 채팅 열기, 새 메시지 ${unreadCount}건`

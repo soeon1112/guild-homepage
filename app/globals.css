@@ -88,6 +88,34 @@
   align-items: safe center;
 }
 
+/* Mobile-only: hide the floating pet/chat FAB icons whenever any modal
+   is mounted in the DOM. The app version of this UI uses RN's <Modal>
+   which automatically covers everything below it; the web has to opt
+   in. Without this rule, opening a modal on a phone leaves the icons
+   floating above the keyboard / over the modal's input row.
+
+   Targeted modal classes:
+     .modal-safe-frame   redesign modals (PhotosSection viewer/upload,
+                         BadgesSection, CharacterForm, ShootingStarLetter,
+                         TopHeader auth)
+     .minihome-modal     legacy modals still in album/page.tsx and
+                         members/[id]/page.tsx (upload, member picker,
+                         photo viewer)
+
+   `:has()` is supported in iOS Safari ≥15.4 and Chrome Android ≥105
+   — both well within the user base; older browsers fall back to the
+   prior behaviour (icons remain visible) which is no worse than today.
+
+   `display: none` removes the icons from the layout entirely so the
+   keyboard never has to reflow around them — this is the part that
+   was leaving an empty band above the soft keyboard. */
+@media (max-width: 767px) {
+  body:has(.modal-safe-frame) [data-floating-fab],
+  body:has(.minihome-modal) [data-floating-fab] {
+    display: none !important;
+  }
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

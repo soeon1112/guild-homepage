@@ -627,6 +627,7 @@ export default function FloatingPet() {
       {/* ── Floating button (bottom-left) ── */}
       <motion.button
         type="button"
+        data-floating-fab="pet"
         onClick={() => {
           // Explicit branching keeps the touch path resilient — on
           // mobile a `setShowMenu((v) => !v)` toggle could land
