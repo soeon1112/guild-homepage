@@ -636,10 +636,14 @@ export const FISH_GRADE_LABEL: Record<FishGrade, string> = {
 // rank-1 highlight that already use the same hue.
 export const FISH_GRADE_COLOR: Record<FishGrade, string> = {
   common: "#e2e8f0",     // slate-200 — brighter cool grey for legibility
-  uncommon: "#4ade80",   // green-400
+  // lime-400 instead of green-400: green-400 (hue ~145°) sat too close
+  // to sky-400 (hue ~199°) and the two cool greens read as the same
+  // tier at a glance. lime-400 (hue ~80°) is unambiguously yellow-
+  // green / "연두" and pulls the gap to ~120°.
+  uncommon: "#a3e635",   // lime-400 — clearly distinct from rare's blue
   rare: "#38bdf8",       // sky-400
   legendary: "#a78bfa",  // violet-400
-  mythic: "#fbbf24",     // amber-400 — gold tier, unchanged
+  mythic: "#fbbf24",     // amber-400 — gold tier, hue-aligned with sparkles
 };
 
 // Fishing sprite sheet: 5 frames × 4 directions in a 160×128 block;

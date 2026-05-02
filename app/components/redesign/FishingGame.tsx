@@ -5728,11 +5728,11 @@ function gradeFlair(result: CatchResult): GradeFlair {
     case "common":
       return { glow: "none", textGlow: "none", haloColor: null, sparkles: false };
     case "uncommon":
-      // green-400 rgb(74,222,128); higher alpha than before so the
-      // glow actually reads against the cosmic bg.
+      // lime-400 rgb(163,230,53) — yellow-green; sits a clear hue
+      // distance from rare's sky-400 so the two grades read apart.
       return {
-        glow: "0 0 16px rgba(74,222,128,0.60)",
-        textGlow: "0 0 8px rgba(74,222,128,0.85)",
+        glow: "0 0 16px rgba(163,230,53,0.60)",
+        textGlow: "0 0 8px rgba(163,230,53,0.85)",
         haloColor: null,
         sparkles: false,
       };
