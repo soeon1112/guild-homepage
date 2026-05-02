@@ -5728,34 +5728,40 @@ function gradeFlair(result: CatchResult): GradeFlair {
     case "common":
       return { glow: "none", textGlow: "none", haloColor: null, sparkles: false };
     case "uncommon":
+      // green-400 rgb(74,222,128); higher alpha than before so the
+      // glow actually reads against the cosmic bg.
       return {
-        glow: "0 0 14px rgba(134,239,172,0.45)",
-        textGlow: "0 0 6px rgba(134,239,172,0.65)",
+        glow: "0 0 16px rgba(74,222,128,0.60)",
+        textGlow: "0 0 8px rgba(74,222,128,0.85)",
         haloColor: null,
         sparkles: false,
       };
     case "rare":
+      // sky-400 rgb(56,189,248)
       return {
         glow:
-          "0 0 18px rgba(125,211,252,0.65), 0 0 36px rgba(125,211,252,0.35)",
-        textGlow: "0 0 8px rgba(125,211,252,0.85)",
-        haloColor: "rgba(125,211,252,0.55)",
+          "0 0 20px rgba(56,189,248,0.80), 0 0 40px rgba(56,189,248,0.45)",
+        textGlow: "0 0 10px rgba(56,189,248,1.0)",
+        haloColor: "rgba(56,189,248,0.70)",
         sparkles: false,
       };
     case "legendary":
+      // violet-400 rgb(167,139,250)
       return {
         glow:
-          "0 0 22px rgba(196,181,253,0.75), 0 0 44px rgba(196,181,253,0.45)",
-        textGlow: "0 0 10px rgba(196,181,253,0.95)",
-        haloColor: "rgba(196,181,253,0.70)",
+          "0 0 24px rgba(167,139,250,0.85), 0 0 48px rgba(167,139,250,0.55)",
+        textGlow: "0 0 12px rgba(167,139,250,1.0)",
+        haloColor: "rgba(167,139,250,0.85)",
         sparkles: false,
       };
     case "mythic":
+      // amber-400 rgb(251,191,36) — top tier; alphas pushed up for
+      // a more emphatic glow without changing the gold hue.
       return {
         glow:
-          "0 0 28px rgba(251,191,36,0.85), 0 0 60px rgba(251,191,36,0.55)",
-        textGlow: "0 0 12px rgba(251,191,36,1.0)",
-        haloColor: "rgba(251,191,36,0.85)",
+          "0 0 30px rgba(251,191,36,0.95), 0 0 64px rgba(251,191,36,0.65)",
+        textGlow: "0 0 14px rgba(251,191,36,1.0)",
+        haloColor: "rgba(251,191,36,0.95)",
         sparkles: true,
       };
   }

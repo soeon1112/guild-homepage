@@ -626,12 +626,20 @@ export const FISH_GRADE_LABEL: Record<FishGrade, string> = {
   mythic: "신화",
 };
 
+// Tailwind tier-400 hues for the four lower grades — same colour
+// identity as the previous tier-300 set but one step deeper for
+// chroma + contrast against the dark cosmic background. The old
+// palette read as washed-out / "잘 안 보임" on the catch popup;
+// this set keeps each grade instantly distinguishable while
+// preserving the calm-→-fiery progression. mythic stays amber-400
+// to align with the gold sparkle particles, level-up banner, and
+// rank-1 highlight that already use the same hue.
 export const FISH_GRADE_COLOR: Record<FishGrade, string> = {
-  common: "#cbd5e1",
-  uncommon: "#86efac",
-  rare: "#7dd3fc",
-  legendary: "#c4b5fd",
-  mythic: "#fbbf24",
+  common: "#e2e8f0",     // slate-200 — brighter cool grey for legibility
+  uncommon: "#4ade80",   // green-400
+  rare: "#38bdf8",       // sky-400
+  legendary: "#a78bfa",  // violet-400
+  mythic: "#fbbf24",     // amber-400 — gold tier, unchanged
 };
 
 // Fishing sprite sheet: 5 frames × 4 directions in a 160×128 block;
