@@ -210,7 +210,7 @@ export function BgmPlayer({ bgmUrl }: { bgmUrl?: string }) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.96 }}
             transition={{ duration: 0.2 }}
-            className="absolute left-0 top-12 z-40 w-[260px] rounded-2xl p-4"
+            className="absolute left-0 top-12 z-40 w-[260px] max-w-[calc(100vw-2rem)] rounded-2xl p-4"
             style={{
               background: "rgba(26, 15, 61, 0.85)",
               border: "1px solid rgba(216, 150, 200, 0.25)",

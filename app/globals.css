@@ -157,18 +157,60 @@
 }
 
 /* ── Base ── */
+/* Belt-and-braces horizontal-overflow lock. `body { overflow-x: hidden }`
+   alone has occasionally let through stray horizontal scroll on iOS
+   Safari when an absolutely-positioned descendant exceeds the viewport
+   width; clamping `html` AND adding `overflow-x: clip` (which, unlike
+   `hidden`, doesn't establish a scroll container and so can't be
+   scripted into scrolling) closes the gap. Mobile-only — desktop keeps
+   the `hidden` behaviour to preserve any intentional sticky/fixed
+   positioning patterns. */
+html {
+  overflow-x: clip;
+  max-width: 100vw;
+}
+
 body {
   color: var(--foreground);
   font-family: "Geist", system-ui, -apple-system, sans-serif;
   min-height: 100vh;
   margin: 0;
-  overflow-x: hidden;
+  overflow-x: clip;
+  max-width: 100vw;
 }
 
 input,
 textarea,
 select {
   font-size: 16px;
+}
+
+/* Default image/embed sizing — every <img>, <video>, <iframe> caps at
+   its container width unless explicitly overridden. Stops a stray full-
+   resolution image (e.g. board attachments, profile photos) from
+   pushing the page wider than the viewport on phones. */
+img,
+video,
+iframe,
+embed,
+object {
+  max-width: 100%;
+  height: auto;
+}
+
+/* User-generated text containers default to wrapping long words /
+   URLs / hashes. The `.wrap-anywhere` utility itself lives below
+   (line ~6000) with the full vendor-prefix/`min-width: 0` set; here
+   we just opt the named content classes into the same behaviour so
+   long unbroken tokens never widen the page on mobile. */
+.board-detail-body,
+.board-comment-body,
+.guestbook-content,
+.adventure-log-content,
+.notice-detail-body,
+.letter-modal-body {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* ── Full-screen background image (no overlay, no filter) ── */
@@ -3320,6 +3362,11 @@ select {
   background: rgba(0, 0, 0, 0.6);
   border-radius: 12px;
   overflow-x: auto;
+  /* The wrap itself must never push the page wider than the viewport.
+     Without `max-width: 100%`, a 560-px table could cause the WRAP to
+     report its scrollWidth as 560 px and bleed into the page-level
+     scroll on some browsers. */
+  max-width: 100%;
 }
 
 .admin-exchange-table {
@@ -3327,6 +3374,20 @@ select {
   border-collapse: collapse;
   font-size: 0.85rem;
   min-width: 560px;
+}
+
+/* On phones, keep the 560-px column structure (so admins still see
+   every column) but the wrap stays narrow and scrolls horizontally
+   *inside* itself — that's the intended escape hatch for dense
+   tables. The font is also nudged smaller so common cells fit. */
+@media (max-width: 767px) {
+  .admin-exchange-table {
+    font-size: 0.78rem;
+  }
+  .admin-exchange-table th,
+  .admin-exchange-table td {
+    padding: 0.5rem 0.4rem;
+  }
 }
 
 .admin-exchange-table th,
