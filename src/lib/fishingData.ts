@@ -64,7 +64,7 @@ export function getNightIntensity(now: number = Date.now()): number {
 // Forage vs fish probability at night (foraging easier by day,
 // fish bite more at night). Grade-within-fish (70/18/8/3/1) is
 // unchanged — the spec only flips the top-level forage/fish split.
-export const CATCH_FORAGE_PROBABILITY_NIGHT = 0.45;
+export const CATCH_FORAGE_PROBABILITY_NIGHT = 0.35;
 
 // Per-admin debug toggle for the day/night view, mirroring
 // PET_DEBUG_ADMIN_NICKNAME in pets.ts. Lets the admin force a
@@ -607,15 +607,17 @@ export const GAUGE_SPEED_SIN_FREQ = 0.001;
 // Top-level catch table. Each successful catch first rolls forage
 // vs fish at CATCH_FORAGE_PROBABILITY; on a forage hit, a second
 // roll at CATCH_TRASH_WITHIN_FORAGE decides treasure vs garbage.
-// Combined effective rates (per spec):
-//   forage treasure : 55 × 0.70 = 38.5%
-//   forage trash    : 55 × 0.30 = 16.5%
-//   fish common     : 45 × 0.70 = 31.5%
-//   fish uncommon   : 45 × 0.18 =  8.1%
-//   fish rare       : 45 × 0.08 =  3.6%
-//   fish legendary  : 45 × 0.03 =  1.35%
-//   fish mythic     : 45 × 0.01 =  0.45%
-export const CATCH_FORAGE_PROBABILITY = 0.55;
+// Day combined effective rates (per spec):
+//   forage treasure : 40 × 0.70 = 28.0%
+//   forage trash    : 40 × 0.30 = 12.0%
+//   fish common     : 60 × 0.70 = 42.0%
+//   fish uncommon   : 60 × 0.18 = 10.8%
+//   fish rare       : 60 × 0.08 =  4.8%
+//   fish legendary  : 60 × 0.03 =  1.8%
+//   fish mythic     : 60 × 0.01 =  0.6%
+// At night CATCH_FORAGE_PROBABILITY_NIGHT (0.35) replaces the 0.40
+// top-level split — fish bite more, forage rarer.
+export const CATCH_FORAGE_PROBABILITY = 0.40;
 export const CATCH_TRASH_WITHIN_FORAGE = 0.30;
 
 export const FISH_GRADE_LABEL: Record<FishGrade, string> = {
