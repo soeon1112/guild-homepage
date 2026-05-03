@@ -7,9 +7,11 @@
 // admin page can render walkthroughs even if the tree later diverges.
 
 // ── Visibility gate ──────────────────────────────────────────
-// Soft-launch like the original pet system: only this nickname sees
-// the banner + can open /guild-test. Flip to `null` to release.
-export const GUILD_TEST_ADMIN_NICKNAME: string | null = "언쏘";
+// Soft-launched gated to "언쏘"; full release flipped this to `null`
+// (2026-05-03) so every signed-in member sees the banner + can take
+// the test. Admin viewer (/admin/guild-test-results) stays gated by
+// the separate `dawnlight2024` password.
+export const GUILD_TEST_ADMIN_NICKNAME: string | null = null;
 
 export function canSeeGuildTest(
   nickname: string | null | undefined,
