@@ -6012,512 +6012,160 @@ body.has-redesigned-header .bg-scene {
 }
 
 /* ════════════════════════════════════════════════════════ */
-/*  Rebirth-stone event — limited-time free body change      */
+/*  Guild self-check banner — links to /guild-test           */
 /* ════════════════════════════════════════════════════════ */
 
-.rebirth-banner {
+.guildtest-banner {
   position: relative;
   display: flex;
   align-items: center;
   gap: 1rem;
   width: 100%;
   margin: 0 0 2rem;
-  padding: 1rem 1.25rem;
+  padding: 1.1rem 1.25rem;
   border-radius: 16px;
-  border: 1px solid rgba(120, 180, 255, 0.45);
+  border: 1px solid rgba(216, 150, 200, 0.45);
   background:
-    radial-gradient(120% 200% at 0% 0%, rgba(80, 140, 240, 0.25), transparent 60%),
-    radial-gradient(120% 200% at 100% 100%, rgba(160, 110, 255, 0.18), transparent 60%),
-    rgba(11, 8, 33, 0.65);
+    radial-gradient(120% 200% at 0% 0%, rgba(160, 110, 255, 0.28), transparent 60%),
+    radial-gradient(120% 200% at 100% 100%, rgba(216, 150, 200, 0.22), transparent 60%),
+    rgba(11, 8, 33, 0.7);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   box-shadow:
-    0 0 24px rgba(80, 140, 240, 0.35),
-    inset 0 0 24px rgba(80, 140, 240, 0.12);
+    0 0 24px rgba(160, 110, 255, 0.32),
+    inset 0 0 24px rgba(216, 150, 200, 0.12);
   cursor: pointer;
   overflow: hidden;
   text-align: left;
   color: inherit;
+  text-decoration: none;
   font-family: inherit;
-  animation: rebirth-banner-pulse 4s ease-in-out infinite;
+  animation: guildtest-banner-pulse 4.5s ease-in-out infinite;
   transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
-.rebirth-banner:hover {
+.guildtest-banner:hover {
   transform: translateY(-1px);
   box-shadow:
-    0 0 36px rgba(80, 140, 240, 0.55),
-    inset 0 0 28px rgba(80, 140, 240, 0.18);
+    0 0 36px rgba(160, 110, 255, 0.55),
+    inset 0 0 28px rgba(216, 150, 200, 0.18);
 }
-.rebirth-banner:active {
+.guildtest-banner:active {
   transform: translateY(0);
 }
 
-.rebirth-banner-glow {
+.guildtest-banner-glow {
   position: absolute;
   inset: -40%;
-  background: radial-gradient(closest-side, rgba(80, 140, 240, 0.35), transparent 70%);
-  filter: blur(24px);
+  background: radial-gradient(closest-side, rgba(160, 110, 255, 0.4), transparent 70%);
+  filter: blur(28px);
   pointer-events: none;
-  animation: rebirth-banner-aura 6s ease-in-out infinite;
+  animation: guildtest-banner-aura 6s ease-in-out infinite;
 }
 
-.rebirth-banner-stone-wrap {
+.guildtest-banner-moon {
   position: relative;
+  z-index: 1;
   flex-shrink: 0;
-  width: 64px;
-  height: 64px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  filter: drop-shadow(0 0 12px rgba(80, 160, 255, 0.85))
-          drop-shadow(0 0 24px rgba(80, 160, 255, 0.45));
-  animation: rebirth-stone-bob 3s ease-in-out infinite;
-}
-.rebirth-banner-stone {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+  font-size: 2.25rem;
+  line-height: 1;
+  filter: drop-shadow(0 0 12px rgba(216, 150, 200, 0.65))
+          drop-shadow(0 0 22px rgba(160, 110, 255, 0.5));
+  animation: guildtest-moon-bob 3.6s ease-in-out infinite;
 }
 
-.rebirth-banner-text {
+.guildtest-banner-text {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.18rem;
   flex: 1;
   min-width: 0;
   position: relative;
   z-index: 1;
 }
-.rebirth-banner-eyebrow {
+.guildtest-banner-eyebrow {
   font-family: 'Noto Serif KR', serif;
-  font-size: 0.65rem;
-  letter-spacing: 0.25em;
-  color: rgba(160, 200, 255, 0.85);
+  font-size: 0.62rem;
+  letter-spacing: 0.32em;
+  color: rgba(216, 180, 233, 0.9);
   text-transform: uppercase;
 }
-.rebirth-banner-title {
+.guildtest-banner-title {
   font-family: 'Noto Serif KR', serif;
   font-size: 1.05rem;
   font-weight: 500;
   color: #FFE5C4;
-  text-shadow: 0 0 12px rgba(120, 180, 255, 0.55);
+  text-shadow: 0 0 12px rgba(216, 150, 200, 0.55);
 }
-.rebirth-banner-desc {
+.guildtest-banner-desc {
   font-family: 'Noto Serif KR', serif;
   font-size: 0.78rem;
-  color: rgba(244, 239, 255, 0.85);
-}
-.rebirth-banner-period {
-  font-family: 'Noto Serif KR', serif;
-  font-size: 0.7rem;
-  color: rgba(160, 200, 255, 0.7);
-  margin-top: 0.15rem;
+  color: rgba(244, 239, 255, 0.82);
 }
 
-.rebirth-banner-sparkles {
+.guildtest-banner-cta {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  font-family: 'Noto Serif KR', serif;
+  font-size: 0.78rem;
+  color: #FFE5C4;
+  padding: 0.4rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(216, 150, 200, 0.45);
+  background: rgba(160, 110, 255, 0.18);
+  white-space: nowrap;
+  transition: background 0.18s ease;
+}
+.guildtest-banner:hover .guildtest-banner-cta {
+  background: rgba(160, 110, 255, 0.32);
+}
+@media (max-width: 480px) {
+  .guildtest-banner-cta {
+    display: none;
+  }
+}
+
+.guildtest-banner-sparkles {
   position: absolute;
   inset: 0;
   pointer-events: none;
 }
-.rebirth-sparkle {
+.guildtest-sparkle {
   position: absolute;
   width: 4px;
   height: 4px;
   border-radius: 50%;
   background: #FFE5C4;
-  box-shadow: 0 0 6px rgba(255, 229, 196, 0.9), 0 0 12px rgba(120, 180, 255, 0.7);
+  box-shadow: 0 0 6px rgba(255, 229, 196, 0.9), 0 0 12px rgba(216, 150, 200, 0.7);
   opacity: 0;
-  animation: rebirth-sparkle-twinkle 2.4s ease-in-out infinite;
+  animation: guildtest-sparkle-twinkle 2.6s ease-in-out infinite;
 }
-.rebirth-sparkle-0 { top: 18%; left: 12%; animation-delay: 0s; }
-.rebirth-sparkle-1 { top: 70%; left: 20%; animation-delay: 0.4s; }
-.rebirth-sparkle-2 { top: 30%; left: 38%; animation-delay: 0.8s; }
-.rebirth-sparkle-3 { top: 60%; left: 60%; animation-delay: 1.2s; }
-.rebirth-sparkle-4 { top: 22%; left: 78%; animation-delay: 1.6s; }
-.rebirth-sparkle-5 { top: 75%; left: 88%; animation-delay: 2.0s; }
+.guildtest-sparkle-0 { top: 22%; left: 14%; animation-delay: 0s; }
+.guildtest-sparkle-1 { top: 70%; left: 22%; animation-delay: 0.45s; }
+.guildtest-sparkle-2 { top: 30%; left: 42%; animation-delay: 0.9s; }
+.guildtest-sparkle-3 { top: 64%; left: 56%; animation-delay: 1.35s; }
+.guildtest-sparkle-4 { top: 24%; left: 74%; animation-delay: 1.8s; }
+.guildtest-sparkle-5 { top: 76%; left: 86%; animation-delay: 2.25s; }
 
-@keyframes rebirth-banner-pulse {
+@keyframes guildtest-banner-pulse {
   0%, 100% {
-    box-shadow: 0 0 24px rgba(80, 140, 240, 0.35), inset 0 0 24px rgba(80, 140, 240, 0.12);
+    box-shadow: 0 0 24px rgba(160, 110, 255, 0.32), inset 0 0 24px rgba(216, 150, 200, 0.12);
   }
   50% {
-    box-shadow: 0 0 32px rgba(80, 140, 240, 0.5), inset 0 0 30px rgba(80, 140, 240, 0.18);
+    box-shadow: 0 0 32px rgba(160, 110, 255, 0.5), inset 0 0 30px rgba(216, 150, 200, 0.18);
   }
 }
-@keyframes rebirth-banner-aura {
-  0%, 100% { opacity: 0.5; transform: scale(1); }
-  50% { opacity: 0.85; transform: scale(1.08); }
+@keyframes guildtest-banner-aura {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50% { opacity: 0.9; transform: scale(1.08); }
 }
-@keyframes rebirth-stone-bob {
-  0%, 100% { transform: translateY(0) rotate(-1deg); }
-  50% { transform: translateY(-3px) rotate(1deg); }
+@keyframes guildtest-moon-bob {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(-3px) rotate(2deg); }
 }
-@keyframes rebirth-sparkle-twinkle {
+@keyframes guildtest-sparkle-twinkle {
   0%, 100% { opacity: 0; transform: scale(0.6); }
   50% { opacity: 1; transform: scale(1.2); }
-}
-
-/* ── Modal — backdrop + stage container ── */
-.rebirth-backdrop {
-  position: fixed;
-  /* Backdrop spans the full viewport (user request 2026-04-29). The
-     rebirth backdrop is intentionally transparent so the page stays
-     visible behind it; extending the bounds to the screen edges
-     doesn't change visible behaviour, but does mean the modal box's
-     centring is computed against full viewport — padding pushes it
-     back into the safe band so the card position stays put. */
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  padding-top: var(--modal-top-offset);
-  padding-bottom: var(--modal-bottom-offset);
-  z-index: 200;
-  display: flex;
-  align-items: center;
-  /* `safe center` falls back to `flex-start` when the modal is taller than
-     the viewport, so the top of the modal isn't cut off and the scrollbar
-     can reach the close button at the bottom. Older browsers ignore `safe`
-     and use plain `center` (current cut-off behaviour, still better than
-     no scroll at all because of overflow-y: auto below). */
-  align-items: safe center;
-  justify-content: center;
-  padding-left: 1rem;
-  padding-right: 1rem;
-  /* Transparent backdrop — page behind the modal stays visible. The
-     modal box itself keeps an opaque dark background so its content
-     reads cleanly; only the area outside the modal is see-through. */
-  background: transparent;
-  /* Lock to vertical scroll — `overflow-x: hidden` blocks any sideways
-     scrollbar from a centered child wider than padding, and `touch-action:
-     pan-y` tells mobile browsers to ignore horizontal pan gestures so the
-     modal doesn't drift sideways when the user swipes. */
-  overflow-x: hidden;
-  overflow-y: auto;
-  touch-action: pan-y;
-  animation: rebirth-fade-in 0.25s ease;
-}
-.rebirth-modal {
-  position: relative;
-  width: 100%;
-  max-width: 420px;
-  border-radius: 20px;
-  border: 1px solid rgba(120, 180, 255, 0.3);
-  background: rgba(11, 8, 33, 0.92);
-  box-shadow: 0 0 60px rgba(80, 140, 240, 0.35);
-  padding: 1.75rem 1.5rem;
-  animation: rebirth-pop-in 0.32s cubic-bezier(0.18, 0.9, 0.4, 1.15);
-}
-@keyframes rebirth-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-@keyframes rebirth-pop-in {
-  0% { opacity: 0; transform: scale(0.85) translateY(12px); }
-  100% { opacity: 1; transform: scale(1) translateY(0); }
-}
-
-/* ── Stage 1: stone ── */
-.rebirth-stone-stage {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1.25rem;
-  padding: 2rem 1rem 1.5rem;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  width: 100%;
-  color: inherit;
-  font-family: inherit;
-}
-.rebirth-stone-aura {
-  position: absolute;
-  width: 240px;
-  height: 240px;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle, rgba(80, 160, 255, 0.55), transparent 60%),
-    radial-gradient(circle, rgba(160, 110, 255, 0.3), transparent 70%);
-  filter: blur(18px);
-  animation: rebirth-aura-pulse 3s ease-in-out infinite;
-  pointer-events: none;
-  top: 0;
-  left: 50%;
-  transform: translate(-50%, 0);
-}
-.rebirth-stone-img {
-  position: relative;
-  width: 180px;
-  height: 180px;
-  object-fit: contain;
-  filter: drop-shadow(0 0 24px rgba(80, 180, 255, 0.95))
-          drop-shadow(0 0 48px rgba(80, 140, 255, 0.65));
-  animation: rebirth-stone-float 4s ease-in-out infinite;
-}
-.rebirth-stone-twinkles {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-.rebirth-twinkle {
-  position: absolute;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #FFE5C4;
-  box-shadow: 0 0 8px rgba(255, 229, 196, 1), 0 0 16px rgba(80, 180, 255, 0.85);
-  opacity: 0;
-  animation: rebirth-twinkle-burst 3s ease-in-out infinite;
-}
-.rebirth-twinkle-0 { top: 8%; left: 22%; animation-delay: 0s; }
-.rebirth-twinkle-1 { top: 12%; left: 70%; animation-delay: 0.25s; }
-.rebirth-twinkle-2 { top: 35%; left: 12%; animation-delay: 0.5s; }
-.rebirth-twinkle-3 { top: 38%; left: 88%; animation-delay: 0.75s; }
-.rebirth-twinkle-4 { top: 60%; left: 18%; animation-delay: 1s; }
-.rebirth-twinkle-5 { top: 62%; left: 82%; animation-delay: 1.25s; }
-.rebirth-twinkle-6 { top: 80%; left: 30%; animation-delay: 1.5s; }
-.rebirth-twinkle-7 { top: 78%; left: 68%; animation-delay: 1.75s; }
-.rebirth-twinkle-8 { top: 25%; left: 50%; animation-delay: 2s; }
-.rebirth-twinkle-9 { top: 50%; left: 50%; animation-delay: 2.25s; }
-.rebirth-twinkle-10 { top: 70%; left: 50%; animation-delay: 2.5s; }
-.rebirth-twinkle-11 { top: 90%; left: 50%; animation-delay: 2.75s; }
-.rebirth-stone-hint {
-  font-family: 'Noto Serif KR', serif;
-  font-size: 0.85rem;
-  letter-spacing: 0.05em;
-  color: rgba(200, 220, 255, 0.85);
-  text-shadow: 0 0 8px rgba(80, 140, 240, 0.5);
-  animation: rebirth-hint-pulse 2s ease-in-out infinite;
-}
-@keyframes rebirth-aura-pulse {
-  0%, 100% { opacity: 0.7; transform: translate(-50%, 0) scale(1); }
-  50% { opacity: 1; transform: translate(-50%, 0) scale(1.15); }
-}
-@keyframes rebirth-stone-float {
-  0%, 100% { transform: translateY(0) rotate(-2deg); }
-  50% { transform: translateY(-8px) rotate(2deg); }
-}
-@keyframes rebirth-twinkle-burst {
-  0%, 100% { opacity: 0; transform: scale(0.4); }
-  50% { opacity: 1; transform: scale(1.3); }
-}
-@keyframes rebirth-hint-pulse {
-  0%, 100% { opacity: 0.7; }
-  50% { opacity: 1; }
-}
-
-/* ── Stage 2: body select ── */
-.rebirth-select-stage {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-.rebirth-stage-title {
-  font-family: 'Noto Serif KR', serif;
-  font-size: 1.15rem;
-  font-weight: 500;
-  color: #FFE5C4;
-  text-align: center;
-  text-shadow: 0 0 12px rgba(120, 180, 255, 0.5);
-}
-.rebirth-stage-sub {
-  font-family: 'Noto Serif KR', serif;
-  font-size: 0.78rem;
-  color: rgba(200, 200, 240, 0.75);
-  text-align: center;
-}
-.rebirth-body-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
-}
-.rebirth-body-card {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 0.5rem;
-  border-radius: 14px;
-  border: 1px solid rgba(216, 150, 200, 0.25);
-  background: rgba(26, 15, 61, 0.55);
-  cursor: pointer;
-  font-family: inherit;
-  color: inherit;
-  transition: all 0.18s ease;
-}
-.rebirth-body-card:hover:not(:disabled) {
-  border-color: rgba(120, 180, 255, 0.6);
-  background: rgba(26, 15, 61, 0.85);
-  box-shadow: 0 0 18px rgba(80, 140, 240, 0.35);
-}
-.rebirth-body-card:disabled {
-  cursor: default;
-  opacity: 0.85;
-}
-.rebirth-body-card.is-current {
-  border-color: rgba(255, 229, 196, 0.55);
-  box-shadow: 0 0 14px rgba(255, 229, 196, 0.25);
-}
-.rebirth-body-thumb-wrap {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 5 / 7;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.04);
-  overflow: hidden;
-}
-.rebirth-body-thumb {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-.rebirth-current-pill {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 229, 196, 0.5);
-  background: rgba(11, 8, 33, 0.7);
-  font-family: 'Noto Serif KR', serif;
-  font-size: 0.6rem;
-  letter-spacing: 0.1em;
-  color: #FFE5C4;
-}
-.rebirth-body-name {
-  font-family: 'Noto Serif KR', serif;
-  font-size: 0.85rem;
-  color: #FFE5C4;
-}
-.rebirth-cancel-btn {
-  align-self: center;
-  margin-top: 0.5rem;
-  padding: 0.4rem 1.2rem;
-  border-radius: 999px;
-  border: 1px solid rgba(216, 150, 200, 0.3);
-  background: transparent;
-  font-family: 'Noto Serif KR', serif;
-  font-size: 0.78rem;
-  color: rgba(200, 200, 240, 0.75);
-  cursor: pointer;
-}
-.rebirth-cancel-btn:hover {
-  background: rgba(216, 150, 200, 0.1);
-}
-
-/* ── Stage 3: confirm ── */
-.rebirth-confirm-stage {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.5rem 0.5rem 0;
-}
-.rebirth-confirm-title {
-  font-family: 'Noto Serif KR', serif;
-  font-size: 1.05rem;
-  font-weight: 500;
-  color: #FFE5C4;
-  text-shadow: 0 0 10px rgba(120, 180, 255, 0.5);
-}
-.rebirth-confirm-body {
-  font-family: 'Noto Serif KR', serif;
-  font-size: 0.9rem;
-  line-height: 1.6;
-  color: rgba(244, 239, 255, 0.9);
-  text-align: center;
-}
-.rebirth-confirm-body strong {
-  color: #FFB5A7;
-  font-weight: 500;
-}
-.rebirth-confirm-actions {
-  display: flex;
-  gap: 0.75rem;
-  margin-top: 0.5rem;
-}
-.rebirth-confirm-cancel,
-.rebirth-confirm-ok {
-  padding: 0.5rem 1.4rem;
-  border-radius: 999px;
-  font-family: 'Noto Serif KR', serif;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: all 0.18s ease;
-}
-.rebirth-confirm-cancel {
-  border: 1px solid rgba(216, 150, 200, 0.3);
-  background: transparent;
-  color: rgba(200, 200, 240, 0.8);
-}
-.rebirth-confirm-cancel:hover:not(:disabled) {
-  background: rgba(216, 150, 200, 0.12);
-}
-.rebirth-confirm-ok {
-  border: 1px solid rgba(120, 180, 255, 0.5);
-  background:
-    linear-gradient(135deg, rgba(80, 140, 240, 0.35), rgba(160, 110, 255, 0.25));
-  color: #FFE5C4;
-  box-shadow: 0 0 14px rgba(80, 140, 240, 0.4);
-}
-.rebirth-confirm-ok:hover:not(:disabled) {
-  box-shadow: 0 0 20px rgba(80, 140, 240, 0.65);
-}
-.rebirth-confirm-ok:disabled,
-.rebirth-confirm-cancel:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* ── Stage 4: success ── */
-.rebirth-success-stage {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 1.5rem 0.5rem;
-  position: relative;
-}
-.rebirth-success-burst {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(circle at center, rgba(255, 229, 196, 0.5), transparent 50%),
-    radial-gradient(circle at center, rgba(80, 180, 255, 0.35), transparent 70%);
-  filter: blur(10px);
-  animation: rebirth-burst 1.6s ease-out;
-  pointer-events: none;
-}
-.rebirth-success-title {
-  font-family: 'Noto Serif KR', serif;
-  font-size: 1.4rem;
-  font-weight: 500;
-  color: #FFE5C4;
-  text-shadow:
-    0 0 12px rgba(255, 229, 196, 0.85),
-    0 0 28px rgba(80, 180, 255, 0.65);
-  position: relative;
-  animation: rebirth-success-rise 0.5s cubic-bezier(0.18, 0.9, 0.4, 1.15);
-}
-.rebirth-success-sub {
-  font-family: 'Noto Serif KR', serif;
-  font-size: 0.85rem;
-  color: rgba(200, 220, 255, 0.85);
-  position: relative;
-  animation: rebirth-success-rise 0.5s 0.1s cubic-bezier(0.18, 0.9, 0.4, 1.15) backwards;
-}
-@keyframes rebirth-burst {
-  0% { opacity: 0; transform: scale(0.6); }
-  40% { opacity: 1; transform: scale(1.1); }
-  100% { opacity: 0; transform: scale(1.4); }
-}
-@keyframes rebirth-success-rise {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 
 /* ── Pet game-feel animations ───────────────────────────── */
@@ -6813,4 +6461,514 @@ body.has-redesigned-header .bg-scene {
 @keyframes custom-flower-sway {
   0%, 100% { transform: rotate(-4deg); }
   50%      { transform: rotate(4deg); }
+}
+
+/* ════════════════════════════════════════════════════════ */
+/*  Guild self-check page (/guild-test)                      */
+/* ════════════════════════════════════════════════════════ */
+
+.guildtest-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 1.25rem 6rem;
+  position: relative;
+}
+
+.guildtest-card {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  border-radius: 22px;
+  border: 1px solid rgba(216, 150, 200, 0.28);
+  background: rgba(11, 8, 33, 0.78);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow:
+    0 0 60px rgba(160, 110, 255, 0.32),
+    inset 0 0 24px rgba(216, 150, 200, 0.08);
+  padding: 2.25rem 1.75rem 1.75rem;
+  color: #f4efff;
+  font-family: 'Noto Serif KR', serif;
+  animation: guildtest-card-in 0.4s cubic-bezier(0.18, 0.9, 0.4, 1.15);
+}
+@keyframes guildtest-card-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Intro */
+.guildtest-intro {
+  text-align: center;
+}
+.guildtest-intro-emoji {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  filter: drop-shadow(0 0 16px rgba(216, 150, 200, 0.6));
+}
+.guildtest-intro-title {
+  font-size: 1.35rem;
+  font-weight: 500;
+  color: #FFE5C4;
+  text-shadow: 0 0 12px rgba(216, 150, 200, 0.4);
+  margin: 0 0 0.75rem;
+}
+.guildtest-intro-sub {
+  font-size: 0.92rem;
+  line-height: 1.7;
+  color: rgba(244, 239, 255, 0.82);
+  margin: 0 0 2rem;
+}
+
+/* Question */
+.guildtest-question {
+  text-align: left;
+}
+.guildtest-question-text {
+  font-size: 1.18rem;
+  font-weight: 500;
+  color: #FFE5C4;
+  text-shadow: 0 0 10px rgba(216, 150, 200, 0.35);
+  margin: 1.25rem 0 1.5rem;
+  line-height: 1.5;
+}
+.guildtest-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+.guildtest-option {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 1rem 1.1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(216, 150, 200, 0.25);
+  background: rgba(107, 75, 168, 0.18);
+  color: #f4efff;
+  text-align: left;
+  font-family: inherit;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+}
+.guildtest-option:hover {
+  transform: translateY(-1px);
+  background: rgba(160, 110, 255, 0.28);
+  border-color: rgba(216, 150, 200, 0.55);
+  box-shadow:
+    0 0 20px rgba(160, 110, 255, 0.32),
+    inset 0 0 14px rgba(216, 150, 200, 0.12);
+}
+.guildtest-option:active {
+  transform: translateY(0);
+}
+.guildtest-option-key {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(216, 150, 200, 0.18);
+  border: 1px solid rgba(216, 150, 200, 0.35);
+  color: #FFE5C4;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.guildtest-option-label {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Progress */
+.guildtest-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.guildtest-progress-bar {
+  position: relative;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(216, 150, 200, 0.12);
+  overflow: hidden;
+}
+.guildtest-progress-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: linear-gradient(90deg, #d896c8 0%, #a06eff 100%);
+  box-shadow: 0 0 8px rgba(216, 150, 200, 0.6);
+  transition: width 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.guildtest-progress-dots {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+.guildtest-progress-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(216, 150, 200, 0.18);
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+.guildtest-progress-dot.is-on {
+  background: #FFE5C4;
+  box-shadow: 0 0 8px rgba(255, 229, 196, 0.7);
+}
+
+/* Result */
+.guildtest-result {
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.guildtest-result-burst {
+  position: absolute;
+  inset: -20%;
+  background: radial-gradient(closest-side, rgba(216, 150, 200, 0.4), transparent 65%);
+  filter: blur(24px);
+  pointer-events: none;
+  animation: guildtest-result-burst 1.4s ease-out;
+}
+@keyframes guildtest-result-burst {
+  0% { opacity: 0; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1.1); }
+  100% { opacity: 0.55; transform: scale(1); }
+}
+.guildtest-result-emoji {
+  position: relative;
+  font-size: 3.2rem;
+  margin-bottom: 1.25rem;
+  filter: drop-shadow(0 0 18px rgba(216, 150, 200, 0.7));
+  animation: guildtest-emoji-rise 0.55s 0.05s cubic-bezier(0.18, 0.9, 0.4, 1.15) backwards;
+}
+@keyframes guildtest-emoji-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.guildtest-result-body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.guildtest-result-para {
+  font-size: 0.98rem;
+  line-height: 1.75;
+  color: rgba(244, 239, 255, 0.92);
+  margin: 0;
+}
+.guildtest-result-para:first-of-type {
+  font-size: 1.08rem;
+  font-weight: 500;
+  color: #FFE5C4;
+  text-shadow: 0 0 12px rgba(216, 150, 200, 0.4);
+}
+.guildtest-result-meta {
+  position: relative;
+  font-size: 0.76rem;
+  color: rgba(216, 180, 233, 0.7);
+  margin-bottom: 1.25rem;
+  min-height: 1em;
+}
+.guildtest-result-error {
+  color: #ff9aa2;
+}
+.guildtest-result-actions {
+  position: relative;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+/* Buttons (shared) */
+.guildtest-primary-btn {
+  display: inline-block;
+  padding: 0.7rem 1.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(216, 150, 200, 0.55);
+  background: linear-gradient(135deg, rgba(160, 110, 255, 0.4), rgba(216, 150, 200, 0.4));
+  color: #FFE5C4;
+  font-family: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.18s ease;
+  text-decoration: none;
+}
+.guildtest-primary-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 20px rgba(160, 110, 255, 0.5);
+}
+.guildtest-ghost-btn {
+  display: inline-block;
+  padding: 0.55rem 1.25rem;
+  border-radius: 999px;
+  border: 1px solid rgba(216, 180, 233, 0.25);
+  background: transparent;
+  color: rgba(216, 180, 233, 0.8);
+  font-family: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  margin-left: 0.5rem;
+  transition: background 0.15s ease, color 0.15s ease;
+  text-decoration: none;
+}
+.guildtest-ghost-btn:hover {
+  background: rgba(216, 180, 233, 0.08);
+  color: #FFE5C4;
+}
+
+/* Locked panel (non-admins) */
+.guildtest-locked {
+  text-align: center;
+}
+.guildtest-locked-emoji {
+  font-size: 2.8rem;
+  margin-bottom: 1rem;
+}
+.guildtest-locked-text {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: rgba(244, 239, 255, 0.85);
+  margin-bottom: 1.5rem;
+}
+.guildtest-locked-btn {
+  display: inline-block;
+  padding: 0.7rem 1.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(216, 150, 200, 0.45);
+  background: rgba(160, 110, 255, 0.18);
+  color: #FFE5C4;
+  font-family: 'Noto Serif KR', serif;
+  text-decoration: none;
+}
+.guildtest-locked-btn:hover {
+  background: rgba(160, 110, 255, 0.32);
+}
+
+/* ════════════════════════════════════════════════════════ */
+/*  /admin/guild-test-results                                */
+/* ════════════════════════════════════════════════════════ */
+
+.admin-guildtest {
+  font-family: 'Noto Serif KR', serif;
+}
+
+.admin-guildtest-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.85rem;
+  margin: 1.25rem 0 1.75rem;
+}
+.admin-guildtest-stat {
+  background: rgba(11, 8, 33, 0.55);
+  border: 1px solid rgba(216, 150, 200, 0.22);
+  border-radius: 14px;
+  padding: 0.95rem 1rem;
+  color: #f4efff;
+}
+.admin-guildtest-stat-num {
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: #FFE5C4;
+  line-height: 1;
+  margin-bottom: 0.35rem;
+}
+.admin-guildtest-stat-lbl {
+  font-size: 0.8rem;
+  color: rgba(216, 180, 233, 0.85);
+  margin-bottom: 0.5rem;
+}
+.admin-guildtest-stat-bar {
+  position: relative;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(216, 150, 200, 0.12);
+  overflow: hidden;
+}
+.admin-guildtest-stat-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+.admin-guildtest-stat-fill-A { background: linear-gradient(90deg, #ffe082, #ffb74d); }
+.admin-guildtest-stat-fill-B { background: linear-gradient(90deg, #b2dfdb, #80cbc4); }
+.admin-guildtest-stat-fill-C { background: linear-gradient(90deg, #ffd6e8, #f48fb1); }
+.admin-guildtest-stat-fill-D { background: linear-gradient(90deg, #b39ddb, #7e57c2); }
+.admin-guildtest-stat-fill-E { background: linear-gradient(90deg, #c5e1a5, #aed581); }
+
+.admin-guildtest-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+  margin-bottom: 1.25rem;
+}
+.admin-guildtest-toolbar .loginbar-input {
+  flex: 0 1 240px;
+}
+.admin-guildtest-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.admin-guildtest-chip {
+  border: 1px solid rgba(216, 150, 200, 0.28);
+  background: rgba(11, 8, 33, 0.55);
+  color: rgba(244, 239, 255, 0.78);
+  border-radius: 999px;
+  padding: 0.4rem 0.85rem;
+  font-family: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.admin-guildtest-chip:hover {
+  background: rgba(160, 110, 255, 0.18);
+  color: #FFE5C4;
+}
+.admin-guildtest-chip.is-active {
+  background: rgba(160, 110, 255, 0.32);
+  color: #FFE5C4;
+  border-color: rgba(216, 150, 200, 0.55);
+}
+
+.admin-guildtest-section-title {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #FFE5C4;
+  margin: 1.5rem 0 0.75rem;
+}
+
+.admin-guildtest-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.admin-guildtest-row {
+  border: 1px solid rgba(216, 150, 200, 0.2);
+  border-radius: 12px;
+  background: rgba(11, 8, 33, 0.45);
+  overflow: hidden;
+  transition: background 0.15s ease;
+}
+.admin-guildtest-row.is-open {
+  background: rgba(11, 8, 33, 0.7);
+  border-color: rgba(216, 150, 200, 0.35);
+}
+.admin-guildtest-row-head {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 0.75rem;
+  align-items: center;
+  width: 100%;
+  padding: 0.85rem 1rem;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.admin-guildtest-row-head:hover {
+  background: rgba(160, 110, 255, 0.08);
+}
+.admin-guildtest-row-nick {
+  font-size: 0.95rem;
+  color: #FFE5C4;
+  font-weight: 500;
+}
+.admin-guildtest-pill {
+  font-size: 0.72rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+.admin-guildtest-pill-A { color: #ffb74d; background: rgba(255, 183, 77, 0.1); }
+.admin-guildtest-pill-B { color: #80cbc4; background: rgba(128, 203, 196, 0.1); }
+.admin-guildtest-pill-C { color: #f48fb1; background: rgba(244, 143, 177, 0.1); }
+.admin-guildtest-pill-D { color: #b39ddb; background: rgba(179, 157, 219, 0.1); }
+.admin-guildtest-pill-E { color: #aed581; background: rgba(174, 213, 129, 0.1); }
+.admin-guildtest-row-date {
+  font-size: 0.74rem;
+  color: rgba(216, 180, 233, 0.7);
+  white-space: nowrap;
+}
+.admin-guildtest-row-toggle {
+  color: rgba(216, 180, 233, 0.7);
+  font-size: 0.7rem;
+  width: 16px;
+  text-align: center;
+}
+.admin-guildtest-row-body {
+  padding: 0.5rem 1.25rem 1.25rem;
+  border-top: 1px solid rgba(216, 150, 200, 0.15);
+}
+.admin-guildtest-walkthrough {
+  list-style: none;
+  padding: 0;
+  margin: 0.75rem 0 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  counter-reset: step;
+}
+.admin-guildtest-walkthrough li {
+  padding: 0.6rem 0.85rem;
+  border-radius: 10px;
+  background: rgba(160, 110, 255, 0.08);
+  border: 1px solid rgba(216, 150, 200, 0.15);
+}
+.admin-guildtest-walkthrough li.admin-guildtest-step-result {
+  background: rgba(216, 150, 200, 0.18);
+  border-color: rgba(216, 150, 200, 0.4);
+  color: #FFE5C4;
+  font-weight: 500;
+}
+.admin-guildtest-step-q {
+  font-size: 0.85rem;
+  color: rgba(244, 239, 255, 0.85);
+  margin-bottom: 0.25rem;
+}
+.admin-guildtest-step-a {
+  font-size: 0.82rem;
+  color: rgba(216, 180, 233, 0.95);
+  padding-left: 0.75rem;
+}
+.admin-guildtest-meta {
+  font-size: 0.74rem;
+  color: rgba(216, 180, 233, 0.6);
+}
+.admin-guildtest-meta summary {
+  cursor: pointer;
+  margin-bottom: 0.35rem;
+}
+.admin-guildtest-meta div {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  word-break: break-all;
+  margin-bottom: 0.2rem;
+}
+
+.admin-guildtest-missing {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0.5rem 0;
+}
+.admin-guildtest-missing-chip {
+  font-size: 0.78rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  border: 1px dashed rgba(216, 180, 233, 0.4);
+  background: rgba(11, 8, 33, 0.4);
+  color: rgba(244, 239, 255, 0.78);
 }
