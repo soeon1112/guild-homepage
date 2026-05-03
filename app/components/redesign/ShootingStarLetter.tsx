@@ -415,12 +415,12 @@ function ComposeModal({
         from: nickname,
         to,
         content: content.trim(),
-        status: "pending",
+        status: "approved",
         read: false,
         createdAt: serverTimestamp(),
-        deliveredAt: null,
+        deliveredAt: serverTimestamp(),
       });
-      setDoneMsg("편지가 우체통에 넣어졌습니다. 곧 전달될 거예요!");
+      setDoneMsg("편지가 별빛을 따라 전달되었어요!");
       setContent("");
       setTo("");
       setTimeout(() => {
