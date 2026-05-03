@@ -3639,7 +3639,9 @@ object {
   left: 0;
   padding-top: var(--modal-top-offset);
   padding-bottom: var(--modal-bottom-offset);
-  z-index: 200;
+  /* Above FloatingChat (z-200) and FloatingPet — the lightbox is
+     opened from inside those panels and must cover them. */
+  z-index: 1000;
   background: rgba(0, 0, 0, 0.9);
   display: flex;
   align-items: center;

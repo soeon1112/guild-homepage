@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 export function CommentImageAttach({
   file,
@@ -66,6 +67,30 @@ export function CommentImageView({ url }: { url: string }) {
     };
   }, [open]);
 
+  // Portal the lightbox to <body>. Without it, an ancestor with `transform`
+  // (e.g. framer-motion's `scale` on FloatingChat's panel) becomes the
+  // containing block for `position: fixed`, which clips the lightbox to
+  // that ancestor's box — making it look "small inside the chat panel"
+  // instead of fullscreen.
+  const lightbox = open ? (
+    <div className="comment-image-lightbox" onClick={() => setOpen(false)}>
+      <button
+        type="button"
+        className="comment-image-lightbox-close"
+        aria-label="닫기"
+        onClick={() => setOpen(false)}
+      >
+        ×
+      </button>
+      <img
+        src={url}
+        alt=""
+        className="comment-image-lightbox-img"
+        onClick={(e) => e.stopPropagation()}
+      />
+    </div>
+  ) : null;
+
   return (
     <>
       <button
@@ -75,27 +100,9 @@ export function CommentImageView({ url }: { url: string }) {
       >
         <img src={url} alt="" className="comment-image" />
       </button>
-      {open && (
-        <div
-          className="comment-image-lightbox"
-          onClick={() => setOpen(false)}
-        >
-          <button
-            type="button"
-            className="comment-image-lightbox-close"
-            aria-label="닫기"
-            onClick={() => setOpen(false)}
-          >
-            ×
-          </button>
-          <img
-            src={url}
-            alt=""
-            className="comment-image-lightbox-img"
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
-      )}
+      {lightbox && typeof document !== "undefined"
+        ? createPortal(lightbox, document.body)
+        : null}
     </>
   );
 }
