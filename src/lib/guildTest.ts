@@ -61,21 +61,21 @@ export const QUESTIONS: Record<QuestionId, Question> = {
     id: "Q1",
     text: "모비노기에 잘 들어가시나요?",
     options: [
-      { key: "A", label: "잘 못 들어간다", next: { type: "question", id: "Q2A" } },
-      { key: "B", label: "잘 들어간다", next: { type: "question", id: "Q2B" } },
+      { key: "A", label: "모비노기에 잘 못 들어간다", next: { type: "question", id: "Q2A" } },
+      { key: "B", label: "모비노기에 잘 들어간다", next: { type: "question", id: "Q2B" } },
     ],
   },
   Q2A: {
     id: "Q2A",
-    text: "어떤 이유인가요?",
+    text: "들어가지 못하는 이유가 무엇인가요?",
     options: [
-      { key: "A", label: "들어가는 게 싫다", next: { type: "question", id: "Q3A" } },
-      { key: "B", label: "들어가고 싶어도 못 들어간다", next: { type: "question", id: "Q3B" } },
+      { key: "A", label: "모비노기 들어가는 게 싫다", next: { type: "question", id: "Q3A" } },
+      { key: "B", label: "모비노기 들어가고 싶어도 못 들어간다", next: { type: "question", id: "Q3B" } },
     ],
   },
   Q2B: {
     id: "Q2B",
-    text: "어떤가요?",
+    text: "요즘은 어떻게 즐기고 계신가요?",
     options: [
       { key: "A", label: "재미있게 하고 있다", next: { type: "question", id: "Q3C" } },
       { key: "B", label: "그치만 재미가 없고 할 게 없다", next: { type: "question", id: "Q3D" } },
@@ -83,7 +83,7 @@ export const QUESTIONS: Record<QuestionId, Question> = {
   },
   Q3A: {
     id: "Q3A",
-    text: "왜 그런가요?",
+    text: "들어가는 게 싫은 이유는 무엇인가요?",
     options: [
       { key: "A", label: "모태기가 왔다", next: { type: "question", id: "Q4A" } },
       { key: "B", label: "재미가 없고 할 게 없다", next: { type: "question", id: "Q4B" } },
@@ -91,7 +91,7 @@ export const QUESTIONS: Record<QuestionId, Question> = {
   },
   Q3B: {
     id: "Q3B",
-    text: "왜 못 들어가시나요?",
+    text: "들어가지 못하는 이유는 무엇인가요?",
     options: [
       { key: "A", label: "현생이 너무 바쁘다", next: { type: "question", id: "Q4C" } },
       { key: "B", label: "사정이 있다", next: { type: "question", id: "Q4D" } },
@@ -99,7 +99,7 @@ export const QUESTIONS: Record<QuestionId, Question> = {
   },
   Q3C: {
     id: "Q3C",
-    text: "길드 활동은?",
+    text: "길드 활동은 어떠신가요?",
     options: [
       { key: "A", label: "길드 활동도 활발히 하고 있다", next: { type: "question", id: "Q4E" } },
       { key: "B", label: "길드 활동은 활발히 못 하고 있다", next: { type: "question", id: "Q4F" } },
@@ -107,7 +107,7 @@ export const QUESTIONS: Record<QuestionId, Question> = {
   },
   Q3D: {
     id: "Q3D",
-    text: "어떤가요?",
+    text: "그렇다면 어떤 마음이 드시나요?",
     options: [
       { key: "A", label: "그래도 길드에 계속 머물고 싶다", next: { type: "question", id: "Q4G" } },
       { key: "B", label: "길드 활동도 어려움을 느낀다", next: { type: "question", id: "Q4H" } },
@@ -115,7 +115,7 @@ export const QUESTIONS: Record<QuestionId, Question> = {
   },
   Q4A: {
     id: "Q4A",
-    text: "어떻게 할 생각인가요?",
+    text: "앞으로 어떻게 하실 생각인가요?",
     options: [
       { key: "A", label: "극복할 생각이다", next: { type: "question", id: "Q5A" } },
       { key: "B", label: "조만간 접을 거 같다", next: { type: "result", key: "D" } },
@@ -123,55 +123,55 @@ export const QUESTIONS: Record<QuestionId, Question> = {
   },
   Q4B: {
     id: "Q4B",
-    text: "어떻게?",
+    text: "그렇다면 어떻게 하실 건가요?",
     options: [
       { key: "A", label: "그렇지만 접을 생각은 없다", next: { type: "question", id: "Q5B" } },
-      { key: "B", label: "조만간 접을 생각이다", next: { type: "result", key: "D" } },
+      { key: "B", label: "그래서 조만간 접을 생각이다", next: { type: "result", key: "D" } },
     ],
   },
   Q4C: {
     id: "Q4C",
-    text: "여유 생기면?",
+    text: "여유가 생기면 어떻게 하실 건가요?",
     options: [
-      { key: "A", label: "자주 접속할 생각", next: { type: "question", id: "Q5C" } },
-      { key: "B", label: "여유 생겨도 자주 접속 못할 거 같다", next: { type: "result", key: "D" } },
+      { key: "A", label: "현생에 여유가 생기면 자주 접속할 생각이다", next: { type: "question", id: "Q5C" } },
+      { key: "B", label: "현생에 여유가 생겨도 자주 접속 못할 거 같다", next: { type: "result", key: "D" } },
     ],
   },
   Q4D: {
     id: "Q4D",
-    text: "사정 해결되면?",
+    text: "사정이 해결되면 어떻게 하실 건가요?",
     options: [
-      { key: "A", label: "자주 접속할 생각", next: { type: "question", id: "Q5D" } },
-      { key: "B", label: "사정 해결되도 자주 접속 못할 거 같다", next: { type: "result", key: "D" } },
+      { key: "A", label: "사정이 해결되면 자주 접속할 생각이다", next: { type: "question", id: "Q5D" } },
+      { key: "B", label: "사정이 해결되도 자주 접속 못할 거 같다", next: { type: "result", key: "D" } },
     ],
   },
   Q4E: {
     id: "Q4E",
-    text: "앞으로는?",
+    text: "앞으로는 어떻게 하실 생각인가요?",
     options: [
-      { key: "A", label: "앞으로도 활발히 할 생각", next: { type: "result", key: "A" } },
+      { key: "A", label: "앞으로도 활발히 할 생각이다", next: { type: "result", key: "A" } },
       { key: "B", label: "앞으로는 활발히 하기 어려울 거 같다", next: { type: "question", id: "Q5E" } },
     ],
   },
   Q4F: {
     id: "Q4F",
-    text: "활발히 못 하는 이유?",
+    text: "활발히 하지 못하는 이유는 무엇인가요?",
     options: [
-      { key: "A", label: "현생 바빠서 숙제만 해치우고 나간다", next: { type: "question", id: "Q5F" } },
+      { key: "A", label: "현생이 바빠서 숙제만 해치우고 나간다", next: { type: "question", id: "Q5F" } },
       { key: "B", label: "길드 활동에 큰 의미를 두지 못 하겠다", next: { type: "result", key: "D" } },
     ],
   },
   Q4G: {
     id: "Q4G",
-    text: "길드 활동은?",
+    text: "길드 활동은 어떻게 하실 건가요?",
     options: [
-      { key: "A", label: "길드 활동은 활발히 할 생각", next: { type: "result", key: "A" } },
-      { key: "B", label: "활발히 하기는 어려울 거 같다", next: { type: "result", key: "D" } },
+      { key: "A", label: "길드 활동은 활발히 할 생각이다", next: { type: "result", key: "A" } },
+      { key: "B", label: "길드 활동을 활발히 하기는 어려울 거 같다", next: { type: "result", key: "D" } },
     ],
   },
   Q4H: {
     id: "Q4H",
-    text: "어떤 어려움?",
+    text: "어떤 어려움인가요?",
     options: [
       { key: "A", label: "길드 활동에 적응하기가 어렵다", next: { type: "result", key: "E" } },
       { key: "B", label: "길드 활동을 활발히 할 의지가 없다", next: { type: "result", key: "D" } },
@@ -179,39 +179,39 @@ export const QUESTIONS: Record<QuestionId, Question> = {
   },
   Q5A: {
     id: "Q5A",
-    text: "극복까지 얼마나?",
+    text: "극복까지 얼마나 걸릴 거 같으신가요?",
     options: [
-      { key: "A", label: "모태기 극복될 때까지 기다려달라", next: { type: "result", key: "B" } },
-      { key: "B", label: "모태기 극복까지 오래 걸릴 거 같다", next: { type: "question", id: "Q6A" } },
+      { key: "A", label: "모태기가 극복될 때까지 기다려주었으면 한다", next: { type: "result", key: "B" } },
+      { key: "B", label: "모태기 극복될 때까지 오래걸릴 거 같다", next: { type: "question", id: "Q6A" } },
     ],
   },
   Q5B: {
     id: "Q5B",
-    text: "길드 활동은?",
+    text: "길드 활동은 어떻게 하실 건가요?",
     options: [
-      { key: "A", label: "길드 활동은 계속 활발히 할 생각", next: { type: "result", key: "A" } },
-      { key: "B", label: "길드 활동도 어려울 거 같다", next: { type: "result", key: "D" } },
+      { key: "A", label: "길드 활동은 계속 활발히 할 생각이다", next: { type: "result", key: "A" } },
+      { key: "B", label: "길드 활동은 아무래도 어려울 거 같다", next: { type: "result", key: "D" } },
     ],
   },
   Q5C: {
     id: "Q5C",
-    text: "여유 생기면 길드 활동?",
+    text: "여유가 생기면 길드 활동은 어떠실 거 같나요?",
     options: [
-      { key: "A", label: "그때 되면 다시 활발히", next: { type: "result", key: "B" } },
-      { key: "B", label: "그때 되도 어려울 거 같다", next: { type: "result", key: "D" } },
+      { key: "A", label: "그때가 되면 길드 활동을 다시 활발히 할 생각이다", next: { type: "result", key: "B" } },
+      { key: "B", label: "그때가 되도 길드 활동이 어려울 거 같다", next: { type: "result", key: "D" } },
     ],
   },
   Q5D: {
     id: "Q5D",
-    text: "사정 해결되면 길드 활동?",
+    text: "사정이 해결되면 길드 활동은 어떠실 거 같나요?",
     options: [
-      { key: "A", label: "그때 되면 다시 활발히", next: { type: "result", key: "B" } },
-      { key: "B", label: "그때 되도 어려울 거 같다", next: { type: "result", key: "D" } },
+      { key: "A", label: "그때가 되면 길드 활동을 다시 활발히 할 생각이다", next: { type: "result", key: "B" } },
+      { key: "B", label: "그때가 되도 길드 활동이 어려울 거 같다", next: { type: "result", key: "D" } },
     ],
   },
   Q5E: {
     id: "Q5E",
-    text: "길드는?",
+    text: "길드에 대한 생각은 어떠신가요?",
     options: [
       { key: "A", label: "길드는 나가고 싶지 않다", next: { type: "result", key: "C" } },
       { key: "B", label: "길드를 나갈 생각이다", next: { type: "result", key: "D" } },
@@ -219,18 +219,18 @@ export const QUESTIONS: Record<QuestionId, Question> = {
   },
   Q5F: {
     id: "Q5F",
-    text: "현생 여유 생기면?",
+    text: "현생에 여유가 생기면 어떠실 거 같나요?",
     options: [
-      { key: "A", label: "다시 활발히 할 생각", next: { type: "result", key: "B" } },
-      { key: "B", label: "여유 생겨도 어려울 거 같다", next: { type: "result", key: "D" } },
+      { key: "A", label: "현생에 여유가 생기면 다시 길드 활동을 활발히 할 생각이다", next: { type: "result", key: "B" } },
+      { key: "B", label: "현생에 여유가 생겨도 자주 길드 활동이 어려울 거 같다", next: { type: "result", key: "D" } },
     ],
   },
   Q6A: {
     id: "Q6A",
-    text: "오래 걸려도 길드 활동은?",
+    text: "오래 걸려도 길드 활동은 어떠실 거 같나요?",
     options: [
-      { key: "A", label: "그래도 극복하면 다시 활발히", next: { type: "result", key: "B" } },
-      { key: "B", label: "아무래도 다시 하기 어려울 거 같다", next: { type: "result", key: "D" } },
+      { key: "A", label: "그래도 극복한다면 길드 활동을 다시 활발히 할 생각이다", next: { type: "result", key: "B" } },
+      { key: "B", label: "아무래도 길드 활동을 다시 하기 어려울 거 같다", next: { type: "result", key: "D" } },
     ],
   },
 };
