@@ -935,7 +935,7 @@ function AlbumCommentsSection({
         "album_comment",
         loginNick,
         "앨범에 새 댓글이 달렸습니다",
-        `/album?photo=${photoId}`,
+        `/album?photo=${photoId}&comment=${commentRef.id}`,
         `album/${photoId}/comments/${commentRef.id}`,
       );
       await addPoints(loginNick, "댓글", 1, "앨범에 댓글 작성");
@@ -1067,7 +1067,7 @@ function AlbumCommentItem({
         "album_comment",
         loginNick,
         "앨범에 새 댓글이 달렸습니다",
-        `/album?photo=${photoId}`,
+        `/album?photo=${photoId}&comment=${comment.id}`,
         `album/${photoId}/comments/${comment.id}/replies/${replyRef.id}`,
       );
       await addPoints(loginNick, "대댓글", 1, "앨범 댓글에 대댓글 작성");
