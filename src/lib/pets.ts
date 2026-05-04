@@ -404,6 +404,7 @@ export type FurnitureUserPosition = { x: number; y: number };
 // 'B', 'w', 'p', 'y', etc. and stay untouched.
 export const PET_DYE_COLORS: { id: string; label: string; color: string | null }[] = [
   { id: "default", label: "기본색", color: null },
+  { id: "white",   label: "흰색",   color: "#FFFFFF" },
   { id: "red",     label: "빨강",   color: "#E76A6A" },
   { id: "blue",    label: "파랑",   color: "#7AAEE0" },
   { id: "green",   label: "초록",   color: "#7BC472" },
