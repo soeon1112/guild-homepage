@@ -6295,6 +6295,21 @@ function TabBookmark({
       type="button"
       onPointerDown={(e) => {
         e.stopPropagation();
+        // Debug bridge — log which tab received the pointer event.
+        // Lets the RN host distinguish "tap never reached the tab"
+        // from "tap reached but state didn't propagate". Guarded by
+        // typeof so plain web stays a no-op.
+        if (
+          typeof (window as unknown as {
+            __dawnlight_codex_debug__?: (m: string) => void;
+          }).__dawnlight_codex_debug__ === "function"
+        ) {
+          (
+            window as unknown as {
+              __dawnlight_codex_debug__: (m: string) => void;
+            }
+          ).__dawnlight_codex_debug__(`tab onPointerDown: ${label}`);
+        }
         onSelect();
       }}
       aria-label={ariaLabel ?? label}
@@ -6449,7 +6464,18 @@ function InventoryPanel({
               label={t.label}
               active={tab === t.id}
               onSelect={() => {
+                const dbg = (
+                  window as unknown as {
+                    __dawnlight_codex_debug__?: (m: string) => void;
+                  }
+                ).__dawnlight_codex_debug__;
+                if (typeof dbg === "function" && t.id === "codex") {
+                  dbg("codex onTab called");
+                }
                 onTab(t.id);
+                if (typeof dbg === "function" && t.id === "codex") {
+                  dbg("codex setPanelTab done");
+                }
                 // Drop any open detail card from any tab when
                 // switching — stale detail from another tab would
                 // float over the new content.
@@ -7050,6 +7076,17 @@ function CodexContent({
   const selectedFish =
     selected != null ? FISH_LIST.find((f) => f.id === selected) ?? null : null;
   const selectedCaught = selectedFish ? caught.has(selectedFish.id) : false;
+  // Debug bridge — confirms CodexContent actually mounted. If we see
+  // "codex setPanelTab done" but never "CodexContent mounted", React
+  // threw during render of this subtree.
+  useEffect(() => {
+    const dbg = (
+      window as unknown as {
+        __dawnlight_codex_debug__?: (m: string) => void;
+      }
+    ).__dawnlight_codex_debug__;
+    if (typeof dbg === "function") dbg("CodexContent mounted");
+  }, []);
   return (
     <>
       {/* Codex layout deliberately omits a header so the slot grid
