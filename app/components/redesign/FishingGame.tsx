@@ -6277,6 +6277,14 @@ const SHOP_TAB_VISIBLE = 8;
 // path here is the single source of truth so the two strips can't
 // drift visually. Marker asset and label are passed in; the strip
 // container (positioning + flex layout) is owned by each caller.
+// Expanded tap target for finger taps. Mobile users were missing the
+// 64×32 visual hit-box of each tab on the first try (sometimes
+// taking 2–3 attempts), most visibly on the codex tab. The visible
+// graphic stays at TAB_W × TAB_H; the actual click surface is an
+// invisible <button> sibling that overflows the wrapper by these
+// margins so a slightly-off finger still lands on it.
+const TAB_HIT_TOP = 12; // upward — over the empty band above panel
+const TAB_HIT_BOTTOM = 16; // downward — into panel padding band
 function TabBookmark({
   marker,
   label,
@@ -6290,64 +6298,79 @@ function TabBookmark({
   ariaLabel?: string;
   onSelect: () => void;
 }) {
+  // Wrapper holds the original 64×32 footprint so the parent flex row
+  // continues to lay tabs out at the same x-positions; the visible
+  // graphic stack (Frame9Slice + label) is absolute-positioned inside
+  // and is pointer-events:none so all clicks fall through to the
+  // sibling hit-catcher button. The catcher overflows TAB_HIT_TOP
+  // upward and TAB_HIT_BOTTOM downward without expanding horizontally,
+  // so adjacent tabs never overlap each other's hit zones.
   return (
-    <button
-      type="button"
-      onPointerDown={(e) => {
-        e.stopPropagation();
-        // Debug bridge — log which tab received the pointer event.
-        // Lets the RN host distinguish "tap never reached the tab"
-        // from "tap reached but state didn't propagate". Guarded by
-        // typeof so plain web stays a no-op.
-        if (
-          typeof (window as unknown as {
-            __dawnlight_codex_debug__?: (m: string) => void;
-          }).__dawnlight_codex_debug__ === "function"
-        ) {
-          (
-            window as unknown as {
-              __dawnlight_codex_debug__: (m: string) => void;
-            }
-          ).__dawnlight_codex_debug__(`tab onPointerDown: ${label}`);
-        }
-        onSelect();
-      }}
-      aria-label={ariaLabel ?? label}
-      aria-pressed={active}
-      className="relative flex items-center justify-center"
+    <div
+      className="relative"
       style={{
         width: TAB_W,
         height: TAB_H,
-        padding: 0,
-        border: "none",
-        background: "transparent",
-        // Active pops up and sits above the panel border; inactive
-        // sinks down and tucks behind, dimmed.
-        transform: active ? "translateY(-2px)" : "translateY(4px)",
-        transition: "transform 140ms ease",
-        filter: active ? "none" : "brightness(0.6) saturate(0.55)",
         zIndex: active ? 3 : 1,
       }}
     >
-      <Frame9Slice
-        src={marker}
-        cap={TAB_CAP}
-        scale={TAB_SCALE}
-        width={TAB_W}
-        height={TAB_H}
-      />
-      <span
+      <div
         aria-hidden
-        className="absolute font-serif font-bold leading-none"
+        className="absolute inset-0 flex items-center justify-center"
         style={{
-          fontSize: 12,
-          color: "#3d2c1c",
-          paddingBottom: 4,
+          // Active pops up and sits above the panel border; inactive
+          // sinks down and tucks behind, dimmed.
+          transform: active ? "translateY(-2px)" : "translateY(4px)",
+          transition: "transform 140ms ease",
+          filter: active ? "none" : "brightness(0.6) saturate(0.55)",
+          pointerEvents: "none",
         }}
       >
-        {label}
-      </span>
-    </button>
+        <Frame9Slice
+          src={marker}
+          cap={TAB_CAP}
+          scale={TAB_SCALE}
+          width={TAB_W}
+          height={TAB_H}
+        />
+        <span
+          aria-hidden
+          className="absolute font-serif font-bold leading-none"
+          style={{
+            fontSize: 12,
+            color: "#3d2c1c",
+            paddingBottom: 4,
+          }}
+        >
+          {label}
+        </span>
+      </div>
+      <button
+        type="button"
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          onSelect();
+        }}
+        aria-label={ariaLabel ?? label}
+        aria-pressed={active}
+        className="absolute"
+        style={{
+          top: -TAB_HIT_TOP,
+          bottom: -TAB_HIT_BOTTOM,
+          left: 0,
+          right: 0,
+          padding: 0,
+          margin: 0,
+          border: "none",
+          background: "transparent",
+          cursor: "pointer",
+          // Same translate as the visual so the hit zone tracks the
+          // active/inactive bounce instead of floating off it.
+          transform: active ? "translateY(-2px)" : "translateY(4px)",
+          transition: "transform 140ms ease",
+        }}
+      />
+    </div>
   );
 }
 // Where the panel sits inside the inner game pane (306×306). The
@@ -6464,18 +6487,7 @@ function InventoryPanel({
               label={t.label}
               active={tab === t.id}
               onSelect={() => {
-                const dbg = (
-                  window as unknown as {
-                    __dawnlight_codex_debug__?: (m: string) => void;
-                  }
-                ).__dawnlight_codex_debug__;
-                if (typeof dbg === "function" && t.id === "codex") {
-                  dbg("codex onTab called");
-                }
                 onTab(t.id);
-                if (typeof dbg === "function" && t.id === "codex") {
-                  dbg("codex setPanelTab done");
-                }
                 // Drop any open detail card from any tab when
                 // switching — stale detail from another tab would
                 // float over the new content.
@@ -7076,17 +7088,6 @@ function CodexContent({
   const selectedFish =
     selected != null ? FISH_LIST.find((f) => f.id === selected) ?? null : null;
   const selectedCaught = selectedFish ? caught.has(selectedFish.id) : false;
-  // Debug bridge — confirms CodexContent actually mounted. If we see
-  // "codex setPanelTab done" but never "CodexContent mounted", React
-  // threw during render of this subtree.
-  useEffect(() => {
-    const dbg = (
-      window as unknown as {
-        __dawnlight_codex_debug__?: (m: string) => void;
-      }
-    ).__dawnlight_codex_debug__;
-    if (typeof dbg === "function") dbg("CodexContent mounted");
-  }, []);
   return (
     <>
       {/* Codex layout deliberately omits a header so the slot grid
