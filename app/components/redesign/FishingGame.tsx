@@ -6298,20 +6298,23 @@ function TabBookmark({
   ariaLabel?: string;
   onSelect: () => void;
 }) {
-  // Wrapper holds the original 64×32 footprint so the parent flex row
-  // continues to lay tabs out at the same x-positions; the visible
-  // graphic stack (Frame9Slice + label) is absolute-positioned inside
-  // and is pointer-events:none so all clicks fall through to the
-  // sibling hit-catcher button. The catcher overflows TAB_HIT_TOP
-  // upward and TAB_HIT_BOTTOM downward without expanding horizontally,
-  // so adjacent tabs never overlap each other's hit zones.
+  // Wrapper holds the original 64×32 footprint for parent flex layout.
+  // Critically it has NO zIndex — if it did, it would create its own
+  // stacking context and trap the hit-catcher's zIndex inside that
+  // context. The panel body Frame9Slice (zIndex 2) would then cover
+  // the bottom 12px of the visual + the +16 hit extension on inactive
+  // tabs (whose context is pinned at zIndex 1), making the lower half
+  // of every inactive tab unclickable. Instead, the visual layer
+  // carries `zIndex: active ? 3 : 1` so it still tucks behind the
+  // panel for inactive (1 < 2) and connects on top for active (3 > 2),
+  // and the hit-catcher sits at zIndex 4 in the panel-root stacking
+  // context — above the panel body in every state.
   return (
     <div
       className="relative"
       style={{
         width: TAB_W,
         height: TAB_H,
-        zIndex: active ? 3 : 1,
       }}
     >
       <div
@@ -6324,6 +6327,7 @@ function TabBookmark({
           transition: "transform 140ms ease",
           filter: active ? "none" : "brightness(0.6) saturate(0.55)",
           pointerEvents: "none",
+          zIndex: active ? 3 : 1,
         }}
       >
         <Frame9Slice
@@ -6368,6 +6372,10 @@ function TabBookmark({
           // active/inactive bounce instead of floating off it.
           transform: active ? "translateY(-2px)" : "translateY(4px)",
           transition: "transform 140ms ease",
+          // Above the panel body Frame9Slice (zIndex 2) and the active
+          // tab visual (zIndex 3) so taps in the bottom 12px of the
+          // tab + the +16 bottom extension actually reach the button.
+          zIndex: 4,
         }}
       />
     </div>
