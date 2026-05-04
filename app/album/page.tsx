@@ -113,6 +113,12 @@ export default function AlbumPage() {
   const [page, setPage] = useState(0);
   const photoIdsKey = photos.map((p) => p.id).sort().join(",");
   const autoOpenedRef = useRef(false);
+  // Captured at deep-link time so AlbumPhotoViewer can scroll to the
+  // specific comment after opening. Cleared on close so direct grid
+  // taps don't accidentally inherit a previous deep-link target.
+  const [autoOpenCommentId, setAutoOpenCommentId] = useState<string | null>(
+    null,
+  );
 
   // Pagination — same prev/next + "current / total" pattern as
   // GuestbookSection / AdventureLogSection. 20 photos per page.
@@ -135,8 +141,15 @@ export default function AlbumPage() {
     }
     const target = photos.find((p) => p.id === pid);
     if (target) {
+      const cid = params.get("comment");
+      setAutoOpenCommentId(cid && cid.length > 0 ? cid : null);
       setViewer(target);
       autoOpenedRef.current = true;
+      // Strip the params so a back/forward / refresh doesn't re-trigger.
+      // History API stays in the same Next.js route — no remount.
+      if (typeof window !== "undefined") {
+        window.history.replaceState(null, "", "/album");
+      }
     }
   }, [photos]);
 
@@ -480,7 +493,11 @@ export default function AlbumPage() {
         <AlbumPhotoViewer
           photo={viewer}
           loginNick={loginNick}
-          onClose={() => setViewer(null)}
+          onClose={() => {
+            setViewer(null);
+            setAutoOpenCommentId(null);
+          }}
+          targetCommentId={autoOpenCommentId}
         />
       )}
     </div>
@@ -643,11 +660,41 @@ function AlbumPhotoViewer({
   photo,
   loginNick,
   onClose,
+  targetCommentId,
 }: {
   photo: AlbumPhoto;
   loginNick: string | null;
   onClose: () => void;
+  targetCommentId?: string | null;
 }) {
+  // Scroll container = .minihome-modal (position:fixed, overflow-y:auto).
+  // The card .minihome-photo-viewer has no overflow of its own — entire
+  // card scrolls together. Comments compute their absolute y relative
+  // to this modalRef.
+  const modalRef = useRef<HTMLDivElement | null>(null);
+
+  // Hide the card while we jump to the deep-link target so the user
+  // doesn't see the modal flash at the top before the comment appears.
+  // Mirrors the app-side `scrollPending` pattern in PhotoViewerModal:
+  //   - init true if a target exists at mount
+  //   - re-set true when targetCommentId changes (in-place re-deep-link)
+  //   - flipped false by markScrollResolved after the scroll resolves
+  //   - 1.5 s safety timeout in case the scroll never resolves
+  const [scrollPending, setScrollPending] = useState<boolean>(
+    !!targetCommentId,
+  );
+  useEffect(() => {
+    if (targetCommentId) setScrollPending(true);
+  }, [targetCommentId]);
+  useEffect(() => {
+    if (!scrollPending) return;
+    const t = setTimeout(() => setScrollPending(false), 1500);
+    return () => clearTimeout(t);
+  }, [scrollPending]);
+  const markScrollResolved = useCallback(() => {
+    setScrollPending(false);
+  }, []);
+
   const [editMode, setEditMode] = useState(false);
   const [editCaption, setEditCaption] = useState(photo.caption);
   const [editPhotographer, setEditPhotographer] = useState(photo.photographer);
@@ -730,10 +777,15 @@ function AlbumPhotoViewer({
   };
 
   return (
-    <div className="minihome-modal" onClick={onClose}>
+    <div
+      ref={modalRef}
+      className="minihome-modal"
+      onClick={onClose}
+    >
       <div
         className="minihome-photo-viewer"
         onClick={(e) => e.stopPropagation()}
+        style={scrollPending ? { opacity: 0 } : undefined}
       >
         <button
           type="button"
@@ -871,7 +923,13 @@ function AlbumPhotoViewer({
           </div>
         )}
 
-        <AlbumCommentsSection photoId={photo.id} loginNick={loginNick} />
+        <AlbumCommentsSection
+          photoId={photo.id}
+          loginNick={loginNick}
+          targetCommentId={targetCommentId}
+          modalRef={modalRef}
+          markScrollResolved={markScrollResolved}
+        />
       </div>
     </div>
   );
@@ -880,9 +938,15 @@ function AlbumPhotoViewer({
 function AlbumCommentsSection({
   photoId,
   loginNick,
+  targetCommentId,
+  modalRef,
+  markScrollResolved,
 }: {
   photoId: string;
   loginNick: string | null;
+  targetCommentId?: string | null;
+  modalRef?: React.RefObject<HTMLDivElement | null>;
+  markScrollResolved?: () => void;
 }) {
   const [comments, setComments] = useState<AlbumComment[]>([]);
   const [content, setContent] = useState("");
@@ -890,6 +954,70 @@ function AlbumCommentsSection({
   const [submitting, setSubmitting] = useState(false);
   const [openReplyId, setOpenReplyId] = useState<string | null>(null);
   const [replyCounts, setReplyCounts] = useState<Record<string, number>>({});
+
+  // Deep-link scroll target: each AlbumCommentItem registers its root
+  // <div> via setItemRef into this map keyed by comment id. After the
+  // comments load we look up the target and use getBoundingClientRect
+  // to compute its absolute y inside the modal scroll container, then
+  // assign modal.scrollTop. lastHandledRef prevents duplicate scrolls
+  // (e.g. when a snapshot replays the same comment list).
+  const itemRefs = useRef(new Map<string, HTMLDivElement>());
+  const setItemRef = useCallback(
+    (id: string) => (el: HTMLDivElement | null) => {
+      if (el) itemRefs.current.set(id, el);
+      else itemRefs.current.delete(id);
+    },
+    [],
+  );
+  const lastHandledRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!targetCommentId) return;
+    if (lastHandledRef.current === targetCommentId) return;
+    if (comments.length === 0) return;
+    if (!comments.some((c) => c.id === targetCommentId)) return;
+
+    let retryHandle: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
+
+    const tryScroll = (attempt: number) => {
+      if (cancelled) return;
+      const target = itemRefs.current.get(targetCommentId);
+      const modal = modalRef?.current;
+      if (!target || !modal) {
+        if (attempt >= 5) {
+          lastHandledRef.current = targetCommentId;
+          markScrollResolved?.();
+          return;
+        }
+        retryHandle = setTimeout(() => tryScroll(attempt + 1), 50);
+        return;
+      }
+      lastHandledRef.current = targetCommentId;
+      // No scrollable space → nothing to scroll, no whitespace risk.
+      // Covers the desktop / large-screen fits-everything case.
+      if (modal.scrollHeight <= modal.clientHeight) {
+        markScrollResolved?.();
+        return;
+      }
+      const modalRect = modal.getBoundingClientRect();
+      const targetRect = target.getBoundingClientRect();
+      const offsetWithinModal =
+        targetRect.top - modalRect.top + modal.scrollTop;
+      // Land 100 px below the modal top to clear the close button.
+      // Browser auto-clamps to the legal scroll range (no whitespace
+      // past the bottom).
+      modal.scrollTop = Math.max(0, offsetWithinModal - 100);
+      markScrollResolved?.();
+    };
+
+    const t = setTimeout(() => tryScroll(1), 100);
+    return () => {
+      cancelled = true;
+      if (retryHandle) clearTimeout(retryHandle);
+      clearTimeout(t);
+    };
+  }, [targetCommentId, comments, modalRef, markScrollResolved]);
 
   const reportReplyCount = useCallback((commentId: string, count: number) => {
     setReplyCounts((prev) =>
@@ -970,6 +1098,7 @@ function AlbumCommentsSection({
               }
               onCloseReply={() => setOpenReplyId(null)}
               onReplyCountChange={reportReplyCount}
+              setItemRef={setItemRef(c.id)}
             />
           ))
         )}
@@ -1014,6 +1143,7 @@ function AlbumCommentItem({
   onToggleReply,
   onCloseReply,
   onReplyCountChange,
+  setItemRef,
 }: {
   photoId: string;
   comment: AlbumComment;
@@ -1022,6 +1152,7 @@ function AlbumCommentItem({
   onToggleReply: () => void;
   onCloseReply: () => void;
   onReplyCountChange: (commentId: string, count: number) => void;
+  setItemRef?: (el: HTMLDivElement | null) => void;
 }) {
   const [replies, setReplies] = useState<AlbumComment[]>([]);
   const [msg, setMsg] = useState("");
@@ -1112,7 +1243,7 @@ function AlbumCommentItem({
   };
 
   return (
-    <div className="minihome-photo-comment-block">
+    <div ref={setItemRef} className="minihome-photo-comment-block">
       <div className="minihome-photo-comment">
         <span
           style={{
