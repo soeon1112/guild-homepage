@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useAuth } from "@/app/components/AuthProvider";
 import { db, storage } from "@/src/lib/firebase";
 import {
@@ -776,7 +777,12 @@ function AlbumPhotoViewer({
     }
   };
 
-  return (
+  // Portal-mount to document.body so the modal escapes the
+  // <main z-10> / .album-content z-10 stacking-context trap — without
+  // this, .minihome-modal's z-index:100 is interpreted inside main's
+  // z-10 context and TopHeader/BottomNav (z-40) bleed through.
+  if (typeof document === "undefined") return null;
+  return createPortal(
     <div
       ref={modalRef}
       className="minihome-modal"
@@ -931,7 +937,8 @@ function AlbumPhotoViewer({
           markScrollResolved={markScrollResolved}
         />
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
