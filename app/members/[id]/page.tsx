@@ -257,15 +257,16 @@ export default function MemberMiniHomePage({
   const [debugVisible, setDebugVisible] = useState(false);
   useEffect(() => {
     if (typeof window === "undefined") return;
-    // 단순 includes — hash 가 router 에 의해 변환되거나 ?section= 으로
-    // 옮겨졌어도 catch. 모험기록 / 사진 deep-link 모두 대응.
-    const url = window.location.href;
-    if (
-      url.includes("minihome-adventure") ||
-      url.includes("photo=")
-    ) {
-      setDebugVisible(true);
-    }
+    // 모든 미니홈피 진입 시 박스 표시 — URL 정확한 형태 확인용.
+    setDebugVisible(true);
+    const urlSnap = [
+      `[url]`,
+      `href=${window.location.href.slice(0, 80)}`,
+      `hash=${window.location.hash || "(empty)"}`,
+      `search=${window.location.search || "(empty)"}`,
+      `histState=${window.history.state ? "exists" : "null"}`,
+    ].join(" | ");
+    setDebugSnaps((prev) => [...prev, urlSnap]);
   }, []);
   useEffect(() => {
     if (hashHandledRef.current) return;
