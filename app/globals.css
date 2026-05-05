@@ -84,7 +84,12 @@
      0)에서도 최소 0.75rem 여백 — 카드 상단의 absolute 닫기 버튼이 viewport
      edge 에 닿아 잘려 보이는 걸 막는다. */
   padding-top: max(env(safe-area-inset-top), 0.75rem);
-  padding-bottom: max(env(safe-area-inset-bottom), 0.75rem);
+  /* `--keyboard-inset` 는 VisualViewportSync 가 키보드가 가린 px 만큼 채워
+     주는 변수 (닫혀있을 때 0). padding-bottom 에 합산해 모달 안쪽 스크롤
+     공간이 키보드만큼 늘어나고, 브라우저 native input scrollIntoView 가
+     포커스된 입력란을 그 늘어난 영역으로 자동으로 끌어올린다. 모달 box
+     자체(top/bottom/height)는 안 건드림 — 이전 vvh-based 회귀 회피. */
+  padding-bottom: calc(max(env(safe-area-inset-bottom), 0.75rem) + var(--keyboard-inset, 0px));
   padding-left: 1rem;
   padding-right: 1rem;
   overflow-y: auto;
@@ -2270,9 +2275,11 @@ object {
   bottom: 0;
   left: 0;
   /* See .modal-safe-frame: max() guarantees a small min-padding on
-     non-notched devices so the card's top close button stays visible. */
+     non-notched devices so the card's top close button stays visible.
+     padding-bottom adds --keyboard-inset so the focused input rides
+     above the soft keyboard without resizing the modal box. */
   padding-top: max(env(safe-area-inset-top), 0.75rem);
-  padding-bottom: max(env(safe-area-inset-bottom), 0.75rem);
+  padding-bottom: calc(max(env(safe-area-inset-bottom), 0.75rem) + var(--keyboard-inset, 0px));
   z-index: 100;
   background: rgba(11, 8, 33, 0.75);
   backdrop-filter: blur(8px);
