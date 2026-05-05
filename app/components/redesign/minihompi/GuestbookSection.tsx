@@ -147,8 +147,8 @@ export function GuestbookSection({
   );
 
   return (
+    <div id="minihome-guestbook">
     <CollapsibleSection
-      id="minihome-guestbook"
       title="방명록"
       rightSlot={<span>{entries.length}개</span>}
       defaultOpen
@@ -262,6 +262,7 @@ export function GuestbookSection({
         </div>
       )}
     </CollapsibleSection>
+    </div>
   );
 }
 

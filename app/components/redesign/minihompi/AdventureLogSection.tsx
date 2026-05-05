@@ -149,8 +149,8 @@ export function AdventureLogSection({
   );
 
   return (
+    <div id="minihome-adventure">
     <CollapsibleSection
-      id="minihome-adventure"
       title="모험 기록"
       rightSlot={<span>{entries.length}개</span>}
       defaultOpen
@@ -259,6 +259,7 @@ export function AdventureLogSection({
         </div>
       )}
     </CollapsibleSection>
+    </div>
   );
 }
 
