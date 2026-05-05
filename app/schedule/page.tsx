@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { createPortal } from "react-dom";
 import { db } from "@/src/lib/firebase";
 import {
@@ -47,7 +48,7 @@ type EditorMode =
   | { kind: "edit"; item: ScheduleItem }
   | null;
 
-export default function SchedulePage() {
+function SchedulePageInner() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
@@ -74,6 +75,40 @@ export default function SchedulePage() {
     });
     return () => unsub();
   }, []);
+
+  // Deep-link: /schedule?id=X opens the day modal for the matched
+  // schedule item. NebulaWhispers schedule activities navigate here.
+  // Multi-retry for the schedules subscription delay.
+  const searchParams = useSearchParams();
+  const idParam = searchParams?.get("id") ?? null;
+  const idHandledRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!idParam) return;
+    if (idHandledRef.current === idParam) return;
+    if (loading) return;
+    const handles: ReturnType<typeof setTimeout>[] = [];
+    const tryOpen = () => {
+      const target = items.find((it) => it.id === idParam);
+      if (!target) return false;
+      idHandledRef.current = idParam;
+      // Navigate calendar to the schedule's month if needed, then
+      // open the day modal.
+      const [y, m] = target.date.split("-").map((s) => parseInt(s, 10));
+      if (Number.isFinite(y) && Number.isFinite(m)) {
+        setYear(y);
+        setMonth(m - 1);
+      }
+      setSelectedDate(target.date);
+      return true;
+    };
+    if (tryOpen()) return;
+    for (const ms of [100, 500, 1500, 3000]) {
+      handles.push(setTimeout(() => tryOpen(), ms));
+    }
+    return () => {
+      for (const h of handles) clearTimeout(h);
+    };
+  }, [idParam, loading, items]);
 
   const itemsByDate = useMemo(() => {
     const map = new Map<string, ScheduleItem[]>();
@@ -315,6 +350,17 @@ export default function SchedulePage() {
   );
 }
 
+// Next.js App Router requires `useSearchParams` callers under a
+// Suspense boundary; without one the route fails to prerender at
+// build time (vercel keeps the previous deployment silently).
+export default function SchedulePage() {
+  return (
+    <Suspense fallback={null}>
+      <SchedulePageInner />
+    </Suspense>
+  );
+}
+
 function AdminGate({
   onCancel,
   onSuccess,
@@ -424,7 +470,7 @@ function ScheduleEditor({
             "schedule",
             "관리자",
             `일정 '${headline}'${josa(cleanTitle, "이/가")} 올라왔어요`,
-            "/schedule",
+            `/schedule?id=${newRef.id}`,
             `schedule/${newRef.id}`,
           );
         }
