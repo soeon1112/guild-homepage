@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   collection,
@@ -98,6 +98,7 @@ function HeaderConstellation() {
 }
 
 export function NebulaWhispers() {
+  const router = useRouter();
   const [items, setItems] = useState<ActivityItem[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [hovered, setHovered] = useState<string | null>(null);
@@ -257,13 +258,22 @@ export function NebulaWhispers() {
                 return (
                   <li key={a.id}>
                     {a.link ? (
-                      <Link
+                      <a
                         href={a.link}
                         className={rowClass}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          // router.push() 으로 명시적 navigate.
+                          // <Link> 은 mobile Safari 에서 기존 URL hash
+                          // 와 새 hash 를 concat 하는 회귀
+                          // (`/members/16#minihome-adventure#minihome-adventure`)
+                          // 가 있어 router.push 로 우회.
+                          router.push(a.link as string);
+                        }}
                         {...rowHandlers}
                       >
                         {rowContent}
-                      </Link>
+                      </a>
                     ) : (
                       <div className={rowClass} {...rowHandlers}>
                         {rowContent}

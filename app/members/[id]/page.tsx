@@ -243,72 +243,30 @@ export default function MemberMiniHomePage({
     // captures the post-scroll scrollY. Letting both run produces a
     // race where the smooth page scroll is mid-animation when the
     // modal mounts and locks scrollY at an intermediate value.
-    const hash = window.location.hash.slice(1);
-    initialDeepLinkRef.current = hash || "";
+    //
+    // .split("#")[0] guards against the URL ending up with double
+    // hashes (`#minihome-adventure#minihome-adventure`) — a mobile
+    // Safari quirk on <Link>-based same-pathname navigation. The
+    // first segment is the real anchor we want; we ignore any extras.
+    const rawHash = window.location.hash.slice(1);
+    initialDeepLinkRef.current = rawHash.split("#")[0] || "";
   }
   const hasDeepLink = !!initialDeepLinkRef.current;
   const [scrollPending, setScrollPending] = useState<boolean>(hasDeepLink);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const hashHandledRef = useRef(false);
-  // [DEBUG] 모바일 회귀 진단 — hash deep-link 또는 ?photo= 진입 시
-  // 우상단 박스에 retry 시점 별 측정값 표시. 캡처 받는 즉시 다음
-  // commit 으로 박스 + 진단 코드 제거.
-  const [debugSnaps, setDebugSnaps] = useState<string[]>([]);
-  const [debugVisible, setDebugVisible] = useState(false);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    // 모든 미니홈피 진입 시 박스 표시 — URL 정확한 형태 확인용.
-    setDebugVisible(true);
-    const urlSnap = [
-      `[url]`,
-      `href=${window.location.href.slice(0, 80)}`,
-      `hash=${window.location.hash || "(empty)"}`,
-      `search=${window.location.search || "(empty)"}`,
-      `histState=${window.history.state ? "exists" : "null"}`,
-    ].join(" | ");
-    setDebugSnaps((prev) => [...prev, urlSnap]);
-  }, []);
   useEffect(() => {
     if (hashHandledRef.current) return;
     if (loading) return;
     if (typeof window === "undefined") return;
     const targetId = initialDeepLinkRef.current ?? "";
-    const hasPhoto = new URLSearchParams(window.location.search).has("photo");
-    const probeTarget = targetId || (hasPhoto ? "minihome-photos" : "");
-    if (!targetId && !hasPhoto) {
+    if (!targetId) {
       setScrollPending(false);
       return;
     }
     hashHandledRef.current = true;
-    if (probeTarget) setScrollPending(false); // keep page visible during diag
 
-    const snapshot = (label: string) => {
-      const el = probeTarget ? document.getElementById(probeTarget) : null;
-      const rect = el?.getBoundingClientRect();
-      const docEl = document.documentElement;
-      const body = document.body;
-      const sh = docEl.scrollHeight;
-      const ih = window.innerHeight;
-      return [
-        `[${label}]`,
-        `target=${probeTarget}`,
-        `el=${el ? `${el.tagName}.${(el.className || "").toString().slice(0, 20)}` : "NULL"}`,
-        rect
-          ? `rect.top=${Math.round(rect.top)} h=${Math.round(rect.height)}`
-          : "rect=NULL",
-        `scrollY=${Math.round(window.scrollY)}`,
-        `innerH=${ih} clientH=${docEl.clientHeight}`,
-        `scrollH=${sh}`,
-        `maxScroll=${sh - ih}`,
-        `body.pos=${body.style.position || "static"}`,
-        `body.top=${body.style.top || "-"}`,
-        `body.kids=${body.children.length}`,
-      ].join(" | ");
-    };
-
-    const doScroll = (label: string) => {
-      setDebugSnaps((prev) => [...prev, snapshot(label)]);
-      if (!targetId) return; // photo path: PhotosSection scrolls
+    const doScroll = () => {
       const el = document.getElementById(targetId);
       if (!el) return;
       const rect = el.getBoundingClientRect();
@@ -318,11 +276,9 @@ export default function MemberMiniHomePage({
 
     const handles: ReturnType<typeof setTimeout>[] = [];
     for (const ms of [100, 500, 1500, 3000]) {
-      handles.push(setTimeout(() => doScroll(String(ms)), ms));
+      handles.push(setTimeout(() => doScroll(), ms));
     }
-    if (!probeTarget) {
-      handles.push(setTimeout(() => setScrollPending(false), 700));
-    }
+    handles.push(setTimeout(() => setScrollPending(false), 700));
 
     return () => {
       for (const h of handles) clearTimeout(h);
@@ -330,37 +286,6 @@ export default function MemberMiniHomePage({
   }, [loading]);
 
   return (
-    <>
-    {debugVisible && (
-      <div
-        style={{
-          position: "fixed",
-          top: 60,
-          right: 5,
-          zIndex: 99999,
-          maxWidth: 200,
-          maxHeight: "70vh",
-          overflow: "auto",
-          padding: "6px 8px",
-          background: "rgba(0,0,0,0.85)",
-          color: "#FFE5C4",
-          fontFamily: "ui-monospace, Menlo, monospace",
-          fontSize: 8,
-          lineHeight: 1.3,
-          border: "1px solid rgba(255,229,196,0.4)",
-          borderRadius: 6,
-          pointerEvents: "none",
-          whiteSpace: "pre-wrap",
-          wordBreak: "break-all",
-        }}
-      >
-        {debugSnaps.map((s, i) => (
-          <div key={i} style={{ marginBottom: 4 }}>
-            {s}
-          </div>
-        ))}
-      </div>
-    )}
     <div
       ref={wrapperRef}
       className="minihome mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 pt-3 pb-6 sm:gap-7"
@@ -410,7 +335,6 @@ export default function MemberMiniHomePage({
         />
       </div>
     </div>
-    </>
   );
 }
 
