@@ -86,7 +86,7 @@
   padding-right: 1rem;
   overflow-y: auto;
   overflow-x: hidden;
-  align-items: safe center;
+  align-items: flex-start;
 }
 
 /* Mobile-only: hide the floating pet/chat FAB icons whenever any modal
@@ -2273,10 +2273,10 @@ object {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   display: flex;
-  /* `safe center` falls back to `flex-start` when the photo+comments
-     card is taller than the modal frame, so the user can scroll the
-     entire card as one block (no inner scroll regions). */
-  align-items: safe center;
+  /* User-requested change: card always starts at the top so a short
+     card doesn't sit visually adrift in dim space. Long cards still
+     scroll as one block via the parent's overflow-y. */
+  align-items: flex-start;
   justify-content: center;
   padding-left: 1rem;
   padding-right: 1rem;

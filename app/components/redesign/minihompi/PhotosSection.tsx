@@ -942,7 +942,7 @@ function PhotoComments({
   };
 
   return (
-    <div className="flex flex-col gap-4 px-5 pb-5 pt-4">
+    <div className="flex flex-col gap-3 rounded-2xl border border-nebula-pink/15 bg-abyss-deep/70 p-4">
       <h4 className="font-serif text-[11px] tracking-[0.3em] text-text-sub uppercase">
         댓글 ({totalCount})
       </h4>
