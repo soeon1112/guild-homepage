@@ -696,9 +696,68 @@ function AlbumPhotoViewer({
     const t = setTimeout(() => setScrollPending(false), 1500);
     return () => clearTimeout(t);
   }, [scrollPending]);
+
+  // ── Debug banner ('언쏘' only) ──
+  // Captures the timeline of deep-link comment scroll: effect entry,
+  // tryScroll attempts, modal scroll events, and scrollTop snapshots
+  // at +100/+300/+500/+1000/+2000 ms after mount. Goal is to catch what
+  // is resetting modal.scrollTop back to 0 right after the scroll lands.
+  const isDebug = loginNick === "언쏘";
+  const [debugMsgs, setDebugMsgs] = useState<string[]>([]);
+  const addDebug = useCallback(
+    (msg: string) => {
+      if (!isDebug) return;
+      const stamp =
+        typeof performance !== "undefined"
+          ? `+${Math.round(performance.now()) % 100000}`.padStart(7, " ")
+          : new Date().toISOString().slice(14, 23);
+      setDebugMsgs((prev) => [...prev, `${stamp} ${msg}`].slice(-50));
+    },
+    [isDebug],
+  );
+
   const markScrollResolved = useCallback(() => {
+    if (isDebug) {
+      const m = modalRef.current;
+      const stamp =
+        typeof performance !== "undefined"
+          ? `+${Math.round(performance.now()) % 100000}`.padStart(7, " ")
+          : new Date().toISOString().slice(14, 23);
+      setDebugMsgs((prev) =>
+        [...prev, `${stamp} markScrollResolved sT=${m?.scrollTop}`].slice(-50),
+      );
+    }
     setScrollPending(false);
-  }, []);
+  }, [isDebug]);
+
+  // Scroll listener — records every scrollTop change so we can spot
+  // whoever resets it back to 0 after the deep-link jump.
+  useEffect(() => {
+    if (!isDebug) return;
+    const modal = modalRef.current;
+    if (!modal) return;
+    const onScroll = () => {
+      addDebug(`scroll evt sT=${modal.scrollTop}`);
+    };
+    modal.addEventListener("scroll", onScroll, { passive: true });
+    addDebug(`mount sT=${modal.scrollTop} sH=${modal.scrollHeight} cH=${modal.clientHeight}`);
+    return () => modal.removeEventListener("scroll", onScroll);
+  }, [isDebug, addDebug]);
+
+  // Periodic snapshots — independent of any scroll handler, so we see
+  // scrollTop drift even when no scroll event fires.
+  useEffect(() => {
+    if (!isDebug || !targetCommentId) return;
+    const modal = modalRef.current;
+    if (!modal) return;
+    const stamps = [50, 150, 300, 500, 800, 1200, 2000, 3000];
+    const handles = stamps.map((ms) =>
+      setTimeout(() => {
+        addDebug(`t+${ms} sT=${modal.scrollTop}`);
+      }, ms),
+    );
+    return () => handles.forEach((h) => clearTimeout(h));
+  }, [isDebug, targetCommentId, addDebug]);
 
   const [editMode, setEditMode] = useState(false);
   const [editCaption, setEditCaption] = useState(photo.caption);
@@ -792,6 +851,37 @@ function AlbumPhotoViewer({
       className="minihome-modal"
       onClick={onClose}
     >
+      {isDebug && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: "fixed",
+            top: 4,
+            left: 4,
+            right: 4,
+            maxHeight: "45vh",
+            overflowY: "auto",
+            background: "rgba(0,0,0,0.88)",
+            color: "#FFE5C4",
+            fontSize: 9,
+            fontFamily: "ui-monospace, monospace",
+            padding: "4px 6px",
+            zIndex: 99999,
+            lineHeight: 1.25,
+            border: "1px solid rgba(216,150,200,0.5)",
+            borderRadius: 4,
+            whiteSpace: "pre-wrap",
+            pointerEvents: "auto",
+          }}
+        >
+          <div style={{ color: "#FFB5A7", marginBottom: 2 }}>
+            [debug] target={String(targetCommentId)}
+          </div>
+          {debugMsgs.map((m, i) => (
+            <div key={i}>{m}</div>
+          ))}
+        </div>
+      )}
       <div
         className="minihome-photo-viewer"
         onClick={(e) => e.stopPropagation()}
@@ -812,9 +902,18 @@ function AlbumPhotoViewer({
             controls
             autoPlay
             playsInline
+            onLoadedData={() =>
+              addDebug(`video loadedData sT=${modalRef.current?.scrollTop}`)
+            }
           />
         ) : (
-          <img src={photo.imageUrl} alt={photo.caption || "photo"} />
+          <img
+            src={photo.imageUrl}
+            alt={photo.caption || "photo"}
+            onLoad={() =>
+              addDebug(`img onLoad sT=${modalRef.current?.scrollTop}`)
+            }
+          />
         )}
         {editMode ? (
           <>
@@ -939,6 +1038,7 @@ function AlbumPhotoViewer({
           targetCommentId={targetCommentId}
           modalRef={modalRef}
           markScrollResolved={markScrollResolved}
+          addDebug={addDebug}
         />
       </div>
     </div>,
@@ -952,12 +1052,14 @@ function AlbumCommentsSection({
   targetCommentId,
   modalRef,
   markScrollResolved,
+  addDebug,
 }: {
   photoId: string;
   loginNick: string | null;
   targetCommentId?: string | null;
   modalRef?: React.RefObject<HTMLDivElement | null>;
   markScrollResolved?: () => void;
+  addDebug?: (msg: string) => void;
 }) {
   const [comments, setComments] = useState<AlbumComment[]>([]);
   const [content, setContent] = useState("");
@@ -984,9 +1086,21 @@ function AlbumCommentsSection({
 
   useEffect(() => {
     if (!targetCommentId) return;
-    if (lastHandledRef.current === targetCommentId) return;
-    if (comments.length === 0) return;
-    if (!comments.some((c) => c.id === targetCommentId)) return;
+    addDebug?.(
+      `effect entry: target=${targetCommentId} comments=${comments.length} lastHandled=${lastHandledRef.current}`,
+    );
+    if (lastHandledRef.current === targetCommentId) {
+      addDebug?.("  skip: already handled");
+      return;
+    }
+    if (comments.length === 0) {
+      addDebug?.("  skip: comments empty (waits for snapshot)");
+      return;
+    }
+    if (!comments.some((c) => c.id === targetCommentId)) {
+      addDebug?.("  skip: target not in list");
+      return;
+    }
 
     let retryHandle: ReturnType<typeof setTimeout> | null = null;
     let cancelled = false;
@@ -995,8 +1109,12 @@ function AlbumCommentsSection({
       if (cancelled) return;
       const target = itemRefs.current.get(targetCommentId);
       const modal = modalRef?.current;
+      addDebug?.(
+        `tryScroll #${attempt} target=${!!target} modal=${!!modal}`,
+      );
       if (!target || !modal) {
         if (attempt >= 5) {
+          addDebug?.("  give up after 5 retries");
           lastHandledRef.current = targetCommentId;
           markScrollResolved?.();
           return;
@@ -1008,6 +1126,9 @@ function AlbumCommentsSection({
       // No scrollable space → nothing to scroll, no whitespace risk.
       // Covers the desktop / large-screen fits-everything case.
       if (modal.scrollHeight <= modal.clientHeight) {
+        addDebug?.(
+          `  fits: sH=${modal.scrollHeight} cH=${modal.clientHeight} — no scroll`,
+        );
         markScrollResolved?.();
         return;
       }
@@ -1015,10 +1136,15 @@ function AlbumCommentsSection({
       const targetRect = target.getBoundingClientRect();
       const offsetWithinModal =
         targetRect.top - modalRect.top + modal.scrollTop;
+      const newScrollTop = Math.max(0, offsetWithinModal - 100);
+      addDebug?.(
+        `  set sT ${modal.scrollTop}→${newScrollTop} (tgtTop=${Math.round(targetRect.top)} mdTop=${Math.round(modalRect.top)} sH=${modal.scrollHeight} cH=${modal.clientHeight})`,
+      );
       // Land 100 px below the modal top to clear the close button.
       // Browser auto-clamps to the legal scroll range (no whitespace
       // past the bottom).
-      modal.scrollTop = Math.max(0, offsetWithinModal - 100);
+      modal.scrollTop = newScrollTop;
+      addDebug?.(`  after assign: modal.scrollTop=${modal.scrollTop}`);
       markScrollResolved?.();
     };
 
@@ -1028,7 +1154,7 @@ function AlbumCommentsSection({
       if (retryHandle) clearTimeout(retryHandle);
       clearTimeout(t);
     };
-  }, [targetCommentId, comments, modalRef, markScrollResolved]);
+  }, [targetCommentId, comments, modalRef, markScrollResolved, addDebug]);
 
   const reportReplyCount = useCallback((commentId: string, count: number) => {
     setReplyCounts((prev) =>
