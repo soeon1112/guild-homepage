@@ -78,13 +78,8 @@
      viewport. */
   top: 0;
   right: 0;
+  bottom: 0;
   left: 0;
-  /* `--vvh` is fed by VisualViewportSync from `window.visualViewport.height`
-     so the modal shrinks with the soft keyboard on iOS / Android. Falls
-     back to `100vh` if the API is unavailable or before the first read.
-     Replaces the previous `bottom: 0` so the keyboard area is no longer
-     part of the modal's box. */
-  height: var(--vvh, 100vh);
   /* `max()` 으로 노치/홈 인디케이터가 없는 디바이스(안드로이드 등 safe-area
      0)에서도 최소 0.75rem 여백 — 카드 상단의 absolute 닫기 버튼이 viewport
      edge 에 닿아 잘려 보이는 걸 막는다. */
@@ -2272,10 +2267,8 @@ object {
      reserve the iOS safe area; chrome-bar offset is no longer needed. */
   top: 0;
   right: 0;
+  bottom: 0;
   left: 0;
-  /* See .modal-safe-frame: --vvh tracks the visual viewport so the
-     modal shrinks with the soft keyboard. */
-  height: var(--vvh, 100vh);
   /* See .modal-safe-frame: max() guarantees a small min-padding on
      non-notched devices so the card's top close button stays visible. */
   padding-top: max(env(safe-area-inset-top), 0.75rem);
