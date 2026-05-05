@@ -299,7 +299,15 @@ export default function MemberMiniHomePage({
       if (!el) return;
       const rect = el.getBoundingClientRect();
       const targetY = Math.max(0, Math.round(rect.top + window.scrollY));
-      window.scrollTo({ top: targetY, behavior: "smooth" });
+      // Mobile Safari ignores `window.scrollTo({behavior:"smooth"})` in
+      // some hash-navigation scenarios — the call returns silently
+      // without moving the page. Use multiple methods for reliability:
+      //   1. 2-arg scrollTo (legacy, always instant, most compatible)
+      //   2. documentElement.scrollTop (direct property write)
+      //   3. body.scrollTop (older browsers)
+      window.scrollTo(0, targetY);
+      document.documentElement.scrollTop = targetY;
+      document.body.scrollTop = targetY;
     };
 
     const handles: ReturnType<typeof setTimeout>[] = [];

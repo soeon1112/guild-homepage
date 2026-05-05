@@ -160,19 +160,24 @@ export function PhotosSection({
       autoOpenedRef.current = true;
       const sectionEl = document.getElementById("minihome-photos");
       if (sectionEl) {
-        sectionEl.scrollIntoView({ behavior: "auto", block: "start" });
+        // Brute-force scroll with multiple methods (Mobile Safari
+        // sometimes ignores scrollIntoView in deep-link timing).
+        const rect = sectionEl.getBoundingClientRect();
+        const targetY = Math.max(0, Math.round(rect.top + window.scrollY));
+        window.scrollTo(0, targetY);
+        document.documentElement.scrollTop = targetY;
+        document.body.scrollTop = targetY;
       }
       const cid = params.get("comment");
-      // Wait until the page-level smooth scroll has fully settled
-      // before mounting the modal. 700 ms covers the page reveal
-      // animation + safety buffer; useModalBodyLock then captures
-      // the correct, post-scroll window.scrollY. Mobile WebKit
-      // commits scrolls noticeably slower than desktop — 50 ms
-      // wasn't enough.
+      // 1200 ms — gives Mobile Safari plenty of time for the scroll
+      // to commit before useModalBodyLock reads window.scrollY.
+      // Earlier 800 ms was occasionally racing on slow mobile
+      // commits, leaving savedScrollY at an intermediate value and
+      // the page snapping back to it on modal close.
       setTimeout(() => {
         setViewer(target);
         setTargetCommentId(cid);
-      }, 800);
+      }, 1200);
     }
   }, [photos]);
 
