@@ -222,10 +222,18 @@ export default function MemberMiniHomePage({
   //   • #minihome-adventure / #minihome-guestbook → scroll to section
   //   • ?photo=<id>(&comment=<id>)                → scroll to #minihome-photos
   //     (PhotosSection handles the modal open + comment scroll itself)
-  // We start the page at opacity:0 if any deep-link param is present so
-  // the user never sees the page paint at scrollTop=0 and then jump —
-  // the scroll completes invisibly, then we reveal. Plain visits (no
-  // params) start at opacity:1, no flash.
+  //
+  // Naïve "scrollIntoView once at +50ms" lands at the WRONG y because
+  // ProfileSection's avatar SVG / Firestore snapshots arrive after the
+  // initial scroll, growing the page and pushing the target down. The
+  // user ends up where the section USED to be (e.g. avatar area).
+  // Mirror album/page.tsx's content-settle pattern: do an initial
+  // instant scroll, then retry on every layout change (ResizeObserver
+  // on the page wrapper) for ~1.5 s, comparing target y so we only
+  // re-scroll if the section actually moved.
+  // Page starts at opacity:0 if a deep-link is present so the
+  // (possibly several) scroll attempts happen invisibly; we reveal
+  // after the first attempt lands AND no further re-scrolls fire.
   const initialDeepLinkRef = useRef<string | null>(null);
   if (initialDeepLinkRef.current === null && typeof window !== "undefined") {
     const hash = window.location.hash.slice(1);
@@ -235,6 +243,7 @@ export default function MemberMiniHomePage({
   }
   const hasDeepLink = !!initialDeepLinkRef.current;
   const [scrollPending, setScrollPending] = useState<boolean>(hasDeepLink);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
   const hashHandledRef = useRef(false);
   useEffect(() => {
     if (hashHandledRef.current) return;
@@ -247,29 +256,69 @@ export default function MemberMiniHomePage({
     }
     hashHandledRef.current = true;
     const start = Date.now();
-    const tryScroll = () => {
-      const el = document.getElementById(targetId);
-      if (el) {
-        // `auto` = instant. With the page at opacity:0 above, the user
-        // perceives a single "page appears already scrolled" frame
-        // rather than a smooth scroll-from-top.
-        el.scrollIntoView({ behavior: "auto", block: "start" });
-        setScrollPending(false);
-        return;
-      }
-      if (Date.now() - start < 1500) {
-        setTimeout(tryScroll, 100);
-      } else {
-        // Target never appeared — reveal anyway so the user isn't
-        // stuck on a blank page.
-        setScrollPending(false);
-      }
+    let lastTargetTop = -1;
+    let revealed = false;
+    let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+    let observer: ResizeObserver | null = null;
+
+    const reveal = () => {
+      if (revealed) return;
+      revealed = true;
+      setScrollPending(false);
     };
-    setTimeout(tryScroll, 50);
+
+    const doScroll = () => {
+      const el = document.getElementById(targetId);
+      if (!el) return false;
+      const rect = el.getBoundingClientRect();
+      const targetTop = Math.round(rect.top + window.scrollY);
+      // Only re-scroll if the target moved (image decode, snapshot,
+      // font swap…) since last attempt. Avoids fighting the user if
+      // they manually scroll mid-settle.
+      if (targetTop === lastTargetTop) return true;
+      lastTargetTop = targetTop;
+      el.scrollIntoView({ behavior: "auto", block: "start" });
+      return true;
+    };
+
+    const finish = () => {
+      if (observer) observer.disconnect();
+      observer = null;
+      reveal();
+    };
+
+    // Initial attempt — short delay so the first paint is in. The
+    // opacity gate keeps it invisible regardless.
+    timeoutHandle = setTimeout(() => {
+      const ok = doScroll();
+      if (ok) reveal();
+      // ResizeObserver on the page wrapper catches subsequent layout
+      // shifts (avatar load, firestore snapshots) and re-runs the
+      // scroll. We tear down after ~1.5 s.
+      const wrapper = wrapperRef.current;
+      if (wrapper && typeof ResizeObserver !== "undefined") {
+        observer = new ResizeObserver(() => {
+          if (Date.now() - start > 1500) {
+            finish();
+            return;
+          }
+          if (doScroll()) reveal();
+        });
+        observer.observe(wrapper);
+      }
+      // Hard cap — never observe past 1.5 s even if no resize fires.
+      setTimeout(finish, 1500);
+    }, 50);
+
+    return () => {
+      if (timeoutHandle) clearTimeout(timeoutHandle);
+      if (observer) observer.disconnect();
+    };
   }, [loading]);
 
   return (
     <div
+      ref={wrapperRef}
       className="minihome mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 pt-3 pb-6 sm:gap-7"
       style={{
         opacity: scrollPending ? 0 : 1,

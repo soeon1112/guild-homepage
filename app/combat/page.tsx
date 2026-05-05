@@ -76,16 +76,30 @@ function CombatPageInner() {
 
   // Deep-link: scroll to a guild member's card when arriving with `?nick=X`
   // (NebulaWhispers links from combat-type activities use this). The card
-  // identifies itself with `data-nick` inside GuildMembersSection. We
-  // start at opacity:0 if a target nick is present so the user never
-  // sees the page paint at scrollTop=0 and then jump — instant scroll
-  // + opacity reveal lands us on the matched card with no visible
-  // motion. Plain combat visits (no ?nick) skip the gate, no flash.
+  // identifies itself with `data-nick` inside GuildMembersSection.
+  //
+  // Mirror members/[id]'s content-settle retry: do an initial instant
+  // scroll, then re-scroll on layout changes (ResizeObserver on the
+  // page wrapper) for ~1.5 s. GrowthAnalysisSection's history
+  // subcollection + framer-motion layout animations can shift the
+  // target's y after the first attempt — without a retry the user
+  // lands at the old y position. Initial delay raised back to 200 ms
+  // so Next.js's post-navigation scroll-to-top (useLayoutEffect-
+  // driven) commits before our scroll, not the other way round.
   const searchParams = useSearchParams();
   const nickParam = searchParams?.get("nick") ?? null;
   const [scrollPending, setScrollPending] = useState<boolean>(!!nickParam);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
   const nickHandledRef = useRef<string | null>(null);
   useEffect(() => {
+    // [DEBUG] one-shot diagnosis for ?nick= scroll regression. Removed
+    // once the regression is confirmed sealed.
+    console.log("[combat-debug] effect", {
+      nickParam,
+      loading,
+      handled: nickHandledRef.current,
+      charactersLen: characters.length,
+    });
     if (!nickParam) {
       setScrollPending(false);
       return;
@@ -94,20 +108,65 @@ function CombatPageInner() {
     if (loading) return;
     nickHandledRef.current = nickParam;
     const start = Date.now();
-    const tryScroll = () => {
+    let lastTargetTop = -1;
+    let revealed = false;
+    let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+    let observer: ResizeObserver | null = null;
+
+    const reveal = () => {
+      if (revealed) return;
+      revealed = true;
+      setScrollPending(false);
+    };
+
+    const doScroll = () => {
       const el = document.querySelector(
         `[data-nick="${CSS.escape(nickParam)}"]`,
       ) as HTMLElement | null;
-      if (el) {
-        el.scrollIntoView({ behavior: "auto", block: "center" });
-        setScrollPending(false);
-        return;
-      }
-      if (Date.now() - start < 1500) setTimeout(tryScroll, 100);
-      else setScrollPending(false);
+      console.log("[combat-debug] doScroll", {
+        elapsed: Date.now() - start,
+        found: !!el,
+        targetTop: el
+          ? Math.round(el.getBoundingClientRect().top + window.scrollY)
+          : null,
+      });
+      if (!el) return false;
+      const rect = el.getBoundingClientRect();
+      const targetTop = Math.round(rect.top + window.scrollY);
+      if (targetTop === lastTargetTop) return true;
+      lastTargetTop = targetTop;
+      el.scrollIntoView({ behavior: "auto", block: "center" });
+      return true;
     };
-    setTimeout(tryScroll, 50);
-  }, [nickParam, loading]);
+
+    const finish = () => {
+      if (observer) observer.disconnect();
+      observer = null;
+      reveal();
+    };
+
+    timeoutHandle = setTimeout(() => {
+      const ok = doScroll();
+      if (ok) reveal();
+      const wrapper = wrapperRef.current;
+      if (wrapper && typeof ResizeObserver !== "undefined") {
+        observer = new ResizeObserver(() => {
+          if (Date.now() - start > 1500) {
+            finish();
+            return;
+          }
+          if (doScroll()) reveal();
+        });
+        observer.observe(wrapper);
+      }
+      setTimeout(finish, 1500);
+    }, 200);
+
+    return () => {
+      if (timeoutHandle) clearTimeout(timeoutHandle);
+      if (observer) observer.disconnect();
+    };
+  }, [nickParam, loading, characters.length]);
 
   const myCharacters = useMemo<MyCharacter[]>(
     () =>
@@ -243,6 +302,7 @@ function CombatPageInner() {
 
   return (
     <div
+      ref={wrapperRef}
       className="relative mx-auto max-w-4xl px-4 pt-3 pb-6 text-text-primary"
       style={{
         opacity: scrollPending ? 0 : 1,

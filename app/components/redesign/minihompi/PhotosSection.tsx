@@ -139,6 +139,13 @@ export function PhotosSection({
   // Auto-open modal from ?photo= URL param. Optionally pass through a
   // ?comment= target id which the viewer's PhotoComments will scroll to
   // after the photo decodes + first firestore snapshot lands.
+  //
+  // Order matters: the page scroll to #minihome-photos must commit
+  // BEFORE setViewer mounts the modal. Otherwise useModalBodyLock's
+  // `lock()` captures `window.scrollY = 0` and the page snaps back to
+  // top on modal close. We scroll first, then defer setViewer to the
+  // next animation frame so the browser has a chance to paint the new
+  // scrollY before lock() reads it.
   useEffect(() => {
     if (autoOpenedRef.current) return;
     if (photos.length === 0) return;
@@ -150,9 +157,16 @@ export function PhotosSection({
     }
     const target = photos.find((p) => p.id === pid);
     if (target) {
-      setViewer(target);
-      setTargetCommentId(params.get("comment"));
       autoOpenedRef.current = true;
+      const sectionEl = document.getElementById("minihome-photos");
+      if (sectionEl) {
+        sectionEl.scrollIntoView({ behavior: "auto", block: "start" });
+      }
+      const cid = params.get("comment");
+      requestAnimationFrame(() => {
+        setViewer(target);
+        setTargetCommentId(cid);
+      });
     }
   }, [photos]);
 
