@@ -256,10 +256,14 @@ export default function MemberMiniHomePage({
     }
     hashHandledRef.current = true;
     const start = Date.now();
+    const SETTLE_WINDOW_MS = 4000; // raised from 1.5s — slow networks
+    // (cold avatar cache, Firestore subscriptions) routinely take 2+ s
+    // to fully settle and we'd rather over-track than land at a stale y.
     let lastTargetTop = -1;
     let revealed = false;
     let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
     let observer: ResizeObserver | null = null;
+    const imgUnsubs: Array<() => void> = [];
 
     const reveal = () => {
       if (revealed) return;
@@ -284,7 +288,30 @@ export default function MemberMiniHomePage({
     const finish = () => {
       if (observer) observer.disconnect();
       observer = null;
+      for (const u of imgUnsubs) u();
+      imgUnsubs.length = 0;
       reveal();
+    };
+
+    // Hook every image inside the wrapper so we re-scroll on each
+    // image decode. ResizeObserver fires on layout-changing decodes
+    // but some browsers batch resizes mid-decode in ways that miss
+    // intermediate states; the per-img listener catches every load.
+    const attachImgListeners = (wrapper: HTMLElement) => {
+      const imgs = wrapper.querySelectorAll<HTMLImageElement>("img");
+      imgs.forEach((img) => {
+        if (img.complete) return; // already loaded — no event coming
+        const onLoad = () => {
+          if (Date.now() - start > SETTLE_WINDOW_MS) return;
+          if (doScroll()) reveal();
+        };
+        img.addEventListener("load", onLoad, { once: true });
+        img.addEventListener("error", onLoad, { once: true }); // still triggers layout
+        imgUnsubs.push(() => {
+          img.removeEventListener("load", onLoad);
+          img.removeEventListener("error", onLoad);
+        });
+      });
     };
 
     // Initial attempt — short delay so the first paint is in. The
@@ -292,27 +319,29 @@ export default function MemberMiniHomePage({
     timeoutHandle = setTimeout(() => {
       const ok = doScroll();
       if (ok) reveal();
-      // ResizeObserver on the page wrapper catches subsequent layout
-      // shifts (avatar load, firestore snapshots) and re-runs the
-      // scroll. We tear down after ~1.5 s.
       const wrapper = wrapperRef.current;
-      if (wrapper && typeof ResizeObserver !== "undefined") {
-        observer = new ResizeObserver(() => {
-          if (Date.now() - start > 1500) {
-            finish();
-            return;
-          }
-          if (doScroll()) reveal();
-        });
-        observer.observe(wrapper);
+      if (wrapper) {
+        if (typeof ResizeObserver !== "undefined") {
+          observer = new ResizeObserver(() => {
+            if (Date.now() - start > SETTLE_WINDOW_MS) {
+              finish();
+              return;
+            }
+            if (doScroll()) reveal();
+          });
+          observer.observe(wrapper);
+        }
+        attachImgListeners(wrapper);
       }
-      // Hard cap — never observe past 1.5 s even if no resize fires.
-      setTimeout(finish, 1500);
+      // Hard cap — tear down regardless after the settle window so
+      // the user can scroll freely thereafter.
+      setTimeout(finish, SETTLE_WINDOW_MS);
     }, 50);
 
     return () => {
       if (timeoutHandle) clearTimeout(timeoutHandle);
       if (observer) observer.disconnect();
+      for (const u of imgUnsubs) u();
     };
   }, [loading]);
 
