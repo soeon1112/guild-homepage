@@ -32,6 +32,7 @@ import {
   ownedKey,
 } from "@/src/lib/fashion";
 import { logActivity } from "@/src/lib/activity";
+import { josa } from "@/src/lib/text";
 import {
   BACK_WORDS,
   FRONT_WORDS,
@@ -332,7 +333,7 @@ export default function ShopPage() {
           await logActivity(
             "title",
             nickname,
-            `${nickname}님이 새 칭호를 장착했습니다: ${combined}`,
+            `${nickname}님이 새 칭호 '${combined}'${josa(combined, "을/를")} 장착했어요`,
           );
           setMessage(`「${w.word}」 구매 완료! 칭호 조합이 완성되었습니다.`);
         } else {

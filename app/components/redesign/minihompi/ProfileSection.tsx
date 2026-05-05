@@ -213,6 +213,7 @@ export function ProfileSection({
       const newMood = editMood;
       const prevBgmUrl = member.bgmUrl ?? "";
       const prevMood = member.mood ?? "";
+      const prevStatus = member.statusMessage ?? "";
       const statusChanged = newStatus !== member.statusMessage;
       const bgmChanged = newBgmUrl !== prevBgmUrl;
       const moodChanged = newMood !== prevMood;
@@ -236,8 +237,8 @@ export function ProfileSection({
             "mbti",
             member.nickname,
             currentMbti
-              ? `${member.nickname}님의 MBTI가 변경되었습니다`
-              : `${member.nickname}님의 MBTI가 추가되었습니다`,
+              ? `${member.nickname}님이 MBTI를 변경했어요`
+              : `${member.nickname}님이 MBTI를 설정했어요`,
             `/members/${id}`,
           );
         }
@@ -267,7 +268,9 @@ export function ProfileSection({
         await logActivity(
           "status",
           member.nickname,
-          `${member.nickname}님이 한마디를 수정했습니다`,
+          prevStatus
+            ? `${member.nickname}님이 한마디를 수정했어요`
+            : `${member.nickname}님이 한마디를 설정했어요`,
           `/members/${id}`,
         );
       }
@@ -275,7 +278,7 @@ export function ProfileSection({
         await logActivity(
           "mood",
           member.nickname,
-          `${member.nickname}님이 오늘 기분을 ${getMoodEmoji(newMood)}으로 설정했습니다`,
+          `${member.nickname}님이 오늘 기분을 ${getMoodEmoji(newMood)}으로 설정했어요`,
           `/members/${id}`,
         );
       }
@@ -284,8 +287,8 @@ export function ProfileSection({
           "bgm",
           member.nickname,
           prevBgmUrl
-            ? `${member.nickname}님이 배경음악을 변경했습니다`
-            : `${member.nickname}님이 배경음악을 설정했습니다`,
+            ? `${member.nickname}님이 배경음악을 변경했어요`
+            : `${member.nickname}님이 배경음악을 설정했어요`,
           `/members/${id}`,
         );
       }
@@ -333,6 +336,7 @@ export function ProfileSection({
     if (!member) return;
     setUploading(true);
     try {
+      const hadPrevImage = !!member.profileImage;
       const storageRef = ref(storage, `members/${id}/profile.jpg`);
       await uploadBytes(storageRef, file);
       const url = await getDownloadURL(storageRef);
@@ -341,7 +345,9 @@ export function ProfileSection({
       await logActivity(
         "profile_image",
         member.nickname,
-        `${member.nickname}님이 프로필 사진을 수정했습니다`,
+        hadPrevImage
+          ? `${member.nickname}님이 프로필 사진을 변경했어요`
+          : `${member.nickname}님이 프로필 사진을 설정했어요`,
         `/members/${id}`,
       );
       handleEvent({ type: "profileImageChange", nickname: member.nickname });

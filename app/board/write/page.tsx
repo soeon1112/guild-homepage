@@ -15,6 +15,7 @@ import { useAuth } from "@/app/components/AuthProvider";
 import { logActivity } from "@/src/lib/activity";
 import { addPoints } from "@/src/lib/points";
 import { handleEvent } from "@/src/lib/badgeCheck";
+import { josa, truncate } from "@/src/lib/text";
 
 type AttachmentType = "image" | "video" | "gif";
 
@@ -96,7 +97,7 @@ export default function BoardWritePage() {
       await logActivity(
         "board",
         nickname,
-        `게시판에 새 글이 등록되었습니다: ${cleanTitle}`,
+        `게시글 '${truncate(cleanTitle, 15)}'${josa(cleanTitle, "이/가")} 올라왔어요`,
         `/board/${newRef.id}`,
         `board/${newRef.id}`,
       );

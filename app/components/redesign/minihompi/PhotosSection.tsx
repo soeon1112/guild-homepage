@@ -43,6 +43,7 @@ import {
 import NicknameLink from "@/app/components/NicknameLink";
 import { formatSmart } from "@/src/lib/formatSmart";
 import { handleEvent } from "@/src/lib/badgeCheck";
+import { josa, truncate } from "@/src/lib/text";
 import { useModalBodyLock } from "@/src/lib/useModalBodyLock";
 import { CollapsibleSection } from "./CollapsibleSection";
 
@@ -467,7 +468,7 @@ function UploadModal({
         await logActivity(
           "photo",
           actor,
-          `${actor}님의 공간이 업데이트되었습니다`,
+          `${actor}님의 사진첩에 사진이 올라왔어요`,
           `/members/${memberId}?photo=${newRef.id}`,
           `members/${memberId}/photos/${newRef.id}`,
         );
@@ -910,10 +911,11 @@ function PhotoComments({
       setContent("");
       setImage(null);
       if (memberNickname) {
+        const trimmed = content.trim();
         await logActivity(
           "minihome_photo_comment",
           loginNick,
-          `${memberNickname}님의 공간에 댓글이 달렸습니다`,
+          `${memberNickname}님의 사진첩 댓글에 '${truncate(trimmed, 25)}'${josa(trimmed, "이/가")} 달렸어요`,
           `/members/${memberId}?photo=${photoId}`,
           `members/${memberId}/photos/${photoId}/comments/${commentRef.id}`,
         );
@@ -1096,10 +1098,11 @@ function PhotoCommentItem({
       setReplyImage(null);
       onCloseReply();
       if (memberNickname) {
+        const trimmed = msg.trim();
         await logActivity(
           "minihome_photo_comment",
           loginNick,
-          `${memberNickname}님의 공간에 댓글이 달렸습니다`,
+          `${memberNickname}님의 사진첩 댓글에 '${truncate(trimmed, 25)}'${josa(trimmed, "이/가")} 달렸어요`,
           `/members/${memberId}?photo=${photoId}`,
           `members/${memberId}/photos/${photoId}/comments/${comment.id}/replies/${replyRef.id}`,
         );

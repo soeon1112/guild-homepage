@@ -16,6 +16,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { deleteActivitiesByTargetPath, logActivity } from "@/src/lib/activity";
+import { formatScheduleDate, josa, truncate } from "@/src/lib/text";
 import { useModalBodyLock } from "@/src/lib/useModalBodyLock";
 
 const ADMIN_PASSWORD = "dawnlight2024";
@@ -414,13 +415,19 @@ function ScheduleEditor({
           description: description.trim(),
           createdAt: serverTimestamp(),
         });
-        await logActivity(
-          "schedule",
-          "관리자",
-          `새로운 일정이 등록되었습니다: ${cleanTitle}`,
-          "/schedule",
-          `schedule/${newRef.id}`,
-        );
+        {
+          const dateLabel = formatScheduleDate(date);
+          const headline = dateLabel
+            ? `${dateLabel} ${truncate(cleanTitle, 15)}`
+            : truncate(cleanTitle, 15);
+          await logActivity(
+            "schedule",
+            "관리자",
+            `일정 '${headline}'${josa(cleanTitle, "이/가")} 올라왔어요`,
+            "/schedule",
+            `schedule/${newRef.id}`,
+          );
+        }
       } else {
         await updateDoc(doc(db, "schedule", mode.item.id), {
           title: title.trim(),

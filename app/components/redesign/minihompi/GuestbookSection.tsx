@@ -27,6 +27,7 @@ import {
 import NicknameLink from "@/app/components/NicknameLink";
 import { formatSmart } from "@/src/lib/formatSmart";
 import { handleEvent } from "@/src/lib/badgeCheck";
+import { josa, truncate } from "@/src/lib/text";
 import { CollapsibleSection } from "./CollapsibleSection";
 
 type GuestbookEntry = {
@@ -102,10 +103,11 @@ export function GuestbookSection({
       setMsg("");
       setImage(null);
       if (memberNickname) {
+        const trimmed = msg.trim();
         await logActivity(
           "guestbook",
           loginNick,
-          `${memberNickname}님의 공간에 방명록이 달렸습니다`,
+          `${memberNickname}님의 방명록에 '${truncate(trimmed, 25)}'${josa(trimmed, "이/가")} 달렸어요`,
           `/members/${id}`,
           `members/${id}/guestbook/${entryRef.id}`,
         );
@@ -333,10 +335,11 @@ function GuestbookItem({
       setReplyImage(null);
       onCloseReply();
       if (memberNickname) {
+        const trimmed = msg.trim();
         await logActivity(
           "guestbook",
           loginNick,
-          `${memberNickname}님의 공간에 댓글이 달렸습니다`,
+          `${memberNickname}님의 방명록 댓글에 '${truncate(trimmed, 25)}'${josa(trimmed, "이/가")} 달렸어요`,
           `/members/${memberId}`,
           `members/${memberId}/guestbook/${entry.id}/replies/${replyRef.id}`,
         );

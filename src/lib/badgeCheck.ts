@@ -84,8 +84,8 @@ export async function awardBadge(nickname: string, badgeId: string): Promise<boo
   const memberId = await findMemberIdByNickname(nickname);
   const link = memberId ? `/members/${memberId}` : "/";
   const message = meta.hidden
-    ? `${nickname}님이 숨겨진 배지를 획득했습니다`
-    : `${nickname}님이 배지를 획득했습니다: ${meta.name}`;
+    ? `${nickname}님이 숨겨진 배지를 획득했어요`
+    : `${nickname}님이 배지를 획득했어요: ${meta.name}`;
   try {
     await logActivity(
       "badge",

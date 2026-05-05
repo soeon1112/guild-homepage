@@ -14,6 +14,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
 import { logActivity } from "@/src/lib/activity";
+import { josa, truncate } from "@/src/lib/text";
 
 type Keyword = {
   id: string;
@@ -87,7 +88,7 @@ export function KeywordsSection({ memberId, targetNickname, loginNick, isOwner }
       await logActivity(
         "keyword",
         targetNickname,
-        `${targetNickname}님에게 키워드가 추가되었습니다`,
+        `${targetNickname}님의 키워드 '${truncate(text, 15)}'${josa(text, "이/가")} 추가되었어요`,
         `/members/${memberId}`,
       );
       setInput("");

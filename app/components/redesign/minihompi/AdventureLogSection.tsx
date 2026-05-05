@@ -96,7 +96,7 @@ export function AdventureLogSection({
         await logActivity(
           "adventure",
           memberNickname,
-          `${memberNickname}님이 새로운 모험 기록을 남겼습니다`,
+          `${memberNickname}님이 새로운 모험 기록을 남겼어요`,
           `/members/${id}`,
           `members/${id}/adventures/${advRef.id}`,
         );

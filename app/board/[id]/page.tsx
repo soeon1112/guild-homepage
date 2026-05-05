@@ -27,6 +27,7 @@ import {
 import NicknameLink from "@/app/components/NicknameLink";
 import { formatSmart } from "@/src/lib/formatSmart";
 import { handleEvent } from "@/src/lib/badgeCheck";
+import { josa, truncate } from "@/src/lib/text";
 
 function extractYouTubeId(url: string): string | null {
   let m = url.match(/youtu\.be\/([A-Za-z0-9_-]{11})/);
@@ -183,13 +184,16 @@ export default function BoardDetailPage({
       });
       setCommentContent("");
       setCommentImage(null);
-      await logActivity(
-        "board_comment",
-        loginNick,
-        "게시판에 새 댓글이 달렸습니다",
-        `/board/${id}`,
-        `board/${id}/comments/${commentRef.id}`,
-      );
+      {
+        const trimmed = commentContent.trim();
+        await logActivity(
+          "board_comment",
+          loginNick,
+          `게시글 댓글에 ${loginNick}님이 '${truncate(trimmed, 25)}'${josa(trimmed, "을/를")} 달았어요`,
+          `/board/${id}`,
+          `board/${id}/comments/${commentRef.id}`,
+        );
+      }
       await addPoints(loginNick, "댓글", 1, "게시판에 댓글 작성");
       handleEvent({
         type: "comment",
@@ -415,13 +419,16 @@ function BoardCommentItem({
       setMsg("");
       setReplyImage(null);
       onCloseReply();
-      await logActivity(
-        "board_comment",
-        loginNick,
-        "게시판에 새 댓글이 달렸습니다",
-        `/board/${boardId}`,
-        `board/${boardId}/comments/${comment.id}/replies/${replyRef.id}`,
-      );
+      {
+        const trimmed = msg.trim();
+        await logActivity(
+          "board_comment",
+          loginNick,
+          `게시글 댓글에 ${loginNick}님이 '${truncate(trimmed, 25)}'${josa(trimmed, "을/를")} 달았어요`,
+          `/board/${boardId}`,
+          `board/${boardId}/comments/${comment.id}/replies/${replyRef.id}`,
+        );
+      }
       await addPoints(loginNick, "대댓글", 1, "게시판에 대댓글 작성");
       handleEvent({
         type: "comment",

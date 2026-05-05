@@ -28,6 +28,7 @@ import {
 import NicknameLink from "@/app/components/NicknameLink";
 import { formatSmart } from "@/src/lib/formatSmart";
 import { handleEvent } from "@/src/lib/badgeCheck";
+import { josa, truncate } from "@/src/lib/text";
 import { useModalBodyLock } from "@/src/lib/useModalBodyLock";
 
 type MediaKind = "image" | "video" | "gif";
@@ -292,8 +293,10 @@ export default function AlbumPage() {
       setUploadOpen(false);
       await logActivity(
         "album",
-        "",
-        "새 앨범 사진이 업로드되었습니다",
+        loginNick ?? "",
+        loginNick
+          ? `${loginNick}님이 앨범에 사진을 올렸어요`
+          : "앨범에 사진이 올라왔어요",
         `/album?photo=${newRef.id}`,
         `album/${newRef.id}`,
       );
@@ -1134,13 +1137,16 @@ function AlbumCommentsSection({
       });
       setContent("");
       setImage(null);
-      await logActivity(
-        "album_comment",
-        loginNick,
-        "앨범에 새 댓글이 달렸습니다",
-        `/album?photo=${photoId}&comment=${commentRef.id}`,
-        `album/${photoId}/comments/${commentRef.id}`,
-      );
+      {
+        const trimmed = content.trim();
+        await logActivity(
+          "album_comment",
+          loginNick,
+          `앨범 댓글에 ${loginNick}님이 '${truncate(trimmed, 25)}'${josa(trimmed, "을/를")} 달았어요`,
+          `/album?photo=${photoId}&comment=${commentRef.id}`,
+          `album/${photoId}/comments/${commentRef.id}`,
+        );
+      }
       await addPoints(loginNick, "댓글", 1, "앨범에 댓글 작성");
       handleEvent({
         type: "comment",
@@ -1269,13 +1275,16 @@ function AlbumCommentItem({
       setMsg("");
       setReplyImage(null);
       onCloseReply();
-      await logActivity(
-        "album_comment",
-        loginNick,
-        "앨범에 새 댓글이 달렸습니다",
-        `/album?photo=${photoId}&comment=${comment.id}`,
-        `album/${photoId}/comments/${comment.id}/replies/${replyRef.id}`,
-      );
+      {
+        const trimmed = msg.trim();
+        await logActivity(
+          "album_comment",
+          loginNick,
+          `앨범 댓글에 ${loginNick}님이 '${truncate(trimmed, 25)}'${josa(trimmed, "을/를")} 달았어요`,
+          `/album?photo=${photoId}&comment=${comment.id}`,
+          `album/${photoId}/comments/${comment.id}/replies/${replyRef.id}`,
+        );
+      }
       await addPoints(loginNick, "대댓글", 1, "앨범 댓글에 대댓글 작성");
       handleEvent({
         type: "comment",

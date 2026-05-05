@@ -156,7 +156,7 @@ export default function CombatPage() {
             await logActivity(
               "combat",
               owner,
-              `${owner}님이 투력을 업데이트했습니다`,
+              `${owner}님이 투력을 업데이트했어요`,
               "/combat",
             );
           }
@@ -175,7 +175,7 @@ export default function CombatPage() {
           await logActivity(
             "combat",
             owner,
-            `${owner}님이 투력을 업데이트했습니다`,
+            `${owner}님이 투력을 업데이트했어요`,
             "/combat",
           );
         }

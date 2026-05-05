@@ -12,6 +12,7 @@ import {
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "@/src/lib/firebase";
 import { logActivity } from "@/src/lib/activity";
+import { josa, truncate } from "@/src/lib/text";
 
 const ADMIN_PASSWORD = "dawnlight2024";
 
@@ -103,7 +104,7 @@ export default function NoticeWritePage() {
       await logActivity(
         "notice",
         "관리자",
-        `새로운 공지가 등록되었습니다: ${cleanTitle}`,
+        `공지 '${truncate(cleanTitle, 15)}'${josa(cleanTitle, "이/가")} 올라왔어요`,
         `/notice/${newRef.id}`,
         `notice/${newRef.id}`,
       );
