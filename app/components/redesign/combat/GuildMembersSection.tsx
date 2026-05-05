@@ -276,6 +276,7 @@ function GroupBlock({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -4 }}
       transition={{ duration: 0.25 }}
+      data-nick={group.representative}
       className="overflow-hidden rounded-2xl border border-nebula-pink/20 bg-abyss-deep/35 backdrop-blur-xl"
       style={{
         boxShadow:

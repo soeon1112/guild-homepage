@@ -97,7 +97,7 @@ export function AdventureLogSection({
           "adventure",
           memberNickname,
           `${memberNickname}님이 새로운 모험 기록을 남겼어요`,
-          `/members/${id}`,
+          `/members/${id}#minihome-adventure`,
           `members/${id}/adventures/${advRef.id}`,
         );
         handleEvent({
@@ -150,6 +150,7 @@ export function AdventureLogSection({
 
   return (
     <CollapsibleSection
+      id="minihome-adventure"
       title="모험 기록"
       rightSlot={<span>{entries.length}개</span>}
       defaultOpen

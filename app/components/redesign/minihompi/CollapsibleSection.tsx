@@ -5,12 +5,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 
 export function CollapsibleSection({
+  id,
   title,
   rightSlot,
   newBadge = false,
   defaultOpen = true,
   children,
 }: {
+  id?: string;
   title: string;
   rightSlot?: ReactNode;
   newBadge?: boolean;
@@ -21,6 +23,7 @@ export function CollapsibleSection({
 
   return (
     <section
+      id={id}
       className="relative overflow-hidden rounded-2xl"
       style={{
         background: "rgba(26, 15, 61, 0.35)",

@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   addDoc,
   collection,
@@ -72,6 +73,32 @@ export default function CombatPage() {
     });
     return () => unsub();
   }, []);
+
+  // Deep-link: scroll to a guild member's card when arriving with `?nick=X`
+  // (NebulaWhispers links from combat-type activities use this). The card
+  // identifies itself with `data-nick` inside GuildMembersSection. Polls
+  // for ~1.5 s in case the snapshot hasn't populated the row yet.
+  const searchParams = useSearchParams();
+  const nickParam = searchParams?.get("nick") ?? null;
+  const nickHandledRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!nickParam) return;
+    if (nickHandledRef.current === nickParam) return;
+    if (loading) return;
+    nickHandledRef.current = nickParam;
+    const start = Date.now();
+    const tryScroll = () => {
+      const el = document.querySelector(
+        `[data-nick="${CSS.escape(nickParam)}"]`,
+      ) as HTMLElement | null;
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        return;
+      }
+      if (Date.now() - start < 1500) setTimeout(tryScroll, 100);
+    };
+    setTimeout(tryScroll, 200);
+  }, [nickParam, loading]);
 
   const myCharacters = useMemo<MyCharacter[]>(
     () =>
@@ -157,7 +184,7 @@ export default function CombatPage() {
               "combat",
               owner,
               `${owner}님이 투력을 업데이트했어요`,
-              "/combat",
+              `/combat?nick=${encodeURIComponent(owner)}`,
             );
           }
         } else {
@@ -176,7 +203,7 @@ export default function CombatPage() {
             "combat",
             owner,
             `${owner}님이 투력을 업데이트했어요`,
-            "/combat",
+            `/combat?nick=${encodeURIComponent(owner)}`,
           );
         }
         setFormOpen(false);

@@ -108,7 +108,7 @@ export function GuestbookSection({
           "guestbook",
           loginNick,
           `${memberNickname}님의 방명록에 '${truncate(trimmed, 25)}'${josa(trimmed, "이/가")} 달렸어요`,
-          `/members/${id}`,
+          `/members/${id}#minihome-guestbook`,
           `members/${id}/guestbook/${entryRef.id}`,
         );
       }
@@ -148,6 +148,7 @@ export function GuestbookSection({
 
   return (
     <CollapsibleSection
+      id="minihome-guestbook"
       title="방명록"
       rightSlot={<span>{entries.length}개</span>}
       defaultOpen
@@ -340,7 +341,7 @@ function GuestbookItem({
           "guestbook",
           loginNick,
           `${memberNickname}님의 방명록 댓글에 '${truncate(trimmed, 25)}'${josa(trimmed, "이/가")} 달렸어요`,
-          `/members/${memberId}`,
+          `/members/${memberId}#minihome-guestbook`,
           `members/${memberId}/guestbook/${entry.id}/replies/${replyRef.id}`,
         );
       }

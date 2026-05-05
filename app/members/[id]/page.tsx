@@ -218,6 +218,33 @@ export default function MemberMiniHomePage({
     });
   }, [loginNick, member?.nickname]);
 
+  // Deep-link to a section anchor (#minihome-adventure / #minihome-guestbook
+  // etc) from NebulaWhispers. Page sections are rendered eagerly so a
+  // single short delay is enough; we still poll for ~1.5 s in case the
+  // hashed element mounts late (CollapsibleSection animation, slow data).
+  // Runs once per mount (`done` ref guards re-fires from React StrictMode).
+  const hashHandledRef = useRef(false);
+  useEffect(() => {
+    if (hashHandledRef.current) return;
+    if (loading) return;
+    if (typeof window === "undefined") return;
+    const hash = window.location.hash.slice(1);
+    if (!hash) return;
+    hashHandledRef.current = true;
+    const start = Date.now();
+    const tryScroll = () => {
+      const el = document.getElementById(hash);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+      if (Date.now() - start < 1500) {
+        setTimeout(tryScroll, 100);
+      }
+    };
+    setTimeout(tryScroll, 200);
+  }, [loading]);
+
   return (
     <div className="minihome mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 pt-3 pb-6 sm:gap-7">
       {loading ? (
