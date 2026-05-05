@@ -726,32 +726,28 @@ function PhotoViewerModal({
         exit={{ scale: 0.95, y: 20, opacity: 0 }}
         transition={{ duration: 0.25, ease: "easeOut" }}
         onClick={(e) => e.stopPropagation()}
-        // No max-h or overflow on the card — the parent .modal-safe-frame
-        // owns scrolling. Photo + caption + comments scroll together as
-        // one block, no inner scroll regions.
-        className="relative my-4 flex w-full max-w-lg flex-col rounded-2xl"
-        style={{
-          background: "rgba(26, 15, 61, 0.95)",
-          border: "1px solid rgba(216,150,200,0.3)",
-          boxShadow: "0 20px 60px rgba(0,0,0,0.6), 0 0 40px rgba(107,75,168,0.4)",
-        }}
+        // Match RN viewerContent: unframed container that lets the photo,
+        // caption, and comments stack as separate boxes. No background /
+        // border / shadow on the card itself — the photo gets its own
+        // rounded box, the close button sits on its own row above it.
+        className="my-4 flex w-full max-w-lg flex-col gap-3"
       >
         <button
           type="button"
           onClick={onClose}
           disabled={saving || deleting}
           aria-label="닫기"
-          className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full text-stardust transition-colors hover:bg-nebula-pink/20 disabled:opacity-50"
+          className="flex h-10 w-10 items-center justify-center self-end rounded-full text-stardust transition-colors hover:bg-nebula-pink/20 disabled:opacity-50"
           style={{
             background: "rgba(11,8,33,0.6)",
             border: "1px solid rgba(216,150,200,0.3)",
           }}
         >
-          <X className="h-4 w-4" />
+          <X className="h-5 w-5" />
         </button>
 
-        {/* Photo / video */}
-        <div className="relative w-full flex-shrink-0 bg-abyss-deep">
+        {/* Photo / video — separate rounded box (matches RN viewerMedia). */}
+        <div className="w-full flex-shrink-0 overflow-hidden rounded-xl bg-abyss-deep/45">
           {kind === "video" ? (
             <video
               src={photo.imageUrl}
