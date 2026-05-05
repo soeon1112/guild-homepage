@@ -245,6 +245,11 @@ export default function MemberMiniHomePage({
   const [scrollPending, setScrollPending] = useState<boolean>(hasDeepLink);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const hashHandledRef = useRef(false);
+  // [DEBUG] On-screen diagnosis for the adventure-only regression.
+  // Each retry timestamp pushes a snapshot to this state; rendered
+  // as a fixed top-right overlay only when the deep-link target is
+  // `minihome-adventure`. Removed once the regression is fixed.
+  const [debugSnaps, setDebugSnaps] = useState<string[]>([]);
   useEffect(() => {
     if (hashHandledRef.current) return;
     if (loading) return;
@@ -255,16 +260,39 @@ export default function MemberMiniHomePage({
       return;
     }
     hashHandledRef.current = true;
+    // [DEBUG] 언쏘 한정: 화면 디버그 박스 활성화. 다른 사용자 영향 X.
+    const debugOn =
+      targetId === "minihome-adventure" && loginNick === "언쏘";
+    if (debugOn) setScrollPending(false); // keep page visible during diag
 
-    // Direct window.scrollTo with smooth behavior. Instant scroll
-    // landed at the wrong y when content (avatar, Firestore, fonts)
-    // settled after the scroll committed — the user saw the avatar
-    // area instead of the section. Smooth scroll re-targets during
-    // its ~500 ms animation as later retries (with re-measured y)
-    // override the previous destination. Each retry re-reads
-    // getBoundingClientRect so late-arriving layout shifts always
-    // win.
-    const doScroll = () => {
+    const snapshot = (label: string) => {
+      const el = document.getElementById(targetId);
+      const rect = el?.getBoundingClientRect();
+      const parents: string[] = [];
+      let p: HTMLElement | null = el?.parentElement ?? null;
+      for (let i = 0; i < 4 && p; i++) {
+        const tag = p.tagName.toLowerCase();
+        const cls = (p.className || "").toString().slice(0, 40);
+        parents.push(`${tag}.${cls}`);
+        p = p.parentElement;
+      }
+      return [
+        `[${label}] elapsed=${label}`,
+        `el=${el ? `${el.tagName}.${(el.className || "").toString().slice(0, 30)}` : "NULL"}`,
+        rect
+          ? `rect.top=${Math.round(rect.top)} rect.h=${Math.round(rect.height)}`
+          : "rect=NULL",
+        `scrollY=${Math.round(window.scrollY)} innerH=${window.innerHeight}`,
+        `docH=${document.documentElement.scrollHeight}`,
+        ...parents.map((s, i) => `parent[${i}]=${s}`),
+      ].join(" | ");
+    };
+
+    const doScroll = (label: string) => {
+      if (debugOn) {
+        const snap = snapshot(label);
+        setDebugSnaps((prev) => [...prev, snap]);
+      }
       const el = document.getElementById(targetId);
       if (!el) return;
       const rect = el.getBoundingClientRect();
@@ -274,20 +302,54 @@ export default function MemberMiniHomePage({
 
     const handles: ReturnType<typeof setTimeout>[] = [];
     for (const ms of [100, 500, 1500, 3000]) {
-      handles.push(setTimeout(() => doScroll(), ms));
+      handles.push(setTimeout(() => doScroll(String(ms)), ms));
     }
-    // Hold the page hidden until the smooth scroll finishes (~500 ms
-    // animation + 200 ms buffer). The user sees one frame of dark
-    // screen then "lands already-scrolled" — same UX as the other
-    // working deep-link surfaces.
-    handles.push(setTimeout(() => setScrollPending(false), 700));
+    if (!debugOn) {
+      handles.push(setTimeout(() => setScrollPending(false), 700));
+    }
 
     return () => {
       for (const h of handles) clearTimeout(h);
     };
-  }, [loading]);
+  }, [loading, loginNick]);
+
+  const showDebug =
+    initialDeepLinkRef.current === "minihome-adventure" &&
+    loginNick === "언쏘" &&
+    debugSnaps.length > 0;
 
   return (
+    <>
+      {showDebug && (
+        <div
+          style={{
+            position: "fixed",
+            top: 60,
+            right: 10,
+            zIndex: 99999,
+            maxWidth: 360,
+            maxHeight: "70vh",
+            overflow: "auto",
+            padding: "8px 10px",
+            background: "rgba(0,0,0,0.85)",
+            color: "#FFE5C4",
+            fontFamily: "ui-monospace, Menlo, monospace",
+            fontSize: 10,
+            lineHeight: 1.3,
+            border: "1px solid rgba(255,229,196,0.4)",
+            borderRadius: 6,
+            pointerEvents: "none",
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-all",
+          }}
+        >
+          {debugSnaps.map((s, i) => (
+            <div key={i} style={{ marginBottom: 6 }}>
+              {s}
+            </div>
+          ))}
+        </div>
+      )}
     <div
       ref={wrapperRef}
       className="minihome mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 pt-3 pb-6 sm:gap-7"
@@ -329,6 +391,7 @@ export default function MemberMiniHomePage({
         />
       </div>
     </div>
+    </>
   );
 }
 
