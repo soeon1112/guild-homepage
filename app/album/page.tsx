@@ -737,6 +737,30 @@ function AlbumPhotoViewer({
     return () => addDebug(`[viewer unmount] photoId=${photo.id}`);
   }, [isDebug, addDebug, photo.id]);
 
+  // Card height tracker — content (image, firestore comments, fonts)
+  // arrives over time and the card grows. When it crosses the viewport
+  // threshold the deep-link scroll effect (below in AlbumCommentsSection)
+  // needs to retry. We feed `cardHeight` into that effect's deps via
+  // props so a ResizeObserver tick re-triggers tryScroll.
+  const [cardHeight, setCardHeight] = useState(0);
+  const [imgLoaded, setImgLoaded] = useState(false);
+  useEffect(() => {
+    const card = cardRef.current;
+    if (!card || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver((entries) => {
+      for (const e of entries) {
+        const h = Math.round(e.contentRect.height);
+        setCardHeight((prev) => {
+          if (prev === h) return prev;
+          if (isDebug) addDebug(`[card resize] oH=${prev}→${h}`);
+          return h;
+        });
+      }
+    });
+    ro.observe(card);
+    return () => ro.disconnect();
+  }, [isDebug, addDebug]);
+
   const markScrollResolved = useCallback(() => {
     if (isDebug) {
       const m = modalRef.current;
@@ -998,17 +1022,19 @@ function AlbumPhotoViewer({
             controls
             autoPlay
             playsInline
-            onLoadedData={() =>
-              addDebug(`video loadedData sT=${modalRef.current?.scrollTop}`)
-            }
+            onLoadedData={() => {
+              addDebug(`video loadedData sT=${modalRef.current?.scrollTop}`);
+              setImgLoaded(true);
+            }}
           />
         ) : (
           <img
             src={photo.imageUrl}
             alt={photo.caption || "photo"}
-            onLoad={() =>
-              addDebug(`img onLoad sT=${modalRef.current?.scrollTop}`)
-            }
+            onLoad={() => {
+              addDebug(`img onLoad sT=${modalRef.current?.scrollTop}`);
+              setImgLoaded(true);
+            }}
           />
         )}
         {editMode ? (
@@ -1135,6 +1161,8 @@ function AlbumPhotoViewer({
           modalRef={modalRef}
           markScrollResolved={markScrollResolved}
           addDebug={addDebug}
+          cardHeight={cardHeight}
+          imgLoaded={imgLoaded}
         />
       </div>
     </div>,
@@ -1149,6 +1177,8 @@ function AlbumCommentsSection({
   modalRef,
   markScrollResolved,
   addDebug,
+  cardHeight,
+  imgLoaded,
 }: {
   photoId: string;
   loginNick: string | null;
@@ -1156,6 +1186,12 @@ function AlbumCommentsSection({
   modalRef?: React.RefObject<HTMLDivElement | null>;
   markScrollResolved?: () => void;
   addDebug?: (msg: string) => void;
+  // Drives effect re-runs as the card grows (firestore comments arrive,
+  // photo finishes decoding, fonts swap). Without these, a t+100 ms
+  // tryScroll falls into the fits branch — modal.scrollHeight ≤
+  // clientHeight because the photo hasn't loaded — and never retries.
+  cardHeight?: number;
+  imgLoaded?: boolean;
 }) {
   const [comments, setComments] = useState<AlbumComment[]>([]);
   const [content, setContent] = useState("");
@@ -1195,7 +1231,7 @@ function AlbumCommentsSection({
   useEffect(() => {
     if (!targetCommentId) return;
     addDebug?.(
-      `effect entry: target=${targetCommentId} comments=${comments.length} lastHandled=${lastHandledRef.current}`,
+      `effect entry: target=${targetCommentId} comments=${comments.length} cardH=${cardHeight ?? "?"} imgLoaded=${imgLoaded ?? "?"} lastHandled=${lastHandledRef.current}`,
     );
     if (lastHandledRef.current === targetCommentId) {
       addDebug?.("  skip: already handled");
@@ -1222,7 +1258,7 @@ function AlbumCommentsSection({
       );
       if (!target || !modal) {
         if (attempt >= 5) {
-          addDebug?.("  give up after 5 retries");
+          addDebug?.("  give up after 5 retries (no ref)");
           lastHandledRef.current = targetCommentId;
           markScrollResolved?.();
           return;
@@ -1230,16 +1266,22 @@ function AlbumCommentsSection({
         retryHandle = setTimeout(() => tryScroll(attempt + 1), 50);
         return;
       }
-      lastHandledRef.current = targetCommentId;
-      // No scrollable space → nothing to scroll, no whitespace risk.
-      // Covers the desktop / large-screen fits-everything case.
+      // Fits-everything branch: photo + comments shorter than viewport.
+      // We only flip `scrollPending` (so the card becomes visible) but
+      // do NOT mark this target as handled — content may still be
+      // arriving (image decode, late firestore snapshot, font swap).
+      // The effect re-runs when `comments`, `cardHeight`, or `imgLoaded`
+      // change (deps below) and tries again. Once content overflows the
+      // viewport, the real-scroll branch below claims `lastHandledRef`.
       if (modal.scrollHeight <= modal.clientHeight) {
         addDebug?.(
-          `  fits: sH=${modal.scrollHeight} cH=${modal.clientHeight} — no scroll`,
+          `  fits: sH=${modal.scrollHeight} cH=${modal.clientHeight} — defer (will retry)`,
         );
         markScrollResolved?.();
         return;
       }
+      // Real scroll — claim handled now so subsequent re-runs short-circuit.
+      lastHandledRef.current = targetCommentId;
       const modalRect = modal.getBoundingClientRect();
       const targetRect = target.getBoundingClientRect();
       const offsetWithinModal =
@@ -1262,7 +1304,15 @@ function AlbumCommentsSection({
       if (retryHandle) clearTimeout(retryHandle);
       clearTimeout(t);
     };
-  }, [targetCommentId, comments, modalRef, markScrollResolved, addDebug]);
+  }, [
+    targetCommentId,
+    comments,
+    modalRef,
+    markScrollResolved,
+    addDebug,
+    cardHeight,
+    imgLoaded,
+  ]);
 
   const reportReplyCount = useCallback((commentId: string, count: number) => {
     setReplyCounts((prev) =>
