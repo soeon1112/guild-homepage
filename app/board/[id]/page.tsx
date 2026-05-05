@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState, use } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useCallback, useEffect, useRef, useState, use } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   doc,
@@ -65,13 +65,21 @@ interface Comment {
   createdAt: Date;
 }
 
-export default function BoardDetailPage({
+function BoardDetailPageInner({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
   const router = useRouter();
+  // Deep-link comment scroll: /board/X?comment=Y from NebulaWhispers
+  // navigates here. Page starts at opacity:0 if a comment target is
+  // present so the scroll commits invisibly, then we reveal — same
+  // pattern as members/[id] hash deep-link.
+  const searchParams = useSearchParams();
+  const commentParam = searchParams?.get("comment") ?? null;
+  const [scrollPending, setScrollPending] = useState<boolean>(!!commentParam);
+  const commentHandledRef = useRef<string | null>(null);
   const { nickname: loginNick } = useAuth();
   const [post, setPost] = useState<PostData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -134,6 +142,37 @@ export default function BoardDetailPage({
     return unsub;
   }, [id]);
 
+  // Deep-link scroll-to-comment. Multi-retry covers the snapshot
+  // delay; brute-force scroll methods cover Mobile Safari quirks.
+  useEffect(() => {
+    if (!commentParam) return;
+    if (commentHandledRef.current === commentParam) return;
+    if (loading) return;
+    commentHandledRef.current = commentParam;
+
+    const doScroll = () => {
+      const el = document.querySelector(
+        `[data-comment-id="${CSS.escape(commentParam)}"]`,
+      ) as HTMLElement | null;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const targetY = Math.max(0, Math.round(rect.top + window.scrollY - 80));
+      window.scrollTo(0, targetY);
+      document.documentElement.scrollTop = targetY;
+      document.body.scrollTop = targetY;
+    };
+
+    const handles: ReturnType<typeof setTimeout>[] = [];
+    for (const ms of [100, 500, 1500, 3000]) {
+      handles.push(setTimeout(() => doScroll(), ms));
+    }
+    handles.push(setTimeout(() => setScrollPending(false), 700));
+
+    return () => {
+      for (const h of handles) clearTimeout(h);
+    };
+  }, [commentParam, loading, comments]);
+
   const formatDate = (d: Date) => formatSmart(d);
 
   const isAuthor = !!loginNick && !!post && post.nickname === loginNick;
@@ -190,7 +229,7 @@ export default function BoardDetailPage({
           "board_comment",
           loginNick,
           `게시글 댓글에 ${loginNick}님이 '${truncate(trimmed, 25)}'${josa(trimmed, "을/를")} 달았어요`,
-          `/board/${id}`,
+          `/board/${id}?comment=${commentRef.id}`,
           `board/${id}/comments/${commentRef.id}`,
         );
       }
@@ -227,7 +266,13 @@ export default function BoardDetailPage({
   }
 
   return (
-    <div className="board-content">
+    <div
+      className="board-content"
+      style={{
+        opacity: scrollPending ? 0 : 1,
+        transition: "opacity 150ms ease-out",
+      }}
+    >
       <Link href="/board" className="back-link">
         ← 목록으로
       </Link>
@@ -354,6 +399,19 @@ export default function BoardDetailPage({
   );
 }
 
+// Next.js App Router requires `useSearchParams` callers under a
+// Suspense boundary; without one the route fails to prerender at
+// build time. Wrap the inner component to keep the build green.
+export default function BoardDetailPage(props: {
+  params: Promise<{ id: string }>;
+}) {
+  return (
+    <Suspense fallback={null}>
+      <BoardDetailPageInner {...props} />
+    </Suspense>
+  );
+}
+
 function BoardCommentItem({
   boardId,
   comment,
@@ -425,7 +483,7 @@ function BoardCommentItem({
           "board_comment",
           loginNick,
           `게시글 댓글에 ${loginNick}님이 '${truncate(trimmed, 25)}'${josa(trimmed, "을/를")} 달았어요`,
-          `/board/${boardId}`,
+          `/board/${boardId}?comment=${comment.id}`,
           `board/${boardId}/comments/${comment.id}/replies/${replyRef.id}`,
         );
       }
@@ -469,7 +527,7 @@ function BoardCommentItem({
   };
 
   return (
-    <div className="board-comment-item">
+    <div className="board-comment-item" data-comment-id={comment.id}>
       <div className="board-comment-header">
         <NicknameLink nickname={comment.nickname} className="board-comment-nick" />
         <div
