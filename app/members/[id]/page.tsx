@@ -247,108 +247,41 @@ export default function MemberMiniHomePage({
   const [scrollPending, setScrollPending] = useState<boolean>(hasDeepLink);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const hashHandledRef = useRef(false);
-  // [DEBUG] URL 변동 추적 — mount + 100/500/1500/3000ms 시점에 URL
-  // dump. 다른 코드가 URL 을 변경하는지 / hash 가 어떻게 바뀌는지
-  // 사실 확인용. 캡처 받는 즉시 다음 commit 으로 제거.
-  const [debugSnaps, setDebugSnaps] = useState<string[]>([]);
   useEffect(() => {
+    if (hashHandledRef.current) return;
+    if (loading) return;
     if (typeof window === "undefined") return;
-    const snap = (label: string) =>
-      [
-        `[${label}]`,
-        `href=${window.location.href.slice(-90)}`,
-        `hash=${window.location.hash || "-"}`,
-        `search=${window.location.search || "-"}`,
-        `histState=${window.history.state ? "Y" : "N"}`,
-        `scrollY=${Math.round(window.scrollY)}`,
-        `scrollH=${document.documentElement.scrollHeight}`,
-        `innerH=${window.innerHeight}`,
-      ].join(" | ");
-    setDebugSnaps((prev) => [...prev, snap("mount")]);
-    const handles = [100, 500, 1500, 3000].map((ms) =>
-      setTimeout(
-        () => setDebugSnaps((prev) => [...prev, snap(String(ms))]),
-        ms,
-      ),
-    );
-    return () => {
-      for (const h of handles) clearTimeout(h);
-    };
-  }, []);
-  useEffect(() => {
-    // Always re-read URL inside the effect — initial state captured
-    // at first render may have been empty if mount fired before
-    // hash/search was applied. ?photo= path falls back to
+    // Re-read URL inside the effect — initialDeepLink captured at
+    // first render is the fallback. ?photo= path falls back to
     // "minihome-photos" so the page scrolls to the photos section
     // before PhotosSection's auto-open mounts the modal.
-    const liveHash =
-      typeof window !== "undefined"
-        ? window.location.hash.slice(1).split("#")[0] || ""
-        : "";
-    const hasPhotoParam =
-      typeof window !== "undefined" &&
-      window.location.search.includes("photo=");
+    const liveHash = window.location.hash.slice(1).split("#")[0] || "";
+    const hasPhotoParam = window.location.search.includes("photo=");
     const targetId =
       liveHash ||
       initialDeepLink ||
       (hasPhotoParam ? "minihome-photos" : "");
-    setDebugSnaps((prev) => [
-      ...prev,
-      `[eff] entry loading=${loading} handled=${hashHandledRef.current} initial="${initialDeepLink}" live="${liveHash}" photo=${hasPhotoParam} target="${targetId}"`,
-    ]);
-    if (hashHandledRef.current) {
-      setDebugSnaps((prev) => [...prev, `[eff] bail: already handled`]);
-      return;
-    }
-    if (loading) {
-      setDebugSnaps((prev) => [...prev, `[eff] bail: loading`]);
-      return;
-    }
-    if (typeof window === "undefined") return;
     if (!targetId) {
-      setDebugSnaps((prev) => [...prev, `[eff] bail: no deeplink target`]);
       setScrollPending(false);
       return;
     }
     hashHandledRef.current = true;
-    setDebugSnaps((prev) => [
-      ...prev,
-      `[eff] start polling target="${targetId}"`,
-    ]);
 
-    const doScroll = (label: string) => {
+    const doScroll = () => {
       const el = document.getElementById(targetId);
-      const rect = el?.getBoundingClientRect();
-      const before = Math.round(window.scrollY);
-      const targetY = rect
-        ? Math.max(0, Math.round(rect.top + window.scrollY))
-        : -1;
-      if (el && rect) {
-        window.scrollTo(0, targetY);
-        document.documentElement.scrollTop = targetY;
-        document.body.scrollTop = targetY;
-      }
-      const after = Math.round(window.scrollY);
-      // [DEBUG] 매 호출 시점 결과 박스에 push — doScroll 자체 발화 여부
-      // 와 scrollTo 효과 사실 확인용. 캡처 받는 즉시 다음 commit 으로
-      // 디버그 + scrollY 출력 제거.
-      setDebugSnaps((prev) => [
-        ...prev,
-        [
-          `[ds-${label}]`,
-          `target=${targetId}`,
-          `el=${el ? "Y" : "N"}`,
-          `rect.top=${rect ? Math.round(rect.top) : "-"}`,
-          `before=${before}`,
-          `targetY=${targetY}`,
-          `after=${after}`,
-        ].join(" | "),
-      ]);
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const targetY = Math.max(0, Math.round(rect.top + window.scrollY));
+      // Multiple methods for cross-browser/Mobile-Safari reliability —
+      // smooth scrollTo silent-fails in some hash-navigation contexts.
+      window.scrollTo(0, targetY);
+      document.documentElement.scrollTop = targetY;
+      document.body.scrollTop = targetY;
     };
 
     const handles: ReturnType<typeof setTimeout>[] = [];
     for (const ms of [100, 500, 1500, 3000]) {
-      handles.push(setTimeout(() => doScroll(String(ms)), ms));
+      handles.push(setTimeout(() => doScroll(), ms));
     }
     handles.push(setTimeout(() => setScrollPending(false), 700));
 
@@ -358,35 +291,6 @@ export default function MemberMiniHomePage({
   }, [loading]);
 
   return (
-    <>
-    <div
-      style={{
-        position: "fixed",
-        top: 60,
-        right: 5,
-        zIndex: 99999,
-        maxWidth: 220,
-        maxHeight: "70vh",
-        overflow: "auto",
-        padding: "6px 8px",
-        background: "rgba(0,0,0,0.85)",
-        color: "#FFE5C4",
-        fontFamily: "ui-monospace, Menlo, monospace",
-        fontSize: 8,
-        lineHeight: 1.3,
-        border: "1px solid rgba(255,229,196,0.4)",
-        borderRadius: 6,
-        pointerEvents: "none",
-        whiteSpace: "pre-wrap",
-        wordBreak: "break-all",
-      }}
-    >
-      {debugSnaps.map((s, i) => (
-        <div key={i} style={{ marginBottom: 4 }}>
-          {s}
-        </div>
-      ))}
-    </div>
     <div
       ref={wrapperRef}
       className="minihome mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 pt-3 pb-6 sm:gap-7"
@@ -436,7 +340,6 @@ export default function MemberMiniHomePage({
         />
       </div>
     </div>
-    </>
   );
 }
 
