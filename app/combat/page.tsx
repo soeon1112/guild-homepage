@@ -92,14 +92,6 @@ function CombatPageInner() {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const nickHandledRef = useRef<string | null>(null);
   useEffect(() => {
-    // [DEBUG] one-shot diagnosis for ?nick= scroll regression. Removed
-    // once the regression is confirmed sealed.
-    console.log("[combat-debug] effect", {
-      nickParam,
-      loading,
-      handled: nickHandledRef.current,
-      charactersLen: characters.length,
-    });
     if (!nickParam) {
       setScrollPending(false);
       return;
@@ -107,64 +99,33 @@ function CombatPageInner() {
     if (nickHandledRef.current === nickParam) return;
     if (loading) return;
     nickHandledRef.current = nickParam;
-    const start = Date.now();
-    let lastTargetTop = -1;
-    let revealed = false;
-    let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
-    let observer: ResizeObserver | null = null;
-
-    const reveal = () => {
-      if (revealed) return;
-      revealed = true;
-      setScrollPending(false);
-    };
 
     const doScroll = () => {
       const el = document.querySelector(
         `[data-nick="${CSS.escape(nickParam)}"]`,
       ) as HTMLElement | null;
-      console.log("[combat-debug] doScroll", {
-        elapsed: Date.now() - start,
-        found: !!el,
-        targetTop: el
-          ? Math.round(el.getBoundingClientRect().top + window.scrollY)
-          : null,
-      });
-      if (!el) return false;
+      if (!el) return;
       const rect = el.getBoundingClientRect();
-      const targetTop = Math.round(rect.top + window.scrollY);
-      if (targetTop === lastTargetTop) return true;
-      lastTargetTop = targetTop;
-      el.scrollIntoView({ behavior: "auto", block: "center" });
-      return true;
+      // Center the matched card in the viewport.
+      const targetY = Math.max(
+        0,
+        Math.round(
+          rect.top + window.scrollY - window.innerHeight / 2 + rect.height / 2,
+        ),
+      );
+      window.scrollTo({ top: targetY, behavior: "auto" });
     };
 
-    const finish = () => {
-      if (observer) observer.disconnect();
-      observer = null;
-      reveal();
-    };
-
-    timeoutHandle = setTimeout(() => {
-      const ok = doScroll();
-      if (ok) reveal();
-      const wrapper = wrapperRef.current;
-      if (wrapper && typeof ResizeObserver !== "undefined") {
-        observer = new ResizeObserver(() => {
-          if (Date.now() - start > 1500) {
-            finish();
-            return;
-          }
-          if (doScroll()) reveal();
-        });
-        observer.observe(wrapper);
-      }
-      setTimeout(finish, 1500);
-    }, 200);
+    const handles: ReturnType<typeof setTimeout>[] = [];
+    for (const ms of [100, 500, 1500, 3000]) {
+      handles.push(setTimeout(() => doScroll(), ms));
+    }
+    // Reveal after first attempt regardless of success — opacity:0
+    // stays just long enough for the initial scroll to commit.
+    handles.push(setTimeout(() => setScrollPending(false), 100));
 
     return () => {
-      if (timeoutHandle) clearTimeout(timeoutHandle);
-      if (observer) observer.disconnect();
+      for (const h of handles) clearTimeout(h);
     };
   }, [nickParam, loading, characters.length]);
 

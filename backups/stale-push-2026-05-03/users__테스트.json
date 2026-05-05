@@ -1,0 +1,55 @@
+{
+  "nickname": "테스트",
+  "password": "1234",
+  "createdAt": {
+    "_seconds": 1777013410,
+    "_nanoseconds": 678000000
+  },
+  "badgesRetroactiveDone": true,
+  "taggedPhotoCount": 0,
+  "nightActivityLastDate": "2026-04-25",
+  "nightActivityDays": 1,
+  "dailyActivities.2026-04-25": [
+    "guestbook"
+  ],
+  "visitedMinihomepages": [
+    "언쏘",
+    "Annakiria",
+    "뭉신냥아치",
+    "버음바",
+    "육월야",
+    "남손검",
+    "자카니",
+    "나슈타"
+  ],
+  "photographerCount": 1,
+  "totalGuestbooks": 7,
+  "guestbookTargets": [
+    "언쏘",
+    "뭉신냥아치",
+    "Annakiria"
+  ],
+  "pushToken": "ExponentPushToken[ZyF2BLBK8oqX0WpkgC-E0H]",
+  "pushTokenUpdatedAt": {
+    "_seconds": 1777460509,
+    "_nanoseconds": 215000000
+  },
+  "points": 51,
+  "totalComments": 1,
+  "consecutiveCommentDays": 1,
+  "lastCommentDate": "2026-04-29",
+  "dailyActivities.2026-04-29": [
+    "comment"
+  ],
+  "recentChatTimesMs": [
+    1777586055065,
+    1777586066118,
+    1777586077805,
+    1777586079877,
+    1777586095636
+  ],
+  "lastChatRead": {
+    "_seconds": 1777586217,
+    "_nanoseconds": 277000000
+  }
+}

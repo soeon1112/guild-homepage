@@ -1,0 +1,13 @@
+{
+  "activity/9z0oyif9BvI9QvuykHBa": {
+    "type": "combat",
+    "nickname": "버음바",
+    "message": "버음바님이 투력을 업데이트했습니다",
+    "link": "/combat",
+    "targetPath": "",
+    "createdAt": {
+      "_seconds": 1777194087,
+      "_nanoseconds": 553000000
+    }
+  }
+}

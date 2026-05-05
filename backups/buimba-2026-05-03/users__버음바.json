@@ -1,0 +1,68 @@
+{
+  "users/버음바": {
+    "nickname": "버음바",
+    "password": "Berkleebard9516",
+    "createdAt": {
+      "_seconds": 1777037798,
+      "_nanoseconds": 623000000
+    },
+    "photographerCount": 0,
+    "totalGuestbooks": 0,
+    "badgesRetroactiveDone": true,
+    "nightActivityDays": 0,
+    "taggedPhotoCount": 0,
+    "guestbookTargets": [],
+    "consecutiveAttendDays": 1,
+    "dailyActivities.2026-04-24": [
+      "attend"
+    ],
+    "profileChangeCount": 1,
+    "mbti": "INFP",
+    "avatarBody": "adult_male",
+    "bodySelected": true,
+    "visitedMinihomepages": [
+      "육월야"
+    ],
+    "lastAttendance": {
+      "_seconds": 1777130661,
+      "_nanoseconds": 524000000
+    },
+    "points": 2,
+    "lastAttendDate": "2026-04-26",
+    "dailyActivities.2026-04-26": [
+      "attend"
+    ]
+  },
+  "users/버음바/badges/first_login": {
+    "badgeId": "first_login",
+    "earnedAt": {
+      "_seconds": 1777037798,
+      "_nanoseconds": 713000000
+    }
+  },
+  "users/버음바/badges/first_profile": {
+    "badgeId": "first_profile",
+    "earnedAt": {
+      "_seconds": 1777038160,
+      "_nanoseconds": 20000000
+    }
+  },
+  "users/버음바/pointHistory/WJmS6rUeWbj6yzoB42UM": {
+    "type": "출석",
+    "points": 1,
+    "description": "출석 체크",
+    "createdAt": {
+      "_seconds": 1777130661,
+      "_nanoseconds": 562000000
+    }
+  },
+  "users/버음바/pointHistory/roAoVsnQuNfOEzdsg2Be": {
+    "type": "출석",
+    "points": 1,
+    "description": "출석 체크",
+    "createdAt": {
+      "_seconds": 1777038121,
+      "_nanoseconds": 47000000
+    }
+  }
+}

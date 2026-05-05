@@ -1,0 +1,27 @@
+{
+  "characters/lJgMBWGH9pxyC2cpwpli": {
+    "owner": "버음바",
+    "nickname": "버음바",
+    "job": "빙결",
+    "hellStage": "지옥1",
+    "challenge": "없음",
+    "runeBuilds": [],
+    "createdAt": {
+      "_seconds": 1777037933,
+      "_nanoseconds": 918000000
+    },
+    "combatPower": 52990,
+    "updatedAt": {
+      "_seconds": 1777194102,
+      "_nanoseconds": 776000000
+    }
+  },
+  "characters/lJgMBWGH9pxyC2cpwpli/history/6vx9T4n8aWEL90Wspspe": {
+    "combatPower": 51819,
+    "hellStage": "지옥1",
+    "recordedAt": {
+      "_seconds": 1777194087,
+      "_nanoseconds": 394000000
+    }
+  }
+}

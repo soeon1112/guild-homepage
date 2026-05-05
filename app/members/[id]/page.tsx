@@ -255,93 +255,39 @@ export default function MemberMiniHomePage({
       return;
     }
     hashHandledRef.current = true;
-    const start = Date.now();
-    const SETTLE_WINDOW_MS = 4000; // raised from 1.5s — slow networks
-    // (cold avatar cache, Firestore subscriptions) routinely take 2+ s
-    // to fully settle and we'd rather over-track than land at a stale y.
-    let lastTargetTop = -1;
-    let revealed = false;
-    let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
-    let observer: ResizeObserver | null = null;
-    const imgUnsubs: Array<() => void> = [];
 
-    const reveal = () => {
-      if (revealed) return;
-      revealed = true;
-      setScrollPending(false);
-    };
-
+    // Direct window.scrollTo against an absolute y computed from
+    // getBoundingClientRect — bypasses any ambiguity about which
+    // overflow container `el.scrollIntoView` would walk up to. We
+    // re-measure on every retry so Firestore / image loads that
+    // shifted the target since the last attempt are picked up.
     const doScroll = () => {
       const el = document.getElementById(targetId);
       if (!el) return false;
       const rect = el.getBoundingClientRect();
-      const targetTop = Math.round(rect.top + window.scrollY);
-      // Only re-scroll if the target moved (image decode, snapshot,
-      // font swap…) since last attempt. Avoids fighting the user if
-      // they manually scroll mid-settle.
-      if (targetTop === lastTargetTop) return true;
-      lastTargetTop = targetTop;
-      el.scrollIntoView({ behavior: "auto", block: "start" });
+      const targetY = Math.max(0, Math.round(rect.top + window.scrollY));
+      window.scrollTo({ top: targetY, behavior: "auto" });
       return true;
     };
 
-    const finish = () => {
-      if (observer) observer.disconnect();
-      observer = null;
-      for (const u of imgUnsubs) u();
-      imgUnsubs.length = 0;
-      reveal();
-    };
-
-    // Hook every image inside the wrapper so we re-scroll on each
-    // image decode. ResizeObserver fires on layout-changing decodes
-    // but some browsers batch resizes mid-decode in ways that miss
-    // intermediate states; the per-img listener catches every load.
-    const attachImgListeners = (wrapper: HTMLElement) => {
-      const imgs = wrapper.querySelectorAll<HTMLImageElement>("img");
-      imgs.forEach((img) => {
-        if (img.complete) return; // already loaded — no event coming
-        const onLoad = () => {
-          if (Date.now() - start > SETTLE_WINDOW_MS) return;
-          if (doScroll()) reveal();
-        };
-        img.addEventListener("load", onLoad, { once: true });
-        img.addEventListener("error", onLoad, { once: true }); // still triggers layout
-        imgUnsubs.push(() => {
-          img.removeEventListener("load", onLoad);
-          img.removeEventListener("error", onLoad);
-        });
-      });
-    };
-
-    // Initial attempt — short delay so the first paint is in. The
-    // opacity gate keeps it invisible regardless.
-    timeoutHandle = setTimeout(() => {
-      const ok = doScroll();
-      if (ok) reveal();
-      const wrapper = wrapperRef.current;
-      if (wrapper) {
-        if (typeof ResizeObserver !== "undefined") {
-          observer = new ResizeObserver(() => {
-            if (Date.now() - start > SETTLE_WINDOW_MS) {
-              finish();
-              return;
-            }
-            if (doScroll()) reveal();
-          });
-          observer.observe(wrapper);
-        }
-        attachImgListeners(wrapper);
-      }
-      // Hard cap — tear down regardless after the settle window so
-      // the user can scroll freely thereafter.
-      setTimeout(finish, SETTLE_WINDOW_MS);
-    }, 50);
+    // Multi-retry. Fixed timing rather than ResizeObserver because
+    // some content shifts (avatar SVG inside fixed-aspect canvas,
+    // font swaps) don't change wrapper height and so don't fire the
+    // observer. 4 attempts cover 100ms / 500ms / 1.5s / 3s — picks
+    // up everything from immediate paint to slow Firestore tails.
+    const handles: ReturnType<typeof setTimeout>[] = [];
+    const RETRIES_MS = [100, 500, 1500, 3000];
+    for (const ms of RETRIES_MS) {
+      handles.push(setTimeout(() => doScroll(), ms));
+    }
+    // Reveal as soon as the first attempt lands, regardless of
+    // whether it landed at the eventual final position. Subsequent
+    // retries shift the page underneath opacity:1 — same UX, no
+    // risk of stuck-blank screen if any single retry throws.
+    handles.push(setTimeout(() => setScrollPending(false), 100));
 
     return () => {
-      if (timeoutHandle) clearTimeout(timeoutHandle);
-      if (observer) observer.disconnect();
-      for (const u of imgUnsubs) u();
+      for (const h of handles) clearTimeout(h);
     };
   }, [loading]);
 
