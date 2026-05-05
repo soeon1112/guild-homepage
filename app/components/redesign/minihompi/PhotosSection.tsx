@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle, Upload, X } from "lucide-react";
 import {
@@ -493,7 +494,12 @@ function UploadModal({
     }
   };
 
-  return (
+  // Portal-mount so the modal escapes the parent .minihome z-10
+  // stacking-context trap. AnimatePresence at the call site still
+  // drives exit animations via presence context (Portal preserves
+  // the React tree).
+  if (typeof document === "undefined") return null;
+  return createPortal(
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -623,7 +629,8 @@ function UploadModal({
           </button>
         </div>
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body,
   );
 }
 
@@ -695,7 +702,9 @@ function PhotoViewerModal({
 
   const kind = resolveFileType(photo);
 
-  return (
+  // Portal-mount — see UploadModal above. Same stacking-context trap.
+  if (typeof document === "undefined") return null;
+  return createPortal(
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -843,7 +852,8 @@ function PhotoViewerModal({
           />
         </div>
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body,
   );
 }
 

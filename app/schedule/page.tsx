@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { db } from "@/src/lib/firebase";
 import {
   addDoc,
@@ -223,7 +224,7 @@ export default function SchedulePage() {
         {loading && <p className="schedule-loading">불러오는 중...</p>}
       </div>
 
-      {selectedDate && (
+      {selectedDate && typeof document !== "undefined" && createPortal(
         <div
           className="schedule-modal-backdrop"
           onClick={() => setSelectedDate(null)}
@@ -281,7 +282,8 @@ export default function SchedulePage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
       {pendingAction && (
@@ -324,7 +326,10 @@ function AdminGate({
     onSuccess();
   };
 
-  return (
+  // Portal-mount — see selectedDate modal above. Same .schedule-page
+  // z-10 stacking-context trap.
+  if (typeof document === "undefined") return null;
+  return createPortal(
     <div className="schedule-modal-backdrop" onClick={onCancel}>
       <div
         className="schedule-modal schedule-modal-sm"
@@ -366,7 +371,8 @@ function AdminGate({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -424,7 +430,9 @@ function ScheduleEditor({
     }
   };
 
-  return (
+  // Portal-mount — see selectedDate modal above.
+  if (typeof document === "undefined") return null;
+  return createPortal(
     <div className="schedule-modal-backdrop" onClick={onClose}>
       <div
         className="schedule-modal"
@@ -486,6 +494,7 @@ function ScheduleEditor({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

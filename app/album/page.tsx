@@ -403,7 +403,7 @@ export default function AlbumPage() {
         </div>
       )}
 
-      {uploadOpen && (
+      {uploadOpen && typeof document !== "undefined" && createPortal(
         <div className="minihome-modal" onClick={() => setUploadOpen(false)}>
           <div
             className="minihome-modal-content"
@@ -476,7 +476,8 @@ export default function AlbumPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
       {pickerOpen && (
@@ -572,7 +573,9 @@ function MemberPickerModal({
     });
   };
 
-  return (
+  // Portal-mount — see AlbumPhotoViewer above. Same trap.
+  if (typeof document === "undefined") return null;
+  return createPortal(
     <div className="minihome-modal" onClick={onClose}>
       <div
         className="minihome-modal-content"
@@ -653,7 +656,8 @@ function MemberPickerModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Inbox, Mail, Sparkles, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   addDoc,
   collection,
@@ -434,7 +435,11 @@ function ComposeModal({
     setSending(false);
   };
 
-  return (
+  // Portal-mount so the modal escapes the parent .main-content z-10
+  // stacking-context trap. AnimatePresence at the call site still
+  // drives exit animations via presence context.
+  if (typeof document === "undefined") return null;
+  return createPortal(
     <motion.div
       className="modal-safe-frame fixed inset-0 z-[70] flex items-center justify-center"
       style={MODAL_BACKDROP}
@@ -557,7 +562,8 @@ function ComposeModal({
           </button>
         </form>
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body,
   );
 }
 
@@ -601,7 +607,9 @@ function InboxModal({
     setMarking(false);
   };
 
-  return (
+  // Portal-mount — see ComposeModal above.
+  if (typeof document === "undefined") return null;
+  return createPortal(
     <motion.div
       className="modal-safe-frame fixed inset-0 z-[70] flex items-center justify-center"
       style={INBOX_BACKDROP}
@@ -742,6 +750,7 @@ function InboxModal({
           </div>
         )}
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body,
   );
 }

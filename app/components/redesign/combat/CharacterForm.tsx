@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Trash2, X, Lock, Unlock } from "lucide-react";
 import { JobIcon } from "./JobIcon";
@@ -215,7 +216,11 @@ export function CharacterForm({
 
   const displayError = error ?? localError;
 
-  return (
+  // Portal-mount the AnimatePresence so the modal escapes the parent
+  // .combat-content z-10 stacking-context trap. Empty portal target
+  // when open=false is invisible (no DOM children).
+  if (typeof document === "undefined") return null;
+  return createPortal(
     <AnimatePresence>
       {open && (
         <motion.div
@@ -488,7 +493,8 @@ export function CharacterForm({
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }
 

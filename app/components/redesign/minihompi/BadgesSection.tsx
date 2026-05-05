@@ -315,7 +315,11 @@ function BadgeDetailModal({
   const desc = revealed ? badge.description : "???";
   const emoji = revealed ? badge.emoji : "❓";
 
-  return (
+  // Portal-mount so the modal escapes the parent .minihome z-10
+  // stacking-context trap (TopHeader/BottomNav z-40 would otherwise
+  // bleed through). Same pattern as the album photo viewer.
+  if (typeof document === "undefined") return null;
+  return createPortal(
     <div
       className="modal-safe-frame fixed inset-0 z-[100] flex items-center justify-center"
       onClick={onClose}
@@ -371,12 +375,15 @@ function BadgeDetailModal({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
 function PrivacyModal({ onClose }: { onClose: () => void }) {
-  return (
+  // Portal-mount — see BadgeDetailModal above.
+  if (typeof document === "undefined") return null;
+  return createPortal(
     <div
       className="modal-safe-frame fixed inset-0 z-[100] flex items-center justify-center"
       onClick={onClose}
@@ -433,6 +440,7 @@ function PrivacyModal({ onClose }: { onClose: () => void }) {
           </p>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
