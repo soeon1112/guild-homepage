@@ -256,35 +256,31 @@ export default function MemberMiniHomePage({
     }
     hashHandledRef.current = true;
 
-    // Direct window.scrollTo against an absolute y computed from
-    // getBoundingClientRect — bypasses any ambiguity about which
-    // overflow container `el.scrollIntoView` would walk up to. We
-    // re-measure on every retry so Firestore / image loads that
-    // shifted the target since the last attempt are picked up.
+    // Direct window.scrollTo with smooth behavior. Instant scroll
+    // landed at the wrong y when content (avatar, Firestore, fonts)
+    // settled after the scroll committed — the user saw the avatar
+    // area instead of the section. Smooth scroll re-targets during
+    // its ~500 ms animation as later retries (with re-measured y)
+    // override the previous destination. Each retry re-reads
+    // getBoundingClientRect so late-arriving layout shifts always
+    // win.
     const doScroll = () => {
       const el = document.getElementById(targetId);
-      if (!el) return false;
+      if (!el) return;
       const rect = el.getBoundingClientRect();
       const targetY = Math.max(0, Math.round(rect.top + window.scrollY));
-      window.scrollTo({ top: targetY, behavior: "auto" });
-      return true;
+      window.scrollTo({ top: targetY, behavior: "smooth" });
     };
 
-    // Multi-retry. Fixed timing rather than ResizeObserver because
-    // some content shifts (avatar SVG inside fixed-aspect canvas,
-    // font swaps) don't change wrapper height and so don't fire the
-    // observer. 4 attempts cover 100ms / 500ms / 1.5s / 3s — picks
-    // up everything from immediate paint to slow Firestore tails.
     const handles: ReturnType<typeof setTimeout>[] = [];
-    const RETRIES_MS = [100, 500, 1500, 3000];
-    for (const ms of RETRIES_MS) {
+    for (const ms of [100, 500, 1500, 3000]) {
       handles.push(setTimeout(() => doScroll(), ms));
     }
-    // Reveal as soon as the first attempt lands, regardless of
-    // whether it landed at the eventual final position. Subsequent
-    // retries shift the page underneath opacity:1 — same UX, no
-    // risk of stuck-blank screen if any single retry throws.
-    handles.push(setTimeout(() => setScrollPending(false), 100));
+    // Hold the page hidden until the smooth scroll finishes (~500 ms
+    // animation + 200 ms buffer). The user sees one frame of dark
+    // screen then "lands already-scrolled" — same UX as the other
+    // working deep-link surfaces.
+    handles.push(setTimeout(() => setScrollPending(false), 700));
 
     return () => {
       for (const h of handles) clearTimeout(h);

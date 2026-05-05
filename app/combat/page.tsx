@@ -106,23 +106,23 @@ function CombatPageInner() {
       ) as HTMLElement | null;
       if (!el) return;
       const rect = el.getBoundingClientRect();
-      // Center the matched card in the viewport.
       const targetY = Math.max(
         0,
         Math.round(
           rect.top + window.scrollY - window.innerHeight / 2 + rect.height / 2,
         ),
       );
-      window.scrollTo({ top: targetY, behavior: "auto" });
+      window.scrollTo({ top: targetY, behavior: "smooth" });
     };
 
     const handles: ReturnType<typeof setTimeout>[] = [];
     for (const ms of [100, 500, 1500, 3000]) {
       handles.push(setTimeout(() => doScroll(), ms));
     }
-    // Reveal after first attempt regardless of success — opacity:0
-    // stays just long enough for the initial scroll to commit.
-    handles.push(setTimeout(() => setScrollPending(false), 100));
+    // Match members page: hold page hidden through the smooth-scroll
+    // animation so the user sees a single "land already-scrolled"
+    // frame rather than the in-progress motion.
+    handles.push(setTimeout(() => setScrollPending(false), 700));
 
     return () => {
       for (const h of handles) clearTimeout(h);
