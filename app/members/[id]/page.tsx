@@ -276,18 +276,25 @@ export default function MemberMiniHomePage({
     };
   }, []);
   useEffect(() => {
-    // Always re-read hash from window inside the effect — initial
-    // state captured at first render may have been empty if mount
-    // fired before hash was applied. Fresh read inside useEffect is
-    // guaranteed to see the current URL.
+    // Always re-read URL inside the effect — initial state captured
+    // at first render may have been empty if mount fired before
+    // hash/search was applied. ?photo= path falls back to
+    // "minihome-photos" so the page scrolls to the photos section
+    // before PhotosSection's auto-open mounts the modal.
     const liveHash =
       typeof window !== "undefined"
         ? window.location.hash.slice(1).split("#")[0] || ""
         : "";
-    const targetId = liveHash || initialDeepLink;
+    const hasPhotoParam =
+      typeof window !== "undefined" &&
+      window.location.search.includes("photo=");
+    const targetId =
+      liveHash ||
+      initialDeepLink ||
+      (hasPhotoParam ? "minihome-photos" : "");
     setDebugSnaps((prev) => [
       ...prev,
-      `[eff] entry loading=${loading} handled=${hashHandledRef.current} initial="${initialDeepLink}" live="${liveHash}" target="${targetId}"`,
+      `[eff] entry loading=${loading} handled=${hashHandledRef.current} initial="${initialDeepLink}" live="${liveHash}" photo=${hasPhotoParam} target="${targetId}"`,
     ]);
     if (hashHandledRef.current) {
       setDebugSnaps((prev) => [...prev, `[eff] bail: already handled`]);
