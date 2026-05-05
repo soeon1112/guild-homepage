@@ -250,6 +250,16 @@ export default function MemberMiniHomePage({
   // as a fixed top-right overlay only when the deep-link target is
   // `minihome-adventure`. Removed once the regression is fixed.
   const [debugSnaps, setDebugSnaps] = useState<string[]>([]);
+  // [DEBUG] 언쏘 한정 — useAuth().nickname 이 mount 시점에 stale/null 일
+  // 수 있어서 localStorage 직접 읽음. 다른 사용자 영향 X.
+  const [debugVisible, setDebugVisible] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const nick = localStorage.getItem("auth:nickname");
+    if (nick === "언쏘" && window.location.hash === "#minihome-adventure") {
+      setDebugVisible(true);
+    }
+  }, []);
   useEffect(() => {
     if (hashHandledRef.current) return;
     if (loading) return;
@@ -260,9 +270,9 @@ export default function MemberMiniHomePage({
       return;
     }
     hashHandledRef.current = true;
-    // [DEBUG] 언쏘 한정: 화면 디버그 박스 활성화. 다른 사용자 영향 X.
     const debugOn =
-      targetId === "minihome-adventure" && loginNick === "언쏘";
+      targetId === "minihome-adventure" &&
+      localStorage.getItem("auth:nickname") === "언쏘";
     if (debugOn) setScrollPending(false); // keep page visible during diag
 
     const snapshot = (label: string) => {
@@ -311,12 +321,9 @@ export default function MemberMiniHomePage({
     return () => {
       for (const h of handles) clearTimeout(h);
     };
-  }, [loading, loginNick]);
+  }, [loading]);
 
-  const showDebug =
-    initialDeepLinkRef.current === "minihome-adventure" &&
-    loginNick === "언쏘" &&
-    debugSnaps.length > 0;
+  const showDebug = debugVisible && debugSnaps.length > 0;
 
   return (
     <>
