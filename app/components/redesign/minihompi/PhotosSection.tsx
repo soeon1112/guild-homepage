@@ -169,15 +169,16 @@ export function PhotosSection({
         document.body.scrollTop = targetY;
       }
       const cid = params.get("comment");
-      // 1200 ms — gives Mobile Safari plenty of time for the scroll
-      // to commit before useModalBodyLock reads window.scrollY.
-      // Earlier 800 ms was occasionally racing on slow mobile
-      // commits, leaving savedScrollY at an intermediate value and
-      // the page snapping back to it on modal close.
+      // 800 ms — 100 ms past the page-level 700 ms reveal so the
+      // user perceives the photos section + modal arriving together.
+      // Brute-force scrollTo above commits synchronously on every
+      // browser we tested, so 800 ms is enough headroom for
+      // useModalBodyLock to read the post-scroll scrollY without
+      // making the modal feel late.
       setTimeout(() => {
         setViewer(target);
         setTargetCommentId(cid);
-      }, 1200);
+      }, 800);
     }
   }, [photos]);
 
