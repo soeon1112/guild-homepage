@@ -28,7 +28,10 @@ import {
 import NicknameLink from "@/app/components/NicknameLink";
 import { formatSmart } from "@/src/lib/formatSmart";
 import { handleEvent } from "@/src/lib/badgeCheck";
-import { useModalBodyLock } from "@/src/lib/useModalBodyLock";
+import {
+  registerModalLockDebug,
+  useModalBodyLock,
+} from "@/src/lib/useModalBodyLock";
 
 type MediaKind = "image" | "video" | "gif";
 
@@ -221,10 +224,11 @@ export default function AlbumPage() {
   // iOS-compatible body scroll lock — covers all three modals on this
   // page (photo viewer, upload form, member picker). Counter inside the
   // hook handles overlap so opening the picker from inside the upload
-  // form doesn't double-restore.
-  useModalBodyLock(!!viewer);
-  useModalBodyLock(uploadOpen);
-  useModalBodyLock(pickerOpen);
+  // form doesn't double-restore. The string tag surfaces in the debug
+  // banner ('언쏘' only) so we can tell which call (de)activated the lock.
+  useModalBodyLock(!!viewer, "viewer");
+  useModalBodyLock(uploadOpen, "upload");
+  useModalBodyLock(pickerOpen, "picker");
 
   useEffect(() => {
     const q = query(collection(db, "album"), orderBy("createdAt", "desc"));
@@ -703,6 +707,7 @@ function AlbumPhotoViewer({
   // at +100/+300/+500/+1000/+2000 ms after mount. Goal is to catch what
   // is resetting modal.scrollTop back to 0 right after the scroll lands.
   const isDebug = loginNick === "언쏘";
+  const cardRef = useRef<HTMLDivElement | null>(null);
   const [debugMsgs, setDebugMsgs] = useState<string[]>([]);
   const addDebug = useCallback(
     (msg: string) => {
@@ -711,10 +716,26 @@ function AlbumPhotoViewer({
         typeof performance !== "undefined"
           ? `+${Math.round(performance.now()) % 100000}`.padStart(7, " ")
           : new Date().toISOString().slice(14, 23);
-      setDebugMsgs((prev) => [...prev, `${stamp} ${msg}`].slice(-50));
+      setDebugMsgs((prev) => [...prev, `${stamp} ${msg}`].slice(-80));
     },
     [isDebug],
   );
+
+  // Subscribe to lock/unlock events from useModalBodyLock — surfaces
+  // every counter transition + body inline-style snapshot to the banner.
+  useEffect(() => {
+    if (!isDebug) return;
+    return registerModalLockDebug(addDebug);
+  }, [isDebug, addDebug]);
+
+  // Track viewer-component mount/unmount cycles. If lock is being unset
+  // because the component remounts (and counter cycles 1→0→1), this
+  // pair tells us how often.
+  useEffect(() => {
+    if (!isDebug) return;
+    addDebug(`[viewer mount] photoId=${photo.id}`);
+    return () => addDebug(`[viewer unmount] photoId=${photo.id}`);
+  }, [isDebug, addDebug, photo.id]);
 
   const markScrollResolved = useCallback(() => {
     if (isDebug) {
@@ -782,6 +803,27 @@ function AlbumPhotoViewer({
     addDebug(
       `modal css: pos=${cs.position} top=${cs.top} bot=${cs.bottom} h=${cs.height} ovY=${cs.overflowY}`,
     );
+    addDebug(
+      `body inline pos="${body.style.position}" top="${body.style.top}" overflow="${body.style.overflow}"`,
+    );
+
+    // Card structure dump — explains why oH might be smaller than the
+    // expected photo+caption+comments stack.
+    const card = cardRef.current;
+    if (card) {
+      addDebug(
+        `card oH=${card.offsetHeight} sH=${card.scrollHeight} cH=${card.clientHeight} children=${card.childElementCount}`,
+      );
+      Array.from(card.children).forEach((child, i) => {
+        const c = child as HTMLElement;
+        const cls = (c.className || "").toString().slice(0, 35);
+        addDebug(
+          `  card[${i}] ${c.tagName}.${cls} oH=${c.offsetHeight}`,
+        );
+      });
+    } else {
+      addDebug("card ref NOT bound at mount snapshot");
+    }
 
     return () => {
       modal.removeEventListener("scroll", onModalScroll);
@@ -801,9 +843,9 @@ function AlbumPhotoViewer({
       setTimeout(() => {
         const html = document.documentElement;
         const body = document.body;
-        const se = document.scrollingElement as HTMLElement | null;
+        const card = cardRef.current;
         addDebug(
-          `t+${ms} mod[sT=${modal.scrollTop} sH=${modal.scrollHeight} cH=${modal.clientHeight}] html[sT=${html.scrollTop} sH=${html.scrollHeight}] body[sT=${body.scrollTop} sH=${body.scrollHeight}] se=${se?.tagName ?? "?"}`,
+          `t+${ms} mod[sT=${modal.scrollTop} sH=${modal.scrollHeight}] card[oH=${card?.offsetHeight ?? "?"}] body[pos="${body.style.position}" sH=${body.scrollHeight}] html[sT=${html.scrollTop}]`,
         );
       }, ms),
     );
@@ -905,28 +947,30 @@ function AlbumPhotoViewer({
       {isDebug && (
         <div
           onClick={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
           style={{
             position: "fixed",
-            top: 4,
-            left: 4,
-            right: 4,
-            maxHeight: "45vh",
+            top: 0,
+            left: 0,
+            right: 0,
+            maxHeight: "75vh",
             overflowY: "auto",
-            background: "rgba(0,0,0,0.88)",
+            WebkitOverflowScrolling: "touch",
+            background: "rgba(0,0,0,0.92)",
             color: "#FFE5C4",
-            fontSize: 9,
+            fontSize: 8,
             fontFamily: "ui-monospace, monospace",
-            padding: "4px 6px",
+            padding: "3px 4px",
             zIndex: 99999,
-            lineHeight: 1.25,
+            lineHeight: 1.2,
             border: "1px solid rgba(216,150,200,0.5)",
-            borderRadius: 4,
+            borderRadius: 0,
             whiteSpace: "pre-wrap",
             pointerEvents: "auto",
           }}
         >
-          <div style={{ color: "#FFB5A7", marginBottom: 2 }}>
-            [debug] target={String(targetCommentId)}
+          <div style={{ color: "#FFB5A7", marginBottom: 1, fontSize: 9 }}>
+            [debug {debugMsgs.length}] target={String(targetCommentId)}
           </div>
           {debugMsgs.map((m, i) => (
             <div key={i}>{m}</div>
@@ -934,6 +978,7 @@ function AlbumPhotoViewer({
         </div>
       )}
       <div
+        ref={cardRef}
         className="minihome-photo-viewer"
         onClick={(e) => e.stopPropagation()}
         style={scrollPending ? { opacity: 0 } : undefined}
@@ -1118,6 +1163,18 @@ function AlbumCommentsSection({
   const [submitting, setSubmitting] = useState(false);
   const [openReplyId, setOpenReplyId] = useState<string | null>(null);
   const [replyCounts, setReplyCounts] = useState<Record<string, number>>({});
+
+  // Debug: comments-section mount/unmount + every length change. Helps
+  // distinguish "card is short because comments haven't arrived yet"
+  // from "comments arrived but card still measures 396 px".
+  useEffect(() => {
+    addDebug?.(`[comments mount] initial length=${comments.length}`);
+    return () => addDebug?.(`[comments unmount]`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addDebug]);
+  useEffect(() => {
+    addDebug?.(`[comments] length=${comments.length}`);
+  }, [comments, addDebug]);
 
   // Deep-link scroll target: each AlbumCommentItem registers its root
   // <div> via setItemRef into this map keyed by comment id. After the
