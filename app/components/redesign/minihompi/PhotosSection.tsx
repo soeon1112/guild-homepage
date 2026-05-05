@@ -163,15 +163,16 @@ export function PhotosSection({
         sectionEl.scrollIntoView({ behavior: "auto", block: "start" });
       }
       const cid = params.get("comment");
-      // Wait a frame + small delay so the instant scroll has fully
-      // committed before useModalBodyLock reads window.scrollY.
-      // Single rAF was racing on slow paints — modal mounted while
-      // scrollY was still mid-commit, body-lock saved a stale value
-      // and the page snapped back to it on close.
+      // Wait until the page-level smooth scroll has fully settled
+      // before mounting the modal. 700 ms covers the page reveal
+      // animation + safety buffer; useModalBodyLock then captures
+      // the correct, post-scroll window.scrollY. Mobile WebKit
+      // commits scrolls noticeably slower than desktop — 50 ms
+      // wasn't enough.
       setTimeout(() => {
         setViewer(target);
         setTargetCommentId(cid);
-      }, 50);
+      }, 800);
     }
   }, [photos]);
 

@@ -294,7 +294,7 @@ export default function MemberMiniHomePage({
         // 200vh 로 확대하면 URL bar 차이 (~150px 안팎) + 동적
         // viewport 변동 모두 흡수. 빈 buffer 는 BottomNav 가 가리는
         // 영역 + 일반 사용에서는 도달 X.
-        paddingBottom: "200vh",
+        paddingBottom: "300vh",
       }}
     >
       {loading ? (
