@@ -76,13 +76,20 @@ function CombatPageInner() {
 
   // Deep-link: scroll to a guild member's card when arriving with `?nick=X`
   // (NebulaWhispers links from combat-type activities use this). The card
-  // identifies itself with `data-nick` inside GuildMembersSection. Polls
-  // for ~1.5 s in case the snapshot hasn't populated the row yet.
+  // identifies itself with `data-nick` inside GuildMembersSection. We
+  // start at opacity:0 if a target nick is present so the user never
+  // sees the page paint at scrollTop=0 and then jump — instant scroll
+  // + opacity reveal lands us on the matched card with no visible
+  // motion. Plain combat visits (no ?nick) skip the gate, no flash.
   const searchParams = useSearchParams();
   const nickParam = searchParams?.get("nick") ?? null;
+  const [scrollPending, setScrollPending] = useState<boolean>(!!nickParam);
   const nickHandledRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!nickParam) return;
+    if (!nickParam) {
+      setScrollPending(false);
+      return;
+    }
     if (nickHandledRef.current === nickParam) return;
     if (loading) return;
     nickHandledRef.current = nickParam;
@@ -92,12 +99,14 @@ function CombatPageInner() {
         `[data-nick="${CSS.escape(nickParam)}"]`,
       ) as HTMLElement | null;
       if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.scrollIntoView({ behavior: "auto", block: "center" });
+        setScrollPending(false);
         return;
       }
       if (Date.now() - start < 1500) setTimeout(tryScroll, 100);
+      else setScrollPending(false);
     };
-    setTimeout(tryScroll, 200);
+    setTimeout(tryScroll, 50);
   }, [nickParam, loading]);
 
   const myCharacters = useMemo<MyCharacter[]>(
@@ -233,7 +242,13 @@ function CombatPageInner() {
   );
 
   return (
-    <div className="relative mx-auto max-w-4xl px-4 pt-3 pb-6 text-text-primary">
+    <div
+      className="relative mx-auto max-w-4xl px-4 pt-3 pb-6 text-text-primary"
+      style={{
+        opacity: scrollPending ? 0 : 1,
+        transition: "opacity 150ms ease-out",
+      }}
+    >
       {/* Page title */}
       <section className="mb-10 text-center sm:text-left">
         <h1

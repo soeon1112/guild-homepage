@@ -218,35 +218,64 @@ export default function MemberMiniHomePage({
     });
   }, [loginNick, member?.nickname]);
 
-  // Deep-link to a section anchor (#minihome-adventure / #minihome-guestbook
-  // etc) from NebulaWhispers. Page sections are rendered eagerly so a
-  // single short delay is enough; we still poll for ~1.5 s in case the
-  // hashed element mounts late (CollapsibleSection animation, slow data).
-  // Runs once per mount (`done` ref guards re-fires from React StrictMode).
+  // Deep-link arrival pattern (NebulaWhispers / push tap):
+  //   • #minihome-adventure / #minihome-guestbook → scroll to section
+  //   • ?photo=<id>(&comment=<id>)                → scroll to #minihome-photos
+  //     (PhotosSection handles the modal open + comment scroll itself)
+  // We start the page at opacity:0 if any deep-link param is present so
+  // the user never sees the page paint at scrollTop=0 and then jump —
+  // the scroll completes invisibly, then we reveal. Plain visits (no
+  // params) start at opacity:1, no flash.
+  const initialDeepLinkRef = useRef<string | null>(null);
+  if (initialDeepLinkRef.current === null && typeof window !== "undefined") {
+    const hash = window.location.hash.slice(1);
+    const search = new URLSearchParams(window.location.search);
+    const targetId = hash || (search.get("photo") ? "minihome-photos" : "");
+    initialDeepLinkRef.current = targetId || "";
+  }
+  const hasDeepLink = !!initialDeepLinkRef.current;
+  const [scrollPending, setScrollPending] = useState<boolean>(hasDeepLink);
   const hashHandledRef = useRef(false);
   useEffect(() => {
     if (hashHandledRef.current) return;
     if (loading) return;
     if (typeof window === "undefined") return;
-    const hash = window.location.hash.slice(1);
-    if (!hash) return;
+    const targetId = initialDeepLinkRef.current ?? "";
+    if (!targetId) {
+      setScrollPending(false);
+      return;
+    }
     hashHandledRef.current = true;
     const start = Date.now();
     const tryScroll = () => {
-      const el = document.getElementById(hash);
+      const el = document.getElementById(targetId);
       if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        // `auto` = instant. With the page at opacity:0 above, the user
+        // perceives a single "page appears already scrolled" frame
+        // rather than a smooth scroll-from-top.
+        el.scrollIntoView({ behavior: "auto", block: "start" });
+        setScrollPending(false);
         return;
       }
       if (Date.now() - start < 1500) {
         setTimeout(tryScroll, 100);
+      } else {
+        // Target never appeared — reveal anyway so the user isn't
+        // stuck on a blank page.
+        setScrollPending(false);
       }
     };
-    setTimeout(tryScroll, 200);
+    setTimeout(tryScroll, 50);
   }, [loading]);
 
   return (
-    <div className="minihome mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 pt-3 pb-6 sm:gap-7">
+    <div
+      className="minihome mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 pt-3 pb-6 sm:gap-7"
+      style={{
+        opacity: scrollPending ? 0 : 1,
+        transition: "opacity 150ms ease-out",
+      }}
+    >
       {loading ? (
         <p className="py-8 text-center font-serif italic text-text-sub">
           로딩 중...
@@ -271,12 +300,14 @@ export default function MemberMiniHomePage({
         isOwner={isOwner}
         memberNickname={member?.nickname ?? null}
       />
-      <PhotosSection
-        id={resolvedId}
-        isOwner={isOwner}
-        loginNick={loginNick}
-        memberNickname={member?.nickname ?? null}
-      />
+      <div id="minihome-photos">
+        <PhotosSection
+          id={resolvedId}
+          isOwner={isOwner}
+          loginNick={loginNick}
+          memberNickname={member?.nickname ?? null}
+        />
+      </div>
     </div>
   );
 }
