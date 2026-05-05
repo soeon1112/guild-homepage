@@ -236,10 +236,15 @@ export default function MemberMiniHomePage({
   // after the first attempt lands AND no further re-scrolls fire.
   const initialDeepLinkRef = useRef<string | null>(null);
   if (initialDeepLinkRef.current === null && typeof window !== "undefined") {
+    // Page-level deep-link handles HASH only (#minihome-adventure /
+    // #minihome-guestbook). ?photo= is intentionally NOT handled here
+    // — PhotosSection's auto-open useEffect does its own page scroll
+    // immediately before `setViewer`, so the modal's body-lock
+    // captures the post-scroll scrollY. Letting both run produces a
+    // race where the smooth page scroll is mid-animation when the
+    // modal mounts and locks scrollY at an intermediate value.
     const hash = window.location.hash.slice(1);
-    const search = new URLSearchParams(window.location.search);
-    const targetId = hash || (search.get("photo") ? "minihome-photos" : "");
-    initialDeepLinkRef.current = targetId || "";
+    initialDeepLinkRef.current = hash || "";
   }
   const hasDeepLink = !!initialDeepLinkRef.current;
   const [scrollPending, setScrollPending] = useState<boolean>(hasDeepLink);
@@ -282,14 +287,14 @@ export default function MemberMiniHomePage({
       style={{
         opacity: scrollPending ? 0 : 1,
         transition: "opacity 150ms ease-out",
-        // 마지막 섹션 (사진첩 / 모험기록 — 페이지 끝에 가까움) 의
-        // deep-link scrollTo 가 maxScroll 로 clamp 되어 사용자가
-        // Profile/avatar 영역에 잘못 land 하는 회귀 봉인. 1 viewport
-        // 분량의 bottom buffer 를 두면 어느 섹션이든 viewport top 으로
-        // 정확히 scroll 가능. 시각적으로는 BottomNav floating + main
-        // 의 기존 192 px 패딩 위에 얹히는 빈 영역 — 사용자가 마지막
-        // 콘텐츠 아래로 더 내릴 때만 보이고 일반 사용엔 영향 X.
-        paddingBottom: "100vh",
+        // 마지막 섹션 deep-link scrollTo 가 maxScroll 로 clamp 되는
+        // 회귀 봉인. 100vh 가 PC 에선 충분했지만 모바일은 URL bar
+        // 펼침/접힘으로 viewport 가 동적 변동 (vh = 초기값 고정,
+        // 실제 innerHeight 는 후에 더 커짐) → 100vh 만으론 부족했음.
+        // 200vh 로 확대하면 URL bar 차이 (~150px 안팎) + 동적
+        // viewport 변동 모두 흡수. 빈 buffer 는 BottomNav 가 가리는
+        // 영역 + 일반 사용에서는 도달 X.
+        paddingBottom: "200vh",
       }}
     >
       {loading ? (

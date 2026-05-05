@@ -163,10 +163,15 @@ export function PhotosSection({
         sectionEl.scrollIntoView({ behavior: "auto", block: "start" });
       }
       const cid = params.get("comment");
-      requestAnimationFrame(() => {
+      // Wait a frame + small delay so the instant scroll has fully
+      // committed before useModalBodyLock reads window.scrollY.
+      // Single rAF was racing on slow paints — modal mounted while
+      // scrollY was still mid-commit, body-lock saved a stale value
+      // and the page snapped back to it on close.
+      setTimeout(() => {
         setViewer(target);
         setTargetCommentId(cid);
-      });
+      }, 50);
     }
   }, [photos]);
 
