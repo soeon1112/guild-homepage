@@ -104,6 +104,11 @@ export function PhotosSection({
   const [photos, setPhotos] = useState<PhotoEntry[]>([]);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [viewer, setViewer] = useState<PhotoEntry | null>(null);
+  // Deep-link target comment id. When the viewer is opened from a
+  // /members/<id>?photo=<pid>&comment=<cid> link the modal forwards
+  // this to PhotoComments which then scrolls to the comment after the
+  // photo + first firestore snapshot land.
+  const [targetCommentId, setTargetCommentId] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const autoOpenedRef = useRef(false);
 
@@ -131,7 +136,9 @@ export function PhotosSection({
     return () => unsub();
   }, [id]);
 
-  // Auto-open modal from ?photo= URL param
+  // Auto-open modal from ?photo= URL param. Optionally pass through a
+  // ?comment= target id which the viewer's PhotoComments will scroll to
+  // after the photo decodes + first firestore snapshot lands.
   useEffect(() => {
     if (autoOpenedRef.current) return;
     if (photos.length === 0) return;
@@ -144,6 +151,7 @@ export function PhotosSection({
     const target = photos.find((p) => p.id === pid);
     if (target) {
       setViewer(target);
+      setTargetCommentId(params.get("comment"));
       autoOpenedRef.current = true;
     }
   }, [photos]);
@@ -332,7 +340,11 @@ export function PhotosSection({
             loginNick={loginNick}
             isOwner={isOwner}
             memberNickname={memberNickname}
-            onClose={() => setViewer(null)}
+            targetCommentId={targetCommentId}
+            onClose={() => {
+              setViewer(null);
+              setTargetCommentId(null);
+            }}
           />
         )}
       </AnimatePresence>
@@ -636,6 +648,7 @@ function PhotoViewerModal({
   loginNick,
   isOwner,
   memberNickname,
+  targetCommentId,
   onClose,
 }: {
   memberId: string;
@@ -643,12 +656,55 @@ function PhotoViewerModal({
   loginNick: string | null;
   isOwner: boolean;
   memberNickname: string | null;
+  targetCommentId: string | null;
   onClose: () => void;
 }) {
   const [editMode, setEditMode] = useState(false);
   const [editCaption, setEditCaption] = useState(photo.caption);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // Deep-link comment scroll plumbing — mirrors AlbumPhotoModal in
+  // app/album/page.tsx. The outer .modal-safe-frame motion.div is the
+  // scroll container (overflow-y:auto). PhotoComments computes each
+  // comment's absolute y via getBoundingClientRect against this ref.
+  const modalRef = useRef<HTMLDivElement | null>(null);
+  // Card height tracker — ResizeObserver fires whenever the photo
+  // decodes / firestore snapshot lands / fonts swap, letting the
+  // deep-link effect re-attempt after the page actually grew.
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const [cardHeight, setCardHeight] = useState(0);
+  const [imgLoaded, setImgLoaded] = useState(false);
+  useEffect(() => {
+    const card = cardRef.current;
+    if (!card || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver((entries) => {
+      for (const e of entries) {
+        const h = Math.round(e.contentRect.height);
+        setCardHeight((prev) => (prev === h ? prev : h));
+      }
+    });
+    ro.observe(card);
+    return () => ro.disconnect();
+  }, []);
+  // Hide the card while we jump to the deep-link target so the user
+  // doesn't see the modal flash at scrollTop=0 before the comment
+  // appears. 1.5 s safety timeout reveals the card if the scroll never
+  // resolves.
+  const [scrollPending, setScrollPending] = useState<boolean>(
+    !!targetCommentId,
+  );
+  useEffect(() => {
+    if (targetCommentId) setScrollPending(true);
+  }, [targetCommentId]);
+  useEffect(() => {
+    if (!scrollPending) return;
+    const t = setTimeout(() => setScrollPending(false), 1500);
+    return () => clearTimeout(t);
+  }, [scrollPending]);
+  const markScrollResolved = useCallback(() => {
+    setScrollPending(false);
+  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -702,6 +758,7 @@ function PhotoViewerModal({
   if (typeof document === "undefined") return null;
   return createPortal(
     <motion.div
+      ref={modalRef}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -717,6 +774,7 @@ function PhotoViewerModal({
       aria-label={photo.caption || "사진 보기"}
     >
       <motion.div
+        ref={cardRef}
         initial={{ scale: 0.95, y: 20, opacity: 0 }}
         animate={{ scale: 1, y: 0, opacity: 1 }}
         exit={{ scale: 0.95, y: 20, opacity: 0 }}
@@ -727,6 +785,12 @@ function PhotoViewerModal({
         // border / shadow on the card itself — the photo gets its own
         // rounded box, the close button sits on its own row above it.
         className="my-4 flex w-full max-w-lg flex-col gap-3"
+        style={{
+          // Hide briefly so the deep-link jump doesn't flash at scrollTop=0
+          // before resolving. The 1.5s safety timeout flips this back on.
+          opacity: scrollPending ? 0 : 1,
+          transition: "opacity 120ms ease-out",
+        }}
       >
         <button
           type="button"
@@ -750,6 +814,7 @@ function PhotoViewerModal({
               controls
               autoPlay
               playsInline
+              onLoadedData={() => setImgLoaded(true)}
               className="block max-h-[60vh] w-full object-contain"
             />
           ) : (
@@ -757,6 +822,7 @@ function PhotoViewerModal({
             <img
               src={photo.imageUrl}
               alt={photo.caption || "photo"}
+              onLoad={() => setImgLoaded(true)}
               className="block max-h-[60vh] w-full object-contain"
             />
           )}
@@ -841,6 +907,11 @@ function PhotoViewerModal({
             photoId={photo.id}
             loginNick={loginNick}
             memberNickname={memberNickname}
+            targetCommentId={targetCommentId}
+            modalRef={modalRef}
+            markScrollResolved={markScrollResolved}
+            cardHeight={cardHeight}
+            imgLoaded={imgLoaded}
           />
         </div>
       </motion.div>
@@ -854,11 +925,24 @@ function PhotoComments({
   photoId,
   loginNick,
   memberNickname,
+  targetCommentId,
+  modalRef,
+  markScrollResolved,
+  cardHeight,
+  imgLoaded,
 }: {
   memberId: string;
   photoId: string;
   loginNick: string | null;
   memberNickname: string | null;
+  // When non-null the deep-link effect tries to scroll the modal to
+  // this comment id once the photo decodes + first firestore snapshot
+  // lands. Mirrors AlbumCommentsSection.
+  targetCommentId?: string | null;
+  modalRef?: React.RefObject<HTMLDivElement | null>;
+  markScrollResolved?: () => void;
+  cardHeight?: number;
+  imgLoaded?: boolean;
 }) {
   const [comments, setComments] = useState<PhotoCommentDoc[]>([]);
   const [content, setContent] = useState("");
@@ -866,6 +950,82 @@ function PhotoComments({
   const [submitting, setSubmitting] = useState(false);
   const [openReplyId, setOpenReplyId] = useState<string | null>(null);
   const [replyCounts, setReplyCounts] = useState<Record<string, number>>({});
+
+  // Deep-link scroll target: each PhotoCommentItem registers its root
+  // div via setItemRef into this map keyed by comment id. After the
+  // comments load we look up the target and use getBoundingClientRect
+  // to compute its absolute y inside the modal scroll container, then
+  // assign modal.scrollTop. lastHandledRef prevents duplicate scrolls
+  // (e.g. when a snapshot replays the same comment list).
+  const itemRefs = useRef(new Map<string, HTMLDivElement>());
+  const setItemRef = useCallback(
+    (id: string) => (el: HTMLDivElement | null) => {
+      if (el) itemRefs.current.set(id, el);
+      else itemRefs.current.delete(id);
+    },
+    [],
+  );
+  const lastHandledRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!targetCommentId) return;
+    if (lastHandledRef.current === targetCommentId) return;
+    if (comments.length === 0) return;
+    if (!comments.some((c) => c.id === targetCommentId)) return;
+
+    let retryHandle: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
+
+    const tryScroll = (attempt: number) => {
+      if (cancelled) return;
+      const target = itemRefs.current.get(targetCommentId);
+      const modal = modalRef?.current;
+      if (!target || !modal) {
+        if (attempt >= 5) {
+          lastHandledRef.current = targetCommentId;
+          markScrollResolved?.();
+          return;
+        }
+        retryHandle = setTimeout(() => tryScroll(attempt + 1), 50);
+        return;
+      }
+      // Fits-everything branch (cf. AlbumCommentsSection): when the
+      // modal hasn't yet grown past the viewport we either acknowledge
+      // it as a true short case (image loaded + first snapshot back)
+      // and reveal the card, or stay hidden and wait for the next
+      // dependency change to retry.
+      if (modal.scrollHeight <= modal.clientHeight) {
+        const contentReady = !!imgLoaded && comments.length > 0;
+        if (contentReady) {
+          lastHandledRef.current = targetCommentId;
+          markScrollResolved?.();
+        }
+        return;
+      }
+      lastHandledRef.current = targetCommentId;
+      const modalRect = modal.getBoundingClientRect();
+      const targetRect = target.getBoundingClientRect();
+      const offsetWithinModal =
+        targetRect.top - modalRect.top + modal.scrollTop;
+      // Land 100 px below the modal top to clear the close button.
+      modal.scrollTop = Math.max(0, offsetWithinModal - 100);
+      markScrollResolved?.();
+    };
+
+    const t = setTimeout(() => tryScroll(1), 100);
+    return () => {
+      cancelled = true;
+      if (retryHandle) clearTimeout(retryHandle);
+      clearTimeout(t);
+    };
+  }, [
+    targetCommentId,
+    comments,
+    modalRef,
+    markScrollResolved,
+    cardHeight,
+    imgLoaded,
+  ]);
 
   const reportReplyCount = useCallback((commentId: string, count: number) => {
     setReplyCounts((prev) =>
@@ -916,7 +1076,7 @@ function PhotoComments({
           "minihome_photo_comment",
           loginNick,
           `${memberNickname}님의 사진첩 댓글에 '${truncate(trimmed, 25)}'${josa(trimmed, "이/가")} 달렸어요`,
-          `/members/${memberId}?photo=${photoId}`,
+          `/members/${memberId}?photo=${photoId}&comment=${commentRef.id}`,
           `members/${memberId}/photos/${photoId}/comments/${commentRef.id}`,
         );
       }
@@ -965,6 +1125,7 @@ function PhotoComments({
               }
               onCloseReply={() => setOpenReplyId(null)}
               onReplyCountChange={reportReplyCount}
+              registerRef={setItemRef(c.id)}
             />
           ))}
         </div>
@@ -1028,6 +1189,7 @@ function PhotoCommentItem({
   onToggleReply,
   onCloseReply,
   onReplyCountChange,
+  registerRef,
 }: {
   memberId: string;
   photoId: string;
@@ -1038,6 +1200,9 @@ function PhotoCommentItem({
   onToggleReply: () => void;
   onCloseReply: () => void;
   onReplyCountChange: (commentId: string, count: number) => void;
+  // Deep-link target registration — outer div ref is registered with
+  // PhotoComments via this callback so the modal can scroll to it.
+  registerRef?: (el: HTMLDivElement | null) => void;
 }) {
   const [replies, setReplies] = useState<PhotoCommentDoc[]>([]);
   const [msg, setMsg] = useState("");
@@ -1103,7 +1268,7 @@ function PhotoCommentItem({
           "minihome_photo_comment",
           loginNick,
           `${memberNickname}님의 사진첩 댓글에 '${truncate(trimmed, 25)}'${josa(trimmed, "이/가")} 달렸어요`,
-          `/members/${memberId}?photo=${photoId}`,
+          `/members/${memberId}?photo=${photoId}&comment=${comment.id}`,
           `members/${memberId}/photos/${photoId}/comments/${comment.id}/replies/${replyRef.id}`,
         );
       }
@@ -1174,7 +1339,7 @@ function PhotoCommentItem({
   };
 
   return (
-    <div>
+    <div ref={registerRef} data-comment-id={comment.id}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <p className="wrap-anywhere min-w-0 flex-1 font-serif text-[12px] leading-relaxed text-text-primary">
           <NicknameLink
