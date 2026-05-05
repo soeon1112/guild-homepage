@@ -30,6 +30,14 @@ const MAX_PAGES = 30;
 const PAGE_STORAGE_KEY = "activityPage";
 const LIVE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
 
+// First "${X}님" inside the message — capture leading text in group 1,
+// the nickname in group 2, and the trailing tail (after "님") in group 3.
+// `[^\s'"]+?` keeps the nickname run contiguous (no whitespace / quotes
+// inside a single nick) and non-greedy, while `.*?` on either side ensures
+// we land on the FIRST 님 occurrence. Activity messages are single-line
+// so no `s`/dotAll flag needed (also keeps tsconfig target compatible).
+const NICKNAME_RE = /^(.*?)([^\s'"]+?)님(.*)$/;
+
 function MiniStar({ size = 10, bright = false }: { size?: number; bright?: boolean }) {
   return (
     <svg width={size} height={size} viewBox="0 0 10 10" aria-hidden>
@@ -179,12 +187,19 @@ export function NebulaWhispers() {
               {pageItems.map((a) => {
                 const isLive = isLiveItem(a);
                 const isHovered = hovered === a.id;
-                const nicknamePrefix = `${a.nickname}님`;
-                const hasNicknamePrefix =
-                  !!a.nickname && a.message.startsWith(nicknamePrefix);
-                const rest = hasNicknamePrefix
-                  ? a.message.slice(nicknamePrefix.length)
-                  : "";
+                // Pull the first "${X}님" out of the message itself rather
+                // than trusting `activity.nickname`. Old docs often store
+                // the wrong nickname (album: empty string; guestbook /
+                // photo_comment: writer instead of space owner) and new
+                // guide-format messages embed the displayed nickname mid-
+                // sentence ("앨범 댓글에 ${nick}님이..."). The regex picks
+                // the first contiguous letter-run before "님", carrying
+                // any leading text into `nickPrefix` so it renders before
+                // the colored name + title prefix.
+                const nm = NICKNAME_RE.exec(a.message);
+                const matchedNick = nm?.[2] ?? null;
+                const nickPrefix = nm?.[1] ?? "";
+                const nickSuffix = nm?.[3] ?? "";
                 const timeLabel = a.createdAt
                   ? formatSmart(a.createdAt.toDate())
                   : "";
@@ -210,12 +225,15 @@ export function NebulaWhispers() {
 
                     <div className="min-w-0 flex-1 leading-tight">
                       <p className="font-serif text-[11px] text-text-primary md:truncate">
-                        {hasNicknamePrefix ? (
+                        {matchedNick ? (
                           <>
-                            <TitlePrefix nickname={a.nickname} />
-                            <span className="text-stardust">{a.nickname}</span>
+                            {nickPrefix && (
+                              <span className="text-text-primary">{nickPrefix}</span>
+                            )}
+                            <TitlePrefix nickname={matchedNick} />
+                            <span className="text-stardust">{matchedNick}</span>
                             <span className="text-text-sub">님</span>
-                            <span className="text-text-primary">{rest}</span>
+                            <span className="text-text-primary">{nickSuffix}</span>
                           </>
                         ) : (
                           <span>{a.message}</span>
