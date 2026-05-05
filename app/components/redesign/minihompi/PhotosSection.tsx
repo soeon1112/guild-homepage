@@ -43,6 +43,7 @@ import {
 import NicknameLink from "@/app/components/NicknameLink";
 import { formatSmart } from "@/src/lib/formatSmart";
 import { handleEvent } from "@/src/lib/badgeCheck";
+import { useModalBodyLock } from "@/src/lib/useModalBodyLock";
 import { CollapsibleSection } from "./CollapsibleSection";
 
 type MediaKind = "image" | "video" | "gif";
@@ -154,15 +155,9 @@ export function PhotosSection({
     if (!match) setViewer(null);
   }, [photos, viewer]);
 
-  // Body scroll lock while any modal is open
-  useEffect(() => {
-    if (!viewer && !uploadOpen) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [viewer, uploadOpen]);
+  // iOS-compatible body scroll lock for the viewer + upload modals.
+  useModalBodyLock(!!viewer);
+  useModalBodyLock(uploadOpen);
 
   // Nested onSnapshot for comment+reply counts per photo
   const photoIdsKey = useMemo(

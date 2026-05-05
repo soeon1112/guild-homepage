@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Trash2, X, Lock, Unlock } from "lucide-react";
 import { JobIcon } from "./JobIcon";
+import { useModalBodyLock } from "@/src/lib/useModalBodyLock";
 
 export type Challenge = "있음" | "다소 있음" | "없음";
 
@@ -140,19 +141,18 @@ export function CharacterForm({
     setLocalError(null);
   }, [initial]);
 
-  // Lock body scroll + Esc
+  // iOS-compatible body scroll lock — replaces the previous plain
+  // overflow:hidden which let iOS rubber-band scroll the page behind.
+  useModalBodyLock(open);
+
+  // Esc closes
   useEffect(() => {
     if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape" && !submitting) onClose();
     };
     window.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = prev;
-      window.removeEventListener("keydown", onKey);
-    };
+    return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose, submitting]);
 
   const handleAddBuild = () => {

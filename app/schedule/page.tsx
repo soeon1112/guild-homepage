@@ -16,6 +16,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { deleteActivitiesByTargetPath, logActivity } from "@/src/lib/activity";
+import { useModalBodyLock } from "@/src/lib/useModalBodyLock";
 
 const ADMIN_PASSWORD = "dawnlight2024";
 
@@ -56,6 +57,11 @@ export default function SchedulePage() {
   const [adminVerified, setAdminVerified] = useState(false);
   const [pendingAction, setPendingAction] =
     useState<null | { run: () => void }>(null);
+
+  // iOS-compatible body scroll lock for the three schedule modals.
+  useModalBodyLock(!!selectedDate);
+  useModalBodyLock(!!pendingAction);
+  useModalBodyLock(!!editor);
 
   useEffect(() => {
     const q = query(collection(db, "schedule"), orderBy("date", "asc"));

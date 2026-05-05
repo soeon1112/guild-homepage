@@ -7,6 +7,7 @@ import { Timestamp } from "firebase/firestore";
 import { BADGES, type BadgeMeta } from "@/src/lib/badges";
 import { listEarnedBadges } from "@/src/lib/badgeCheck";
 import { formatSmart } from "@/src/lib/formatSmart";
+import { useModalBodyLock } from "@/src/lib/useModalBodyLock";
 import { useAuth } from "@/app/components/AuthProvider";
 import { CollapsibleSection } from "./CollapsibleSection";
 
@@ -315,6 +316,8 @@ function BadgeDetailModal({
   const desc = revealed ? badge.description : "???";
   const emoji = revealed ? badge.emoji : "❓";
 
+  useModalBodyLock(true);
+
   // Portal-mount so the modal escapes the parent .minihome z-10
   // stacking-context trap (TopHeader/BottomNav z-40 would otherwise
   // bleed through). Same pattern as the album photo viewer.
@@ -381,6 +384,7 @@ function BadgeDetailModal({
 }
 
 function PrivacyModal({ onClose }: { onClose: () => void }) {
+  useModalBodyLock(true);
   // Portal-mount — see BadgeDetailModal above.
   if (typeof document === "undefined") return null;
   return createPortal(

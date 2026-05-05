@@ -28,6 +28,7 @@ import {
 import NicknameLink from "@/app/components/NicknameLink";
 import { formatSmart } from "@/src/lib/formatSmart";
 import { handleEvent } from "@/src/lib/badgeCheck";
+import { useModalBodyLock } from "@/src/lib/useModalBodyLock";
 
 type MediaKind = "image" | "video" | "gif";
 
@@ -217,14 +218,13 @@ export default function AlbumPage() {
     if (!match) setViewer(null);
   }, [photos, viewer]);
 
-  useEffect(() => {
-    if (!viewer) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [viewer]);
+  // iOS-compatible body scroll lock — covers all three modals on this
+  // page (photo viewer, upload form, member picker). Counter inside the
+  // hook handles overlap so opening the picker from inside the upload
+  // form doesn't double-restore.
+  useModalBodyLock(!!viewer);
+  useModalBodyLock(uploadOpen);
+  useModalBodyLock(pickerOpen);
 
   useEffect(() => {
     const q = query(collection(db, "album"), orderBy("createdAt", "desc"));
