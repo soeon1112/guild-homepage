@@ -250,13 +250,12 @@ export default function MemberMiniHomePage({
   // as a fixed top-right overlay only when the deep-link target is
   // `minihome-adventure`. Removed once the regression is fixed.
   const [debugSnaps, setDebugSnaps] = useState<string[]>([]);
-  // [DEBUG] 언쏘 한정 — useAuth().nickname 이 mount 시점에 stale/null 일
-  // 수 있어서 localStorage 직접 읽음. 다른 사용자 영향 X.
+  // [DEBUG] 임시 — 모험기록 deep-link 진단. hash 조건만 유지, 닉네임
+  // 조건 제거 (캡처 받는 즉시 다음 commit 으로 박스 + 진단 코드 제거).
   const [debugVisible, setDebugVisible] = useState(false);
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const nick = localStorage.getItem("auth:nickname");
-    if (nick === "언쏘" && window.location.hash === "#minihome-adventure") {
+    if (window.location.hash === "#minihome-adventure") {
       setDebugVisible(true);
     }
   }, []);
@@ -270,9 +269,7 @@ export default function MemberMiniHomePage({
       return;
     }
     hashHandledRef.current = true;
-    const debugOn =
-      targetId === "minihome-adventure" &&
-      localStorage.getItem("auth:nickname") === "언쏘";
+    const debugOn = targetId === "minihome-adventure";
     if (debugOn) setScrollPending(false); // keep page visible during diag
 
     const snapshot = (label: string) => {
