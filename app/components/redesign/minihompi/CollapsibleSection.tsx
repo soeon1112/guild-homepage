@@ -20,6 +20,20 @@ export function CollapsibleSection({
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  // First-mount render of an open section bypasses the height-auto
+  // animation. framer-motion's `initial={false}` was supposed to skip
+  // the initial transition, but it still runs a measurement pass that
+  // briefly leaves the body at height: 0 — long enough for the
+  // adventure / guestbook deep-link's getBoundingClientRect at +100ms
+  // to capture the wrong section height (~20 px header only) and
+  // scroll the user to the wrong y. After the user toggles, we switch
+  // to the AnimatePresence path so the open/close transition still
+  // looks smooth.
+  const [interactive, setInteractive] = useState(false);
+  const handleToggle = () => {
+    setInteractive(true);
+    setOpen((v) => !v);
+  };
 
   return (
     <section
@@ -36,7 +50,7 @@ export function CollapsibleSection({
     >
       <div className="flex w-full items-center justify-between gap-3 px-5 py-4">
         <button
-          onClick={() => setOpen((v) => !v)}
+          onClick={handleToggle}
           aria-expanded={open}
           className="flex flex-1 items-center gap-2.5 text-left transition-colors hover:text-stardust"
         >
@@ -69,7 +83,7 @@ export function CollapsibleSection({
             <div className="font-serif text-[11px] text-text-sub">{rightSlot}</div>
           )}
           <button
-            onClick={() => setOpen((v) => !v)}
+            onClick={handleToggle}
             aria-label={open ? "접기" : "펼치기"}
             aria-expanded={open}
             className="flex h-6 w-6 items-center justify-center text-nebula-pink/80 transition-colors hover:text-nebula-pink"
@@ -85,15 +99,30 @@ export function CollapsibleSection({
         </div>
       </div>
 
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
-            style={{ overflow: "hidden" }}
-          >
+      {interactive ? (
+        <AnimatePresence initial={false}>
+          {open && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              style={{ overflow: "hidden" }}
+            >
+              <div
+                className="mx-5 h-px"
+                style={{
+                  background:
+                    "linear-gradient(to right, transparent, rgba(216,150,200,0.35), transparent)",
+                }}
+              />
+              <div className="px-5 py-5 sm:px-6 sm:py-6">{children}</div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      ) : (
+        open && (
+          <div>
             <div
               className="mx-5 h-px"
               style={{
@@ -102,9 +131,9 @@ export function CollapsibleSection({
               }}
             />
             <div className="px-5 py-5 sm:px-6 sm:py-6">{children}</div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+        )
+      )}
     </section>
   );
 }
