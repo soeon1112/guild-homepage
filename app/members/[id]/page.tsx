@@ -257,6 +257,21 @@ export default function MemberMiniHomePage({
     if (typeof window === "undefined") return;
     if (window.location.hash === "#minihome-adventure") {
       setDebugVisible(true);
+      // mount-time snapshot so the box has visible content even if
+      // the loading-gated useEffect hasn't fired yet (e.g. firestore
+      // member doc still resolving).
+      const el = document.getElementById("minihome-adventure");
+      const rect = el?.getBoundingClientRect();
+      const mountSnap = [
+        `[mount] hash=${window.location.hash}`,
+        `el=${el ? `${el.tagName}.${(el.className || "").toString().slice(0, 30)}` : "NULL"}`,
+        rect
+          ? `rect.top=${Math.round(rect.top)} rect.h=${Math.round(rect.height)}`
+          : "rect=NULL",
+        `scrollY=${Math.round(window.scrollY)} innerH=${window.innerHeight}`,
+        `docH=${document.documentElement.scrollHeight}`,
+      ].join(" | ");
+      setDebugSnaps((prev) => [...prev, mountSnap]);
     }
   }, []);
   useEffect(() => {
@@ -320,7 +335,7 @@ export default function MemberMiniHomePage({
     };
   }, [loading]);
 
-  const showDebug = debugVisible && debugSnaps.length > 0;
+  const showDebug = debugVisible;
 
   return (
     <>
