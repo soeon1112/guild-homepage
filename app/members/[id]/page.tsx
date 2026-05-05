@@ -256,14 +256,15 @@ export default function MemberMiniHomePage({
   const [debugSnaps, setDebugSnaps] = useState<string[]>([]);
   const [debugVisible, setDebugVisible] = useState(false);
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const hash = window.location.hash.slice(1);
-      const hasPhoto = new URLSearchParams(window.location.search).has(
-        "photo",
-      );
-      if (hash === "minihome-adventure" || hasPhoto) {
-        setDebugVisible(true);
-      }
+    if (typeof window === "undefined") return;
+    // 단순 includes — hash 가 router 에 의해 변환되거나 ?section= 으로
+    // 옮겨졌어도 catch. 모험기록 / 사진 deep-link 모두 대응.
+    const url = window.location.href;
+    if (
+      url.includes("minihome-adventure") ||
+      url.includes("photo=")
+    ) {
+      setDebugVisible(true);
     }
   }, []);
   useEffect(() => {
@@ -284,12 +285,13 @@ export default function MemberMiniHomePage({
       const el = probeTarget ? document.getElementById(probeTarget) : null;
       const rect = el?.getBoundingClientRect();
       const docEl = document.documentElement;
+      const body = document.body;
       const sh = docEl.scrollHeight;
       const ih = window.innerHeight;
       return [
         `[${label}]`,
         `target=${probeTarget}`,
-        `el=${el ? `${el.tagName}.${(el.className || "").toString().slice(0, 25)}` : "NULL"}`,
+        `el=${el ? `${el.tagName}.${(el.className || "").toString().slice(0, 20)}` : "NULL"}`,
         rect
           ? `rect.top=${Math.round(rect.top)} h=${Math.round(rect.height)}`
           : "rect=NULL",
@@ -297,6 +299,9 @@ export default function MemberMiniHomePage({
         `innerH=${ih} clientH=${docEl.clientHeight}`,
         `scrollH=${sh}`,
         `maxScroll=${sh - ih}`,
+        `body.pos=${body.style.position || "static"}`,
+        `body.top=${body.style.top || "-"}`,
+        `body.kids=${body.children.length}`,
       ].join(" | ");
     };
 
