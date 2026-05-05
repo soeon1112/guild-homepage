@@ -736,12 +736,58 @@ function AlbumPhotoViewer({
     if (!isDebug) return;
     const modal = modalRef.current;
     if (!modal) return;
-    const onScroll = () => {
-      addDebug(`scroll evt sT=${modal.scrollTop}`);
+    const onModalScroll = () => addDebug(`MODAL scroll sT=${modal.scrollTop}`);
+    const onWinScroll = () =>
+      addDebug(`WIN scroll y=${window.scrollY}`);
+    const onDocScroll = () => {
+      const se = document.scrollingElement as HTMLElement | null;
+      addDebug(
+        `DOC scroll seTag=${se?.tagName ?? "?"} seSt=${se?.scrollTop ?? "?"}`,
+      );
     };
-    modal.addEventListener("scroll", onScroll, { passive: true });
-    addDebug(`mount sT=${modal.scrollTop} sH=${modal.scrollHeight} cH=${modal.clientHeight}`);
-    return () => modal.removeEventListener("scroll", onScroll);
+    modal.addEventListener("scroll", onModalScroll, { passive: true });
+    window.addEventListener("scroll", onWinScroll, { passive: true });
+    document.addEventListener("scroll", onDocScroll, { passive: true });
+
+    // One-shot structure dump: which element actually owns the scroll?
+    const html = document.documentElement;
+    const body = document.body;
+    const se = document.scrollingElement as HTMLElement | null;
+    const parent = modal.parentElement;
+    addDebug(
+      `mount sT=${modal.scrollTop} sH=${modal.scrollHeight} cH=${modal.clientHeight}`,
+    );
+    addDebug(
+      `modal tag=${modal.tagName} class="${modal.className}" parent=${parent?.tagName} children=${modal.childElementCount}`,
+    );
+    Array.from(modal.children).forEach((child, i) => {
+      const c = child as HTMLElement;
+      addDebug(
+        `  child[${i}] ${c.tagName}.${(c.className || "").slice(0, 40)} sH=${c.scrollHeight} cH=${c.clientHeight} oH=${c.offsetHeight}`,
+      );
+    });
+    addDebug(
+      `html sH=${html.scrollHeight} cH=${html.clientHeight} sT=${html.scrollTop}`,
+    );
+    addDebug(
+      `body sH=${body.scrollHeight} cH=${body.clientHeight} sT=${body.scrollTop} pos=${getComputedStyle(body).position}`,
+    );
+    addDebug(
+      `scrollingEl tag=${se?.tagName ?? "?"} sH=${se?.scrollHeight ?? "?"} cH=${se?.clientHeight ?? "?"} sT=${se?.scrollTop ?? "?"}`,
+    );
+    addDebug(
+      `vw=${window.innerWidth} vh=${window.innerHeight} winScrollY=${window.scrollY}`,
+    );
+    const cs = getComputedStyle(modal);
+    addDebug(
+      `modal css: pos=${cs.position} top=${cs.top} bot=${cs.bottom} h=${cs.height} ovY=${cs.overflowY}`,
+    );
+
+    return () => {
+      modal.removeEventListener("scroll", onModalScroll);
+      window.removeEventListener("scroll", onWinScroll);
+      document.removeEventListener("scroll", onDocScroll);
+    };
   }, [isDebug, addDebug]);
 
   // Periodic snapshots — independent of any scroll handler, so we see
@@ -753,7 +799,12 @@ function AlbumPhotoViewer({
     const stamps = [50, 150, 300, 500, 800, 1200, 2000, 3000];
     const handles = stamps.map((ms) =>
       setTimeout(() => {
-        addDebug(`t+${ms} sT=${modal.scrollTop}`);
+        const html = document.documentElement;
+        const body = document.body;
+        const se = document.scrollingElement as HTMLElement | null;
+        addDebug(
+          `t+${ms} mod[sT=${modal.scrollTop} sH=${modal.scrollHeight} cH=${modal.clientHeight}] html[sT=${html.scrollTop} sH=${html.scrollHeight}] body[sT=${body.scrollTop} sH=${body.scrollHeight}] se=${se?.tagName ?? "?"}`,
+        );
       }, ms),
     );
     return () => handles.forEach((h) => clearTimeout(h));
