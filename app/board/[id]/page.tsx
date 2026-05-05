@@ -73,12 +73,20 @@ function BoardDetailPageInner({
   const { id } = use(params);
   const router = useRouter();
   // Deep-link comment scroll: /board/X?comment=Y from NebulaWhispers
-  // navigates here. Page starts at opacity:0 if a comment target is
-  // present so the scroll commits invisibly, then we reveal — same
-  // pattern as members/[id] hash deep-link.
+  // navigates here. lazy initializer reads window.location directly
+  // (matches members/[id] mobile-mount race fix) — useSearchParams
+  // sometimes resolves empty on the first client render after a
+  // <Link>/router.push navigation, so we keep both signals.
   const searchParams = useSearchParams();
-  const commentParam = searchParams?.get("comment") ?? null;
-  const [scrollPending, setScrollPending] = useState<boolean>(!!commentParam);
+  const [initialCommentParam] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    return new URLSearchParams(window.location.search).get("comment") || "";
+  });
+  const commentParam =
+    searchParams?.get("comment") ?? initialCommentParam ?? null;
+  const [scrollPending, setScrollPending] = useState<boolean>(
+    !!commentParam,
+  );
   const commentHandledRef = useRef<string | null>(null);
   const { nickname: loginNick } = useAuth();
   const [post, setPost] = useState<PostData | null>(null);
@@ -145,14 +153,21 @@ function BoardDetailPageInner({
   // Deep-link scroll-to-comment. Multi-retry covers the snapshot
   // delay; brute-force scroll methods cover Mobile Safari quirks.
   useEffect(() => {
-    if (!commentParam) return;
-    if (commentHandledRef.current === commentParam) return;
     if (loading) return;
-    commentHandledRef.current = commentParam;
+    if (typeof window === "undefined") return;
+    // Re-read inside the effect — searchParams may have been empty
+    // at first render. Falls back to initialCommentParam captured
+    // via lazy initializer, then to live URLSearchParams.
+    const liveComment =
+      new URLSearchParams(window.location.search).get("comment") || "";
+    const target = liveComment || commentParam;
+    if (!target) return;
+    if (commentHandledRef.current === target) return;
+    commentHandledRef.current = target;
 
     const doScroll = () => {
       const el = document.querySelector(
-        `[data-comment-id="${CSS.escape(commentParam)}"]`,
+        `[data-comment-id="${CSS.escape(target)}"]`,
       ) as HTMLElement | null;
       if (!el) return;
       const rect = el.getBoundingClientRect();
