@@ -1267,17 +1267,31 @@ function AlbumCommentsSection({
         return;
       }
       // Fits-everything branch: photo + comments shorter than viewport.
-      // We only flip `scrollPending` (so the card becomes visible) but
-      // do NOT mark this target as handled — content may still be
-      // arriving (image decode, late firestore snapshot, font swap).
-      // The effect re-runs when `comments`, `cardHeight`, or `imgLoaded`
-      // change (deps below) and tries again. Once content overflows the
-      // viewport, the real-scroll branch below claims `lastHandledRef`.
+      //
+      // Two sub-cases — distinguished by whether the content stream
+      // has finished:
+      //
+      //   A) "true fits" — image decoded AND first firestore snapshot
+      //      back AND content still fits. Genuinely a no-scroll case
+      //      (short photo + few comments). Mark handled and reveal the
+      //      card now; further deps changes won't help.
+      //
+      //   B) "deferred" — content still arriving. Keep card hidden
+      //      (scrollPending stays true → opacity:0) so the user does
+      //      not see a flash at scrollTop=0 only to jump after the
+      //      photo loads. Effect re-runs on `comments` /
+      //      `cardHeight` / `imgLoaded` and we'll try again. The 1.5 s
+      //      safety timeout in the parent reveals the card if all
+      //      retries silently fail.
       if (modal.scrollHeight <= modal.clientHeight) {
+        const contentReady = !!imgLoaded && comments.length > 0;
         addDebug?.(
-          `  fits: sH=${modal.scrollHeight} cH=${modal.clientHeight} — defer (will retry)`,
+          `  fits: sH=${modal.scrollHeight} cH=${modal.clientHeight} ready=${contentReady}${contentReady ? " (true fits, mark)" : " (defer)"}`,
         );
-        markScrollResolved?.();
+        if (contentReady) {
+          lastHandledRef.current = targetCommentId;
+          markScrollResolved?.();
+        }
         return;
       }
       // Real scroll — claim handled now so subsequent re-runs short-circuit.
