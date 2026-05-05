@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   addDoc,
@@ -52,7 +52,7 @@ type Character = {
   updatedAt: Timestamp | null;
 };
 
-export default function CombatPage() {
+function CombatPageInner() {
   const { nickname: owner, ready } = useAuth();
   const [characters, setCharacters] = useState<Character[]>([]);
   const [loading, setLoading] = useState(true);
@@ -338,5 +338,18 @@ export default function CombatPage() {
         onClose={handleClose}
       />
     </div>
+  );
+}
+
+// Next.js App Router requires `useSearchParams` callers to sit under a
+// Suspense boundary; without one, the route fails to prerender at build
+// time. Wrap the whole page so the prerender succeeds — the inner
+// component subscribes to Firestore on mount and streams in just like
+// before.
+export default function CombatPage() {
+  return (
+    <Suspense fallback={null}>
+      <CombatPageInner />
+    </Suspense>
   );
 }
