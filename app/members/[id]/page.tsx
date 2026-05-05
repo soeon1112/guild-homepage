@@ -284,15 +284,30 @@ export default function MemberMiniHomePage({
     };
   }, []);
   useEffect(() => {
-    if (hashHandledRef.current) return;
-    if (loading) return;
+    setDebugSnaps((prev) => [
+      ...prev,
+      `[eff] entry loading=${loading} handled=${hashHandledRef.current} deeplink="${initialDeepLinkRef.current}"`,
+    ]);
+    if (hashHandledRef.current) {
+      setDebugSnaps((prev) => [...prev, `[eff] bail: already handled`]);
+      return;
+    }
+    if (loading) {
+      setDebugSnaps((prev) => [...prev, `[eff] bail: loading`]);
+      return;
+    }
     if (typeof window === "undefined") return;
     const targetId = initialDeepLinkRef.current ?? "";
     if (!targetId) {
+      setDebugSnaps((prev) => [...prev, `[eff] bail: no deeplink target`]);
       setScrollPending(false);
       return;
     }
     hashHandledRef.current = true;
+    setDebugSnaps((prev) => [
+      ...prev,
+      `[eff] start polling target="${targetId}"`,
+    ]);
 
     const doScroll = (label: string) => {
       const el = document.getElementById(targetId);
