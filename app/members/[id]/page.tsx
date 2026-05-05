@@ -234,24 +234,16 @@ export default function MemberMiniHomePage({
   // Page starts at opacity:0 if a deep-link is present so the
   // (possibly several) scroll attempts happen invisibly; we reveal
   // after the first attempt lands AND no further re-scrolls fire.
-  const initialDeepLinkRef = useRef<string | null>(null);
-  if (initialDeepLinkRef.current === null && typeof window !== "undefined") {
-    // Page-level deep-link handles HASH only (#minihome-adventure /
-    // #minihome-guestbook). ?photo= is intentionally NOT handled here
-    // — PhotosSection's auto-open useEffect does its own page scroll
-    // immediately before `setViewer`, so the modal's body-lock
-    // captures the post-scroll scrollY. Letting both run produces a
-    // race where the smooth page scroll is mid-animation when the
-    // modal mounts and locks scrollY at an intermediate value.
-    //
-    // .split("#")[0] guards against the URL ending up with double
-    // hashes (`#minihome-adventure#minihome-adventure`) — a mobile
-    // Safari quirk on <Link>-based same-pathname navigation. The
-    // first segment is the real anchor we want; we ignore any extras.
+  // Read hash on first render (client) — `useRef` 의 conditional set
+  // 패턴이 모바일 SSR/hydration 컨텍스트에서 빈 값으로 set 되는 케이스가
+  // 있어 `useState` 의 lazy initializer 로 변경. 한 번만 평가되며
+  // 클라이언트 첫 render 의 window.location 을 읽어 안정적.
+  const [initialDeepLink] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
     const rawHash = window.location.hash.slice(1);
-    initialDeepLinkRef.current = rawHash.split("#")[0] || "";
-  }
-  const hasDeepLink = !!initialDeepLinkRef.current;
+    return rawHash.split("#")[0] || "";
+  });
+  const hasDeepLink = !!initialDeepLink;
   const [scrollPending, setScrollPending] = useState<boolean>(hasDeepLink);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const hashHandledRef = useRef(false);
@@ -284,9 +276,18 @@ export default function MemberMiniHomePage({
     };
   }, []);
   useEffect(() => {
+    // Always re-read hash from window inside the effect — initial
+    // state captured at first render may have been empty if mount
+    // fired before hash was applied. Fresh read inside useEffect is
+    // guaranteed to see the current URL.
+    const liveHash =
+      typeof window !== "undefined"
+        ? window.location.hash.slice(1).split("#")[0] || ""
+        : "";
+    const targetId = liveHash || initialDeepLink;
     setDebugSnaps((prev) => [
       ...prev,
-      `[eff] entry loading=${loading} handled=${hashHandledRef.current} deeplink="${initialDeepLinkRef.current}"`,
+      `[eff] entry loading=${loading} handled=${hashHandledRef.current} initial="${initialDeepLink}" live="${liveHash}" target="${targetId}"`,
     ]);
     if (hashHandledRef.current) {
       setDebugSnaps((prev) => [...prev, `[eff] bail: already handled`]);
@@ -297,7 +298,6 @@ export default function MemberMiniHomePage({
       return;
     }
     if (typeof window === "undefined") return;
-    const targetId = initialDeepLinkRef.current ?? "";
     if (!targetId) {
       setDebugSnaps((prev) => [...prev, `[eff] bail: no deeplink target`]);
       setScrollPending(false);
