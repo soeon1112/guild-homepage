@@ -82,23 +82,64 @@ export default function CombatPage() {
   const nickParam = searchParams?.get("nick") ?? null;
   const nickHandledRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!nickParam) return;
-    if (nickHandledRef.current === nickParam) return;
-    if (loading) return;
+    // [DEBUG] runtime instrumentation for ?nick= scroll diagnosis
+    console.log("[combat-debug] effect entry", {
+      nickParam,
+      nickParamJSON: JSON.stringify(nickParam),
+      loading,
+      handled: nickHandledRef.current,
+      charactersLen: characters.length,
+    });
+    if (!nickParam) {
+      console.log("[combat-debug] bail: no nickParam");
+      return;
+    }
+    if (nickHandledRef.current === nickParam) {
+      console.log("[combat-debug] bail: already handled");
+      return;
+    }
+    if (loading) {
+      console.log("[combat-debug] bail: still loading, will re-run when loading=false");
+      return;
+    }
     nickHandledRef.current = nickParam;
+    const escaped = CSS.escape(nickParam);
+    const selector = `[data-nick="${escaped}"]`;
+    console.log("[combat-debug] starting poll", {
+      nickParam,
+      escaped,
+      selector,
+    });
     const start = Date.now();
+    let attempt = 0;
     const tryScroll = () => {
-      const el = document.querySelector(
-        `[data-nick="${CSS.escape(nickParam)}"]`,
-      ) as HTMLElement | null;
+      attempt++;
+      const el = document.querySelector(selector) as HTMLElement | null;
+      const allDataNickEls = Array.from(
+        document.querySelectorAll("[data-nick]"),
+      );
+      const allDataNick = allDataNickEls.map(
+        (n) => (n as HTMLElement).getAttribute("data-nick"),
+      );
+      console.log("[combat-debug] attempt", attempt, {
+        elapsed: Date.now() - start,
+        found: !!el,
+        allDataNickCount: allDataNick.length,
+        allDataNick,
+        nickParamCharCodes: nickParam
+          .split("")
+          .map((c) => c.charCodeAt(0)),
+      });
       if (el) {
         el.scrollIntoView({ behavior: "smooth", block: "center" });
+        console.log("[combat-debug] scrolled into view, attempt=", attempt);
         return;
       }
       if (Date.now() - start < 1500) setTimeout(tryScroll, 100);
+      else console.log("[combat-debug] gave up after 1500ms, attempts=", attempt);
     };
     setTimeout(tryScroll, 200);
-  }, [nickParam, loading]);
+  }, [nickParam, loading, characters.length]);
 
   const myCharacters = useMemo<MyCharacter[]>(
     () =>
