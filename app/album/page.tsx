@@ -28,10 +28,7 @@ import {
 import NicknameLink from "@/app/components/NicknameLink";
 import { formatSmart } from "@/src/lib/formatSmart";
 import { handleEvent } from "@/src/lib/badgeCheck";
-import {
-  registerModalLockDebug,
-  useModalBodyLock,
-} from "@/src/lib/useModalBodyLock";
+import { useModalBodyLock } from "@/src/lib/useModalBodyLock";
 
 type MediaKind = "image" | "video" | "gif";
 
@@ -224,11 +221,10 @@ export default function AlbumPage() {
   // iOS-compatible body scroll lock — covers all three modals on this
   // page (photo viewer, upload form, member picker). Counter inside the
   // hook handles overlap so opening the picker from inside the upload
-  // form doesn't double-restore. The string tag surfaces in the debug
-  // banner ('언쏘' only) so we can tell which call (de)activated the lock.
-  useModalBodyLock(!!viewer, "viewer");
-  useModalBodyLock(uploadOpen, "upload");
-  useModalBodyLock(pickerOpen, "picker");
+  // form doesn't double-restore.
+  useModalBodyLock(!!viewer);
+  useModalBodyLock(uploadOpen);
+  useModalBodyLock(pickerOpen);
 
   useEffect(() => {
     const q = query(collection(db, "album"), orderBy("createdAt", "desc"));
@@ -701,47 +697,19 @@ function AlbumPhotoViewer({
     return () => clearTimeout(t);
   }, [scrollPending]);
 
-  // ── Debug banner ('언쏘' only) ──
-  // Captures the timeline of deep-link comment scroll: effect entry,
-  // tryScroll attempts, modal scroll events, and scrollTop snapshots
-  // at +100/+300/+500/+1000/+2000 ms after mount. Goal is to catch what
-  // is resetting modal.scrollTop back to 0 right after the scroll lands.
-  const isDebug = loginNick === "언쏘";
+  const markScrollResolved = useCallback(() => {
+    setScrollPending(false);
+  }, []);
+
+  // Card height + image-loaded tracker drive the deep-link scroll
+  // effect's retry loop in AlbumCommentsSection: when a t+100 ms first
+  // attempt falls into the fits branch (sH ≤ cH because the photo
+  // hasn't decoded and firestore hasn't replied yet), we want to
+  // re-run after the card actually grows. ResizeObserver fires on every
+  // height change; img.onLoad provides a dedicated "content stream
+  // settled" signal that lets the fits branch tell a true short-card
+  // case from a still-loading one.
   const cardRef = useRef<HTMLDivElement | null>(null);
-  const [debugMsgs, setDebugMsgs] = useState<string[]>([]);
-  const addDebug = useCallback(
-    (msg: string) => {
-      if (!isDebug) return;
-      const stamp =
-        typeof performance !== "undefined"
-          ? `+${Math.round(performance.now()) % 100000}`.padStart(7, " ")
-          : new Date().toISOString().slice(14, 23);
-      setDebugMsgs((prev) => [...prev, `${stamp} ${msg}`].slice(-80));
-    },
-    [isDebug],
-  );
-
-  // Subscribe to lock/unlock events from useModalBodyLock — surfaces
-  // every counter transition + body inline-style snapshot to the banner.
-  useEffect(() => {
-    if (!isDebug) return;
-    return registerModalLockDebug(addDebug);
-  }, [isDebug, addDebug]);
-
-  // Track viewer-component mount/unmount cycles. If lock is being unset
-  // because the component remounts (and counter cycles 1→0→1), this
-  // pair tells us how often.
-  useEffect(() => {
-    if (!isDebug) return;
-    addDebug(`[viewer mount] photoId=${photo.id}`);
-    return () => addDebug(`[viewer unmount] photoId=${photo.id}`);
-  }, [isDebug, addDebug, photo.id]);
-
-  // Card height tracker — content (image, firestore comments, fonts)
-  // arrives over time and the card grows. When it crosses the viewport
-  // threshold the deep-link scroll effect (below in AlbumCommentsSection)
-  // needs to retry. We feed `cardHeight` into that effect's deps via
-  // props so a ResizeObserver tick re-triggers tryScroll.
   const [cardHeight, setCardHeight] = useState(0);
   const [imgLoaded, setImgLoaded] = useState(false);
   useEffect(() => {
@@ -750,131 +718,12 @@ function AlbumPhotoViewer({
     const ro = new ResizeObserver((entries) => {
       for (const e of entries) {
         const h = Math.round(e.contentRect.height);
-        setCardHeight((prev) => {
-          if (prev === h) return prev;
-          if (isDebug) addDebug(`[card resize] oH=${prev}→${h}`);
-          return h;
-        });
+        setCardHeight((prev) => (prev === h ? prev : h));
       }
     });
     ro.observe(card);
     return () => ro.disconnect();
-  }, [isDebug, addDebug]);
-
-  const markScrollResolved = useCallback(() => {
-    if (isDebug) {
-      const m = modalRef.current;
-      const stamp =
-        typeof performance !== "undefined"
-          ? `+${Math.round(performance.now()) % 100000}`.padStart(7, " ")
-          : new Date().toISOString().slice(14, 23);
-      setDebugMsgs((prev) =>
-        [...prev, `${stamp} markScrollResolved sT=${m?.scrollTop}`].slice(-50),
-      );
-    }
-    setScrollPending(false);
-  }, [isDebug]);
-
-  // Scroll listener — records every scrollTop change so we can spot
-  // whoever resets it back to 0 after the deep-link jump.
-  useEffect(() => {
-    if (!isDebug) return;
-    const modal = modalRef.current;
-    if (!modal) return;
-    const onModalScroll = () => addDebug(`MODAL scroll sT=${modal.scrollTop}`);
-    const onWinScroll = () =>
-      addDebug(`WIN scroll y=${window.scrollY}`);
-    const onDocScroll = () => {
-      const se = document.scrollingElement as HTMLElement | null;
-      addDebug(
-        `DOC scroll seTag=${se?.tagName ?? "?"} seSt=${se?.scrollTop ?? "?"}`,
-      );
-    };
-    modal.addEventListener("scroll", onModalScroll, { passive: true });
-    window.addEventListener("scroll", onWinScroll, { passive: true });
-    document.addEventListener("scroll", onDocScroll, { passive: true });
-
-    // One-shot structure dump: which element actually owns the scroll?
-    const html = document.documentElement;
-    const body = document.body;
-    const se = document.scrollingElement as HTMLElement | null;
-    const parent = modal.parentElement;
-    addDebug(
-      `mount sT=${modal.scrollTop} sH=${modal.scrollHeight} cH=${modal.clientHeight}`,
-    );
-    addDebug(
-      `modal tag=${modal.tagName} class="${modal.className}" parent=${parent?.tagName} children=${modal.childElementCount}`,
-    );
-    Array.from(modal.children).forEach((child, i) => {
-      const c = child as HTMLElement;
-      addDebug(
-        `  child[${i}] ${c.tagName}.${(c.className || "").slice(0, 40)} sH=${c.scrollHeight} cH=${c.clientHeight} oH=${c.offsetHeight}`,
-      );
-    });
-    addDebug(
-      `html sH=${html.scrollHeight} cH=${html.clientHeight} sT=${html.scrollTop}`,
-    );
-    addDebug(
-      `body sH=${body.scrollHeight} cH=${body.clientHeight} sT=${body.scrollTop} pos=${getComputedStyle(body).position}`,
-    );
-    addDebug(
-      `scrollingEl tag=${se?.tagName ?? "?"} sH=${se?.scrollHeight ?? "?"} cH=${se?.clientHeight ?? "?"} sT=${se?.scrollTop ?? "?"}`,
-    );
-    addDebug(
-      `vw=${window.innerWidth} vh=${window.innerHeight} winScrollY=${window.scrollY}`,
-    );
-    const cs = getComputedStyle(modal);
-    addDebug(
-      `modal css: pos=${cs.position} top=${cs.top} bot=${cs.bottom} h=${cs.height} ovY=${cs.overflowY}`,
-    );
-    addDebug(
-      `body inline pos="${body.style.position}" top="${body.style.top}" overflow="${body.style.overflow}"`,
-    );
-
-    // Card structure dump — explains why oH might be smaller than the
-    // expected photo+caption+comments stack.
-    const card = cardRef.current;
-    if (card) {
-      addDebug(
-        `card oH=${card.offsetHeight} sH=${card.scrollHeight} cH=${card.clientHeight} children=${card.childElementCount}`,
-      );
-      Array.from(card.children).forEach((child, i) => {
-        const c = child as HTMLElement;
-        const cls = (c.className || "").toString().slice(0, 35);
-        addDebug(
-          `  card[${i}] ${c.tagName}.${cls} oH=${c.offsetHeight}`,
-        );
-      });
-    } else {
-      addDebug("card ref NOT bound at mount snapshot");
-    }
-
-    return () => {
-      modal.removeEventListener("scroll", onModalScroll);
-      window.removeEventListener("scroll", onWinScroll);
-      document.removeEventListener("scroll", onDocScroll);
-    };
-  }, [isDebug, addDebug]);
-
-  // Periodic snapshots — independent of any scroll handler, so we see
-  // scrollTop drift even when no scroll event fires.
-  useEffect(() => {
-    if (!isDebug || !targetCommentId) return;
-    const modal = modalRef.current;
-    if (!modal) return;
-    const stamps = [50, 150, 300, 500, 800, 1200, 2000, 3000];
-    const handles = stamps.map((ms) =>
-      setTimeout(() => {
-        const html = document.documentElement;
-        const body = document.body;
-        const card = cardRef.current;
-        addDebug(
-          `t+${ms} mod[sT=${modal.scrollTop} sH=${modal.scrollHeight}] card[oH=${card?.offsetHeight ?? "?"}] body[pos="${body.style.position}" sH=${body.scrollHeight}] html[sT=${html.scrollTop}]`,
-        );
-      }, ms),
-    );
-    return () => handles.forEach((h) => clearTimeout(h));
-  }, [isDebug, targetCommentId, addDebug]);
+  }, []);
 
   const [editMode, setEditMode] = useState(false);
   const [editCaption, setEditCaption] = useState(photo.caption);
@@ -968,39 +817,6 @@ function AlbumPhotoViewer({
       className="minihome-modal"
       onClick={onClose}
     >
-      {isDebug && (
-        <div
-          onClick={(e) => e.stopPropagation()}
-          onTouchStart={(e) => e.stopPropagation()}
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            maxHeight: "75vh",
-            overflowY: "auto",
-            WebkitOverflowScrolling: "touch",
-            background: "rgba(0,0,0,0.92)",
-            color: "#FFE5C4",
-            fontSize: 8,
-            fontFamily: "ui-monospace, monospace",
-            padding: "3px 4px",
-            zIndex: 99999,
-            lineHeight: 1.2,
-            border: "1px solid rgba(216,150,200,0.5)",
-            borderRadius: 0,
-            whiteSpace: "pre-wrap",
-            pointerEvents: "auto",
-          }}
-        >
-          <div style={{ color: "#FFB5A7", marginBottom: 1, fontSize: 9 }}>
-            [debug {debugMsgs.length}] target={String(targetCommentId)}
-          </div>
-          {debugMsgs.map((m, i) => (
-            <div key={i}>{m}</div>
-          ))}
-        </div>
-      )}
       <div
         ref={cardRef}
         className="minihome-photo-viewer"
@@ -1022,19 +838,13 @@ function AlbumPhotoViewer({
             controls
             autoPlay
             playsInline
-            onLoadedData={() => {
-              addDebug(`video loadedData sT=${modalRef.current?.scrollTop}`);
-              setImgLoaded(true);
-            }}
+            onLoadedData={() => setImgLoaded(true)}
           />
         ) : (
           <img
             src={photo.imageUrl}
             alt={photo.caption || "photo"}
-            onLoad={() => {
-              addDebug(`img onLoad sT=${modalRef.current?.scrollTop}`);
-              setImgLoaded(true);
-            }}
+            onLoad={() => setImgLoaded(true)}
           />
         )}
         {editMode ? (
@@ -1160,7 +970,6 @@ function AlbumPhotoViewer({
           targetCommentId={targetCommentId}
           modalRef={modalRef}
           markScrollResolved={markScrollResolved}
-          addDebug={addDebug}
           cardHeight={cardHeight}
           imgLoaded={imgLoaded}
         />
@@ -1176,7 +985,6 @@ function AlbumCommentsSection({
   targetCommentId,
   modalRef,
   markScrollResolved,
-  addDebug,
   cardHeight,
   imgLoaded,
 }: {
@@ -1185,7 +993,6 @@ function AlbumCommentsSection({
   targetCommentId?: string | null;
   modalRef?: React.RefObject<HTMLDivElement | null>;
   markScrollResolved?: () => void;
-  addDebug?: (msg: string) => void;
   // Drives effect re-runs as the card grows (firestore comments arrive,
   // photo finishes decoding, fonts swap). Without these, a t+100 ms
   // tryScroll falls into the fits branch — modal.scrollHeight ≤
@@ -1199,18 +1006,6 @@ function AlbumCommentsSection({
   const [submitting, setSubmitting] = useState(false);
   const [openReplyId, setOpenReplyId] = useState<string | null>(null);
   const [replyCounts, setReplyCounts] = useState<Record<string, number>>({});
-
-  // Debug: comments-section mount/unmount + every length change. Helps
-  // distinguish "card is short because comments haven't arrived yet"
-  // from "comments arrived but card still measures 396 px".
-  useEffect(() => {
-    addDebug?.(`[comments mount] initial length=${comments.length}`);
-    return () => addDebug?.(`[comments unmount]`);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addDebug]);
-  useEffect(() => {
-    addDebug?.(`[comments] length=${comments.length}`);
-  }, [comments, addDebug]);
 
   // Deep-link scroll target: each AlbumCommentItem registers its root
   // <div> via setItemRef into this map keyed by comment id. After the
@@ -1230,21 +1025,9 @@ function AlbumCommentsSection({
 
   useEffect(() => {
     if (!targetCommentId) return;
-    addDebug?.(
-      `effect entry: target=${targetCommentId} comments=${comments.length} cardH=${cardHeight ?? "?"} imgLoaded=${imgLoaded ?? "?"} lastHandled=${lastHandledRef.current}`,
-    );
-    if (lastHandledRef.current === targetCommentId) {
-      addDebug?.("  skip: already handled");
-      return;
-    }
-    if (comments.length === 0) {
-      addDebug?.("  skip: comments empty (waits for snapshot)");
-      return;
-    }
-    if (!comments.some((c) => c.id === targetCommentId)) {
-      addDebug?.("  skip: target not in list");
-      return;
-    }
+    if (lastHandledRef.current === targetCommentId) return;
+    if (comments.length === 0) return;
+    if (!comments.some((c) => c.id === targetCommentId)) return;
 
     let retryHandle: ReturnType<typeof setTimeout> | null = null;
     let cancelled = false;
@@ -1253,12 +1036,8 @@ function AlbumCommentsSection({
       if (cancelled) return;
       const target = itemRefs.current.get(targetCommentId);
       const modal = modalRef?.current;
-      addDebug?.(
-        `tryScroll #${attempt} target=${!!target} modal=${!!modal}`,
-      );
       if (!target || !modal) {
         if (attempt >= 5) {
-          addDebug?.("  give up after 5 retries (no ref)");
           lastHandledRef.current = targetCommentId;
           markScrollResolved?.();
           return;
@@ -1267,27 +1046,20 @@ function AlbumCommentsSection({
         return;
       }
       // Fits-everything branch: photo + comments shorter than viewport.
-      //
-      // Two sub-cases — distinguished by whether the content stream
-      // has finished:
-      //
+      // Two sub-cases:
       //   A) "true fits" — image decoded AND first firestore snapshot
       //      back AND content still fits. Genuinely a no-scroll case
       //      (short photo + few comments). Mark handled and reveal the
       //      card now; further deps changes won't help.
-      //
       //   B) "deferred" — content still arriving. Keep card hidden
       //      (scrollPending stays true → opacity:0) so the user does
       //      not see a flash at scrollTop=0 only to jump after the
-      //      photo loads. Effect re-runs on `comments` /
-      //      `cardHeight` / `imgLoaded` and we'll try again. The 1.5 s
-      //      safety timeout in the parent reveals the card if all
-      //      retries silently fail.
+      //      photo loads. Effect re-runs on `comments` / `cardHeight`
+      //      / `imgLoaded` and we'll try again. The 1.5 s safety
+      //      timeout in the parent reveals the card if all retries
+      //      silently fail.
       if (modal.scrollHeight <= modal.clientHeight) {
         const contentReady = !!imgLoaded && comments.length > 0;
-        addDebug?.(
-          `  fits: sH=${modal.scrollHeight} cH=${modal.clientHeight} ready=${contentReady}${contentReady ? " (true fits, mark)" : " (defer)"}`,
-        );
         if (contentReady) {
           lastHandledRef.current = targetCommentId;
           markScrollResolved?.();
@@ -1300,15 +1072,10 @@ function AlbumCommentsSection({
       const targetRect = target.getBoundingClientRect();
       const offsetWithinModal =
         targetRect.top - modalRect.top + modal.scrollTop;
-      const newScrollTop = Math.max(0, offsetWithinModal - 100);
-      addDebug?.(
-        `  set sT ${modal.scrollTop}→${newScrollTop} (tgtTop=${Math.round(targetRect.top)} mdTop=${Math.round(modalRect.top)} sH=${modal.scrollHeight} cH=${modal.clientHeight})`,
-      );
       // Land 100 px below the modal top to clear the close button.
       // Browser auto-clamps to the legal scroll range (no whitespace
       // past the bottom).
-      modal.scrollTop = newScrollTop;
-      addDebug?.(`  after assign: modal.scrollTop=${modal.scrollTop}`);
+      modal.scrollTop = Math.max(0, offsetWithinModal - 100);
       markScrollResolved?.();
     };
 
@@ -1323,7 +1090,6 @@ function AlbumCommentsSection({
     comments,
     modalRef,
     markScrollResolved,
-    addDebug,
     cardHeight,
     imgLoaded,
   ]);
