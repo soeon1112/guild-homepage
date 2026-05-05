@@ -294,25 +294,39 @@ export default function MemberMiniHomePage({
     }
     hashHandledRef.current = true;
 
-    const doScroll = () => {
+    const doScroll = (label: string) => {
       const el = document.getElementById(targetId);
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      const targetY = Math.max(0, Math.round(rect.top + window.scrollY));
-      // Mobile Safari ignores `window.scrollTo({behavior:"smooth"})` in
-      // some hash-navigation scenarios — the call returns silently
-      // without moving the page. Use multiple methods for reliability:
-      //   1. 2-arg scrollTo (legacy, always instant, most compatible)
-      //   2. documentElement.scrollTop (direct property write)
-      //   3. body.scrollTop (older browsers)
-      window.scrollTo(0, targetY);
-      document.documentElement.scrollTop = targetY;
-      document.body.scrollTop = targetY;
+      const rect = el?.getBoundingClientRect();
+      const before = Math.round(window.scrollY);
+      const targetY = rect
+        ? Math.max(0, Math.round(rect.top + window.scrollY))
+        : -1;
+      if (el && rect) {
+        window.scrollTo(0, targetY);
+        document.documentElement.scrollTop = targetY;
+        document.body.scrollTop = targetY;
+      }
+      const after = Math.round(window.scrollY);
+      // [DEBUG] 매 호출 시점 결과 박스에 push — doScroll 자체 발화 여부
+      // 와 scrollTo 효과 사실 확인용. 캡처 받는 즉시 다음 commit 으로
+      // 디버그 + scrollY 출력 제거.
+      setDebugSnaps((prev) => [
+        ...prev,
+        [
+          `[ds-${label}]`,
+          `target=${targetId}`,
+          `el=${el ? "Y" : "N"}`,
+          `rect.top=${rect ? Math.round(rect.top) : "-"}`,
+          `before=${before}`,
+          `targetY=${targetY}`,
+          `after=${after}`,
+        ].join(" | "),
+      ]);
     };
 
     const handles: ReturnType<typeof setTimeout>[] = [];
     for (const ms of [100, 500, 1500, 3000]) {
-      handles.push(setTimeout(() => doScroll(), ms));
+      handles.push(setTimeout(() => doScroll(String(ms)), ms));
     }
     handles.push(setTimeout(() => setScrollPending(false), 700));
 
