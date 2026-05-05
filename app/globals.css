@@ -80,8 +80,11 @@
   right: 0;
   bottom: 0;
   left: 0;
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
+  /* `max()` 으로 노치/홈 인디케이터가 없는 디바이스(안드로이드 등 safe-area
+     0)에서도 최소 0.75rem 여백 — 카드 상단의 absolute 닫기 버튼이 viewport
+     edge 에 닿아 잘려 보이는 걸 막는다. */
+  padding-top: max(env(safe-area-inset-top), 0.75rem);
+  padding-bottom: max(env(safe-area-inset-bottom), 0.75rem);
   padding-left: 1rem;
   padding-right: 1rem;
   overflow-y: auto;
@@ -2266,8 +2269,10 @@ object {
   right: 0;
   bottom: 0;
   left: 0;
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
+  /* See .modal-safe-frame: max() guarantees a small min-padding on
+     non-notched devices so the card's top close button stays visible. */
+  padding-top: max(env(safe-area-inset-top), 0.75rem);
+  padding-bottom: max(env(safe-area-inset-bottom), 0.75rem);
   z-index: 100;
   background: rgba(11, 8, 33, 0.75);
   backdrop-filter: blur(8px);
