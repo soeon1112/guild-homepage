@@ -7038,9 +7038,18 @@ body.has-redesigned-header .bg-scene {
    URL-direct only (no menu entry). Card grid rather than table.   */
 
 .proposals-card-grid {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 0.875rem;
+}
+
+/* 데스크탑(≥768px) 2열. 모바일 웹은 1열 유지. 앱(RN)은 별도 코드라
+   영향 없음. gap은 모바일/데스크 동일 0.875rem (combat의 1rem보다
+   약간 좁게 — 카드가 더 빽빽하게 보이는 것이 제안 목록 톤에 맞음). */
+@media (min-width: 768px) {
+  .proposals-card-grid {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 .proposals-card {

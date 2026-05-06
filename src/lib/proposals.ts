@@ -7,17 +7,21 @@
 import type { Timestamp } from "firebase/firestore";
 
 // ── Visibility gate ──────────────────────────────────────────
-// Phase 1 한정 테스트로 "언쏘"만 진입 가능. 추후 전체 공개 시
+// Phase 1 한정 allowlist — "언쏘" + "테스트". 추후 전체 공개 시
 // `null`로 바꾸면 모든 로그인 멤버가 볼 수 있게 게이트가 통과한다
-// (canSeePets / canSeeGuildTest 와 동일 패턴).
-export const PROPOSALS_ADMIN_NICKNAME: string | null = "언쏘";
+// (canSeePets / canSeeGuildTest 와 동일 톤이지만 다중 닉네임이라
+// 배열로 둠).
+export const PROPOSALS_ADMIN_NICKNAMES: readonly string[] | null = [
+  "언쏘",
+  "테스트",
+];
 
 export function canSeeProposals(
   nickname: string | null | undefined,
 ): boolean {
   if (!nickname) return false;
-  if (PROPOSALS_ADMIN_NICKNAME === null) return true;
-  return nickname === PROPOSALS_ADMIN_NICKNAME;
+  if (PROPOSALS_ADMIN_NICKNAMES === null) return true;
+  return PROPOSALS_ADMIN_NICKNAMES.includes(nickname);
 }
 
 // ── Status ───────────────────────────────────────────────────

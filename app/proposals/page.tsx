@@ -204,7 +204,7 @@ function ProposalCard({ item }: { item: ProposalListItem }) {
   return (
     <div className="proposals-card">
       <div className="proposals-card-top-row">
-        <span className="proposals-category-tag">[{item.category}]</span>
+        <span className="proposals-category-tag">{item.category}</span>
         <span
           className={`proposals-status-badge proposals-status-${item.status}`}
         >
