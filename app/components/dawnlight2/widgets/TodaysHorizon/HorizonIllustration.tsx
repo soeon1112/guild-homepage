@@ -2,13 +2,16 @@
 // silhouetted floating islands, and a drifting hot-air balloon.
 // Designed to bleed into the page background — no frame, no border.
 //
-// Port note: the v0 source had no shooting-star elements, so there
-// was nothing to remove on that front. The only adjustment is the
-// hot-air balloon's vertical anchor — v0 placed it at translate(0 290)
-// (≈48% of the 600-unit viewBox) which rendered the envelope top
-// against the upper edge on the actual layout; we drop it 90 units
-// (~30% of its previous offset) to translate(0 380) so the entire
-// balloon, basket and lines stay clear of the parchment overlay.
+// Balloon positioning quirk: the `animate-sway` keyframes set
+// `transform: translateY(...) rotate(...)` on each frame, which fully
+// replaces any SVG `transform` attribute on the same element (CSS
+// animation cascade beats the presentation attribute). v0 carried
+// `transform="translate(0 290)"` directly on the swaying group, so
+// that translate was silently dropped and the envelope top sat at
+// y=-28 (above the viewBox), getting clipped. We split it: an outer
+// non-animated <g transform="translate(0 380)"> handles vertical
+// placement; an inner <g class="animate-sway"> handles the rotational
+// rocking only.
 export function HorizonIllustration() {
   return (
     <div className="relative w-full">
@@ -126,27 +129,34 @@ export function HorizonIllustration() {
           </g>
         </g>
 
-        {/* Hot-air balloon — drifts across with a gentle sway. Lowered
-            from translate(0 290) → translate(0 380) so the envelope top
-            stays clear of the parchment overlay on narrow viewports. */}
+        {/* Hot-air balloon — drifts across with a gentle sway. The
+            outer animated <g> owns the horizontal drift; the static
+            inner <g transform="translate(0 380)"> owns vertical
+            placement (envelope top → y=352, basket bottom → y=446,
+            ~58–74% of viewBox); the innermost animate-sway <g> owns
+            the rocking. Splitting the translate from the sway is what
+            makes vertical position actually take effect — see the
+            cascade note in the file header. */}
         <g className="animate-drift-across" style={{ animationDelay: "-12s" }}>
-          <g className="animate-sway" transform="translate(0 380)">
-            <g transform="translate(60 0)">
-              <line x1="0" y1="42" x2="0" y2="60" stroke="#fef5e6" strokeWidth="0.8" opacity="0.7" />
-              <line x1="-8" y1="42" x2="-6" y2="60" stroke="#fef5e6" strokeWidth="0.8" opacity="0.6" />
-              <line x1="8" y1="42" x2="6" y2="60" stroke="#fef5e6" strokeWidth="0.8" opacity="0.6" />
-              <path
-                d="M 0 -28 C 22 -28 30 -10 24 8 C 20 22 10 38 0 42 C -10 38 -20 22 -24 8 C -30 -10 -22 -28 0 -28 Z"
-                fill="url(#dl2-balloon)"
-              />
-              <path
-                d="M -22 -2 C -18 8 -10 22 0 26 C 10 22 18 8 22 -2"
-                fill="none"
-                stroke="#a06a52"
-                strokeWidth="0.8"
-                opacity="0.45"
-              />
-              <rect x="-6" y="60" width="12" height="6" rx="1.5" fill="#6b4a3a" />
+          <g transform="translate(0 380)">
+            <g className="animate-sway">
+              <g transform="translate(60 0)">
+                <line x1="0" y1="42" x2="0" y2="60" stroke="#fef5e6" strokeWidth="0.8" opacity="0.7" />
+                <line x1="-8" y1="42" x2="-6" y2="60" stroke="#fef5e6" strokeWidth="0.8" opacity="0.6" />
+                <line x1="8" y1="42" x2="6" y2="60" stroke="#fef5e6" strokeWidth="0.8" opacity="0.6" />
+                <path
+                  d="M 0 -28 C 22 -28 30 -10 24 8 C 20 22 10 38 0 42 C -10 38 -20 22 -24 8 C -30 -10 -22 -28 0 -28 Z"
+                  fill="url(#dl2-balloon)"
+                />
+                <path
+                  d="M -22 -2 C -18 8 -10 22 0 26 C 10 22 18 8 22 -2"
+                  fill="none"
+                  stroke="#a06a52"
+                  strokeWidth="0.8"
+                  opacity="0.45"
+                />
+                <rect x="-6" y="60" width="12" height="6" rx="1.5" fill="#6b4a3a" />
+              </g>
             </g>
           </g>
         </g>
