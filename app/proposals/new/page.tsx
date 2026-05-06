@@ -57,17 +57,25 @@ function FormView({ authorNick }: { authorNick: string }) {
   const [time, setTime] = useState("");
   const [maxText, setMaxText] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(false);
+  const [showAnonymousWarning, setShowAnonymousWarning] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const toggleAnonymous = () => {
     if (!isAnonymous) {
-      const ok = window.confirm(
-        "익명 제안 안내\n\n익명 설정 시, 진행중으로 변경되면 닉네임이 공개됩니다.",
-      );
-      if (ok) setIsAnonymous(true);
+      // 켜는 순간 안내 모달. 모달의 확인 버튼이 setIsAnonymous(true)를
+      // 확정하고, X / 백드롭 닫기는 isAnonymous를 false 상태 유지.
+      setShowAnonymousWarning(true);
     } else {
       setIsAnonymous(false);
     }
+  };
+
+  const confirmAnonymous = () => {
+    setIsAnonymous(true);
+    setShowAnonymousWarning(false);
+  };
+  const dismissAnonymous = () => {
+    setShowAnonymousWarning(false);
   };
 
   const handleSubmit = async () => {
@@ -189,7 +197,6 @@ function FormView({ authorNick }: { authorNick: string }) {
 
         <label className="proposals-checkbox-row" onClick={(e) => {
           // span/box는 시각용 — 실제 토글은 onClick 한 번에서 처리.
-          // 안내 팝업이 켜질 때만 confirm 결과 따라 토글되도록 toggle()에 위임.
           e.preventDefault();
           toggleAnonymous();
         }}>
@@ -216,6 +223,61 @@ function FormView({ authorNick }: { authorNick: string }) {
           <Link href="/proposals" className="board-btn board-btn-cancel">
             취소
           </Link>
+        </div>
+      </div>
+
+      {showAnonymousWarning ? (
+        <AnonymousWarningModal
+          onConfirm={confirmAnonymous}
+          onDismiss={dismissAnonymous}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function AnonymousWarningModal({
+  onConfirm,
+  onDismiss,
+}: {
+  onConfirm: () => void;
+  onDismiss: () => void;
+}) {
+  return (
+    <div
+      className="proposals-modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="proposals-anon-title"
+      onClick={onDismiss}
+    >
+      <div
+        className="proposals-modal-card"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          className="proposals-modal-close"
+          onClick={onDismiss}
+          aria-label="닫기"
+        >
+          ×
+        </button>
+        <h2 id="proposals-anon-title" className="proposals-modal-title">
+          익명 제안 안내
+        </h2>
+        <p className="proposals-modal-body">
+          익명 설정 시, 진행중으로 변경되면 닉네임이 공개됩니다.
+        </p>
+        <div className="proposals-modal-footer">
+          <button
+            type="button"
+            className="proposals-modal-confirm"
+            onClick={onConfirm}
+            autoFocus
+          >
+            확인
+          </button>
         </div>
       </div>
     </div>
