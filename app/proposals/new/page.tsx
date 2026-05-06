@@ -108,7 +108,10 @@ function FormView({ authorNick }: { authorNick: string }) {
         maxParticipants: max,
         proposer: authorNick,
         isAnonymous,
-        participants: [],
+        // 제안자는 본인의 제안에 자동 참가 — Phase 2에서 참가자 리스트
+        // 표시 + 인원 카운트가 시작부터 1로 잡힘. 제안자가 빠질 수 있는
+        // 길은 "취소" 액션 한 가지뿐.
+        participants: [authorNick],
         status: "recruiting",
         promotedAt: null,
         createdAt: serverTimestamp(),

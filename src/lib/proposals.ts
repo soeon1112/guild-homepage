@@ -78,3 +78,71 @@ export type ProposalDoc = {
   createdAt: Timestamp;
   updatedAt: Timestamp;
 };
+
+// ── Participation / transition helpers ───────────────────────
+// 헬퍼는 ProposalDoc + UI 리스트 아이템(둘 다 같은 4개 필드를 갖는다)
+// 어느 쪽으로 호출해도 동작하도록 minimal shape만 받는다.
+export type ProposalLike = {
+  proposer: string;
+  participants?: readonly string[];
+  maxParticipants: number;
+  status: ProposalStatus;
+};
+
+export function isProposer(
+  p: ProposalLike,
+  nickname: string | null | undefined,
+): boolean {
+  if (!nickname) return false;
+  return p.proposer === nickname;
+}
+
+export function isParticipant(
+  p: ProposalLike,
+  nickname: string | null | undefined,
+): boolean {
+  if (!nickname) return false;
+  return Array.isArray(p.participants) && p.participants.includes(nickname);
+}
+
+export function canJoin(
+  p: ProposalLike,
+  nickname: string | null | undefined,
+): boolean {
+  if (!nickname) return false;
+  if (p.status !== "recruiting") return false;
+  if (isParticipant(p, nickname)) return false;
+  const count = p.participants?.length ?? 0;
+  if (count >= p.maxParticipants) return false;
+  return true;
+}
+
+// 참가 취소: 모집중 + 본인이 참가자 리스트에 있고 + 본인이 제안자가 아닐 때만.
+// 제안자는 자동으로 participants에 들어가 있지만, "참가 취소"로 빠지는 게
+// 아니라 "취소" 액션으로 제안 자체를 닫아야 한다.
+export function canCancelJoin(
+  p: ProposalLike,
+  nickname: string | null | undefined,
+): boolean {
+  if (!nickname) return false;
+  if (p.status !== "recruiting") return false;
+  if (isProposer(p, nickname)) return false;
+  return isParticipant(p, nickname);
+}
+
+// 제안자 전용 상태 전환. terminal(completed/incomplete/cancelled)에서는
+// 어떤 전환도 불가.
+export function canTransitionTo(
+  p: ProposalLike,
+  nickname: string | null | undefined,
+  target: ProposalStatus,
+): boolean {
+  if (!isProposer(p, nickname)) return false;
+  if (p.status === "recruiting") {
+    return target === "in_progress" || target === "cancelled";
+  }
+  if (p.status === "in_progress") {
+    return target === "completed" || target === "incomplete";
+  }
+  return false;
+}

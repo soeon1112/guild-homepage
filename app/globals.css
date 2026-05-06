@@ -7438,3 +7438,128 @@ body.has-redesigned-header .bg-scene {
   transform: translateY(-1px);
   box-shadow: 0 0 18px rgba(255, 181, 167, 0.7), 0 4px 14px rgba(11, 8, 33, 0.35);
 }
+
+.proposals-modal-confirm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 0 12px rgba(255, 181, 167, 0.4);
+}
+
+/* Phase 2 — 두 버튼 footer (취소 + 확인) ------------------- */
+
+.proposals-modal-footer-two {
+  display: flex;
+  gap: 0.625rem;
+  justify-content: flex-end;
+  margin-top: 0.375rem;
+}
+
+.proposals-modal-cancel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.625rem 1.25rem;
+  border-radius: 999px;
+  background: rgba(11, 8, 33, 0.5);
+  border: 1px solid rgba(200, 168, 233, 0.25);
+  color: rgba(200, 168, 233, 0.8);
+  font-family: 'Noto Serif KR', serif;
+  font-weight: 500;
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.proposals-modal-cancel:hover {
+  color: #C8A8E9;
+  border-color: rgba(200, 168, 233, 0.5);
+  box-shadow: 0 0 10px rgba(107, 75, 168, 0.35);
+}
+
+.proposals-modal-cancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Phase 2 — 카드 액션 (참가/취소/제안자 전환) ----------------- */
+
+.proposals-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 0.25rem;
+}
+
+.proposals-action-primary,
+.proposals-action-default,
+.proposals-action-disabled {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem 1rem;
+  border-radius: 999px;
+  font-family: 'Noto Serif KR', serif;
+  font-weight: 500;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.proposals-action-primary {
+  background: linear-gradient(135deg, #FFE5C4, #FFB5A7);
+  color: #0B0821;
+  border: none;
+  box-shadow: 0 0 10px rgba(255, 181, 167, 0.45);
+}
+
+.proposals-action-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 14px rgba(255, 181, 167, 0.65), 0 3px 10px rgba(11, 8, 33, 0.3);
+}
+
+.proposals-action-default {
+  background: rgba(11, 8, 33, 0.5);
+  border: 1px solid rgba(216, 150, 200, 0.3);
+  color: rgba(200, 168, 233, 0.85);
+}
+
+.proposals-action-default:hover {
+  border-color: rgba(216, 150, 200, 0.6);
+  box-shadow: 0 0 10px rgba(216, 150, 200, 0.3);
+}
+
+.proposals-action-disabled {
+  background: rgba(11, 8, 33, 0.3);
+  border: 1px solid rgba(155, 143, 184, 0.25);
+  color: rgba(155, 143, 184, 0.5);
+  cursor: not-allowed;
+}
+
+/* Phase 2 — 취소 카드 배너 ---------------------------------- */
+
+.proposals-cancelled-banner {
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.625rem;
+  background: rgba(155, 143, 184, 0.12);
+  border: 1px dashed rgba(155, 143, 184, 0.3);
+  color: rgba(200, 168, 233, 0.7);
+  font-family: 'Noto Serif KR', serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+/* Phase 2 — 참가자 라인 (멀티라인 wrap) --------------------- */
+
+.proposals-meta-value-multi {
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: rgba(244, 239, 255, 0.85);
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
