@@ -7,14 +7,10 @@
 import type { Timestamp } from "firebase/firestore";
 
 // ── Visibility gate ──────────────────────────────────────────
-// Phase 1 한정 allowlist — "언쏘" + "테스트". 추후 전체 공개 시
-// `null`로 바꾸면 모든 로그인 멤버가 볼 수 있게 게이트가 통과한다
-// (canSeePets / canSeeGuildTest 와 동일 톤이지만 다중 닉네임이라
-// 배열로 둠).
-export const PROPOSALS_ADMIN_NICKNAMES: readonly string[] | null = [
-  "언쏘",
-  "테스트",
-];
+// Phase 2-B (메뉴 정식 추가) 시점에 전체 공개로 풀림 — null = 모든
+// 로그인 멤버 진입 가능. 다시 allowlist 로 막으려면 배열로 되돌리면 됨
+// (canSeePets / canSeeGuildTest 와 동일 escape hatch 패턴).
+export const PROPOSALS_ADMIN_NICKNAMES: readonly string[] | null = null;
 
 export function canSeeProposals(
   nickname: string | null | undefined,

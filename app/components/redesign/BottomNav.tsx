@@ -21,10 +21,11 @@ const icons = {
       <circle cx="21" cy="12" r="1" fill="currentColor" />
     </svg>
   ),
-  schedule: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-      <circle cx="12" cy="12" r="7" />
-      <path d="M12 5 A 7 7 0 0 1 12 19 A 4 7 0 0 0 12 5" fill="currentColor" />
+  proposals: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
+      {/* 손바닥(완만한 호) 위로 띄운 별 — "내 별을 모두에게 제안한다" */}
+      <path d="M12 4 L13.2 7.5 L17 7.8 L14 10.2 L15.2 13.8 L12 11.7 L8.8 13.8 L10 10.2 L7 7.8 L10.8 7.5 Z" fill="currentColor" stroke="none" />
+      <path d="M5 17 Q 12 21 19 17" opacity="0.55" />
     </svg>
   ),
   members: (
@@ -63,7 +64,7 @@ const icons = {
 
 const items: NavItem[] = [
   { id: "notice", label: "공지", icon: icons.notice, href: "/notice" },
-  { id: "schedule", label: "일정", icon: icons.schedule, href: "/schedule" },
+  { id: "proposals", label: "제안", icon: icons.proposals, href: "/proposals" },
   { id: "members", label: "길드원", icon: icons.members, href: "/members" },
   { id: "combat", label: "투력", icon: icons.combat, href: "/combat" },
   { id: "album", label: "앨범", icon: icons.album, href: "/album" },
@@ -119,7 +120,7 @@ export function BottomNav() {
   const isActive = (item: NavItem) => {
     if (!pathname) return false;
     if (item.id === "notice") return pathname.startsWith("/notice");
-    if (item.id === "schedule") return pathname.startsWith("/schedule");
+    if (item.id === "proposals") return pathname.startsWith("/proposals");
     if (item.id === "members") return pathname.startsWith("/members");
     if (item.id === "combat") return pathname.startsWith("/combat");
     if (item.id === "album") return pathname.startsWith("/album");
