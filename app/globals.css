@@ -7106,29 +7106,121 @@ body.has-redesigned-header .bg-scene {
   letter-spacing: 0.04em;
 }
 
+/* 뱃지 — 상태별로 차별화 (3단계). 모집중은 더 큰 폰트 + 그라데이션 +
+   white text, in_progress는 보라 솔리드, terminal은 죽은 톤. */
 .proposals-status-recruiting {
-  background: rgba(255, 181, 167, 0.15);
-  border-color: rgba(255, 181, 167, 0.5);
-  color: #FFB5A7;
+  background: linear-gradient(135deg, #FFB5A7, #FF8A80);
+  border-color: transparent;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.7rem;
+  box-shadow: 0 0 8px rgba(255, 138, 128, 0.4);
 }
 
 .proposals-status-in_progress {
-  background: rgba(255, 229, 196, 0.15);
-  border-color: rgba(255, 229, 196, 0.5);
-  color: #FFE5C4;
+  background: #6B4BA8;
+  border-color: transparent;
+  color: #ffffff;
 }
 
-.proposals-status-completed {
-  background: rgba(216, 150, 200, 0.12);
-  border-color: rgba(216, 150, 200, 0.4);
-  color: #D896C8;
+.proposals-status-completed,
+.proposals-status-incomplete {
+  background: #3A3A5A;
+  border-color: transparent;
+  color: rgba(244, 239, 255, 0.7);
 }
 
-.proposals-status-incomplete,
 .proposals-status-cancelled {
-  background: rgba(155, 143, 184, 0.12);
-  border-color: rgba(155, 143, 184, 0.4);
-  color: #9B8FB8;
+  background: #5A3040;
+  border-color: transparent;
+  color: rgba(244, 239, 255, 0.7);
+}
+
+/* 카드 — 상태별 차별화 (3단계). data-status 분기 (페이지 코드에서 부여).
+   모집중: 그라데이션 보더 + 밝은 배경 + glow + 펄스
+   진행중: 보라/라벤더 보더 + 약한 glow
+   완료/미완료: 죽은 회색 + 어두운 배경 + opacity 0.6
+   취소: 점선 보더 + 가장 어두운 배경 + opacity 0.45 + 제목 line-through
+
+   그라데이션 보더는 multi-layer background-clip 트릭 — `border: 2px solid
+   transparent`로 보더 영역을 비우고 마지막 layer를 border-box로 채워서
+   border-radius를 유지한다. background-image의 radial-gradient는 모두
+   padding-box로 한정. */
+
+.proposals-card[data-status="recruiting"] {
+  border: 2px solid transparent;
+  background:
+    radial-gradient(at 20% 20%, rgba(216, 150, 200, 0.12), transparent 55%) padding-box,
+    radial-gradient(at 80% 80%, rgba(255, 181, 167, 0.10), transparent 55%) padding-box,
+    linear-gradient(rgba(107, 75, 168, 0.15), rgba(107, 75, 168, 0.15)) padding-box,
+    linear-gradient(135deg, #FFB5A7, #D896C8) border-box;
+  box-shadow:
+    0 0 15px rgba(255, 181, 167, 0.4),
+    0 4px 18px rgba(11, 8, 33, 0.3),
+    inset 0 1px 0 rgba(255, 229, 196, 0.05);
+  animation: proposals-recruiting-pulse 3s ease-in-out infinite;
+}
+
+@keyframes proposals-recruiting-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 15px rgba(255, 181, 167, 0.4),
+      0 4px 18px rgba(11, 8, 33, 0.3),
+      inset 0 1px 0 rgba(255, 229, 196, 0.05);
+  }
+  50% {
+    box-shadow:
+      0 0 22px rgba(255, 181, 167, 0.55),
+      0 4px 18px rgba(11, 8, 33, 0.3),
+      inset 0 1px 0 rgba(255, 229, 196, 0.05);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .proposals-card[data-status="recruiting"] {
+    animation: none;
+  }
+}
+
+.proposals-card[data-status="in_progress"] {
+  border: 1.5px solid transparent;
+  background:
+    radial-gradient(at 20% 20%, rgba(216, 150, 200, 0.09), transparent 55%) padding-box,
+    radial-gradient(at 80% 80%, rgba(255, 181, 167, 0.07), transparent 55%) padding-box,
+    linear-gradient(rgba(107, 75, 168, 0.08), rgba(107, 75, 168, 0.08)) padding-box,
+    linear-gradient(135deg, #6B4BA8, #9B8FB8) border-box;
+  box-shadow:
+    0 0 8px rgba(107, 75, 168, 0.25),
+    0 4px 18px rgba(11, 8, 33, 0.3),
+    inset 0 1px 0 rgba(255, 229, 196, 0.05);
+}
+
+.proposals-card[data-status="completed"],
+.proposals-card[data-status="incomplete"] {
+  background: rgba(30, 20, 50, 0.6);
+  background-image:
+    radial-gradient(at 20% 20%, rgba(216, 150, 200, 0.05), transparent 55%),
+    radial-gradient(at 80% 80%, rgba(255, 181, 167, 0.04), transparent 55%);
+  border: 1px solid #4A4A6A;
+  box-shadow: 0 4px 18px rgba(11, 8, 33, 0.3);
+  opacity: 0.6;
+}
+
+.proposals-card[data-status="cancelled"] {
+  background: rgba(20, 15, 40, 0.7);
+  background-image:
+    radial-gradient(at 20% 20%, rgba(216, 150, 200, 0.04), transparent 55%);
+  border: 1px dashed #3A3A5A;
+  box-shadow: 0 4px 18px rgba(11, 8, 33, 0.3);
+  opacity: 0.45;
+}
+
+.proposals-card[data-status="cancelled"] .proposals-card-title {
+  text-decoration: line-through;
+  text-decoration-color: rgba(200, 168, 233, 0.5);
+  text-decoration-thickness: 1.5px;
 }
 
 .proposals-card-title {

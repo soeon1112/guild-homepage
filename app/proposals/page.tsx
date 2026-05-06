@@ -292,7 +292,7 @@ function ProposalCard({
     !isCancelled && (showJoin || showCancelJoin || showFull || proposerActions.length > 0);
 
   return (
-    <div className="proposals-card">
+    <div className="proposals-card" data-status={item.status}>
       <div className="proposals-card-top-row">
         <span className="proposals-category-tag">{item.category}</span>
         <span
@@ -472,21 +472,24 @@ function ConfirmModal({
 // ── Sort / labels / copy ─────────────────────────────────────
 
 function sortGrouped(items: ProposalListItem[]): ProposalListItem[] {
+  // 4개 그룹으로 분리 — recruiting(맨 위) → in_progress → completed/
+  // incomplete(같이) → cancelled(맨 뒤). 같은 상태 안에서는 updatedAt
+  // 최신 먼저. recruiting도 임박순 → 최신순으로 정책 변경(2단계 보정).
+  const byUpdatedDesc = (a: ProposalListItem, b: ProposalListItem) =>
+    b.updatedAtMs - a.updatedAtMs;
   const recruiting = items
     .filter((i) => i.status === "recruiting")
-    .sort((a, b) => a.scheduledAtMs - b.scheduledAtMs);
+    .sort(byUpdatedDesc);
   const inProgress = items
     .filter((i) => i.status === "in_progress")
-    .sort((a, b) => b.updatedAtMs - a.updatedAtMs);
-  const finished = items
-    .filter(
-      (i) =>
-        i.status === "completed" ||
-        i.status === "incomplete" ||
-        i.status === "cancelled",
-    )
-    .sort((a, b) => b.updatedAtMs - a.updatedAtMs);
-  return [...recruiting, ...inProgress, ...finished];
+    .sort(byUpdatedDesc);
+  const completedOrIncomplete = items
+    .filter((i) => i.status === "completed" || i.status === "incomplete")
+    .sort(byUpdatedDesc);
+  const cancelled = items
+    .filter((i) => i.status === "cancelled")
+    .sort(byUpdatedDesc);
+  return [...recruiting, ...inProgress, ...completedOrIncomplete, ...cancelled];
 }
 
 function proposerActionLabel(target: ProposalStatus): string {
