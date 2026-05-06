@@ -7148,18 +7148,36 @@ body.has-redesigned-header .bg-scene {
    border-radius를 유지한다. background-image의 radial-gradient는 모두
    padding-box로 한정. */
 
+/* recruiting / in_progress: 그라데이션 보더는 ::before 의사요소 + mask-
+   composite trick으로 보더 영역만 칠한다. 이전 multi-layer background-
+   clip 방식은 맨 아래 그라데이션이 위 저알파 레이어를 뚫고 비쳐서
+   카드 전체가 핑크 덩어리로 보이는 버그가 있었다. background는
+   override하지 않고 base .proposals-card의 글래스모피즘을 그대로 사용. */
 .proposals-card[data-status="recruiting"] {
   border: 2px solid transparent;
-  background:
-    radial-gradient(at 20% 20%, rgba(216, 150, 200, 0.12), transparent 55%) padding-box,
-    radial-gradient(at 80% 80%, rgba(255, 181, 167, 0.10), transparent 55%) padding-box,
-    linear-gradient(rgba(107, 75, 168, 0.15), rgba(107, 75, 168, 0.15)) padding-box,
-    linear-gradient(135deg, #FFB5A7, #D896C8) border-box;
   box-shadow:
     0 0 15px rgba(255, 181, 167, 0.4),
     0 4px 18px rgba(11, 8, 33, 0.3),
     inset 0 1px 0 rgba(255, 229, 196, 0.05);
   animation: proposals-recruiting-pulse 3s ease-in-out infinite;
+}
+
+.proposals-card[data-status="recruiting"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px;
+  background: linear-gradient(135deg, #FFB5A7, #D896C8);
+  /* mask-composite: exclude → 두 마스크 중 하나만 set인 영역만 남김.
+     content-box 안쪽(본문 영역)은 두 layer 모두 set → 제외(투명).
+     padding 영역(=보더 ring)은 layer 2만 set → 유지(그라데이션 보임). */
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
 }
 
 @keyframes proposals-recruiting-pulse {
@@ -7186,15 +7204,25 @@ body.has-redesigned-header .bg-scene {
 
 .proposals-card[data-status="in_progress"] {
   border: 1.5px solid transparent;
-  background:
-    radial-gradient(at 20% 20%, rgba(216, 150, 200, 0.09), transparent 55%) padding-box,
-    radial-gradient(at 80% 80%, rgba(255, 181, 167, 0.07), transparent 55%) padding-box,
-    linear-gradient(rgba(107, 75, 168, 0.08), rgba(107, 75, 168, 0.08)) padding-box,
-    linear-gradient(135deg, #6B4BA8, #9B8FB8) border-box;
   box-shadow:
     0 0 8px rgba(107, 75, 168, 0.25),
     0 4px 18px rgba(11, 8, 33, 0.3),
     inset 0 1px 0 rgba(255, 229, 196, 0.05);
+}
+
+.proposals-card[data-status="in_progress"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: linear-gradient(135deg, #6B4BA8, #9B8FB8);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
 }
 
 .proposals-card[data-status="completed"],
