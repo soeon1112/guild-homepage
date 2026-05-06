@@ -10,7 +10,7 @@
 // Real widgets (Today's Horizon, 바람결 소식, etc.) ship in follow-ups.
 export function Dawnlight2MainPage() {
   return (
-    <main className="mx-auto w-full max-w-2xl px-5 pb-32 pt-16 sm:pt-24">
+    <main className="relative z-10 mx-auto w-full max-w-2xl px-5 pb-32 pt-16 sm:pt-24">
       {/* Title block — uses Noto Serif KR to confirm the serif variable
           is wired through next/font and the .font-serif-kr utility. */}
       <header className="text-center">
