@@ -41,9 +41,33 @@ function rewriteAdventureLink(link) {
   return `${link}#minihome-adventure`;
 }
 
-function rewriteGuestbookLink(link) {
+function rewriteGuestbookLink(link, doc) {
   if (!link) return null;
-  if (link.includes("#")) return null;
+  // New format: /members/<id>?guestbook=<entryId> — needs targetPath
+  // to extract entry id. targetPath shapes:
+  //   members/<id>/guestbook/<entryId>
+  //   members/<id>/guestbook/<entryId>/replies/<replyId>  ← reply,
+  //     parent entry id is the page-jump anchor.
+  // If targetPath is missing/malformed, fall through to the old anchor
+  // rewrite (so very old docs without targetPath still get the
+  // section-level scroll).
+  const targetPath =
+    typeof doc.targetPath === "string" ? doc.targetPath : "";
+  const m =
+    /^members\/([^/]+)\/guestbook\/([^/]+)(?:\/replies\/[^/]+)?$/.exec(
+      targetPath,
+    );
+  if (m) {
+    const memberId = m[1];
+    const entryId = m[2];
+    const next = `/members/${memberId}?guestbook=${entryId}`;
+    if (link === next) return null;
+    return next;
+  }
+  // Legacy fallback: bare /members/<id> → add #minihome-guestbook
+  // anchor (Phase 1 behaviour). Only applied when targetPath couldn't
+  // give us the entry id.
+  if (link.includes("#") || link.includes("?")) return null;
   if (!/^\/members\/[^/?#]+$/.test(link)) return null;
   return `${link}#minihome-guestbook`;
 }
@@ -64,7 +88,7 @@ function rewriteCombatLink(link, doc) {
 
 const REWRITERS = {
   adventure: (_link, doc) => rewriteAdventureLink(doc.link),
-  guestbook: (_link, doc) => rewriteGuestbookLink(doc.link),
+  guestbook: (_link, doc) => rewriteGuestbookLink(doc.link, doc),
   combat: (_link, doc) => rewriteCombatLink(doc.link, doc),
 };
 

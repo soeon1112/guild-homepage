@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   addDoc,
@@ -57,10 +57,12 @@ export function GuestbookSection({
   id,
   loginNick,
   memberNickname,
+  autoJumpEntryId,
 }: {
   id: string;
   loginNick: string | null;
   memberNickname: string | null;
+  autoJumpEntryId?: string | null;
 }) {
   const [entries, setEntries] = useState<GuestbookEntry[]>([]);
   const [msg, setMsg] = useState("");
@@ -81,6 +83,41 @@ export function GuestbookSection({
     });
     return () => unsub();
   }, [id]);
+
+  // Deep-link auto-jump: ?guestbook=<entryId> arrives via the parent
+  // page. When entries load, locate the target entry and flip to its
+  // page so it's actually rendered, then multi-retry scrollIntoView so
+  // late-arriving images / page deep-link scroll don't fight us.
+  const jumpHandledRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!autoJumpEntryId) return;
+    if (jumpHandledRef.current === autoJumpEntryId) return;
+    if (entries.length === 0) return;
+    const idx = entries.findIndex((e) => e.id === autoJumpEntryId);
+    if (idx < 0) return;
+    jumpHandledRef.current = autoJumpEntryId;
+    const targetPage = Math.floor(idx / PER_PAGE);
+    setPage(targetPage);
+
+    const tryScroll = () => {
+      const el = document.querySelector(
+        `[data-gb-entry-id="${autoJumpEntryId}"]`,
+      );
+      if (!(el instanceof HTMLElement)) return;
+      const rect = el.getBoundingClientRect();
+      const targetY = Math.max(0, Math.round(rect.top + window.scrollY - 80));
+      window.scrollTo(0, targetY);
+      document.documentElement.scrollTop = targetY;
+      document.body.scrollTop = targetY;
+    };
+    const handles: ReturnType<typeof setTimeout>[] = [];
+    for (const ms of [200, 600, 1500, 3000]) {
+      handles.push(setTimeout(tryScroll, ms));
+    }
+    return () => {
+      for (const h of handles) clearTimeout(h);
+    };
+  }, [autoJumpEntryId, entries]);
 
   const handleSubmit = async () => {
     if (!loginNick) return;
@@ -108,7 +145,7 @@ export function GuestbookSection({
           "guestbook",
           loginNick,
           `${memberNickname}님의 방명록에 '${truncate(trimmed, 25)}'${josa(trimmed, "이/가")} 달렸어요`,
-          `/members/${id}#minihome-guestbook`,
+          `/members/${id}?guestbook=${entryRef.id}`,
           `members/${id}/guestbook/${entryRef.id}`,
         );
       }
@@ -209,7 +246,7 @@ export function GuestbookSection({
       ) : (
         <ul className="flex flex-col">
           {visible.map((e, idx) => (
-            <li key={e.id} className="relative">
+            <li key={e.id} data-gb-entry-id={e.id} className="relative">
               <GuestbookItem
                 memberId={id}
                 entry={e}
@@ -342,7 +379,7 @@ function GuestbookItem({
           "guestbook",
           loginNick,
           `${memberNickname}님의 방명록 댓글에 '${truncate(trimmed, 25)}'${josa(trimmed, "이/가")} 달렸어요`,
-          `/members/${memberId}#minihome-guestbook`,
+          `/members/${memberId}?guestbook=${entry.id}`,
           `members/${memberId}/guestbook/${entry.id}/replies/${replyRef.id}`,
         );
       }

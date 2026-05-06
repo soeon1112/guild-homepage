@@ -222,6 +222,9 @@ export default function MemberMiniHomePage({
   //   • #minihome-adventure / #minihome-guestbook → scroll to section
   //   • ?photo=<id>(&comment=<id>)                → scroll to #minihome-photos
   //     (PhotosSection handles the modal open + comment scroll itself)
+  //   • ?guestbook=<entryId>                       → scroll to
+  //     #minihome-guestbook + GuestbookSection flips to the entry's page
+  //     and scrollIntoView the entry itself
   //
   // Naïve "scrollIntoView once at +50ms" lands at the WRONG y because
   // ProfileSection's avatar SVG / Firestore snapshots arrive after the
@@ -243,7 +246,12 @@ export default function MemberMiniHomePage({
     const rawHash = window.location.hash.slice(1);
     return rawHash.split("#")[0] || "";
   });
-  const hasDeepLink = !!initialDeepLink;
+  const [initialGuestbookEntryId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    const params = new URLSearchParams(window.location.search);
+    return params.get("guestbook");
+  });
+  const hasDeepLink = !!initialDeepLink || !!initialGuestbookEntryId;
   const [scrollPending, setScrollPending] = useState<boolean>(hasDeepLink);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const hashHandledRef = useRef(false);
@@ -255,12 +263,16 @@ export default function MemberMiniHomePage({
     // first render is the fallback. ?photo= path falls back to
     // "minihome-photos" so the page scrolls to the photos section
     // before PhotosSection's auto-open mounts the modal.
+    // ?guestbook= falls back to "minihome-guestbook" — GuestbookSection
+    // separately handles the entry-level scroll once it's mounted.
     const liveHash = window.location.hash.slice(1).split("#")[0] || "";
     const hasPhotoParam = window.location.search.includes("photo=");
+    const hasGuestbookParam = window.location.search.includes("guestbook=");
     const targetId =
       liveHash ||
       initialDeepLink ||
-      (hasPhotoParam ? "minihome-photos" : "");
+      (hasPhotoParam ? "minihome-photos" : "") ||
+      (hasGuestbookParam ? "minihome-guestbook" : "");
     if (!targetId) {
       setScrollPending(false);
       return;
@@ -325,6 +337,7 @@ export default function MemberMiniHomePage({
         id={resolvedId}
         loginNick={loginNick}
         memberNickname={member?.nickname ?? null}
+        autoJumpEntryId={initialGuestbookEntryId}
       />
       <AdventureLogSection
         id={resolvedId}
