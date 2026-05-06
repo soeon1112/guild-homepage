@@ -1,31 +1,8 @@
-// Main page — redesign (Step: global chrome moved to ChromeShell; page keeps only sections)
-import { TodaySky } from "./components/redesign/TodaySky";
-import { GuildTestBanner } from "./components/redesign/GuildTestBanner";
-import { ShootingStarLetter } from "./components/redesign/ShootingStarLetter";
-import { NebulaWhispers } from "./components/redesign/NebulaWhispers";
-import { WhispersToStars } from "./components/redesign/WhispersToStars";
-import { StarOfDay } from "./components/redesign/StarOfDay";
+// Main page — feature-gated between legacy 우주 테마 and the new 하늘섬
+// (Dawnlight 2) layout. The decision needs the logged-in nickname, so
+// it lives in a client gate; this file stays a thin server shell.
+import { MainGate } from "./components/dawnlight2/MainGate";
 
 export default function Home() {
-  return (
-    <div className="main-content">
-      {/* Today's Sky — constellation + attendance check-in */}
-      <TodaySky />
-
-      {/* Self-check banner — soft-launched to admin only */}
-      <GuildTestBanner />
-
-      {/* Shooting-star letter — compose & inbox */}
-      <ShootingStarLetter />
-
-      {/* Nebula whispers — recent activity feed */}
-      <NebulaWhispers />
-
-      {/* Whispers to stars — home guestbook (floating cards) */}
-      <WhispersToStars />
-
-      {/* Star of the day — random member spotlight */}
-      <StarOfDay />
-    </div>
-  );
+  return <MainGate />;
 }
