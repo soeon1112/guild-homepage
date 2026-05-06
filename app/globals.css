@@ -2281,9 +2281,13 @@ object {
   padding-top: max(env(safe-area-inset-top), 0.75rem);
   padding-bottom: calc(max(env(safe-area-inset-bottom), 0.75rem) + var(--keyboard-inset, 0px));
   z-index: 100;
-  background: rgba(11, 8, 33, 0.75);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  /* Matches MODAL_BACKDROP used by ShootingStarLetter (compose/inbox) —
+     0.75/8px felt too transparent next to the letter modals' 0.8/12px,
+     and the album viewer + minihompi photo viewer share this class so
+     the bump unifies every photo-style modal in one rule. */
+  background: rgba(11, 8, 33, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   display: flex;
   /* User-requested change: card always starts at the top so a short
      card doesn't sit visually adrift in dim space. Long cards still
