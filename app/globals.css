@@ -7134,11 +7134,56 @@ body.has-redesigned-header .bg-scene {
 .proposals-card-title {
   font-family: 'Noto Serif KR', serif;
   font-weight: 500;
-  font-size: 1rem;
+  font-size: 1.125rem;
+  letter-spacing: 0.02em;
   line-height: 1.4;
   color: #FFE5C4;
+  text-shadow: 0 0 4px rgba(216, 150, 200, 0.25);
   margin: 0;
   word-break: keep-all;
+}
+
+/* 일시 / 인원 — 카드 안의 가장 중요한 두 정보를 묶어서 강조하는 sub-card 2열. */
+.proposals-highlight-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.625rem;
+}
+
+.proposals-highlight-card {
+  background: rgba(11, 8, 33, 0.4);
+  border: 1px solid rgba(216, 150, 200, 0.08);
+  border-radius: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.proposals-highlight-label {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  color: rgba(200, 168, 233, 0.6);
+}
+
+.proposals-highlight-value {
+  font-family: 'Noto Serif KR', serif;
+  font-weight: 500;
+  font-size: 1rem;
+  color: #FFE5C4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 일시/인원과 제안자/참가자 영역을 시각적으로 분리하는 가는 선. */
+.proposals-divider {
+  height: 1px;
+  background: rgba(200, 168, 233, 0.15);
+  border: none;
+  margin: 0.125rem 0;
 }
 
 .proposals-card-meta {

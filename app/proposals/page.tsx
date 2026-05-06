@@ -259,10 +259,17 @@ function ProposalCard({
   onTransition: (target: ProposalStatus) => void;
 }) {
   const dateStr = formatScheduled(item.scheduledAt);
-  const proposerLabel =
-    item.isAnonymous && item.status === "recruiting" ? "익명" : item.proposer;
+  // 익명 + 모집중일 때만 마스킹. 진행중으로 넘어가면 isAnonymous는 자동
+  // false이므로 자연스럽게 닉네임 공개.
+  const showAnonymous = item.isAnonymous && item.status === "recruiting";
+  const proposerLabel = showAnonymous ? "익명" : item.proposer;
+  // 익명 + 모집중일 때만 참가자 리스트 안의 제안자 본인 닉네임을 "익명"으로
+  // 치환. 다른 참가자는 본인 의지로 참가했으니 그대로 노출.
+  const maskedParticipants = showAnonymous
+    ? item.participants.map((n) => (n === item.proposer ? "익명" : n))
+    : item.participants;
   const participantsLine =
-    item.participants.length > 0 ? item.participants.join(", ") : "없음";
+    maskedParticipants.length > 0 ? maskedParticipants.join(", ") : "없음";
 
   const showJoin = canJoin(item, loginNick);
   const showCancelJoin = canCancelJoin(item, loginNick);
@@ -303,12 +310,23 @@ function ProposalCard({
 
       <p className="proposals-card-title">{item.title}</p>
 
+      {/* 일시 / 인원 — 가장 중요한 두 정보를 sub-card 2열로 강조 */}
+      <div className="proposals-highlight-row">
+        <div className="proposals-highlight-card">
+          <span className="proposals-highlight-label">일시</span>
+          <span className="proposals-highlight-value">{dateStr}</span>
+        </div>
+        <div className="proposals-highlight-card">
+          <span className="proposals-highlight-label">인원</span>
+          <span className="proposals-highlight-value">
+            {item.participants.length} / {item.maxParticipants}
+          </span>
+        </div>
+      </div>
+
+      <hr className="proposals-divider" />
+
       <div className="proposals-card-meta">
-        <MetaRow label="일시" value={dateStr} />
-        <MetaRow
-          label="인원"
-          value={`${item.participants.length} / ${item.maxParticipants}`}
-        />
         <MetaRow label="제안자" value={proposerLabel} />
         <MetaRow label="참가자" value={participantsLine} multiline />
       </div>

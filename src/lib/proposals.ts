@@ -111,6 +111,10 @@ export function canJoin(
 ): boolean {
   if (!nickname) return false;
   if (p.status !== "recruiting") return false;
+  // 제안자는 작성 시점에 자동 참가자로 들어가므로 "참가하기" 자체가 노출되면
+  // 안 됨. isParticipant 체크가 정상 동작하면 같은 결과지만, 프록시/캐시 등
+  // 어떤 사유로 participants가 비어 있을 때도 항상 false가 되도록 명시 추가.
+  if (isProposer(p, nickname)) return false;
   if (isParticipant(p, nickname)) return false;
   const count = p.participants?.length ?? 0;
   if (count >= p.maxParticipants) return false;
