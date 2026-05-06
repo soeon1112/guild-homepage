@@ -7032,3 +7032,277 @@ body.has-redesigned-header .bg-scene {
   background: rgba(11, 8, 33, 0.4);
   color: rgba(244, 239, 255, 0.78);
 }
+
+/* ── Proposals system (phase 1) ──────────────────────────────
+   Mirror of dawnlight-app/app/proposals/*.tsx visual treatment.
+   URL-direct only (no menu entry). Card grid rather than table.   */
+
+.proposals-card-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.proposals-card {
+  position: relative;
+  overflow: hidden;
+  background: rgba(26, 15, 61, 0.45);
+  border: 1px solid rgba(200, 168, 233, 0.15);
+  border-radius: 1rem;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  /* Mirror of CardNebula overlay (RN component) — two corner-anchored
+     gradients at low alpha so the translucent card reads as a filled
+     panel on the cosmic backdrop. */
+  background-image:
+    radial-gradient(at 20% 20%, rgba(216, 150, 200, 0.09), transparent 55%),
+    radial-gradient(at 80% 80%, rgba(255, 181, 167, 0.07), transparent 55%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 4px 18px rgba(11, 8, 33, 0.3), inset 0 1px 0 rgba(255, 229, 196, 0.05);
+}
+
+.proposals-card-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.proposals-category-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.625rem;
+  border-radius: 999px;
+  background: rgba(200, 168, 233, 0.12);
+  border: 1px solid rgba(200, 168, 233, 0.3);
+  font-family: 'Noto Serif KR', serif;
+  font-weight: 500;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  color: #D896C8;
+}
+
+.proposals-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.625rem;
+  border-radius: 999px;
+  border: 1px solid;
+  font-family: 'Noto Serif KR', serif;
+  font-weight: 500;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+}
+
+.proposals-status-recruiting {
+  background: rgba(255, 181, 167, 0.15);
+  border-color: rgba(255, 181, 167, 0.5);
+  color: #FFB5A7;
+}
+
+.proposals-status-in_progress {
+  background: rgba(255, 229, 196, 0.15);
+  border-color: rgba(255, 229, 196, 0.5);
+  color: #FFE5C4;
+}
+
+.proposals-status-completed {
+  background: rgba(216, 150, 200, 0.12);
+  border-color: rgba(216, 150, 200, 0.4);
+  color: #D896C8;
+}
+
+.proposals-status-incomplete,
+.proposals-status-cancelled {
+  background: rgba(155, 143, 184, 0.12);
+  border-color: rgba(155, 143, 184, 0.4);
+  color: #9B8FB8;
+}
+
+.proposals-card-title {
+  font-family: 'Noto Serif KR', serif;
+  font-weight: 500;
+  font-size: 1rem;
+  line-height: 1.4;
+  color: #FFE5C4;
+  margin: 0;
+  word-break: keep-all;
+}
+
+.proposals-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.proposals-meta-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.625rem;
+  font-family: 'Noto Serif KR', serif;
+}
+
+.proposals-meta-label {
+  width: 3rem;
+  flex: none;
+  font-size: 0.75rem;
+  color: rgba(200, 168, 233, 0.6);
+  letter-spacing: 0.04em;
+}
+
+.proposals-meta-value {
+  flex: 1;
+  font-size: 0.82rem;
+  color: #F4EFFF;
+}
+
+.proposals-empty-card,
+.proposals-locked-card {
+  position: relative;
+  overflow: hidden;
+  background: rgba(26, 15, 61, 0.45);
+  border: 1px solid rgba(200, 168, 233, 0.15);
+  border-radius: 1rem;
+  padding: 3rem 1.5rem;
+  text-align: center;
+  font-family: 'Noto Serif KR', serif;
+  background-image:
+    radial-gradient(at 20% 20%, rgba(216, 150, 200, 0.09), transparent 55%),
+    radial-gradient(at 80% 80%, rgba(255, 181, 167, 0.07), transparent 55%);
+}
+
+.proposals-empty-text {
+  color: rgba(200, 168, 233, 0.6);
+  font-style: italic;
+  font-size: 0.9rem;
+}
+
+.proposals-locked-text {
+  color: rgba(200, 168, 233, 0.7);
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+}
+
+/* Form (write page) ----------------------------------------- */
+
+.proposals-form-card {
+  position: relative;
+  overflow: hidden;
+  background: rgba(26, 15, 61, 0.45);
+  border: 1px solid rgba(200, 168, 233, 0.15);
+  border-radius: 1rem;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background-image:
+    radial-gradient(at 20% 20%, rgba(216, 150, 200, 0.09), transparent 55%),
+    radial-gradient(at 80% 80%, rgba(255, 181, 167, 0.07), transparent 55%);
+}
+
+.proposals-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.proposals-field-label {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 0.78rem;
+  color: rgba(200, 168, 233, 0.8);
+  letter-spacing: 0.04em;
+}
+
+.proposals-row {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.proposals-row > .proposals-field {
+  flex: 1;
+}
+
+/* Category chip --------------------------------------------- */
+
+.proposals-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.proposals-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 0.875rem;
+  border-radius: 999px;
+  background: rgba(11, 8, 33, 0.55);
+  border: 1px solid rgba(255, 229, 196, 0.45);
+  color: #FFE5C4;
+  font-family: 'Noto Serif KR', serif;
+  font-weight: 500;
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.proposals-chip:hover {
+  border-color: rgba(255, 229, 196, 0.7);
+  box-shadow: 0 0 10px rgba(216, 150, 200, 0.25);
+}
+
+.proposals-chip-selected {
+  background: linear-gradient(135deg, #FFE5C4, #FFB5A7);
+  border-color: transparent;
+  color: #0B0821;
+  box-shadow: 0 0 10px rgba(255, 181, 167, 0.45);
+}
+
+.proposals-chip-selected:hover {
+  box-shadow: 0 0 14px rgba(255, 181, 167, 0.6);
+}
+
+/* Anonymous checkbox --------------------------------------- */
+
+.proposals-checkbox-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  cursor: pointer;
+  user-select: none;
+  padding: 0.25rem 0;
+}
+
+.proposals-checkbox-box {
+  width: 1.375rem;
+  height: 1.375rem;
+  border-radius: 0.375rem;
+  border: 1px solid rgba(216, 150, 200, 0.4);
+  background: rgba(11, 8, 33, 0.55);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.18s ease;
+  flex: none;
+}
+
+.proposals-checkbox-box[data-checked="true"] {
+  background: rgba(255, 181, 167, 0.3);
+  border-color: #FFB5A7;
+}
+
+.proposals-checkbox-mark {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 0.875rem;
+  color: #FFE5C4;
+  line-height: 1;
+}
+
+.proposals-checkbox-label {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 0.875rem;
+  color: #F4EFFF;
+}
