@@ -7722,6 +7722,323 @@ body.has-redesigned-header .bg-scene {
   cursor: not-allowed;
 }
 
+/* ── 통합 페이지(/notice) 안의 일정 섹션 (Phase 2-A) ────────────────
+   기존 /schedule 페이지(.schedule-* 클래스)와는 분리된 별도 클래스.
+   2-B 단계에서 /schedule 제거 후에도 .schedule-* 는 schedule/page.tsx
+   가 사라질 때까지 유효하게 둔다. */
+
+.notice-schedule-section {
+  margin-top: 2.25rem;
+}
+
+.notice-schedule-divider {
+  height: 1px;
+  background: rgba(200, 168, 233, 0.2);
+  border: none;
+  margin: 0 0 1.5rem 0;
+}
+
+.notice-schedule-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.875rem;
+  gap: 0.625rem;
+}
+
+.notice-schedule-title {
+  font-family: 'Noto Serif KR', serif;
+  font-weight: 300;
+  font-size: 1.25rem;
+  letter-spacing: 0.06em;
+  color: #FFE5C4;
+  text-shadow: 0 0 6px rgba(216, 150, 200, 0.3);
+  margin: 0;
+}
+
+.notice-schedule-add-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem 0.875rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #FFE5C4, #FFB5A7);
+  color: #0B0821;
+  border: none;
+  font-family: 'Noto Serif KR', serif;
+  font-weight: 500;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(255, 181, 167, 0.45);
+  transition: all 0.18s ease;
+}
+
+.notice-schedule-add-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 14px rgba(255, 181, 167, 0.65);
+}
+
+.notice-schedule-list {
+  background: rgba(26, 15, 61, 0.45);
+  border: 1px solid rgba(200, 168, 233, 0.15);
+  border-radius: 1rem;
+  overflow: hidden;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.notice-schedule-empty {
+  text-align: center;
+  font-family: 'Noto Serif KR', serif;
+  font-style: italic;
+  font-size: 0.85rem;
+  color: rgba(200, 168, 233, 0.55);
+  padding: 2rem 1rem;
+  margin: 0;
+}
+
+.notice-schedule-item {
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  transition: background 200ms ease;
+}
+
+.notice-schedule-item + .notice-schedule-item {
+  border-top: 1px solid rgba(216, 150, 200, 0.1);
+}
+
+/* deep-link 진입 1초 강조 — stardust glow */
+.notice-schedule-item-highlight {
+  background: rgba(255, 229, 196, 0.12);
+}
+
+.notice-schedule-item-main {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.notice-schedule-item-date {
+  flex: none;
+  font-family: 'Noto Serif KR', serif;
+  font-weight: 500;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  color: #FFE5C4;
+  min-width: 6rem;
+}
+
+.notice-schedule-item-sep {
+  color: rgba(200, 168, 233, 0.4);
+  font-family: 'Noto Serif KR', serif;
+}
+
+.notice-schedule-item-title {
+  flex: 1;
+  font-family: 'Noto Serif KR', serif;
+  font-size: 0.85rem;
+  color: #F4EFFF;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notice-schedule-item-desc {
+  padding-left: 6.5rem; /* date min-width + sep + gap */
+  font-family: 'Noto Serif KR', serif;
+  font-size: 0.78rem;
+  color: rgba(200, 168, 233, 0.65);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notice-schedule-item-actions {
+  display: flex;
+  gap: 0.4rem;
+  align-self: flex-end;
+  margin-top: 0.125rem;
+}
+
+.notice-schedule-mini-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(11, 8, 33, 0.5);
+  border: 1px solid rgba(216, 150, 200, 0.25);
+  color: rgba(200, 168, 233, 0.85);
+  font-family: 'Noto Serif KR', serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.notice-schedule-mini-btn:hover {
+  border-color: rgba(216, 150, 200, 0.5);
+  box-shadow: 0 0 8px rgba(216, 150, 200, 0.3);
+}
+
+.notice-schedule-mini-btn-danger {
+  border-color: rgba(255, 181, 167, 0.35);
+  color: #FFB5A7;
+}
+
+.notice-schedule-mini-btn-danger:hover {
+  border-color: rgba(255, 181, 167, 0.6);
+  box-shadow: 0 0 8px rgba(255, 181, 167, 0.35);
+}
+
+/* ── 일정 admin gate / editor modals (포털, body 마운트) ────────────
+   minihome-modal / proposals-modal 과 같은 우주 톤 카드. 클래스만
+   .notice-schedule-modal-* 로 분리해 다른 모달과 결합 없게. */
+
+.notice-schedule-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 8, 33, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  z-index: 200;
+}
+
+.notice-schedule-modal-card {
+  position: relative;
+  width: 100%;
+  max-width: 380px;
+  background: rgba(26, 15, 61, 0.92);
+  border: 1px solid rgba(200, 168, 233, 0.25);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background-image:
+    radial-gradient(at 20% 20%, rgba(216, 150, 200, 0.09), transparent 55%),
+    radial-gradient(at 80% 80%, rgba(255, 181, 167, 0.07), transparent 55%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 20px 60px rgba(11, 8, 33, 0.6), 0 0 40px rgba(107, 75, 168, 0.4);
+}
+
+.notice-schedule-modal-title {
+  font-family: 'Noto Serif KR', serif;
+  font-weight: 500;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  color: #FFE5C4;
+  text-shadow: 0 0 6px rgba(216, 150, 200, 0.3);
+  margin: 0 0 0.25rem 0;
+}
+
+.notice-schedule-modal-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-family: 'Noto Serif KR', serif;
+  font-size: 0.78rem;
+  color: rgba(200, 168, 233, 0.8);
+  letter-spacing: 0.04em;
+}
+
+.notice-schedule-modal-input {
+  background: rgba(11, 8, 33, 0.55);
+  border: 1px solid rgba(216, 150, 200, 0.3);
+  border-radius: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  color: #F4EFFF;
+  font-family: 'Noto Serif KR', serif;
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 0.18s ease;
+}
+
+.notice-schedule-modal-input:focus {
+  border-color: rgba(255, 229, 196, 0.6);
+}
+
+.notice-schedule-modal-textarea {
+  min-height: 5.5rem;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.notice-schedule-modal-err {
+  color: #FFB5A7;
+  font-family: 'Noto Serif KR', serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+
+.notice-schedule-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.notice-schedule-modal-cancel {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  background: rgba(11, 8, 33, 0.5);
+  border: 1px solid rgba(200, 168, 233, 0.25);
+  color: rgba(200, 168, 233, 0.8);
+  font-family: 'Noto Serif KR', serif;
+  font-weight: 500;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.notice-schedule-modal-cancel:hover:not(:disabled) {
+  color: #C8A8E9;
+  border-color: rgba(200, 168, 233, 0.5);
+}
+
+.notice-schedule-modal-cancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.notice-schedule-modal-confirm {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1.125rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #FFE5C4, #FFB5A7);
+  color: #0B0821;
+  border: none;
+  font-family: 'Noto Serif KR', serif;
+  font-weight: 500;
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  box-shadow: 0 0 12px rgba(255, 181, 167, 0.5);
+  transition: all 0.18s ease;
+}
+
+.notice-schedule-modal-confirm:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 0 18px rgba(255, 181, 167, 0.7);
+}
+
+.notice-schedule-modal-confirm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* Phase 2 — 취소 카드 배너 ---------------------------------- */
 
 .proposals-cancelled-banner {
