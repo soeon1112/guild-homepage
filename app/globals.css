@@ -8086,3 +8086,263 @@ body.has-redesigned-header .bg-scene {
   word-break: keep-all;
   overflow-wrap: anywhere;
 }
+
+/* ════════════════════════════════════════════════════════ */
+/*  Dawnlight 2 (하늘섬 redesign) — scoped tokens & motion   */
+/*  Active only inside `.dawnlight2`. The legacy cosmic UI   */
+/*  is untouched. Tokens come from dawnlight2-v0/app/        */
+/*  globals.css; keyframes are prefixed `dl2-` so they can't */
+/*  collide with the existing cosmic ones (e.g. twinkle).    */
+/* ════════════════════════════════════════════════════════ */
+
+/* Tailwind v4 utility colors. Multiple @theme inline blocks merge, so
+   adding `bg-twilight-deep` / `text-cream` / etc. utilities here does
+   not disturb the cosmic palette already declared above. The values
+   resolve only inside `.dawnlight2` — outside the scope the underlying
+   --twilight-* vars are undefined and the utilities paint nothing. */
+@theme inline {
+  --color-twilight-deep: var(--twilight-deep);
+  --color-twilight-mid: var(--twilight-mid);
+  --color-twilight-warm: var(--twilight-warm);
+  --color-cloud: var(--cloud);
+  --color-cloud-pink: var(--cloud-pink);
+  --color-sunset-gold: var(--sunset-gold);
+  --color-mist-lavender: var(--mist-lavender);
+  --color-cream: var(--cream);
+  --color-muted-lavender: var(--muted-lavender);
+}
+
+/* Scoped palette + sky gradient. The ::before paints a fixed-position
+   backdrop one z-step behind the .dawnlight2 children but still within
+   .dawnlight2's stacking context (created by `position: relative`), so
+   it sits above the global CosmicBackground (z-0 in body) and below
+   sticky chrome (z-30+) — i.e. the twilight sky covers the cosmic sky
+   only inside the dawnlight2 page tree. Semantic tokens (--background,
+   --foreground, --card, …) are also re-pointed here, so any descendant
+   that reads them flips to the twilight palette without us touching
+   :root. */
+.dawnlight2 {
+  --twilight-deep: #2a1f4a;
+  --twilight-mid: #4a5a8c;
+  --twilight-warm: #f4b896;
+  --cloud: #fdf6f0;
+  --cloud-pink: #ffd4b8;
+  --sunset-gold: #ffc785;
+  --mist-lavender: #c8b8e8;
+  --cream: #fef5e6;
+  --muted-lavender: #b8a8d8;
+
+  --background: var(--twilight-deep);
+  --foreground: var(--cream);
+  --card: rgba(253, 246, 240, 0.06);
+  --card-foreground: var(--cream);
+  --popover: var(--twilight-deep);
+  --popover-foreground: var(--cream);
+  --primary: var(--sunset-gold);
+  --primary-foreground: var(--twilight-deep);
+  --secondary: rgba(200, 184, 232, 0.12);
+  --secondary-foreground: var(--cream);
+  --muted: rgba(200, 184, 232, 0.08);
+  --muted-foreground: var(--muted-lavender);
+  --accent: var(--mist-lavender);
+  --accent-foreground: var(--twilight-deep);
+  --border: rgba(200, 184, 232, 0.18);
+  --input: rgba(200, 184, 232, 0.18);
+  --ring: var(--mist-lavender);
+
+  position: relative;
+  min-height: 100vh;
+  color: var(--cream);
+  font-family: var(--font-noto-sans), 'Noto Sans KR', system-ui, -apple-system, sans-serif;
+}
+
+.dawnlight2::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 80% at 50% 110%, var(--twilight-warm) 0%, transparent 45%),
+    radial-gradient(100% 70% at 50% 90%, #d99a78 0%, transparent 55%),
+    linear-gradient(
+      180deg,
+      var(--twilight-deep) 0%,
+      #34285c 30%,
+      var(--twilight-mid) 60%,
+      #8a7aa0 80%,
+      var(--twilight-warm) 100%
+    );
+}
+
+/* Serif heading utility (Noto Serif KR). Use `<h1 className="font-serif-kr">`
+   inside the dawnlight2 tree for the title-style typography v0 uses on
+   "새벽빛" / section headers. */
+.dawnlight2 .font-serif-kr {
+  font-family: var(--font-noto-serif), 'Noto Serif KR', ui-serif, Georgia, serif;
+}
+
+/* ── Keyframes (dl2- prefix) ────────────────────────────── */
+@keyframes dl2-drift-slow {
+  from { transform: translateX(-8%); }
+  to   { transform: translateX(8%); }
+}
+@keyframes dl2-drift-slower {
+  from { transform: translateX(6%); }
+  to   { transform: translateX(-6%); }
+}
+@keyframes dl2-drift-across {
+  from { transform: translateX(-15%) translateY(0); }
+  50%  { transform: translateX(50%) translateY(-3px); }
+  to   { transform: translateX(115%) translateY(0); }
+}
+@keyframes dl2-sway {
+  0%, 100% { transform: translateY(0) rotate(-1.5deg); }
+  50%      { transform: translateY(-4px) rotate(1.5deg); }
+}
+@keyframes dl2-twinkle {
+  0%, 100% { opacity: 0.25; transform: scale(1); }
+  50%      { opacity: 1; transform: scale(1.2); }
+}
+@keyframes dl2-float-up {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-4px); }
+}
+@keyframes dl2-parchment-bob {
+  0%, 100% { transform: translateY(0) rotate(-0.6deg); }
+  50%      { transform: translateY(-4px) rotate(0.6deg); }
+}
+@keyframes dl2-stamp-press {
+  0%   { transform: scale(1.5) rotate(-15deg); opacity: 0; }
+  35%  { transform: scale(0.95) rotate(-10deg); opacity: 1; }
+  60%  { transform: scale(1.04) rotate(-7deg); opacity: 1; }
+  100% { transform: scale(1) rotate(-8deg); opacity: 1; }
+}
+@keyframes dl2-paper-press {
+  0%, 100% { transform: translateY(0); }
+  35%      { transform: translateY(2px); }
+  70%      { transform: translateY(0); }
+}
+@keyframes dl2-ink-splat {
+  0%   { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+  20%  { transform: translate(-50%, -50%) scale(1); opacity: 0.85; }
+  100% { transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px))) scale(0.45); opacity: 0; }
+}
+@keyframes dl2-seal-glow {
+  0%, 100% { opacity: 0; }
+  50%      { opacity: 1; }
+}
+@keyframes dl2-parchment-vanish {
+  0%   { opacity: 1; transform: scale(1) translateY(0); filter: blur(0px); }
+  100% { opacity: 0; transform: scale(0.92) translateY(-8px); filter: blur(2px); }
+}
+@keyframes dl2-sky-quote-fade {
+  0%   { opacity: 0; transform: translateY(8px); letter-spacing: 0.02em; }
+  100% { opacity: 1; transform: translateY(0); letter-spacing: 0; }
+}
+@keyframes dl2-whisper-fly-in {
+  0%   { opacity: 0; transform: translate(-20px, -10px); }
+  100% { opacity: 1; transform: translate(0, 0); }
+}
+@keyframes dl2-plane-shake {
+  0%, 100% { transform: rotate(0deg) translateX(0); }
+  25%      { transform: rotate(-2deg) translateX(-1px); }
+  75%      { transform: rotate(2deg) translateX(1px); }
+}
+@keyframes dl2-plane-float {
+  0%, 100% { transform: translateY(0) rotate(-8deg); }
+  50%      { transform: translateY(-10px) rotate(-5deg); }
+}
+@keyframes dl2-boat-bob {
+  0%   { transform: translateY(0)   rotate(-2deg); }
+  30%  { transform: translateY(-6px) rotate(0deg); }
+  60%  { transform: translateY(-3px) rotate(2deg); }
+  100% { transform: translateY(0)   rotate(-2deg); }
+}
+
+/* ── Animation utility classes — scoped to .dawnlight2 ──
+   The bare `.animate-twinkle` / `.animate-drift` already exist globally
+   for the cosmic UI; declaring `.dawnlight2 .animate-*` makes the more
+   specific selector win inside the dawnlight2 tree, so v0 components
+   that ship with these class names "just work" without renaming. */
+.dawnlight2 .animate-drift-slow {
+  animation: dl2-drift-slow 28s ease-in-out infinite alternate;
+}
+.dawnlight2 .animate-drift-slower {
+  animation: dl2-drift-slower 44s ease-in-out infinite alternate;
+}
+.dawnlight2 .animate-drift-across {
+  animation: dl2-drift-across 60s linear infinite;
+}
+.dawnlight2 .animate-sway {
+  animation: dl2-sway 6s ease-in-out infinite;
+  transform-origin: center top;
+}
+.dawnlight2 .animate-twinkle {
+  animation: dl2-twinkle 4s ease-in-out infinite;
+}
+.dawnlight2 .animate-float-up {
+  animation: dl2-float-up 8s ease-in-out infinite;
+}
+.dawnlight2 .animate-parchment-bob {
+  animation: dl2-parchment-bob 6s ease-in-out infinite;
+  transform-origin: center;
+}
+.dawnlight2 .animate-stamp-press {
+  animation: dl2-stamp-press 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-origin: center;
+}
+.dawnlight2 .animate-paper-press {
+  animation: dl2-paper-press 0.5s ease-out both;
+}
+.dawnlight2 .animate-ink-splat {
+  animation: dl2-ink-splat 0.7s ease-out both;
+}
+.dawnlight2 .animate-seal-glow {
+  animation: dl2-seal-glow 0.7s ease-out both;
+  animation-delay: 0.35s;
+}
+.dawnlight2 .animate-parchment-vanish {
+  animation: dl2-parchment-vanish 0.55s ease-in both;
+  animation-delay: 0.85s;
+}
+.dawnlight2 .animate-sky-quote-fade {
+  animation: dl2-sky-quote-fade 1s ease-out both;
+}
+.dawnlight2 .animate-plane-shake {
+  animation: dl2-plane-shake 0.5s ease-in-out;
+}
+.dawnlight2 .animate-plane-float {
+  animation: dl2-plane-float 4s ease-in-out infinite;
+}
+.dawnlight2 .animate-boat-bob {
+  animation: dl2-boat-bob 3.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dawnlight2 .animate-drift-slow,
+  .dawnlight2 .animate-drift-slower,
+  .dawnlight2 .animate-drift-across,
+  .dawnlight2 .animate-sway,
+  .dawnlight2 .animate-twinkle,
+  .dawnlight2 .animate-float-up,
+  .dawnlight2 .animate-parchment-bob,
+  .dawnlight2 .animate-stamp-press,
+  .dawnlight2 .animate-paper-press,
+  .dawnlight2 .animate-ink-splat,
+  .dawnlight2 .animate-seal-glow,
+  .dawnlight2 .animate-parchment-vanish,
+  .dawnlight2 .animate-sky-quote-fade,
+  .dawnlight2 .animate-plane-shake,
+  .dawnlight2 .animate-plane-float,
+  .dawnlight2 .animate-boat-bob {
+    animation: none;
+  }
+  .dawnlight2 .animate-stamp-press {
+    transform: scale(1) rotate(-8deg);
+    opacity: 1;
+  }
+  .dawnlight2 .animate-sky-quote-fade {
+    opacity: 1;
+  }
+}

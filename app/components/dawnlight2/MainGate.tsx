@@ -15,7 +15,18 @@ import { Dawnlight2MainPage } from "./MainPage";
 // as before — the JSX below is the verbatim copy from app/page.tsx.
 export function MainGate() {
   const dawnlight2 = useDawnlight2();
-  if (dawnlight2) return <Dawnlight2MainPage />;
+  if (dawnlight2) {
+    // The `dawnlight2` class is what activates the new palette, sky
+    // gradient, and Noto Sans/Serif KR font stack — see globals.css.
+    // Wrapping the placeholder (rather than putting the class on
+    // <body>) keeps the rest of the page's chrome unaffected; switch
+    // routes and you're back on the cosmic theme without a flash.
+    return (
+      <div className="dawnlight2">
+        <Dawnlight2MainPage />
+      </div>
+    );
+  }
   return (
     <div className="main-content">
       <TodaySky />
