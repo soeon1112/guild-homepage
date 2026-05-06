@@ -441,8 +441,10 @@ function ProposalCard({
 
 function formatPromoteRemaining(ms: number): string {
   if (ms <= 0) return "";
-  const totalSec = Math.ceil(ms / 1000);
-  const min = Math.ceil(totalSec / 60);
+  // Math.round — 클라이언트/서버 시계 미세 차이로 3600초가 3600.x초로
+  // 잡혀서 ceil이 61분으로 만드는 문제 회피. 30초 미만 오차는 반올림으로
+  // 흡수.
+  const min = Math.round(ms / 60000);
   if (min < 1) return "곧 가능";
   return `${min}분 후`;
 }
