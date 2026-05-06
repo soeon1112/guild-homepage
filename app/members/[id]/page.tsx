@@ -2,7 +2,10 @@
 
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import {
+  useDeepLinkHash,
+  useDeepLinkParam,
+} from "@/src/lib/useDeepLinkParam";
 import { useAuth } from "@/app/components/AuthProvider";
 import { db, storage } from "@/src/lib/firebase";
 import {
@@ -238,30 +241,11 @@ export default function MemberMiniHomePage({
   // Page starts at opacity:0 if a deep-link is present so the
   // (possibly several) scroll attempts happen invisibly; we reveal
   // after the first attempt lands AND no further re-scrolls fire.
-  // Read hash on first render (client) — `useRef` 의 conditional set
-  // 패턴이 모바일 SSR/hydration 컨텍스트에서 빈 값으로 set 되는 케이스가
-  // 있어 `useState` 의 lazy initializer 로 변경. 한 번만 평가되며
-  // 클라이언트 첫 render 의 window.location 을 읽어 안정적.
-  const [initialDeepLink] = useState<string>(() => {
-    if (typeof window === "undefined") return "";
-    const rawHash = window.location.hash.slice(1);
-    return rawHash.split("#")[0] || "";
-  });
-  // Triple-fallback for ?guestbook= — useSearchParams sometimes
-  // resolves empty on first client render after router.push (same
-  // race fixed in board/[id] commit 88adc8b). Lazy-init useState
-  // captures window.location at mount so we don't rely on the
-  // reactive hook alone. GuestbookSection itself ALSO re-reads
-  // window.location.search inside its effect for full safety.
-  const searchParams = useSearchParams();
-  const [initialGuestbookEntryId] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    const params = new URLSearchParams(window.location.search);
-    return params.get("guestbook");
-  });
-  const guestbookEntryId =
-    searchParams?.get("guestbook") ?? initialGuestbookEntryId ?? null;
-  const hasDeepLink = !!initialDeepLink || !!initialGuestbookEntryId;
+  // Deep-link readers — see src/lib/useDeepLinkParam.ts for why we
+  // can't trust `useSearchParams` alone on mobile mount.
+  const initialDeepLink = useDeepLinkHash();
+  const guestbookEntryId = useDeepLinkParam("guestbook");
+  const hasDeepLink = !!initialDeepLink || !!guestbookEntryId;
   const [scrollPending, setScrollPending] = useState<boolean>(hasDeepLink);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const hashHandledRef = useRef(false);
@@ -269,20 +253,18 @@ export default function MemberMiniHomePage({
     if (hashHandledRef.current) return;
     if (loading) return;
     if (typeof window === "undefined") return;
-    // Re-read URL inside the effect — initialDeepLink captured at
-    // first render is the fallback. ?photo= path falls back to
-    // "minihome-photos" so the page scrolls to the photos section
-    // before PhotosSection's auto-open mounts the modal.
-    // ?guestbook= falls back to "minihome-guestbook" — GuestbookSection
-    // separately handles the entry-level scroll once it's mounted.
+    // ?photo= falls back to "minihome-photos" so the page scrolls to
+    // the photos section before PhotosSection's auto-open mounts the
+    // modal. ?guestbook= falls back to "minihome-guestbook" —
+    // GuestbookSection separately handles the entry-level scroll
+    // once it's mounted.
     const liveHash = window.location.hash.slice(1).split("#")[0] || "";
-    const hasPhotoParam = window.location.search.includes("photo=");
-    const hasGuestbookParam = window.location.search.includes("guestbook=");
+    const params = new URLSearchParams(window.location.search);
     const targetId =
       liveHash ||
       initialDeepLink ||
-      (hasPhotoParam ? "minihome-photos" : "") ||
-      (hasGuestbookParam ? "minihome-guestbook" : "");
+      (params.get("photo") ? "minihome-photos" : "") ||
+      (params.get("guestbook") ? "minihome-guestbook" : "");
     if (!targetId) {
       setScrollPending(false);
       return;

@@ -1,7 +1,8 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useRef, useState, use } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { useDeepLinkParam } from "@/src/lib/useDeepLinkParam";
 import Link from "next/link";
 import {
   doc,
@@ -73,17 +74,9 @@ function BoardDetailPageInner({
   const { id } = use(params);
   const router = useRouter();
   // Deep-link comment scroll: /board/X?comment=Y from NebulaWhispers
-  // navigates here. lazy initializer reads window.location directly
-  // (matches members/[id] mobile-mount race fix) — useSearchParams
-  // sometimes resolves empty on the first client render after a
-  // <Link>/router.push navigation, so we keep both signals.
-  const searchParams = useSearchParams();
-  const [initialCommentParam] = useState<string>(() => {
-    if (typeof window === "undefined") return "";
-    return new URLSearchParams(window.location.search).get("comment") || "";
-  });
-  const commentParam =
-    searchParams?.get("comment") ?? initialCommentParam ?? null;
+  // navigates here. useDeepLinkParam sealed the
+  // useSearchParams-empty-on-first-render race once and for all.
+  const commentParam = useDeepLinkParam("comment");
   const [scrollPending, setScrollPending] = useState<boolean>(
     !!commentParam,
   );
@@ -155,15 +148,10 @@ function BoardDetailPageInner({
   useEffect(() => {
     if (loading) return;
     if (typeof window === "undefined") return;
-    // Re-read inside the effect — searchParams may have been empty
-    // at first render. Falls back to initialCommentParam captured
-    // via lazy initializer, then to live URLSearchParams.
-    const liveComment =
-      new URLSearchParams(window.location.search).get("comment") || "";
-    const target = liveComment || commentParam;
-    if (!target) return;
-    if (commentHandledRef.current === target) return;
-    commentHandledRef.current = target;
+    if (!commentParam) return;
+    if (commentHandledRef.current === commentParam) return;
+    commentHandledRef.current = commentParam;
+    const target = commentParam;
 
     const doScroll = () => {
       const el = document.querySelector(

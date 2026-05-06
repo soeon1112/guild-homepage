@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useDeepLinkParam } from "@/src/lib/useDeepLinkParam";
 import {
   addDoc,
   collection,
@@ -86,8 +86,7 @@ function CombatPageInner() {
   // lands at the old y position. Initial delay raised back to 200 ms
   // so Next.js's post-navigation scroll-to-top (useLayoutEffect-
   // driven) commits before our scroll, not the other way round.
-  const searchParams = useSearchParams();
-  const nickParam = searchParams?.get("nick") ?? null;
+  const nickParam = useDeepLinkParam("nick");
   const [scrollPending, setScrollPending] = useState<boolean>(!!nickParam);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const nickHandledRef = useRef<string | null>(null);

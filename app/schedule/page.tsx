@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useDeepLinkParam } from "@/src/lib/useDeepLinkParam";
 import { createPortal } from "react-dom";
 import { db } from "@/src/lib/firebase";
 import {
@@ -79,8 +79,7 @@ function SchedulePageInner() {
   // Deep-link: /schedule?id=X opens the day modal for the matched
   // schedule item. NebulaWhispers schedule activities navigate here.
   // Multi-retry for the schedules subscription delay.
-  const searchParams = useSearchParams();
-  const idParam = searchParams?.get("id") ?? null;
+  const idParam = useDeepLinkParam("id");
   const idHandledRef = useRef<string | null>(null);
   useEffect(() => {
     if (!idParam) return;

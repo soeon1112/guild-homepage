@@ -85,30 +85,22 @@ export function GuestbookSection({
   }, [id]);
 
   // Deep-link auto-jump: ?guestbook=<entryId> arrives via the parent
-  // page. We accept the prop AND re-read window.location.search inside
-  // the effect — useSearchParams in the parent can resolve empty on
-  // the first client render after router.push (same race fixed in
-  // board/[id] commit 88adc8b). The fresh URL read is the source of
-  // truth.
+  // page's useDeepLinkParam("guestbook") — the prop is already
+  // race-proofed at the call site, so we trust it directly.
   const jumpHandledRef = useRef<string | null>(null);
   useEffect(() => {
+    if (!autoJumpEntryId) return;
     if (entries.length === 0) return;
-    if (typeof window === "undefined") return;
-    const liveGuestbook = new URLSearchParams(window.location.search).get(
-      "guestbook",
-    );
-    const target = liveGuestbook || autoJumpEntryId || null;
-    if (!target) return;
-    if (jumpHandledRef.current === target) return;
-    const idx = entries.findIndex((e) => e.id === target);
+    if (jumpHandledRef.current === autoJumpEntryId) return;
+    const idx = entries.findIndex((e) => e.id === autoJumpEntryId);
     if (idx < 0) return;
-    jumpHandledRef.current = target;
+    jumpHandledRef.current = autoJumpEntryId;
     const targetPage = Math.floor(idx / PER_PAGE);
     setPage(targetPage);
 
     const tryScroll = () => {
       const el = document.querySelector(
-        `[data-gb-entry-id="${target}"]`,
+        `[data-gb-entry-id="${autoJumpEntryId}"]`,
       );
       if (!(el instanceof HTMLElement)) return;
       const rect = el.getBoundingClientRect();
