@@ -293,17 +293,15 @@ export function ShootingStarLetter() {
 }
 
 // ─── Shared modal shell styles ───
+// Both compose AND inbox use the dim+blur backdrop now — the previous
+// transparent INBOX_BACKDROP was a one-off design that left the main
+// page visible behind the inbox card, but it diverged from the rest of
+// the app's modal language and felt inconsistent next to compose. The
+// app-side InboxModal mirrors this same shared-backdrop pattern.
 const MODAL_BACKDROP: React.CSSProperties = {
   background: "rgba(11,8,33,0.8)",
   backdropFilter: "blur(12px)",
   WebkitBackdropFilter: "blur(12px)",
-};
-
-// Inbox-specific: no dim/blur, so the main page stays visible behind the
-// letter modal. Compose still uses the dimmed backdrop so the form has
-// strong focus while the user is composing.
-const INBOX_BACKDROP: React.CSSProperties = {
-  background: "transparent",
 };
 
 const MODAL_CARD: React.CSSProperties = {
@@ -620,7 +618,7 @@ function InboxModal({
   return createPortal(
     <motion.div
       className="modal-safe-frame fixed inset-0 z-[70] flex items-center justify-center"
-      style={INBOX_BACKDROP}
+      style={MODAL_BACKDROP}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
