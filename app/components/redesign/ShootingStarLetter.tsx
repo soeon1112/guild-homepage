@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Inbox, Mail, Sparkles, X } from "lucide-react";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useModalBodyLock } from "@/src/lib/useModalBodyLock";
 import {
@@ -38,6 +38,25 @@ export function ShootingStarLetter() {
   const [inboxOpen, setInboxOpen] = useState(false);
   const [inbox, setInbox] = useState<LetterDoc[]>([]);
   const [authMsg, setAuthMsg] = useState<string | null>(null);
+
+  // Deep-link auto-open from letter push tap. Push payload carries
+  // /?letter=true; we flip the inbox modal open once per arrival.
+  // Lazy-init useState (instead of useSearchParams + useDeepLinkParam)
+  // because the home page is a server component without a Suspense
+  // wrapper and we don't need the URL to update reactively — the param
+  // is set at navigation time and never changes.
+  const [initialLetterFlag] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("letter") === "true";
+  });
+  const lastLetterHandledRef = useRef(false);
+  useEffect(() => {
+    if (!initialLetterFlag) return;
+    if (!nickname) return;
+    if (lastLetterHandledRef.current) return;
+    lastLetterHandledRef.current = true;
+    setInboxOpen(true);
+  }, [initialLetterFlag, nickname]);
 
   // Subscribe to user's approved inbox. Stays active even when Compose is open,
   // so unread count updates in real-time regardless of modal state.
