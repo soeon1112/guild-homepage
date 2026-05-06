@@ -80,14 +80,21 @@ export type ProposalDoc = {
 };
 
 // ── Participation / transition helpers ───────────────────────
-// 헬퍼는 ProposalDoc + UI 리스트 아이템(둘 다 같은 4개 필드를 갖는다)
+// 헬퍼는 ProposalDoc + UI 리스트 아이템(둘 다 같은 필드를 갖는다)
 // 어느 쪽으로 호출해도 동작하도록 minimal shape만 받는다.
 export type ProposalLike = {
   proposer: string;
   participants?: readonly string[];
   maxParticipants: number;
   status: ProposalStatus;
+  promotedAt?: Timestamp | null;
 };
+
+// 홍보 1시간 쿨타임 (Phase 3-B). 클라이언트는 이 값 기준으로 버튼
+// enable/disable + 카운트다운만 표시하고, 실제 푸시·최신현황은
+// onProposalPromoted 트리거(Phase 3-A)가 promotedAt 단조 증가 감지로
+// 처리한다.
+export const PROMOTE_COOLDOWN_MS = 60 * 60 * 1000;
 
 export function isProposer(
   p: ProposalLike,
@@ -149,4 +156,23 @@ export function canTransitionTo(
     return target === "completed" || target === "incomplete";
   }
   return false;
+}
+
+// 홍보(promote) 가능 여부 — 제안자 본인 + recruiting/in_progress + 마지막
+// 홍보로부터 PROMOTE_COOLDOWN_MS 경과. terminal 상태는 막힘.
+export function canPromote(
+  p: ProposalLike,
+  nickname: string | null | undefined,
+): boolean {
+  if (!nickname) return false;
+  if (!isProposer(p, nickname)) return false;
+  if (p.status !== "recruiting" && p.status !== "in_progress") return false;
+  const last = p.promotedAt?.toMillis?.() ?? 0;
+  return Date.now() - last >= PROMOTE_COOLDOWN_MS;
+}
+
+// 남은 쿨타임(ms). 0이면 즉시 가능.
+export function getPromoteCooldownRemainingMs(p: ProposalLike): number {
+  const last = p.promotedAt?.toMillis?.() ?? 0;
+  return Math.max(0, PROMOTE_COOLDOWN_MS - (Date.now() - last));
 }

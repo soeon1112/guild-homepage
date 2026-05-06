@@ -9,6 +9,7 @@ import {
   doc,
   onSnapshot,
   serverTimestamp,
+  type Timestamp,
   updateDoc,
 } from "firebase/firestore";
 import { useAuth } from "../components/AuthProvider";
@@ -16,8 +17,10 @@ import { db } from "@/src/lib/firebase";
 import {
   canCancelJoin,
   canJoin,
+  canPromote,
   canSeeProposals,
   canTransitionTo,
+  getPromoteCooldownRemainingMs,
   isProposer,
   normalizeCategory,
   type ProposalCategory,
@@ -47,6 +50,9 @@ type ProposalListItem = {
   participants: string[];
   status: ProposalStatus;
   updatedAtMs: number;
+  // canPromote / getPromoteCooldownRemainingMs 헬퍼가 toMillis()를 호출하므로
+  // Timestamp 그대로 들고 다닌다.
+  promotedAt: Timestamp | null;
 };
 
 type PendingTransition = {
@@ -85,6 +91,15 @@ function ListView({ loginNick }: { loginNick: string }) {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [pending, setPending] = useState<PendingTransition | null>(null);
+  const [pendingPromote, setPendingPromote] = useState<string | null>(null);
+  // 30초 단위 tick — 홍보 쿨타임 카운트다운이 자동으로 줄어든다.
+  // setNow는 단순 forceUpdate 트리거 — 카드 안에서 헬퍼는 직접 Date.now()를
+  // 호출하므로 prop drill 불필요.
+  const [, setNow] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 30 * 1000);
+    return () => clearInterval(t);
+  }, []);
 
   useEffect(() => {
     const unsub = onSnapshot(
@@ -107,6 +122,7 @@ function ListView({ loginNick }: { loginNick: string }) {
               : [],
             status: (data.status as ProposalStatus) ?? "recruiting",
             updatedAtMs: data.updatedAt?.toMillis?.() ?? 0,
+            promotedAt: data.promotedAt ?? null,
           };
         });
         setAllItems(sortGrouped(items));
@@ -181,6 +197,22 @@ function ListView({ loginNick }: { loginNick: string }) {
 
   const dismissTransition = () => setPending(null);
 
+  const askPromote = (id: string) => setPendingPromote(id);
+  const dismissPromote = () => setPendingPromote(null);
+  const confirmPromote = async () => {
+    if (!pendingPromote) return;
+    try {
+      await updateDoc(doc(db, "proposals", pendingPromote), {
+        promotedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      setPendingPromote(null);
+    } catch (e) {
+      console.error(e);
+      alert("홍보에 실패했습니다.");
+    }
+  };
+
   return (
     <div className="board-content">
       <h1 className="board-title">제안 게시판</h1>
@@ -209,6 +241,7 @@ function ListView({ loginNick }: { loginNick: string }) {
               onTransition={(target) =>
                 askTransition(p.id, target, p.isAnonymous)
               }
+              onPromote={() => askPromote(p.id)}
             />
           ))}
         </div>
@@ -241,6 +274,13 @@ function ListView({ loginNick }: { loginNick: string }) {
           onCancel={dismissTransition}
         />
       ) : null}
+
+      {pendingPromote !== null ? (
+        <PromoteConfirmModal
+          onConfirm={confirmPromote}
+          onCancel={dismissPromote}
+        />
+      ) : null}
     </div>
   );
 }
@@ -251,12 +291,14 @@ function ProposalCard({
   onJoin,
   onCancelJoin,
   onTransition,
+  onPromote,
 }: {
   item: ProposalListItem;
   loginNick: string;
   onJoin: () => void;
   onCancelJoin: () => void;
   onTransition: (target: ProposalStatus) => void;
+  onPromote: () => void;
 }) {
   const dateStr = formatScheduled(item.scheduledAt);
   // 익명 + 모집중일 때만 마스킹. 진행중으로 넘어가면 isAnonymous는 자동
@@ -287,9 +329,20 @@ function ProposalCard({
         ? ["completed", "incomplete"]
         : [];
 
+  // 홍보 — 제안자 본인 + recruiting/in_progress일 때만 노출. 쿨타임 중에도
+  // 비활성으로 노출돼서 남은 시간 표시.
+  const showPromote =
+    isProposer(item, loginNick) &&
+    (item.status === "recruiting" || item.status === "in_progress");
+  const promoteEnabled = showPromote && canPromote(item, loginNick);
+  const promoteRemainingMs = showPromote
+    ? getPromoteCooldownRemainingMs(item)
+    : 0;
+
   const isCancelled = item.status === "cancelled";
   const hasActions =
-    !isCancelled && (showJoin || showCancelJoin || showFull || proposerActions.length > 0);
+    !isCancelled &&
+    (showJoin || showCancelJoin || showFull || proposerActions.length > 0 || showPromote);
 
   return (
     <div className="proposals-card" data-status={item.status}>
@@ -366,8 +419,99 @@ function ProposalCard({
               </button>
             );
           })}
+          {showPromote ? (
+            promoteEnabled ? (
+              <button className="proposals-action-primary" onClick={onPromote}>
+                홍보
+              </button>
+            ) : (
+              <button
+                className="proposals-action-promote-disabled"
+                disabled
+              >
+                홍보 ({formatPromoteRemaining(promoteRemainingMs)})
+              </button>
+            )
+          ) : null}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function formatPromoteRemaining(ms: number): string {
+  if (ms <= 0) return "";
+  const totalSec = Math.ceil(ms / 1000);
+  const min = Math.ceil(totalSec / 60);
+  if (min < 1) return "곧 가능";
+  return `${min}분 후`;
+}
+
+function PromoteConfirmModal({
+  onConfirm,
+  onCancel,
+}: {
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleConfirm = async () => {
+    setSubmitting(true);
+    try {
+      await onConfirm();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div
+      className="proposals-modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="proposals-promote-title"
+      onClick={onCancel}
+    >
+      <div
+        className="proposals-modal-card"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          className="proposals-modal-close"
+          onClick={onCancel}
+          aria-label="닫기"
+          disabled={submitting}
+        >
+          ×
+        </button>
+        <h2 id="proposals-promote-title" className="proposals-modal-title">
+          제안 홍보
+        </h2>
+        <p className="proposals-modal-body" style={{ whiteSpace: "pre-line" }}>
+          {"이 제안을 홍보하시겠습니까?\n다음 홍보까지 1시간 대기합니다."}
+        </p>
+        <div className="proposals-modal-footer-two">
+          <button
+            type="button"
+            className="proposals-modal-cancel"
+            onClick={onCancel}
+            disabled={submitting}
+          >
+            취소
+          </button>
+          <button
+            type="button"
+            className="proposals-modal-confirm"
+            onClick={handleConfirm}
+            autoFocus
+            disabled={submitting}
+          >
+            {submitting ? "처리 중..." : "확인"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
