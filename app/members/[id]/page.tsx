@@ -2,6 +2,7 @@
 
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/app/components/AuthProvider";
 import { db, storage } from "@/src/lib/firebase";
 import {
@@ -246,11 +247,20 @@ export default function MemberMiniHomePage({
     const rawHash = window.location.hash.slice(1);
     return rawHash.split("#")[0] || "";
   });
+  // Triple-fallback for ?guestbook= — useSearchParams sometimes
+  // resolves empty on first client render after router.push (same
+  // race fixed in board/[id] commit 88adc8b). Lazy-init useState
+  // captures window.location at mount so we don't rely on the
+  // reactive hook alone. GuestbookSection itself ALSO re-reads
+  // window.location.search inside its effect for full safety.
+  const searchParams = useSearchParams();
   const [initialGuestbookEntryId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
     const params = new URLSearchParams(window.location.search);
     return params.get("guestbook");
   });
+  const guestbookEntryId =
+    searchParams?.get("guestbook") ?? initialGuestbookEntryId ?? null;
   const hasDeepLink = !!initialDeepLink || !!initialGuestbookEntryId;
   const [scrollPending, setScrollPending] = useState<boolean>(hasDeepLink);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -337,7 +347,7 @@ export default function MemberMiniHomePage({
         id={resolvedId}
         loginNick={loginNick}
         memberNickname={member?.nickname ?? null}
-        autoJumpEntryId={initialGuestbookEntryId}
+        autoJumpEntryId={guestbookEntryId}
       />
       <AdventureLogSection
         id={resolvedId}

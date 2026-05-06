@@ -85,23 +85,30 @@ export function GuestbookSection({
   }, [id]);
 
   // Deep-link auto-jump: ?guestbook=<entryId> arrives via the parent
-  // page. When entries load, locate the target entry and flip to its
-  // page so it's actually rendered, then multi-retry scrollIntoView so
-  // late-arriving images / page deep-link scroll don't fight us.
+  // page. We accept the prop AND re-read window.location.search inside
+  // the effect — useSearchParams in the parent can resolve empty on
+  // the first client render after router.push (same race fixed in
+  // board/[id] commit 88adc8b). The fresh URL read is the source of
+  // truth.
   const jumpHandledRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!autoJumpEntryId) return;
-    if (jumpHandledRef.current === autoJumpEntryId) return;
     if (entries.length === 0) return;
-    const idx = entries.findIndex((e) => e.id === autoJumpEntryId);
+    if (typeof window === "undefined") return;
+    const liveGuestbook = new URLSearchParams(window.location.search).get(
+      "guestbook",
+    );
+    const target = liveGuestbook || autoJumpEntryId || null;
+    if (!target) return;
+    if (jumpHandledRef.current === target) return;
+    const idx = entries.findIndex((e) => e.id === target);
     if (idx < 0) return;
-    jumpHandledRef.current = autoJumpEntryId;
+    jumpHandledRef.current = target;
     const targetPage = Math.floor(idx / PER_PAGE);
     setPage(targetPage);
 
     const tryScroll = () => {
       const el = document.querySelector(
-        `[data-gb-entry-id="${autoJumpEntryId}"]`,
+        `[data-gb-entry-id="${target}"]`,
       );
       if (!(el instanceof HTMLElement)) return;
       const rect = el.getBoundingClientRect();
@@ -111,7 +118,9 @@ export function GuestbookSection({
       document.body.scrollTop = targetY;
     };
     const handles: ReturnType<typeof setTimeout>[] = [];
-    for (const ms of [200, 600, 1500, 3000]) {
+    // First retry slightly later so setPage's render has committed
+    // and the entry is actually mounted in the DOM.
+    for (const ms of [250, 700, 1500, 3000]) {
       handles.push(setTimeout(tryScroll, ms));
     }
     return () => {
