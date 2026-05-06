@@ -41,6 +41,9 @@ const PAGE_SIZE = 10;
 type ProposalListItem = {
   id: string;
   title: string;
+  // 상세 내용 — Phase 후반에 추가된 선택 필드. 옛 데이터는 빈 문자열로
+  // fallback 되며 카드에서는 비어있을 때 영역 자체를 숨긴다.
+  description: string;
   category: ProposalCategory;
   scheduledAt: Date | null;
   scheduledAtMs: number;
@@ -111,6 +114,7 @@ function ListView({ loginNick }: { loginNick: string }) {
           return {
             id: d.id,
             title: data.title ?? "",
+            description: data.description ?? "",
             category: normalizeCategory(data.category),
             scheduledAt: scheduled,
             scheduledAtMs: scheduled?.getTime() ?? 0,
@@ -375,6 +379,13 @@ function ProposalCard({
       ) : null}
 
       <p className="proposals-card-title">{item.title}</p>
+
+      {/* 상세 내용 — 옛 데이터는 빈 문자열로 fallback 되어 영역이 통째로
+          숨는다. CSS의 -webkit-line-clamp 로 3줄에서 잘라(... 처리) 카드
+          비율 보호. 줄바꿈(\n)은 white-space: pre-line 으로 보존. */}
+      {item.description ? (
+        <p className="proposals-card-description">{item.description}</p>
+      ) : null}
 
       {/* 일시 / 인원 — 가장 중요한 두 정보를 sub-card 2열로 강조 */}
       <div className="proposals-highlight-row">

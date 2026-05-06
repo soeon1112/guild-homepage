@@ -63,6 +63,11 @@ export function normalizeCategory(value: unknown): ProposalCategory {
 // 컬렉션: proposals
 export type ProposalDoc = {
   title: string;
+  // 상세 내용 — 선택 입력. 작성 폼이 둘로 분리(제목 한 줄 + 내용 멀티라인)
+  // 되기 전 데이터에는 이 필드가 없을 수 있어 reader 쪽에서는 항상
+  // (data.description ?? "") 형태로 fallback 한다. 푸시/최신현황 트리거는
+  // title 만 사용하고 description 은 알림에 절대 들어가지 않는다.
+  description: string;
   category: ProposalCategory;
   scheduledAt: Timestamp;
   maxParticipants: number;

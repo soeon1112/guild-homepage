@@ -7263,6 +7263,29 @@ body.has-redesigned-header .bg-scene {
   word-break: keep-all;
 }
 
+/* 상세 내용 — 제목보다 한 단계 작고 흐리게. 작성 폼이 [제목 한 줄 + 내용
+   멀티라인] 으로 분리되면서 추가됨. 줄바꿈(\n)은 white-space: pre-line 으로
+   보존하고, 너무 길면 -webkit-line-clamp:3 으로 3줄에서 자른다 (모든 모던
+   브라우저 + iOS 사파리 지원). 푸시/최신현황 알림에는 절대 들어가지 않는
+   본문 전용 텍스트. */
+.proposals-card-description {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: rgba(244, 239, 255, 0.75);
+  margin: -0.25rem 0 0 0;
+  white-space: pre-line;
+  word-break: keep-all;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+.proposals-card[data-status="cancelled"] .proposals-card-description {
+  color: rgba(200, 168, 233, 0.5);
+}
+
 /* 일시 / 인원 — 카드 안의 가장 중요한 두 정보를 묶어서 강조하는 sub-card 2열. */
 .proposals-highlight-row {
   display: grid;

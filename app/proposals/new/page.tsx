@@ -53,6 +53,7 @@ function FormView({ authorNick }: { authorNick: string }) {
 
   const [category, setCategory] = useState<ProposalCategory | null>(null);
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [maxText, setMaxText] = useState("");
@@ -83,11 +84,16 @@ function FormView({ authorNick }: { authorNick: string }) {
       alert("카테고리를 선택해주세요.");
       return;
     }
-    const cleanTitle = title.trim();
+    // 제목은 한 줄 — input(type=text)이라 줄바꿈이 들어올 수는 없지만, paste
+    // 등으로 \n 이 섞일 가능성을 차단하기 위해 저장 직전에 한 번 더 평탄화.
+    const cleanTitle = title.trim().replace(/\s+/g, " ");
     if (!cleanTitle) {
-      alert("제안 제목/내용을 입력해주세요.");
+      alert("제안 제목을 입력해주세요.");
       return;
     }
+    // 내용은 선택 — 비었으면 빈 문자열 그대로 저장. 푸시/최신현황 트리거는
+    // title 만 사용하므로 description 의 줄바꿈은 알림에 새지 않는다.
+    const cleanDescription = description.trim();
     const scheduled = parseDateTime(date.trim(), time.trim());
     if (!scheduled) {
       alert("날짜는 YYYY-MM-DD, 시간은 HH:mm 형식으로 입력해주세요.");
@@ -103,6 +109,7 @@ function FormView({ authorNick }: { authorNick: string }) {
     try {
       await addDoc(collection(db, "proposals"), {
         title: cleanTitle,
+        description: cleanDescription,
         category,
         scheduledAt: Timestamp.fromDate(scheduled),
         maxParticipants: max,
@@ -151,13 +158,30 @@ function FormView({ authorNick }: { authorNick: string }) {
         </div>
 
         <div className="proposals-field">
-          <span className="proposals-field-label">제안 제목/내용</span>
+          <span className="proposals-field-label">제안 제목</span>
+          <input
+            type="text"
+            className="board-input"
+            placeholder="제안 제목 (한 줄)"
+            value={title}
+            // input(type=text) 자체가 enter 로 줄바꿈을 만들지 않지만 paste 로
+            // 들어올 수 있는 \n 은 onChange 단에서 즉시 공백으로 평탄화.
+            onChange={(e) =>
+              setTitle(e.target.value.replace(/[\r\n]+/g, " "))
+            }
+            maxLength={60}
+          />
+        </div>
+
+        <div className="proposals-field">
+          <span className="proposals-field-label">상세 내용 (선택)</span>
           <textarea
             className="board-input board-textarea"
-            placeholder="어떤 제안인지 자유롭게 적어주세요"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            placeholder="상세 내용 (선택)"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
             rows={5}
+            maxLength={500}
           />
         </div>
 
