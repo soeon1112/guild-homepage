@@ -58,6 +58,44 @@ export function WhispersToStars() {
   // Drag constraint target — cards can only be dragged within this container
   const fieldRef = useRef<HTMLDivElement>(null);
 
+  // Deep-link auto-scroll from whisper push tap. Push payload carries
+  // /?whispers=true; we scroll the 한마디란 section into view once.
+  // Lazy-init useState (instead of useDeepLinkParam) because the home
+  // page is a server component without a Suspense wrapper — using
+  // useSearchParams here would force a build error. The flag is read
+  // at navigation time and never changes, so reactive updates aren't
+  // needed.
+  const [initialWhispersFlag] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("whispers") === "true";
+  });
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const whispersHandledRef = useRef(false);
+  useEffect(() => {
+    if (!initialWhispersFlag) return;
+    if (whispersHandledRef.current) return;
+    whispersHandledRef.current = true;
+    // Multi-retry: TodaySky / GuildTestBanner / ShootingStarLetter
+    // mount data asynchronously and shift our y after the first attempt.
+    // Same pattern used in members/[id] section deep-link.
+    const handles: ReturnType<typeof setTimeout>[] = [];
+    const doScroll = () => {
+      const el = sectionRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const targetY = Math.max(0, Math.round(rect.top + window.scrollY - 16));
+      window.scrollTo(0, targetY);
+      document.documentElement.scrollTop = targetY;
+      document.body.scrollTop = targetY;
+    };
+    for (const ms of [100, 500, 1500, 3000]) {
+      handles.push(setTimeout(doScroll, ms));
+    }
+    return () => {
+      for (const h of handles) clearTimeout(h);
+    };
+  }, [initialWhispersFlag]);
+
   // Subscribe to Firestore home guestbook
   useEffect(() => {
     const q = query(
@@ -126,7 +164,7 @@ export function WhispersToStars() {
       : "로그인 후 한마디를 남길 수 있어요";
 
   return (
-    <section className="relative px-4 pb-4">
+    <section id="whispers" ref={sectionRef} className="relative px-4 pb-4">
       <div className="mb-2 flex items-end justify-between">
         <div>
           <h2 className="font-serif text-base tracking-wide text-text-primary text-glow-soft">
