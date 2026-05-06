@@ -334,6 +334,11 @@ export default function ShopPage() {
             "title",
             nickname,
             `${nickname}님이 새 칭호 '${combined}'${josa(combined, "을/를")} 장착했어요`,
+            // Shop doesn't carry the actor's member slot id in scope —
+            // members/[id] resolves nickname URLs via the NFC/NFD +
+            // nickname-field fallback path, so the nickname is fine
+            // here even when the actual doc id is a slot like "14".
+            `/members/${nickname}`,
           );
           setMessage(`「${w.word}」 구매 완료! 칭호 조합이 완성되었습니다.`);
         } else {
