@@ -7770,6 +7770,7 @@ body.has-redesigned-header .bg-scene {
   font-size: 0.78rem;
   letter-spacing: 0.04em;
   cursor: pointer;
+  text-decoration: none;
   box-shadow: 0 0 10px rgba(255, 181, 167, 0.45);
   transition: all 0.18s ease;
 }

@@ -143,8 +143,13 @@ function NoticePageInner() {
     <div className="board-content">
       <h1 className="board-title">공지 게시판</h1>
 
-      <div className="board-write-btn-wrap">
-        <Link href="/notice/write" className="board-btn">
+      {/* 공지 섹션 헤더 — 일정 섹션과 동일한 .notice-schedule-header 행
+          스타일 재사용 ("schedule" prefix 지만 공지/일정 공통 row 스타일).
+          글쓰기 Link 도 일정 추가 버튼과 동일한 .notice-schedule-add-btn
+          warm gradient 스타일로 통일. */}
+      <div className="notice-schedule-header">
+        <h2 className="notice-schedule-title">공지</h2>
+        <Link href="/notice/write" className="notice-schedule-add-btn">
           글쓰기
         </Link>
       </div>
