@@ -303,12 +303,25 @@ function ProposalCard({
   const dateStr = formatScheduled(item.scheduledAt);
   // 익명 + 모집중일 때만 마스킹. 진행중으로 넘어가면 isAnonymous는 자동
   // false이므로 자연스럽게 닉네임 공개.
+  // 관리 목적: "언쏘" 계정에서만 "익명(닉네임)" 형태로 본인 식별 가능.
+  // 클라이언트 표시 전용 — 서버 트리거/푸시에는 영향 없음.
+  const isAdminViewer = loginNick === "언쏘";
   const showAnonymous = item.isAnonymous && item.status === "recruiting";
-  const proposerLabel = showAnonymous ? "익명" : item.proposer;
+  const proposerLabel = showAnonymous
+    ? isAdminViewer
+      ? `익명(${item.proposer})`
+      : "익명"
+    : item.proposer;
   // 익명 + 모집중일 때만 참가자 리스트 안의 제안자 본인 닉네임을 "익명"으로
   // 치환. 다른 참가자는 본인 의지로 참가했으니 그대로 노출.
   const maskedParticipants = showAnonymous
-    ? item.participants.map((n) => (n === item.proposer ? "익명" : n))
+    ? item.participants.map((n) =>
+        n === item.proposer
+          ? isAdminViewer
+            ? `익명(${n})`
+            : "익명"
+          : n,
+      )
     : item.participants;
   const participantsLine =
     maskedParticipants.length > 0 ? maskedParticipants.join(", ") : "없음";
