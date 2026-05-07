@@ -301,54 +301,42 @@ export function NoteToTheSky() {
             </button>
           </form>
 
-          {/* Pagination — only when more than one page */}
+          {/* Pagination — unified `← 이전  N / M  다음 →` text-only,
+              centered, no boxes. Same pattern as /album dl2 + the
+              dl2 list pages (notice / board / proposals) so the four
+              dl2 paged surfaces read as one family. */}
           {totalPages > 1 && (
             <div
-              className="mt-4 flex items-center justify-center gap-1.5 pt-3"
-              style={{ borderTop: "1px solid rgba(92, 58, 31, 0.15)" }}
+              className="mt-4 flex items-center justify-center gap-5 pt-3 text-[11px] tracking-wider"
+              style={{
+                borderTop: "1px solid rgba(92, 58, 31, 0.15)",
+                color: "rgba(92, 58, 31, 0.6)",
+              }}
             >
               <button
                 type="button"
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="rounded-full px-3 py-1 text-[11px] transition-opacity hover:opacity-70 disabled:opacity-30"
-                style={{ color: "#5c3a1f", background: "rgba(92,58,31,0.08)" }}
+                className="transition-opacity hover:opacity-70 disabled:cursor-not-allowed disabled:opacity-30"
+                style={{ color: "#5c3a1f" }}
+                aria-label="이전 페이지"
               >
-                이전
+                ← 이전
               </button>
-              <button
-                type="button"
-                aria-current="page"
-                className="rounded-full px-2.5 py-1 text-[11px] font-semibold"
-                style={{ background: "rgba(92,58,31,0.14)", color: "#3a2010" }}
-              >
-                {currentPage}
-              </button>
-              <span
-                className="px-0.5 text-[11px]"
-                style={{ color: "rgba(92,58,31,0.4)" }}
-              >
-                /
+              <span style={{ color: "#5c3a1f", fontWeight: 600 }}>
+                {currentPage} / {totalPages}
               </span>
-              <button
-                type="button"
-                onClick={() => setCurrentPage(totalPages)}
-                disabled={currentPage === totalPages}
-                className="rounded-full px-2.5 py-1 text-[11px] transition-opacity hover:opacity-70 disabled:opacity-30"
-                style={{ color: "#5c3a1f", background: "rgba(92,58,31,0.08)" }}
-              >
-                {totalPages}
-              </button>
               <button
                 type="button"
                 onClick={() =>
                   setCurrentPage((p) => Math.min(totalPages, p + 1))
                 }
                 disabled={currentPage === totalPages}
-                className="rounded-full px-3 py-1 text-[11px] transition-opacity hover:opacity-70 disabled:opacity-30"
-                style={{ color: "#5c3a1f", background: "rgba(92,58,31,0.08)" }}
+                className="transition-opacity hover:opacity-70 disabled:cursor-not-allowed disabled:opacity-30"
+                style={{ color: "#5c3a1f" }}
+                aria-label="다음 페이지"
               >
-                다음
+                다음 →
               </button>
             </div>
           )}

@@ -8544,17 +8544,40 @@ body.has-redesigned-header .bg-scene {
 }
 .dl2-notice .board-pagination {
   color: #5a7090;
+  gap: 1.25rem;
 }
+/* Box-less pagination — text + arrow, no border/background. The arrow
+   ← / → injected via :first-of-type / :last-of-type since both buttons
+   share `.board-page-btn` and sit as direct siblings inside
+   `.board-pagination`. Same pattern across notice / board / proposals
+   so the four dl2 list pages (notice / board / proposals / album) read
+   as one family. */
 .dl2-notice .board-page-btn {
   color: #2a4570;
-  border-color: rgba(42, 69, 112, 0.3);
+  border: none;
   background: transparent;
+  padding: 0.4rem 0.25rem;
+  box-shadow: none;
+}
+.dl2-notice .board-pagination .board-page-btn:first-of-type::before {
+  content: "← ";
+}
+.dl2-notice .board-pagination .board-page-btn:last-of-type::after {
+  content: " →";
+}
+.dl2-notice .board-page-btn:hover:not(:disabled) {
+  color: #1a2f50;
+  background: transparent;
+  box-shadow: none;
 }
 .dl2-notice .board-page-btn:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
+  background: transparent;
+  border: none;
 }
 .dl2-notice .board-page-info {
-  color: #5a7090;
+  color: #2a4570;
+  font-weight: 600;
 }
 
 /* Schedule list — paper-plane card per row, soft horizontal divider
@@ -8873,24 +8896,36 @@ body.has-redesigned-header .bg-scene {
 }
 .dl2-proposals .board-pagination {
   color: #c8b8e8;
+  gap: 1.25rem;
 }
+/* Box-less pagination — see .dl2-notice block for why ::before/::after
+   on first/last-of-type works (sibling buttons share class). cream/
+   lavender on dark cosmic backdrop for /proposals. */
 .dl2-proposals .board-page-btn {
   background: transparent;
-  border-color: rgba(254, 245, 230, 0.45);
+  border: none;
   color: #fef5e6;
+  padding: 0.4rem 0.25rem;
   box-shadow: none;
 }
+.dl2-proposals .board-pagination .board-page-btn:first-of-type::before {
+  content: "← ";
+}
+.dl2-proposals .board-pagination .board-page-btn:last-of-type::after {
+  content: " →";
+}
 .dl2-proposals .board-page-btn:hover:not(:disabled) {
-  border-color: #fef5e6;
-  background: rgba(254, 245, 230, 0.08);
+  background: transparent;
   color: #fef5e6;
   box-shadow: none;
 }
 .dl2-proposals .board-page-btn:disabled {
   opacity: 0.4;
+  background: transparent;
 }
 .dl2-proposals .board-page-info {
   color: #fef5e6;
+  font-weight: 600;
 }
 
 /* Cards — drop the cosmic glassmorphism + nebula radial overlays so
@@ -9520,24 +9555,35 @@ body.has-redesigned-header .bg-scene {
 }
 .dl2-board .board-pagination {
   color: #c8b8e8;
+  gap: 1.25rem;
 }
+/* Box-less pagination — see .dl2-notice block for the ::before/::after
+   trick. cream on dark cosmic backdrop for /board. */
 .dl2-board .board-page-btn {
   background: transparent;
-  border-color: rgba(254, 245, 230, 0.45);
+  border: none;
   color: #fef5e6;
+  padding: 0.4rem 0.25rem;
   box-shadow: none;
 }
+.dl2-board .board-pagination .board-page-btn:first-of-type::before {
+  content: "← ";
+}
+.dl2-board .board-pagination .board-page-btn:last-of-type::after {
+  content: " →";
+}
 .dl2-board .board-page-btn:hover:not(:disabled) {
-  border-color: #fef5e6;
-  background: rgba(254, 245, 230, 0.08);
+  background: transparent;
   color: #fef5e6;
   box-shadow: none;
 }
 .dl2-board .board-page-btn:disabled {
   opacity: 0.4;
+  background: transparent;
 }
 .dl2-board .board-page-info {
   color: #fef5e6;
+  font-weight: 600;
 }
 
 /* Back link — appears on the cosmic backdrop above the body card. */
@@ -9810,45 +9856,51 @@ body.has-redesigned-header .bg-scene {
   box-shadow: 0 0 12px rgba(42, 69, 112, 0.25);
 }
 
-/* Meta paper card — wraps photo date + caption + photographer + tags
-   + edit/delete buttons (or the edit form). */
+/* Meta layout container — drop the paper surface so date / caption /
+   photographer / tags read directly on the dim backdrop. The wrapper
+   stays for flex layout + centered alignment of every meta line. */
 .dl2-album-viewer .dl2-album-meta-card {
   width: 100%;
-  background: rgba(205, 216, 224, 0.65);
-  border: 1px solid rgba(42, 69, 112, 0.18);
-  border-radius: 1rem;
-  padding: 1rem 1.25rem;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0.5rem 0.25rem 0;
   display: flex;
   flex-direction: column;
-  align-items: stretch;
-  gap: 0.5rem;
+  align-items: center;
+  gap: 0.45rem;
 }
 
-/* Meta text colors. */
+/* Meta text colors — read against the 0.75 black backdrop, so cream-
+   forward palette + slight opacity steps for hierarchy. */
 .dl2-album-viewer .album-viewer-date {
-  color: #5a7090;
-  text-align: left;
+  color: rgba(254, 245, 230, 0.85);
+  text-align: center;
   margin: 0;
 }
 .dl2-album-viewer .minihome-photo-caption {
-  color: #2a4570;
+  color: #fef5e6;
   font-style: normal;
   font-weight: 600;
-  text-align: left;
+  text-align: center;
   margin: 0;
 }
 .dl2-album-viewer .album-photographer {
-  color: #b85420;
+  color: #ffc785;
   font-style: italic;
   font-weight: 600;
-  text-align: left;
+  text-align: center;
   margin: 0;
 }
 .dl2-album-viewer .album-date-label-text {
-  color: #2a4570;
+  color: #fef5e6;
 }
 
-/* Person tag chips — cream pill, ink-brown semibold text, no border. */
+/* Person tag chips — cream pill, ink-brown semibold text, no border.
+   Tags row centered so the chip group sits on the meta column axis. */
+.dl2-album-viewer .album-tags {
+  justify-content: center;
+}
 .dl2-album-viewer .album-tag,
 .dl2-album-viewer .album-tag-readonly {
   background: #fef5e6;
@@ -9861,6 +9913,18 @@ body.has-redesigned-header .bg-scene {
 }
 .dl2-album-viewer .album-tag-remove:hover {
   color: #b85420;
+}
+
+/* Edit-mode form inputs / labels still need a readable surface against
+   the dim backdrop. Keep the form rows centered for visual coherence
+   with the read-mode meta column above. */
+.dl2-album-viewer .album-date-label,
+.dl2-album-viewer .album-people-input {
+  align-items: center;
+  text-align: center;
+}
+.dl2-album-viewer .minihome-modal-actions {
+  justify-content: center;
 }
 
 /* Comments section — paper card same surface as meta. */
@@ -9876,10 +9940,13 @@ body.has-redesigned-header .bg-scene {
   border-bottom-color: rgba(42, 69, 112, 0.12);
 }
 
-/* Comment author / message / time. dl2 nick is 12 px navy semibold,
-   prefix (Dl2TitlePrefix) handles the title chip in coral. */
+/* Comment author / message / time. dl2 nick is 12 px coral semibold —
+   the Dl2TitlePrefix sits to the left in the same coral hue so the
+   author block reads as a single warm accent against the navy body
+   text below it. (Spec marks this as interim — next round unifies
+   nick + title prefix to ink-brown.) */
 .dl2-album-viewer .minihome-gb-nick {
-  color: #2a4570;
+  color: #b85420;
   font-weight: 600;
 }
 .dl2-album-viewer .minihome-gb-msg {
