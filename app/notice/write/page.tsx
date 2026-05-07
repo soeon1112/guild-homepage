@@ -154,7 +154,14 @@ export default function NoticeWritePage() {
 
   return (
     <div className={rootClass}>
-      <h1 className="board-title">공지 작성</h1>
+      {isDawnlight2 ? (
+        <header className="dl2-notice-page-head">
+          <h1 className="dl2-notice-page-title">공지 작성</h1>
+          <p className="dl2-notice-page-sub">WRITE NOTICE</p>
+        </header>
+      ) : (
+        <h1 className="board-title">공지 작성</h1>
+      )}
 
       <div className="board-form">
         <input

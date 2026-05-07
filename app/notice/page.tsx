@@ -434,8 +434,16 @@ function ScheduleAdminGate({
   return createPortal(
     <div
       className={
+        // dl2-notice ONLY (not `dawnlight2`) — `.dawnlight2` declares
+        // `position: relative` which conflicts with the cosmic
+        // `.notice-schedule-modal-backdrop { position: fixed }`. Even
+        // with a compound .dawnlight2.notice-schedule-modal-backdrop
+        // override the cascade was unreliable in production (CDN /
+        // Next bundle order). `.dl2-notice` doesn't touch position
+        // and the universal `.dl2-notice *` rule still cascades the
+        // Pretendard font into the modal subtree.
         "notice-schedule-modal-backdrop" +
-        (isDawnlight2 ? " dawnlight2 dl2-notice" : "")
+        (isDawnlight2 ? " dl2-notice" : "")
       }
       onClick={onCancel}
     >
@@ -543,8 +551,16 @@ function ScheduleEditor({
   return createPortal(
     <div
       className={
+        // dl2-notice ONLY (not `dawnlight2`) — `.dawnlight2` declares
+        // `position: relative` which conflicts with the cosmic
+        // `.notice-schedule-modal-backdrop { position: fixed }`. Even
+        // with a compound .dawnlight2.notice-schedule-modal-backdrop
+        // override the cascade was unreliable in production (CDN /
+        // Next bundle order). `.dl2-notice` doesn't touch position
+        // and the universal `.dl2-notice *` rule still cascades the
+        // Pretendard font into the modal subtree.
         "notice-schedule-modal-backdrop" +
-        (isDawnlight2 ? " dawnlight2 dl2-notice" : "")
+        (isDawnlight2 ? " dl2-notice" : "")
       }
       onClick={onClose}
     >
