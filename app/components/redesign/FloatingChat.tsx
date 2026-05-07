@@ -129,22 +129,31 @@ const MessageItem = memo(
           // Dl2TitlePrefix. The nick takes the dawnlight2 widgets'
           // canonical 12 px semibold ink; the time stays small so it
           // reads as a tag, same rhythm as WhispersFeed/PaperPlane.
+          //
+          // Title + nick are wrapped in a single inline-flex so the
+          // outer gap-2 only spaces the group ↔ time. Title sits
+          // tight against the nick (only Dl2TitlePrefix's own `mr-1`
+          // separates them), matching the cosmic pattern where the
+          // title is rendered inline as part of the nick text node.
+          //
+          // No `flex-row-reverse` for `mine` — the parent `items-end`
+          // column already right-aligns the row, and we want both
+          // mine and other to read [title nick · time] left-to-right
+          // so the title always precedes the nick.
           <div
-            className={`flex items-baseline gap-1.5 px-1 ${
-              mine ? "flex-row-reverse" : ""
-            }`}
+            className="flex items-baseline gap-2 px-1"
             style={{ color: "#5c3a1f", fontSize: 12 }}
           >
-            <Dl2TitlePrefix nickname={m.nickname} />
-            {/* hideTitle skips cosmic TitlePrefix — Dl2TitlePrefix above
-                replaces it. Inline style on the wrapper sets the 12 px
-                font-size that Dl2TitlePrefix's 0.7em then resolves
-                against. The inner text inherits color from the wrapper. */}
-            <NicknameLink
-              nickname={m.nickname}
-              className="font-semibold"
-              hideTitle
-            />
+            <span className="inline-flex items-baseline">
+              <Dl2TitlePrefix nickname={m.nickname} />
+              {/* hideTitle skips cosmic TitlePrefix — Dl2TitlePrefix
+                  above replaces it. */}
+              <NicknameLink
+                nickname={m.nickname}
+                className="font-semibold"
+                hideTitle
+              />
+            </span>
             <span
               className="font-serif tracking-wider"
               style={{ color: "#8a6a4a", fontSize: 9 }}
