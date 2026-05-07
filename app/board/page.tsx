@@ -152,7 +152,7 @@ export default function BoardPage() {
                   </td>
                   <td className="col-author">
                     {isDawnlight2 && (
-                      <Dl2TitlePrefix nickname={post.nickname} />
+                      <Dl2TitlePrefix nickname={post.nickname} tone="cool" />
                     )}
                     <NicknameLink
                       nickname={post.nickname}

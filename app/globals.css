@@ -8453,6 +8453,121 @@ body.has-redesigned-header .bg-scene {
     -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
 }
 
+/* MY 페이지 (dl2) — 가로 폭 메인과 통일 (max-w-2xl=672px), 좌측 정렬
+   Pretendard 헤드. cosmic 카드/내역 디자인은 그대로 유지하고, 하단
+   "홈으로" 버튼은 페이지 안에서 직접 분기 hide. */
+.dl2-mypage,
+.dl2-mypage * {
+  font-family: "Pretendard Variable", Pretendard, "Noto Sans KR",
+    -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+}
+.dl2-mypage.mypage-content {
+  max-width: 672px;
+}
+@media (min-width: 640px) {
+  .dl2-mypage.mypage-content {
+    max-width: 672px;
+  }
+}
+.dl2-mypage .dl2-mypage-head {
+  margin-bottom: 1.25rem;
+  text-align: left;
+}
+.dl2-mypage .dl2-mypage-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #fef5e6;
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+  text-align: left;
+}
+.dl2-mypage .dl2-mypage-sub {
+  margin: 4px 0 0;
+  font-size: 10px;
+  font-weight: 500;
+  color: #c8b8e8;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  text-align: left;
+}
+
+/* 상점 (dl2) — 가로 폭 max-w-2xl + 데스크탑 그리드 4열 → 3열,
+   페이지 헤드 좌측 cream + lavender SHOP, 입체 cosmic 버튼은
+   평면 피치 + 잉크 갈색으로. 박스 / 텍스트 / 별빛 라벨 등 cosmic
+   원본은 사용자 명시로 그대로. */
+.dl2-shop,
+.dl2-shop * {
+  font-family: "Pretendard Variable", Pretendard, "Noto Sans KR",
+    -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+}
+.dl2-shop .shop-container {
+  max-width: 672px;
+}
+.dl2-shop .dl2-shop-head {
+  text-align: left;
+  margin-bottom: 0.25rem;
+}
+.dl2-shop .dl2-shop-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #fef5e6;
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+  text-align: left;
+  text-shadow: none;
+}
+.dl2-shop .dl2-shop-sub {
+  margin: 4px 0 0;
+  font-size: 10px;
+  font-weight: 500;
+  color: #c8b8e8;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  text-align: left;
+}
+/* PC 그리드 4 → 3열. 모바일 (768px 이하) 은 cosmic 그대로 (2열). */
+@media (min-width: 768px) {
+  .dl2-shop .shop-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+/* 평면 피치 액션 버튼 — 채팅 전송 / 한마디 띄우기와 동일 톤.
+   cosmic 그라데이션 + 글로우 → 단색 + 잉크 갈색 텍스트 + flat. */
+.dl2-shop .minihome-btn {
+  background: #ffd4b8;
+  color: #5c3a1f;
+  box-shadow: none;
+  text-shadow: none;
+  border: none;
+  letter-spacing: 0.02em;
+}
+.dl2-shop .minihome-btn:hover {
+  background: #ff9a6c;
+  color: #5c3a1f;
+  transform: none;
+  box-shadow: none;
+}
+.dl2-shop .minihome-btn:disabled {
+  background: #ffd4b8;
+  color: #5c3a1f;
+  opacity: 0.5;
+  box-shadow: none;
+  transform: none;
+}
+/* 취소 버튼은 평면 navy → cream 텍스트 (PaperPlaneLetters 패턴). */
+.dl2-shop .minihome-btn.minihome-btn-cancel,
+.dl2-shop .minihome-btn.minihome-btn-cancel:hover {
+  background: rgba(42, 69, 112, 0.85);
+  color: #fef5e6;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transform: none;
+}
+
 /* Page head: cream title + lavender NOTICE BOARD subtitle.
    Left-aligned (was center) — matches the rest of the dawnlight2
    widget header rhythm where titles sit at the column left edge. */
@@ -9555,7 +9670,10 @@ body.has-redesigned-header .bg-scene {
   text-shadow: none;
 }
 .dl2-board .comment-count {
-  color: #b85420;
+  /* 진한 골드 — same hue as the cool-tone Dl2TitlePrefix on the
+     paper-plane sky surface. coral was washing out against the
+     cream + navy ink palette of dl2 board cards. */
+  color: #8a6710;
 }
 
 /* Loading / pagination — sits on the cosmic backdrop, so cream/lavender

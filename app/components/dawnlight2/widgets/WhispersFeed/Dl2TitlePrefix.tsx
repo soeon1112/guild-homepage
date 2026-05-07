@@ -56,7 +56,26 @@ function subscribe(
   };
 }
 
-export function Dl2TitlePrefix({ nickname }: { nickname: string }) {
+// Tone variants — color the title chip differently depending on the
+// surface temperature beneath it:
+//   · warm (default) → coral #b85420. Reads on peach / cream / beige
+//     surfaces (메인 위젯, 채팅창, 종이비행기, 항해자).
+//   · cool            → 진한 골드 #8a6710. Used on cool paper-plane
+//     sky / cream-tint translucent surfaces (게시판, 앨범 모달 댓글)
+//     where coral over-saturates against the navy ink body and the
+//     darker gold reads as the steady warm accent without clashing.
+const TONE_COLOR = {
+  warm: "#b85420",
+  cool: "#8a6710",
+} as const;
+
+export function Dl2TitlePrefix({
+  nickname,
+  tone = "warm",
+}: {
+  nickname: string;
+  tone?: "warm" | "cool";
+}) {
   const [front, setFront] = useState("");
   const [back, setBack] = useState("");
 
@@ -78,7 +97,7 @@ export function Dl2TitlePrefix({ nickname }: { nickname: string }) {
       // ~9 px — a clear half-step below the nick so the title feels
       // like a tag, not a second name.
       className="mr-1 font-medium tracking-tight"
-      style={{ color: "#b85420", fontSize: "0.7em" }}
+      style={{ color: TONE_COLOR[tone], fontSize: "0.7em" }}
     >
       {`⌜${f} ${b}⌟`}
     </span>

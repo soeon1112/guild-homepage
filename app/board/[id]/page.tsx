@@ -295,7 +295,7 @@ function BoardDetailPageInner({
             // not title ↔ nick (which uses Dl2TitlePrefix's own
             // 4 px `mr-1`).
             <span style={{ display: "inline-flex", alignItems: "baseline" }}>
-              <Dl2TitlePrefix nickname={post.nickname} />
+              <Dl2TitlePrefix nickname={post.nickname} tone="cool" />
               <NicknameLink
                 nickname={post.nickname}
                 hideTitle
@@ -556,7 +556,7 @@ function BoardCommentItem({
   return (
     <div className="board-comment-item" data-comment-id={comment.id}>
       <div className="board-comment-header">
-        {isDawnlight2 ? <Dl2TitlePrefix nickname={comment.nickname} /> : null}
+        {isDawnlight2 ? <Dl2TitlePrefix nickname={comment.nickname} tone="cool" /> : null}
         <NicknameLink
           nickname={comment.nickname}
           className="board-comment-nick"
@@ -603,7 +603,7 @@ function BoardCommentItem({
                 {isDawnlight2 ? (
                   <span style={{ display: "inline-flex", alignItems: "center" }}>
                     <span style={{ marginRight: 4, color: "#5a7090" }}>↳</span>
-                    <Dl2TitlePrefix nickname={r.nickname} />
+                    <Dl2TitlePrefix nickname={r.nickname} tone="cool" />
                     <NicknameLink
                       nickname={r.nickname}
                       className="board-comment-nick"

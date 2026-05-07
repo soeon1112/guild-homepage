@@ -928,7 +928,7 @@ function AlbumCommentItem({
             </button>
           )}
         </span>
-        {dl2 && <Dl2TitlePrefix nickname={comment.nickname} />}
+        {dl2 && <Dl2TitlePrefix nickname={comment.nickname} tone="cool" />}
         <NicknameLink
           nickname={comment.nickname}
           className="minihome-gb-nick"
@@ -966,7 +966,7 @@ function AlbumCommentItem({
                     </button>
                   )}
                 </span>
-                {dl2 && <Dl2TitlePrefix nickname={r.nickname} />}
+                {dl2 && <Dl2TitlePrefix nickname={r.nickname} tone="cool" />}
                 <NicknameLink
                   nickname={r.nickname}
                   className="minihome-gb-nick"
