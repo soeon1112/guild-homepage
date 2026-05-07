@@ -28,6 +28,7 @@ import {
   setOpenPanel,
   useChatInputFocused,
 } from "@/src/lib/uiBus";
+import { useDawnlight2 } from "@/src/lib/featureFlags";
 
 type ChatFileType = "image" | "gif" | "video";
 
@@ -73,13 +74,17 @@ function ChatIcon({ size = 22 }: { size?: number }) {
   );
 }
 
-/** Decorative twinkle particles around the button when unread messages exist. */
-function TwinkleParticles() {
+/** Decorative twinkle particles around the button when unread messages exist.
+ *  `dl2` swaps the cream tint to dawnlight2's softer #fef5e6 — same
+ *  glow halo, just a hair lighter so it doesn't pop against the
+ *  reskinned cream FAB. */
+function TwinkleParticles({ dl2 = false }: { dl2?: boolean }) {
   const particles = [
     { left: -6, top: 6, size: 4, delay: 0 },
     { left: 58, top: 14, size: 5, delay: 0.5 },
     { left: 6, top: 54, size: 4, delay: 1.1 },
   ];
+  const tint = dl2 ? "#fef5e6" : "#FFE5C4";
   return (
     <>
       {particles.map((p, i) => (
@@ -92,8 +97,8 @@ function TwinkleParticles() {
             top: p.top,
             width: p.size,
             height: p.size,
-            background: "#FFE5C4",
-            filter: `drop-shadow(0 0 ${p.size + 2}px #FFE5C4)`,
+            background: tint,
+            filter: `drop-shadow(0 0 ${p.size + 2}px ${tint})`,
             animation: `twinkle 2s ease-in-out ${p.delay}s infinite`,
           }}
         />
@@ -179,6 +184,12 @@ const MessageItem = memo(
 
 export default function FloatingChat() {
   const { nickname, ready } = useAuth();
+  // Dawnlight 2 reskin gate — for 언쏘 the FAB swaps to a flat cream
+  // surface (peach radial gradient + 3D inset → solid #fef5e6 + soft
+  // shadow). Pulse rings, twinkles, badge animations all keep their
+  // exact timing; only the colors are remapped. The chat panel
+  // itself stays cosmic for now (separate scope).
+  const isDawnlight2 = useDawnlight2();
   const [open, setOpen] = useState(false);
   // Coordinate with the pet floating UI: when chat opens, the pet
   // icon hides; when pet opens, the chat icon hides. The shared
@@ -584,14 +595,19 @@ export default function FloatingChat() {
         }}
         className="group fixed right-4 z-[100] flex h-14 w-14 items-center justify-center rounded-full"
       >
-        {/* Pulse ring — soft aura */}
+        {/* Pulse ring — soft aura. dl2: cream-tinted halo (no peach
+            tint) at the same animation timing as cosmic. */}
         <span
           aria-hidden
           className="pointer-events-none absolute inset-0 rounded-full"
           style={{
-            background: hasUnread
-              ? "radial-gradient(circle, rgba(216,150,200,0.9) 0%, rgba(255,181,167,0.5) 45%, transparent 75%)"
-              : "radial-gradient(circle, rgba(255,181,167,0.4) 0%, transparent 70%)",
+            background: isDawnlight2
+              ? hasUnread
+                ? "radial-gradient(circle, rgba(254,245,230,0.85) 0%, rgba(254,245,230,0.45) 45%, transparent 75%)"
+                : "radial-gradient(circle, rgba(254,245,230,0.4) 0%, transparent 70%)"
+              : hasUnread
+                ? "radial-gradient(circle, rgba(216,150,200,0.9) 0%, rgba(255,181,167,0.5) 45%, transparent 75%)"
+                : "radial-gradient(circle, rgba(255,181,167,0.4) 0%, transparent 70%)",
             animation: hasUnread
               ? "pulse-ring 0.8s cubic-bezier(0,0,0.2,1) infinite"
               : "pulse-ring 2.4s cubic-bezier(0,0,0.2,1) infinite",
@@ -602,9 +618,13 @@ export default function FloatingChat() {
           aria-hidden
           className="pointer-events-none absolute inset-0 rounded-full border"
           style={{
-            borderColor: hasUnread
-              ? "rgba(216,150,200,1)"
-              : "rgba(255,181,167,0.6)",
+            borderColor: isDawnlight2
+              ? hasUnread
+                ? "rgba(254,245,230,0.95)"
+                : "rgba(254,245,230,0.55)"
+              : hasUnread
+                ? "rgba(216,150,200,1)"
+                : "rgba(255,181,167,0.6)",
             animation: hasUnread
               ? "pulse-ring 0.8s cubic-bezier(0,0,0.2,1) -0.3s infinite"
               : "pulse-ring 2.4s cubic-bezier(0,0,0.2,1) -0.8s infinite",
@@ -616,24 +636,36 @@ export default function FloatingChat() {
             aria-hidden
             className="pointer-events-none absolute inset-0 rounded-full border"
             style={{
-              borderColor: "rgba(255,229,196,0.9)",
+              borderColor: isDawnlight2
+                ? "rgba(254,245,230,0.85)"
+                : "rgba(255,229,196,0.9)",
               animation: "pulse-ring 1s cubic-bezier(0,0,0.2,1) -0.5s infinite",
             }}
           />
         )}
 
         {/* Twinkle particles — only when unread */}
-        {hasUnread && <TwinkleParticles />}
+        {hasUnread && <TwinkleParticles dl2={isDawnlight2} />}
 
-        {/* Main round button */}
+        {/* Main round button. dl2: flat cream surface with a soft
+            drop-shadow (the peach→pink radial gradient + bevel inset
+            from cosmic is what reads as 3D, so we strip both for the
+            "단순화" the dawnlight2 spec asks for). Glyph color stays
+            text-abyss — readable against cream, same dark-on-light
+            contrast cosmic gives against peach. */}
         <span
           className="relative flex h-12 w-12 items-center justify-center rounded-full text-abyss transition-transform group-hover:scale-105"
           style={{
-            background:
-              "radial-gradient(circle at 30% 30%, #FFE5C4 0%, #FFB5A7 55%, #D896C8 100%)",
-            boxShadow: hasUnread
-              ? "0 8px 36px rgba(216,150,200,0.75), 0 0 56px rgba(255,181,167,0.7), 0 0 80px rgba(216,150,200,0.45), inset 0 1px 2px rgba(255,255,255,0.5)"
-              : "0 8px 24px rgba(255,181,167,0.45), 0 0 24px rgba(216,150,200,0.5), inset 0 1px 2px rgba(255,255,255,0.4)",
+            background: isDawnlight2
+              ? "#fef5e6"
+              : "radial-gradient(circle at 30% 30%, #FFE5C4 0%, #FFB5A7 55%, #D896C8 100%)",
+            boxShadow: isDawnlight2
+              ? hasUnread
+                ? "0 4px 14px rgba(0,0,0,0.18), 0 0 24px rgba(254,245,230,0.45)"
+                : "0 2px 8px rgba(0,0,0,0.15)"
+              : hasUnread
+                ? "0 8px 36px rgba(216,150,200,0.75), 0 0 56px rgba(255,181,167,0.7), 0 0 80px rgba(216,150,200,0.45), inset 0 1px 2px rgba(255,255,255,0.5)"
+                : "0 8px 24px rgba(255,181,167,0.45), 0 0 24px rgba(216,150,200,0.5), inset 0 1px 2px rgba(255,255,255,0.4)",
           }}
         >
           <ChatIcon size={22} />

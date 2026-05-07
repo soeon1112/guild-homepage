@@ -21,6 +21,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
 import { useAuth } from "@/app/components/AuthProvider";
+import { useDawnlight2 } from "@/src/lib/featureFlags";
 import {
   buyItem,
   canDebugPet,
@@ -194,6 +195,11 @@ const CATEGORY_LABELS: Record<ItemCategory, string> = {
 
 export default function FloatingPet() {
   const { nickname, ready } = useAuth();
+  // Dawnlight 2 reskin gate — only changes the outer FAB visuals
+  // (lavender bg + cream-toned status bubble) for 언쏘. The whole
+  // pet game / shop / playground / panel UI stays cosmic, since
+  // those screens are out of scope for the current dawnlight2 work.
+  const isDawnlight2 = useDawnlight2();
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -659,24 +665,44 @@ export default function FloatingPet() {
         <span
           className="relative flex h-12 w-12 items-center justify-center rounded-full transition-transform group-hover:scale-105"
           style={{
-            // 납작한 단색 보라 + 펫 픽셀 얼굴. 라디얼 그라디언트/광택/
-            // 베벨/헤일로 다 빼고 깔끔한 평면 디자인. 펫 없을 때는
-            // 채도 낮춘 회색 비활성 톤.
-            background: pet ? "#6b4ba8" : "rgba(61,46,107,0.55)",
-            border: pet
-              ? "1px solid rgba(216,150,200,0.45)"
-              : "1px solid rgba(155,143,184,0.40)",
+            // dl2: 평면 lavender (#c8b8e8). 펫 없을 때는 살짝 옅게.
+            // cosmic 그대로: 평면 #6b4ba8 보라 + 펫 픽셀 얼굴 (헤일로/
+            // 베벨 없음). 펫 없을 때 채도 낮춘 비활성 톤.
+            background: isDawnlight2
+              ? pet
+                ? "#c8b8e8"
+                : "rgba(200,184,232,0.55)"
+              : pet
+                ? "#6b4ba8"
+                : "rgba(61,46,107,0.55)",
+            border: isDawnlight2
+              ? pet
+                ? "1px solid rgba(42,31,74,0.35)"
+                : "1px solid rgba(42,31,74,0.25)"
+              : pet
+                ? "1px solid rgba(216,150,200,0.45)"
+                : "1px solid rgba(155,143,184,0.40)",
             opacity: pet ? 1 : 0.85,
           }}
         >
           <PetButtonIcon size={22} />
         </span>
 
-        {/* Status bubble */}
+        {/* Status bubble — dl2 swaps the dark abyss surface for a
+            cream pill so it reads in the same visual family as the
+            lavender FAB. */}
         {pet && bubble && !open ? (
           <span
-            className="pointer-events-none absolute -top-7 left-12 whitespace-nowrap rounded-full bg-abyss-deep/85 px-2 py-1 text-[10px] font-medium text-[#f4efff] shadow-lg"
-            style={{ border: "1px solid rgba(216,150,200,0.25)" }}
+            className="pointer-events-none absolute -top-7 left-12 whitespace-nowrap rounded-full px-2 py-1 text-[10px] font-medium shadow-lg"
+            style={{
+              background: isDawnlight2
+                ? "rgba(254,245,230,0.95)"
+                : "rgba(11,8,33,0.85)",
+              color: isDawnlight2 ? "#2a1f4a" : "#f4efff",
+              border: isDawnlight2
+                ? "1px solid rgba(42,31,74,0.2)"
+                : "1px solid rgba(216,150,200,0.25)",
+            }}
           >
             {bubble.message}
           </span>
