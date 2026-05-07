@@ -996,34 +996,36 @@ function AlbumCommentItem({
               }
             >
               {dl2 ? (
-                <>
-                  <div className="dl2-photo-comment-header">
-                    <span style={{ marginRight: 4, color: "#5a7090" }}>↳</span>
-                    <Dl2TitlePrefix nickname={r.nickname} tone="cool" />
-                    <NicknameLink
-                      nickname={r.nickname}
-                      className="dl2-photo-comment-nick"
-                      hideTitle
-                    />
-                    <div className="dl2-photo-comment-actions">
-                      <span className="dl2-photo-comment-date">
-                        {formatTime(r.createdAt)}
-                      </span>
-                      {loginNick === r.nickname && (
-                        <button
-                          type="button"
-                          className="dl2-photo-comment-action"
-                          onClick={() => handleDeleteReply(r.id)}
-                        >
-                          삭제
-                        </button>
-                      )}
+                <div className="dl2-reply-row">
+                  <span className="dl2-reply-arrow">↳</span>
+                  <div className="dl2-reply-content">
+                    <div className="dl2-photo-comment-header">
+                      <Dl2TitlePrefix nickname={r.nickname} tone="cool" />
+                      <NicknameLink
+                        nickname={r.nickname}
+                        className="dl2-photo-comment-nick"
+                        hideTitle
+                      />
+                      <div className="dl2-photo-comment-actions">
+                        <span className="dl2-photo-comment-date">
+                          {formatTime(r.createdAt)}
+                        </span>
+                        {loginNick === r.nickname && (
+                          <button
+                            type="button"
+                            className="dl2-photo-comment-action"
+                            onClick={() => handleDeleteReply(r.id)}
+                          >
+                            삭제
+                          </button>
+                        )}
+                      </div>
                     </div>
+                    {!!r.content && (
+                      <p className="dl2-photo-comment-body">{r.content}</p>
+                    )}
                   </div>
-                  {!!r.content && (
-                    <p className="dl2-photo-comment-body">{r.content}</p>
-                  )}
-                </>
+                </div>
               ) : (
                 <div>
                   <span

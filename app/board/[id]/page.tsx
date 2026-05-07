@@ -599,43 +599,79 @@ function BoardCommentItem({
         <div className="board-reply-list">
           {replies.map((r) => (
             <div key={r.id} className="board-reply-item">
-              <div className="board-comment-header">
-                {isDawnlight2 ? (
-                  <span style={{ display: "inline-flex", alignItems: "center" }}>
-                    <span style={{ marginRight: 4, color: "#5a7090" }}>↳</span>
-                    <Dl2TitlePrefix nickname={r.nickname} tone="cool" />
+              {isDawnlight2 ? (
+                <div className="dl2-reply-row">
+                  <span className="dl2-reply-arrow">↳</span>
+                  <div className="dl2-reply-content">
+                    <div className="board-comment-header">
+                      <Dl2TitlePrefix nickname={r.nickname} tone="cool" />
+                      <NicknameLink
+                        nickname={r.nickname}
+                        className="board-comment-nick"
+                        hideTitle
+                      />
+                      <div
+                        style={{
+                          marginLeft: "auto",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.6rem",
+                        }}
+                      >
+                        <span className="board-comment-date">
+                          {formatDate(r.createdAt)}
+                        </span>
+                        {loginNick === r.nickname && (
+                          <button
+                            type="button"
+                            className="board-reply-btn"
+                            onClick={() => handleDeleteReply(r.id)}
+                            style={{ marginLeft: 0 }}
+                          >
+                            삭제
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <p className="board-comment-body">{r.content}</p>
+                    {r.imageUrl && <CommentImageView url={r.imageUrl} />}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="board-comment-header">
                     <NicknameLink
                       nickname={r.nickname}
                       className="board-comment-nick"
-                      hideTitle
+                      prefix="↳ "
                     />
-                  </span>
-                ) : (
-                  <NicknameLink nickname={r.nickname} className="board-comment-nick" prefix="↳ " />
-                )}
-                <div
-                  style={{
-                    marginLeft: "auto",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.6rem",
-                  }}
-                >
-                  <span className="board-comment-date">{formatDate(r.createdAt)}</span>
-                  {loginNick === r.nickname && (
-                    <button
-                      type="button"
-                      className="board-reply-btn"
-                      onClick={() => handleDeleteReply(r.id)}
-                      style={{ marginLeft: 0 }}
+                    <div
+                      style={{
+                        marginLeft: "auto",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.6rem",
+                      }}
                     >
-                      삭제
-                    </button>
-                  )}
-                </div>
-              </div>
-              <p className="board-comment-body">{r.content}</p>
-              {r.imageUrl && <CommentImageView url={r.imageUrl} />}
+                      <span className="board-comment-date">
+                        {formatDate(r.createdAt)}
+                      </span>
+                      {loginNick === r.nickname && (
+                        <button
+                          type="button"
+                          className="board-reply-btn"
+                          onClick={() => handleDeleteReply(r.id)}
+                          style={{ marginLeft: 0 }}
+                        >
+                          삭제
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <p className="board-comment-body">{r.content}</p>
+                  {r.imageUrl && <CommentImageView url={r.imageUrl} />}
+                </>
+              )}
             </div>
           ))}
           {replyOpen && loginNick && (

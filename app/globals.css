@@ -10672,6 +10672,26 @@ body.has-redesigned-header .bg-scene {
   border-top: 1px solid rgba(42, 69, 112, 0.12);
 }
 
+/* 답글 hanging-indent: 좌측 ↳ 고정 + 우측 column (header + body wrap).
+   본문이 두 번째 줄로 넘어가도 화살표 우측(칭호 시작점)에 정렬됨.
+   유리병 쪽지 / 앨범 모달 / 사진첩 모달 / 게시판 답글 모두 reuse. */
+.dl2-reply-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+.dl2-reply-arrow {
+  flex-shrink: 0;
+  color: #5a7090;
+  font-size: 12px;
+  line-height: 1.6;
+  font-family: 'Pretendard', system-ui, sans-serif;
+}
+.dl2-reply-content {
+  flex: 1;
+  min-width: 0;
+}
+
 /* Big numeric values (combatPower 카드, 길드 통계, weekly TOP 점수)
    — cosmic painted these with a peach/pink linear-gradient + text-
    transparent. Re-fill solid coral and unbold the gradient mask so
