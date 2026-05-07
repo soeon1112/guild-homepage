@@ -8331,16 +8331,23 @@ body.has-redesigned-header .bg-scene {
   animation: dl2-sunset-glow 1.8s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-/* Quote text (sky-quote inside Today's Horizon) — keep Korean
-   eojeol whole on wrap, and balance the line widths when the verse
-   spans 2+ lines so the silhouette doesn't end with a single short
-   word. word-break: keep-all does the heavy lifting on browsers
-   without text-wrap: balance support (Chrome <114, Safari <17.4,
-   Firefox <121); they degrade to whole-word wrap without balance. */
+/* Quote text (sky-quote inside Today's Horizon).
+   white-space: pre  → only literal "\n" in the verse string breaks a
+                       line; auto-wrap is fully disabled so the layout
+                       only ever shows the breakpoints we authored.
+   font-size clamp() → scales with viewport width so the longest
+                       single-line verse (22 Korean chars, e.g.
+                       "돌아갈 항구가 있는 자는 더 멀리 갈 수 있다")
+                       fits the parchment box from ~360 px viewports
+                       up through the 672 px max-w-2xl desktop cap.
+                       Floor 0.75rem (12 px) — readable but tight on
+                       narrow phones; ceiling 1.4rem (22.4 px) avoids
+                       the verse dwarfing the scenery on wide screens. */
 .dawnlight2 .dl2-quote-text {
-  text-wrap: balance;
-  word-break: keep-all;
-  overflow-wrap: break-word;
+  white-space: pre;
+  font-size: clamp(0.75rem, 3.4vw, 1.4rem);
+  line-height: 1.55;
+  max-width: 100%;
 }
 
 @media (prefers-reduced-motion: reduce) {
