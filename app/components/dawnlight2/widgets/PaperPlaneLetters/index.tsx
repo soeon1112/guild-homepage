@@ -177,23 +177,19 @@ export function PaperPlaneLetters() {
             border: "1px solid rgba(42, 69, 112, 0.18)",
           }}
         >
-          <div className="flex items-stretch gap-3 px-4 py-4 sm:items-center sm:gap-6 sm:px-7 sm:py-5">
-            {/* `ml-4` nudges the plane 16 px right of the card's left
-                padding on mobile (8 px wasn't enough breathing room
-                on phones); `sm:ml-0` resets on desktop where the
-                wider px-7 padding already handles spacing. */}
-            <div className="ml-4 flex-shrink-0 self-center animate-plane-float sm:ml-0">
+          {/* On mobile, the plane + right column ride together as a
+              content-width bundle and the row centers them inside the
+              card (`justify-center`). On sm:+ the bundle expands —
+              `sm:justify-start` releases the centering and the right
+              column reclaims `flex-1` so buttons can drift to the
+              card's right edge for the desktop one-line layout. */}
+          <div className="flex items-stretch justify-center gap-3 px-4 py-4 sm:items-center sm:justify-start sm:gap-6 sm:px-7 sm:py-5">
+            <div className="flex-shrink-0 self-center animate-plane-float">
               <LargePaperPlane />
             </div>
 
-            {/* `items-center` centers the children inside this column
-                horizontally on mobile (where it's flex-col) and
-                vertically on desktop (where sm:flex-row kicks in) —
-                same shorthand works for both axes because flex's
-                `items-*` is the cross-axis. Text + buttons therefore
-                read centered on phones and inline-aligned on PC. */}
-            <div className="flex min-w-0 flex-1 flex-col items-center gap-3 sm:flex-row sm:items-center sm:gap-6">
-              <div className="min-w-0 flex-1 text-center sm:text-left">
+            <div className="flex min-w-0 flex-col items-center gap-3 sm:flex-1 sm:flex-row sm:items-center sm:gap-6">
+              <div className="min-w-0 text-center sm:flex-1 sm:text-left">
                 <h3
                   className="text-base font-semibold leading-snug sm:text-lg"
                   style={{ color: NAVY }}
