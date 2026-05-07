@@ -437,11 +437,20 @@ export default function AlbumPage() {
                 <div key={p.id} className="flex flex-col gap-2">
                   {/* Photo tile — no surrounding paper bg/border so
                       the image reads as the card's "front face". The
-                      meta panel below carries the paper surface. */}
+                      meta panel below carries the paper surface.
+                      `p-0` resets the user-agent default button
+                      padding (~1px 6px). Without it, the inner
+                      `<img class="h-full w-full">` lands inside a
+                      padded box and renders shorter than the
+                      aspect-square outer button → reads as a
+                      letterbox stripe at the top/bottom or
+                      left/right edges. Cosmic's `.minihome-photo-
+                      item` sets `padding: 0` explicitly for the same
+                      reason; the dl2 button missed it. */}
                   <button
                     type="button"
                     onClick={() => setViewer(p)}
-                    className="group relative aspect-square overflow-hidden rounded-2xl bg-transparent"
+                    className="group relative block aspect-square overflow-hidden rounded-2xl border-0 bg-transparent p-0"
                   >
                     {resolveFileType(p) === "video" ? (
                       <video
