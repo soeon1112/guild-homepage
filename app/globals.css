@@ -9670,20 +9670,31 @@ body.has-redesigned-header .bg-scene {
   border-bottom-color: rgba(42, 69, 112, 0.12);
 }
 .dl2-board .board-comment-nick {
-  color: #b85420;
+  color: #5c3a1f;
   font-weight: 600;
   font-size: 12px;
 }
-/* Detail-page author nick + board-list author nick — coral semibold,
-   matches the comment-nick coral so author/commenter read as a single
-   visual family against the ink-navy body text. */
+/* Spacing — Dl2TitlePrefix has its own `mr-1` (4 px) right margin.
+   The cosmic .board-comment-header sets `gap: 0.6rem` (10 px), which
+   stacks with mr-1 → 14 px between title and nick. Drop the parent
+   gap in dl2 so only the title's own margin controls title↔nick.
+   The actions div on the right side uses `margin-left: auto` so it
+   keeps right-aligning regardless of the gap drop. */
+.dl2-board .board-comment-header {
+  gap: 0;
+  align-items: baseline;
+}
+/* Detail-page author nick + board-list author nick — ink-brown semibold,
+   matches the comment-nick + WhispersFeed pattern so every dl2 surface
+   uses the same speaker color. Title prefix stays coral as the warm
+   accent; nick is the steady ink line below it. */
 .dl2-board .board-detail-meta .nickname-link {
-  color: #b85420 !important;
+  color: #5c3a1f !important;
   font-weight: 600;
 }
 .dl2-board-nick,
 .dl2-board-nick.nickname-link {
-  color: #b85420 !important;
+  color: #5c3a1f !important;
   font-weight: 600;
 }
 .dl2-board .board-comment-date {
@@ -9940,14 +9951,22 @@ body.has-redesigned-header .bg-scene {
   border-bottom-color: rgba(42, 69, 112, 0.12);
 }
 
-/* Comment author / message / time. dl2 nick is 12 px coral semibold —
-   the Dl2TitlePrefix sits to the left in the same coral hue so the
-   author block reads as a single warm accent against the navy body
-   text below it. (Spec marks this as interim — next round unifies
-   nick + title prefix to ink-brown.) */
+/* Comment author / message / time. dl2 nick is 12 px ink-brown semibold
+   — Dl2TitlePrefix stays coral as a warm accent; the nick is the
+   steady ink line below it. Same pattern as WhispersFeed / board /
+   chat so every dl2 speaker reads in the same ink tier. */
 .dl2-album-viewer .minihome-gb-nick {
-  color: #b85420;
+  color: #5c3a1f;
   font-weight: 600;
+}
+/* Spacing — the cosmic `.minihome-photo-comment > .nickname-link-wrap`
+   sets `margin-left: -16px` to outdent the cosmic nick under the
+   16 px row indent. In dl2 we render Dl2TitlePrefix BEFORE the
+   NicknameLink, so the −16 px pulls the nick leftward over the title
+   = visible overlap. Zero it in dl2; the title's own `mr-1` (4 px)
+   then provides the only title↔nick separator. */
+.dl2-album-viewer .minihome-photo-comment > .nickname-link-wrap {
+  margin-left: 0;
 }
 .dl2-album-viewer .minihome-gb-msg {
   color: #2a4570;

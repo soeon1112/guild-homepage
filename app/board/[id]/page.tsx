@@ -289,12 +289,22 @@ function BoardDetailPageInner({
       <div className="board-detail">
         <h1 className="board-detail-title">{post.title}</h1>
         <div className="board-detail-meta">
-          {isDawnlight2 && <Dl2TitlePrefix nickname={post.nickname} />}
-          <NicknameLink
-            nickname={post.nickname}
-            hideTitle={isDawnlight2}
-            className={isDawnlight2 ? "dl2-board-nick" : undefined}
-          />
+          {isDawnlight2 ? (
+            // Wrap title + nick so the parent flex `gap: 1.25rem`
+            // (20 px) only spaces the author group ↔ date pair —
+            // not title ↔ nick (which uses Dl2TitlePrefix's own
+            // 4 px `mr-1`).
+            <span style={{ display: "inline-flex", alignItems: "baseline" }}>
+              <Dl2TitlePrefix nickname={post.nickname} />
+              <NicknameLink
+                nickname={post.nickname}
+                hideTitle
+                className="dl2-board-nick"
+              />
+            </span>
+          ) : (
+            <NicknameLink nickname={post.nickname} />
+          )}
           <span>{formatDate(post.createdAt)}</span>
         </div>
         <div className="board-detail-body">
