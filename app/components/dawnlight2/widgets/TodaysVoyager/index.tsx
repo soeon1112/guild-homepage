@@ -135,12 +135,14 @@ export function TodaysVoyager() {
         </p>
       </header>
 
-      {/* PC: 2-col grid (left island, right input cards stack).
-          Mobile: single column stack — island on top, then cards. */}
-      <div className="grid grid-cols-1 items-center gap-4 md:grid-cols-2 md:items-start md:gap-5">
+      {/* PC: 2-col grid (left island, right input cards stack), with
+          the right column vertically centered against the taller
+          island scene. Mobile: single column stack, smaller gap
+          between the two cards (PC widens that gap to gap-6). */}
+      <div className="grid grid-cols-1 items-center gap-4 md:grid-cols-2 md:items-center md:gap-5">
         <FloatingIsland voyager={today} loaded={loaded} />
 
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 md:gap-6">
           <KeywordCard
             voyagerNickname={today?.nickname ?? ""}
             senderNickname={nickname}
@@ -426,7 +428,7 @@ function KeywordCard({
       }}
     >
       <p
-        className="mb-2 text-[10px] font-semibold uppercase tracking-[0.28em]"
+        className="mb-2 text-[13px] font-semibold uppercase tracking-[0.18em]"
         style={{ color: NAVY }}
       >
         ✦ 키워드 선물하기
@@ -438,7 +440,7 @@ function KeywordCard({
           onChange={(e) => handleChange(e.target.value)}
           placeholder="#이 별에게 선물할 키워드"
           maxLength={21}
-          className="min-w-0 flex-1 rounded-lg px-3 py-2 text-sm outline-none focus:border-[rgba(42,69,112,0.5)]"
+          className="min-w-0 flex-1 rounded-lg px-3 py-2 text-[13px] outline-none focus:border-[rgba(42,69,112,0.5)]"
           style={{
             background: "rgba(255, 255, 255, 0.7)",
             color: NAVY,
@@ -503,7 +505,7 @@ function MinihomeGuestbookCard({
       }}
     >
       <p
-        className="mb-2 text-[10px] font-semibold uppercase tracking-[0.28em]"
+        className="mb-2 text-[13px] font-semibold uppercase tracking-[0.18em]"
         style={{ color: NAVY }}
       >
         ✉ 방명록에 한마디
@@ -515,7 +517,7 @@ function MinihomeGuestbookCard({
           placeholder="오늘의 항해자에게 한마디"
           maxLength={120}
           rows={2}
-          className="min-w-0 flex-1 resize-none rounded-lg px-3 py-2 text-sm leading-relaxed outline-none focus:border-[rgba(42,69,112,0.5)]"
+          className="min-w-0 flex-1 resize-none rounded-lg px-3 py-2 text-[13px] leading-relaxed outline-none focus:border-[rgba(42,69,112,0.5)]"
           style={{
             background: "rgba(255, 255, 255, 0.7)",
             color: NAVY,
