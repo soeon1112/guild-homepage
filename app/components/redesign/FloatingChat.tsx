@@ -29,6 +29,7 @@ import {
   useChatInputFocused,
 } from "@/src/lib/uiBus";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
+import { Dl2TitlePrefix } from "@/app/components/dawnlight2/widgets/WhispersFeed/Dl2TitlePrefix";
 
 type ChatFileType = "image" | "gif" | "video";
 
@@ -110,40 +111,89 @@ function TwinkleParticles({ dl2 = false }: { dl2?: boolean }) {
 type MessageItemProps = {
   m: ChatMessage;
   mine: boolean;
+  // Step 4-D: dawnlight2 reskin flag. When true, the meta row uses a
+  // 12 px ink-brown nick (was 9 px stardust) preceded by Dl2TitlePrefix,
+  // and the bubble swaps the cosmic peach/abyss surfaces for cream-tone
+  // surfaces that read against the cream panel bg.
+  dl2: boolean;
 };
 
 const MessageItem = memo(
-  function MessageItem({ m, mine }: MessageItemProps) {
+  function MessageItem({ m, mine, dl2 }: MessageItemProps) {
     return (
       <div
         className={`flex flex-col gap-1 py-1.5 ${mine ? "items-end" : "items-start"}`}
       >
-        <div
-          className={`flex items-center gap-2 px-1 font-serif text-[9px] tracking-wider ${
-            mine ? "flex-row-reverse" : ""
-          }`}
-        >
-          <NicknameLink nickname={m.nickname} className="text-stardust" />
-          <span className="text-text-sub">{formatTime(m.createdAt)}</span>
-        </div>
+        {dl2 ? (
+          // dl2 meta row — 12 px ink-brown nick + 9 px ink-soft time +
+          // Dl2TitlePrefix. The nick takes the dawnlight2 widgets'
+          // canonical 12 px semibold ink; the time stays small so it
+          // reads as a tag, same rhythm as WhispersFeed/PaperPlane.
+          <div
+            className={`flex items-baseline gap-1.5 px-1 ${
+              mine ? "flex-row-reverse" : ""
+            }`}
+            style={{ color: "#5c3a1f", fontSize: 12 }}
+          >
+            <Dl2TitlePrefix nickname={m.nickname} />
+            {/* hideTitle skips cosmic TitlePrefix — Dl2TitlePrefix above
+                replaces it. Inline style on the wrapper sets the 12 px
+                font-size that Dl2TitlePrefix's 0.7em then resolves
+                against. The inner text inherits color from the wrapper. */}
+            <NicknameLink
+              nickname={m.nickname}
+              className="font-semibold"
+              hideTitle
+            />
+            <span
+              className="font-serif tracking-wider"
+              style={{ color: "#8a6a4a", fontSize: 9 }}
+            >
+              {formatTime(m.createdAt)}
+            </span>
+          </div>
+        ) : (
+          <div
+            className={`flex items-center gap-2 px-1 font-serif text-[9px] tracking-wider ${
+              mine ? "flex-row-reverse" : ""
+            }`}
+          >
+            <NicknameLink nickname={m.nickname} className="text-stardust" />
+            <span className="text-text-sub">{formatTime(m.createdAt)}</span>
+          </div>
+        )}
         {m.message && (
           <div
-            className="wrap-anywhere max-w-[82%] rounded-2xl px-3 py-2 font-serif text-[12px] leading-relaxed backdrop-blur-sm"
+            className="wrap-anywhere max-w-[82%] rounded-2xl px-3 py-2 font-serif text-[12px] leading-relaxed"
             style={
-              mine
-                ? {
-                    background:
-                      "linear-gradient(135deg, rgba(255,229,196,0.22), rgba(255,181,167,0.18))",
-                    border: "1px solid rgba(255,181,167,0.4)",
-                    color: "#f4efff",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
-                  }
-                : {
-                    background: "rgba(26,15,61,0.7)",
-                    border: "1px solid rgba(216,150,200,0.25)",
-                    color: "#f4efff",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
-                  }
+              dl2
+                ? mine
+                  ? {
+                      background: "#ffd4b8",
+                      border: "1px solid rgba(92,58,31,0.10)",
+                      color: "#5c3a1f",
+                    }
+                  : {
+                      background: "#f0e4cc",
+                      border: "1px solid rgba(92,58,31,0.10)",
+                      color: "#5c3a1f",
+                    }
+                : mine
+                  ? {
+                      background:
+                        "linear-gradient(135deg, rgba(255,229,196,0.22), rgba(255,181,167,0.18))",
+                      border: "1px solid rgba(255,181,167,0.4)",
+                      color: "#f4efff",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
+                      backdropFilter: "blur(4px)",
+                    }
+                  : {
+                      background: "rgba(26,15,61,0.7)",
+                      border: "1px solid rgba(216,150,200,0.25)",
+                      color: "#f4efff",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
+                      backdropFilter: "blur(4px)",
+                    }
             }
           >
             {m.message}
@@ -153,8 +203,12 @@ const MessageItem = memo(
           <div
             className="max-w-[82%] overflow-hidden rounded-xl"
             style={{
-              border: "1px solid rgba(216,150,200,0.25)",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
+              border: dl2
+                ? "1px solid rgba(92,58,31,0.10)"
+                : "1px solid rgba(216,150,200,0.25)",
+              boxShadow: dl2
+                ? "0 2px 8px rgba(92,58,31,0.10)"
+                : "0 2px 8px rgba(0,0,0,0.25)",
             }}
           >
             {m.fileType === "video" ? (
@@ -174,6 +228,7 @@ const MessageItem = memo(
   },
   (prev, next) =>
     prev.mine === next.mine &&
+    prev.dl2 === next.dl2 &&
     prev.m.id === next.m.id &&
     prev.m.message === next.m.message &&
     prev.m.imageUrl === next.m.imageUrl &&
@@ -721,12 +776,18 @@ export default function FloatingChat() {
                   ? "min(500px, calc(100dvh - 1rem))"
                   : "min(500px, calc(100vh - 7rem))",
               transition: "bottom 200ms ease, height 200ms ease",
-              background: "rgba(26,15,61,0.94)",
-              border: "1px solid rgba(216,150,200,0.3)",
-              boxShadow:
-                "0 12px 40px rgba(0,0,0,0.55), 0 0 40px rgba(107,75,168,0.35)",
-              backdropFilter: "blur(16px)",
-              WebkitBackdropFilter: "blur(16px)",
+              background: isDawnlight2 ? "#fef5e6" : "rgba(26,15,61,0.94)",
+              border: isDawnlight2
+                ? "1px solid rgba(92,58,31,0.10)"
+                : "1px solid rgba(216,150,200,0.3)",
+              // dl2: warm ink shadow, no purple aura. The cream surface
+              // already reads as a flat sheet, so we drop the heavy
+              // double-layer glow for a single soft warm shadow.
+              boxShadow: isDawnlight2
+                ? "0 8px 28px rgba(92,58,31,0.18)"
+                : "0 12px 40px rgba(0,0,0,0.55), 0 0 40px rgba(107,75,168,0.35)",
+              backdropFilter: isDawnlight2 ? undefined : "blur(16px)",
+              WebkitBackdropFilter: isDawnlight2 ? undefined : "blur(16px)",
             }}
             initial={{ y: 20, opacity: 0, scale: 0.96 }}
             animate={{ y: 0, opacity: 1, scale: 1 }}
@@ -736,43 +797,65 @@ export default function FloatingChat() {
             role="dialog"
             aria-label="길드 채팅"
           >
-            {/* Nebula glow decorations */}
-            <span
-              aria-hidden
-              className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full"
-              style={{
-                background:
-                  "radial-gradient(circle, rgba(216,150,200,0.28) 0%, transparent 65%)",
-                filter: "blur(28px)",
-              }}
-            />
-            <span
-              aria-hidden
-              className="pointer-events-none absolute -bottom-12 -left-12 h-44 w-44 rounded-full"
-              style={{
-                background:
-                  "radial-gradient(circle, rgba(107,75,168,0.3) 0%, transparent 65%)",
-                filter: "blur(32px)",
-              }}
-            />
+            {/* Nebula glow decorations — cosmic only. The dl2 cream
+                panel reads cleanest with no inner color washes. */}
+            {!isDawnlight2 && (
+              <>
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full"
+                  style={{
+                    background:
+                      "radial-gradient(circle, rgba(216,150,200,0.28) 0%, transparent 65%)",
+                    filter: "blur(28px)",
+                  }}
+                />
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute -bottom-12 -left-12 h-44 w-44 rounded-full"
+                  style={{
+                    background:
+                      "radial-gradient(circle, rgba(107,75,168,0.3) 0%, transparent 65%)",
+                    filter: "blur(32px)",
+                  }}
+                />
+              </>
+            )}
 
             {/* Header */}
-            <div className="relative flex shrink-0 items-center justify-between border-b border-nebula-pink/20 px-4 py-3">
+            <div
+              className="relative flex shrink-0 items-center justify-between px-4 py-3"
+              style={{
+                borderBottom: isDawnlight2
+                  ? "1px solid rgba(92,58,31,0.15)"
+                  : "1px solid rgba(216,150,200,0.2)",
+              }}
+            >
               <h3
                 className="leading-none"
-                style={{
-                  fontFamily: "'Noto Serif KR', serif",
-                  fontSize: "15px",
-                  fontWeight: 400,
-                  letterSpacing: "0.06em",
-                  backgroundImage:
-                    "linear-gradient(135deg, #FFE5C4, #D896C8, #6B4BA8)",
-                  WebkitBackgroundClip: "text",
-                  backgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  color: "transparent",
-                  filter: "drop-shadow(0 0 8px rgba(216,150,200,0.4))",
-                }}
+                style={
+                  isDawnlight2
+                    ? {
+                        fontFamily: "'Noto Serif KR', serif",
+                        fontSize: "15px",
+                        fontWeight: 600,
+                        letterSpacing: "0.06em",
+                        color: "#5c3a1f",
+                      }
+                    : {
+                        fontFamily: "'Noto Serif KR', serif",
+                        fontSize: "15px",
+                        fontWeight: 400,
+                        letterSpacing: "0.06em",
+                        backgroundImage:
+                          "linear-gradient(135deg, #FFE5C4, #D896C8, #6B4BA8)",
+                        WebkitBackgroundClip: "text",
+                        backgroundClip: "text",
+                        WebkitTextFillColor: "transparent",
+                        color: "transparent",
+                        filter: "drop-shadow(0 0 8px rgba(216,150,200,0.4))",
+                      }
+                }
               >
                 길드 채팅
               </h3>
@@ -780,11 +863,20 @@ export default function FloatingChat() {
                 type="button"
                 onClick={closePanel}
                 aria-label="닫기"
-                className="flex h-7 w-7 items-center justify-center rounded-full text-stardust transition-colors hover:bg-nebula-pink/20"
-                style={{
-                  background: "rgba(11,8,33,0.5)",
-                  border: "1px solid rgba(216,150,200,0.3)",
-                }}
+                className="flex h-7 w-7 items-center justify-center rounded-full transition-colors"
+                style={
+                  isDawnlight2
+                    ? {
+                        background: "transparent",
+                        border: "1px solid rgba(92,58,31,0.15)",
+                        color: "#8a6a4a",
+                      }
+                    : {
+                        background: "rgba(11,8,33,0.5)",
+                        border: "1px solid rgba(216,150,200,0.3)",
+                        color: "#FFE5C4",
+                      }
+                }
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -798,7 +890,14 @@ export default function FloatingChat() {
               <div ref={contentRef}>
                 {messages.length === 0 ? (
                   <div className="flex h-full items-center justify-center">
-                    <p className="font-serif text-[12px] italic text-text-sub/70">
+                    <p
+                      className="font-serif text-[12px] italic"
+                      style={{
+                        color: isDawnlight2
+                          ? "#8a6a4a"
+                          : "rgba(155,143,184,0.7)",
+                      }}
+                    >
                       아직 채팅이 없어요
                     </p>
                   </div>
@@ -808,6 +907,7 @@ export default function FloatingChat() {
                       key={m.id}
                       m={m}
                       mine={!!nickname && m.nickname === nickname}
+                      dl2={isDawnlight2}
                     />
                   ))
                 )}
@@ -817,14 +917,43 @@ export default function FloatingChat() {
 
             {/* Compose area / auth gate */}
             {!ready ? (
-              <div className="shrink-0 border-t border-nebula-pink/20 px-4 py-4 text-center font-serif text-[11px] italic text-text-sub">
+              <div
+                className="shrink-0 px-4 py-4 text-center font-serif text-[11px] italic"
+                style={{
+                  borderTop: isDawnlight2
+                    ? "1px solid rgba(92,58,31,0.15)"
+                    : "1px solid rgba(216,150,200,0.2)",
+                  color: isDawnlight2 ? "#8a6a4a" : "rgb(155,143,184)",
+                }}
+              >
                 불러오는 중...
               </div>
             ) : nickname ? (
-              <div className="relative shrink-0 border-t border-nebula-pink/20 px-3 py-3">
+              <div
+                className="relative shrink-0 px-3 py-3"
+                style={{
+                  borderTop: isDawnlight2
+                    ? "1px solid rgba(92,58,31,0.15)"
+                    : "1px solid rgba(216,150,200,0.2)",
+                }}
+              >
                 {/* File preview */}
                 {file && filePreview && (
-                  <div className="mb-2 flex items-center gap-2 overflow-hidden rounded-xl border border-nebula-pink/20 bg-abyss/50 p-2 backdrop-blur-sm">
+                  <div
+                    className="mb-2 flex items-center gap-2 overflow-hidden rounded-xl p-2"
+                    style={
+                      isDawnlight2
+                        ? {
+                            border: "1px solid rgba(92,58,31,0.10)",
+                            background: "#f0e4cc",
+                          }
+                        : {
+                            border: "1px solid rgba(216,150,200,0.2)",
+                            background: "rgba(11,8,33,0.5)",
+                            backdropFilter: "blur(4px)",
+                          }
+                    }
+                  >
                     {detectFileType(file) === "video" ? (
                       <video
                         src={filePreview}
@@ -841,7 +970,10 @@ export default function FloatingChat() {
                         className="h-10 w-10 shrink-0 rounded-lg object-cover"
                       />
                     )}
-                    <span className="min-w-0 flex-1 truncate font-serif text-[10px] text-text-sub">
+                    <span
+                      className="min-w-0 flex-1 truncate font-serif text-[10px]"
+                      style={{ color: isDawnlight2 ? "#8a6a4a" : "rgb(155,143,184)" }}
+                    >
                       {file.name}
                     </span>
                     <button
@@ -849,7 +981,8 @@ export default function FloatingChat() {
                       onClick={() => setFile(null)}
                       aria-label="첨부 제거"
                       disabled={sending}
-                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-stardust transition-colors hover:bg-nebula-pink/20 disabled:opacity-50"
+                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-50"
+                      style={{ color: isDawnlight2 ? "#8a6a4a" : "#FFE5C4" }}
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -874,11 +1007,26 @@ export default function FloatingChat() {
                     onClick={pickFile}
                     disabled={sending}
                     aria-label={file ? "첨부 제거" : "파일 첨부"}
-                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border bg-abyss/50 text-stardust backdrop-blur-sm transition-all disabled:opacity-50 ${
-                      file
-                        ? "border-peach-accent/70 text-peach-accent"
-                        : "border-nebula-pink/30 hover:border-nebula-pink/60"
-                    }`}
+                    className={
+                      isDawnlight2
+                        ? "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all disabled:opacity-50"
+                        : `flex h-9 w-9 shrink-0 items-center justify-center rounded-full border bg-abyss/50 text-stardust backdrop-blur-sm transition-all disabled:opacity-50 ${
+                            file
+                              ? "border-peach-accent/70 text-peach-accent"
+                              : "border-nebula-pink/30 hover:border-nebula-pink/60"
+                          }`
+                    }
+                    style={
+                      isDawnlight2
+                        ? {
+                            background: "#ffffff",
+                            border: file
+                              ? "1px solid rgba(184,84,32,0.4)"
+                              : "1px solid rgba(92,58,31,0.20)",
+                            color: file ? "#b85420" : "#5c3a1f",
+                          }
+                        : undefined
+                    }
                   >
                     <Camera className="h-4 w-4" />
                   </button>
@@ -897,7 +1045,21 @@ export default function FloatingChat() {
                     }}
                     placeholder="메시지를 입력하세요"
                     aria-busy={sending}
-                    className="min-w-0 flex-1 rounded-full border border-nebula-pink/30 bg-abyss/50 px-3 py-2 font-serif text-[12px] text-text-primary placeholder:text-text-sub/70 backdrop-blur-sm focus:border-peach-accent/60 focus:outline-none focus:ring-2 focus:ring-peach-accent/30"
+                    className={
+                      isDawnlight2
+                        ? "min-w-0 flex-1 rounded-full px-3 py-2 font-serif text-[12px] focus:outline-none placeholder:text-[#8a6a4a]"
+                        : "min-w-0 flex-1 rounded-full border border-nebula-pink/30 bg-abyss/50 px-3 py-2 font-serif text-[12px] text-text-primary placeholder:text-text-sub/70 backdrop-blur-sm focus:border-peach-accent/60 focus:outline-none focus:ring-2 focus:ring-peach-accent/30"
+                    }
+                    style={
+                      isDawnlight2
+                        ? {
+                            background: "#ffffff",
+                            border: "1px solid rgba(92,58,31,0.20)",
+                            color: "#5c3a1f",
+                            caretColor: "#5c3a1f",
+                          }
+                        : undefined
+                    }
                   />
 
                   <button
@@ -913,19 +1075,39 @@ export default function FloatingChat() {
                     onClick={handleSend}
                     disabled={sending || (!draft.trim() && !file)}
                     aria-label="메시지 전송"
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-abyss-deep transition-all hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
-                    style={{
-                      background:
-                        "linear-gradient(135deg, #FFE5C4, #FFB5A7, #D896C8)",
-                      boxShadow: "0 0 12px rgba(255,181,167,0.5)",
-                    }}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
+                    style={
+                      isDawnlight2
+                        ? {
+                            // Flat peach disc + ink glyph — same CTA tone
+                            // as the 한마디 남기기 button. No gradient,
+                            // no halo: the cream panel reads cleaner with
+                            // a single-tone surface.
+                            background: "#ffd4b8",
+                            color: "#5c3a1f",
+                          }
+                        : {
+                            background:
+                              "linear-gradient(135deg, #FFE5C4, #FFB5A7, #D896C8)",
+                            boxShadow: "0 0 12px rgba(255,181,167,0.5)",
+                            color: "#1a0f3d",
+                          }
+                    }
                   >
                     <Send className="h-4 w-4" />
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="shrink-0 border-t border-nebula-pink/20 px-4 py-4 text-center font-serif text-[11px] italic text-text-sub">
+              <div
+                className="shrink-0 px-4 py-4 text-center font-serif text-[11px] italic"
+                style={{
+                  borderTop: isDawnlight2
+                    ? "1px solid rgba(92,58,31,0.15)"
+                    : "1px solid rgba(216,150,200,0.2)",
+                  color: isDawnlight2 ? "#8a6a4a" : "rgb(155,143,184)",
+                }}
+              >
                 로그인이 필요합니다
               </div>
             )}

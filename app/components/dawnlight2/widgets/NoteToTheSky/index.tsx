@@ -290,8 +290,11 @@ export function NoteToTheSky() {
                   : "cursor-not-allowed opacity-40"
               }`}
               style={{
-                background: "#b85420",
-                color: "#fef5e6",
+                // Step 4-D: peach + ink to match the chat send button —
+                // a single CTA tone shared across the dawnlight2 surface.
+                // Flat (no gradient/shadow) per the "단순화" spec.
+                background: "#ffd4b8",
+                color: "#5c3a1f",
               }}
             >
               ✦ 남기기
