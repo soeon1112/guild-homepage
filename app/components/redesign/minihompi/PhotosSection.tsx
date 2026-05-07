@@ -232,6 +232,25 @@ export function PhotosSection({
 
   return (
     <>
+      {/* TEMP DEBUG — cosmic 마운트 표시. 다음 라운드 제거. */}
+      <div
+        style={{
+          position: "fixed",
+          top: 160,
+          right: 8,
+          zIndex: 9998,
+          padding: "4px 8px",
+          borderRadius: 4,
+          background: "#3b82f6",
+          color: "#fff",
+          fontSize: 10,
+          fontFamily: "monospace",
+          fontWeight: 700,
+          pointerEvents: "none",
+        }}
+      >
+        RENDER: PhotosSection (cosmic) dl2={String(dl2)}
+      </div>
       <CollapsibleSection
         title="사진첩"
         rightSlot={

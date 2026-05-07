@@ -214,6 +214,25 @@ export function PhotosSectionD2({
 
   return (
     <>
+      {/* TEMP DEBUG — D2 컴포넌트 마운트 표시. 다음 라운드 제거. */}
+      <div
+        style={{
+          position: "fixed",
+          top: 130,
+          right: 8,
+          zIndex: 9998,
+          padding: "4px 8px",
+          borderRadius: 4,
+          background: "#22c55e",
+          color: "#fff",
+          fontSize: 10,
+          fontFamily: "monospace",
+          fontWeight: 700,
+          pointerEvents: "none",
+        }}
+      >
+        RENDER: PhotosSectionD2
+      </div>
       <section
         id={SECTION_ID}
         className="overflow-hidden rounded-2xl"
