@@ -10548,6 +10548,19 @@ body.has-redesigned-header .bg-scene {
   font-weight: 700 !important;
 }
 
+/* dl2 미니홈피 5단계 — 유리병 쪽지: cosmic .nickname-link/.title-prefix
+   specificity 가 inline color 를 이김. scope 룰로 강제 ink 톤 박기. */
+.dl2-minihome #minihome-guestbook .title-prefix {
+  color: #8a6710 !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+}
+.dl2-minihome #minihome-guestbook .nickname-link {
+  color: #2a4570 !important;
+  font-weight: 600 !important;
+  font-size: 12px !important;
+}
+
 /* Big numeric values (combatPower 카드, 길드 통계, weekly TOP 점수)
    — cosmic painted these with a peach/pink linear-gradient + text-
    transparent. Re-fill solid coral and unbold the gradient mask so

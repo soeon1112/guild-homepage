@@ -526,50 +526,46 @@ function GuestbookItemD2({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
     >
-      {/* 상단 한 줄: 닉네임 + 시간 + 답글/삭제 */}
-      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-        <span style={{ color: "#5c3a1f" }}>
-          <NicknameLink
-            nickname={entry.nickname}
-            className="text-[12px] font-semibold"
-          />
-        </span>
+      {/* 한 줄 가로: [칭호닉네임]: 본문… [시간 답글 삭제] */}
+      <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
+          <span className="flex-shrink-0">
+            <NicknameLink nickname={entry.nickname} />
+          </span>
+          <span
+            className="truncate text-[12px] leading-relaxed"
+            style={{ color: "#4a2a1a" }}
+          >
+            : {entry.message}
+          </span>
+        </div>
         <time
-          className="ml-auto text-[10px]"
+          className="flex-shrink-0 text-[10px] tabular-nums"
           style={{ color: "#5a7090" }}
         >
           {formatTime(entry.createdAt)}
         </time>
-        <div className="flex items-center gap-2 text-[11px] tracking-wider">
-          {loginNick && (
-            <button
-              type="button"
-              onClick={onToggleReply}
-              className="transition-opacity"
-              style={{ color: "#2a4570" }}
-            >
-              {replyOpen ? "닫기" : "답글"}
-            </button>
-          )}
-          {loginNick === entry.nickname && (
-            <button
-              type="button"
-              onClick={handleDeleteEntry}
-              className="transition-opacity"
-              style={{ color: "#2a4570" }}
-            >
-              삭제
-            </button>
-          )}
-        </div>
+        {loginNick && (
+          <button
+            type="button"
+            onClick={onToggleReply}
+            className="flex-shrink-0 text-[11px] transition-opacity"
+            style={{ color: "#5a7090" }}
+          >
+            {replyOpen ? "닫기" : "답글"}
+          </button>
+        )}
+        {loginNick === entry.nickname && (
+          <button
+            type="button"
+            onClick={handleDeleteEntry}
+            className="flex-shrink-0 text-[11px] transition-opacity"
+            style={{ color: "#5a7090" }}
+          >
+            삭제
+          </button>
+        )}
       </div>
-      {/* 본문 — 잉크 갈색 (닉네임과 분리) */}
-      <p
-        className="wrap-anywhere mt-1 text-[12px] leading-relaxed"
-        style={{ color: "#4a2a1a" }}
-      >
-        {entry.message}
-      </p>
       {entry.imageUrl && (
         <div className="mt-2">
           <CommentImageView url={entry.imageUrl} />
@@ -584,15 +580,20 @@ function GuestbookItemD2({
         >
           {replies.map((r) => (
             <div key={r.id}>
-              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                <span style={{ color: "#5c3a1f" }}>
-                  <NicknameLink
-                    nickname={r.nickname}
-                    className="text-[11px] font-semibold"
-                  />
-                </span>
+              <div className="flex items-center gap-2">
+                <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
+                  <span className="flex-shrink-0">
+                    <NicknameLink nickname={r.nickname} />
+                  </span>
+                  <span
+                    className="truncate text-[12px] leading-relaxed"
+                    style={{ color: "#4a2a1a" }}
+                  >
+                    : {r.message}
+                  </span>
+                </div>
                 <time
-                  className="ml-auto text-[10px]"
+                  className="flex-shrink-0 text-[10px] tabular-nums"
                   style={{ color: "#5a7090" }}
                 >
                   {formatTime(r.createdAt)}
@@ -601,19 +602,13 @@ function GuestbookItemD2({
                   <button
                     type="button"
                     onClick={() => handleDeleteReply(r.id)}
-                    className="text-[11px]"
-                    style={{ color: "#2a4570" }}
+                    className="flex-shrink-0 text-[11px]"
+                    style={{ color: "#5a7090" }}
                   >
                     삭제
                   </button>
                 )}
               </div>
-              <p
-                className="wrap-anywhere mt-1 text-[11px] leading-relaxed"
-                style={{ color: "#4a2a1a" }}
-              >
-                {r.message}
-              </p>
               {r.imageUrl && (
                 <div className="mt-1">
                   <CommentImageView url={r.imageUrl} />
