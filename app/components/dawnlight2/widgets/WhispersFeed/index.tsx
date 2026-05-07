@@ -89,7 +89,7 @@ export function WhispersFeed() {
       <div
         className="overflow-hidden rounded-2xl"
         style={{
-          background: "rgba(255, 212, 184, 0.82)",
+          background: "rgba(255, 212, 184, 0.72)",
           border: "1px solid rgba(74, 90, 140, 0.18)",
         }}
       >
