@@ -461,12 +461,12 @@ export function CabinLogs() {
             border: `1px solid ${PARCHMENT_BORDER}`,
             boxShadow:
               "0 6px 28px rgba(42,20,10,0.30), 0 1px 4px rgba(42,20,10,0.18)",
-            // Cork dot pattern — 사진첩 PhotosSectionD2 와 동일 spec.
-            // 8x8 grid 의 옅은 잉크 갈색 1px 점. 양피지 위 자연스러운
-            // cork 텍스처. 4 corner pins 제거 후 본 박스에 직접 깔음.
+            // Cork dot pattern — 사진첩 PhotosSectionD2 와 spacing 통일
+            // (14x14 grid). 이전 8x8 은 너무 촘촘 ("다다다다닥") 으로
+            // 인식. 4 corner pins 제거 후 본 박스에 직접 깔음.
             backgroundImage:
               "radial-gradient(rgba(92, 58, 31, 0.18) 1px, transparent 1px)",
-            backgroundSize: "8px 8px",
+            backgroundSize: "14px 14px",
           }}
         >
           {/* 4 corner pins removed (사용자 명시). 점 패턴이 cork
