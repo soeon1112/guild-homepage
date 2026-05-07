@@ -130,6 +130,22 @@ export function NoteToTheSky() {
       aria-labelledby="dl2-note-to-the-sky"
       className="mx-auto w-full max-w-2xl px-5 pb-12 pt-2 sm:px-6 sm:pb-16"
     >
+      {/* Header outside the parchment, on the noctilucent gradient.
+          Cream Korean title + mist-lavender uppercase subtitle so the
+          two dawnlight2 widgets (this + WhispersFeed) read as a
+          stacked pair with identical label rhythm. */}
+      <header className="mb-3 px-1">
+        <h2
+          id="dl2-note-to-the-sky"
+          className="text-lg font-semibold leading-tight text-cream sm:text-xl"
+        >
+          하늘에 새긴 한마디
+        </h2>
+        <p className="mt-1 text-[10px] uppercase tracking-[0.32em] text-mist-lavender">
+          A Note to the Sky
+        </p>
+      </header>
+
       <div
         className="relative overflow-hidden rounded-2xl"
         style={{
@@ -187,33 +203,9 @@ export function NoteToTheSky() {
           }}
         />
 
-        {/* Content */}
-        <div className="relative px-6 pb-4 pt-5 sm:px-10 sm:pb-5 sm:pt-7">
-          {/* Header */}
-          <div className="mb-4 flex items-start justify-between">
-            <div>
-              <h2
-                id="dl2-note-to-the-sky"
-                className="font-serif-kr text-xl font-semibold leading-tight sm:text-2xl"
-                style={{ color: "#3a2010" }}
-              >
-                하늘에 새긴 한마디
-              </h2>
-              <p
-                className="mt-0.5 text-[10px] uppercase tracking-[0.36em]"
-                style={{ color: "#8a6040", opacity: 0.8 }}
-              >
-                A Note to the Sky
-              </p>
-            </div>
-          </div>
-
-          {/* Header divider */}
-          <div
-            className="mb-4"
-            style={{ borderTop: "1px solid rgba(92, 58, 31, 0.25)" }}
-          />
-
+        {/* Content — header lives outside the card now; start
+            straight at the message list with comfortable top padding. */}
+        <div className="relative px-6 pb-4 pt-4 sm:px-10 sm:pb-5 sm:pt-5">
           {/* Message list */}
           {entries.length === 0 ? (
             <p

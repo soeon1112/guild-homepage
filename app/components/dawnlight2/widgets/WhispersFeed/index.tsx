@@ -96,6 +96,35 @@ export function WhispersFeed() {
       aria-labelledby="dl2-whispers-feed"
       className="mx-auto w-full max-w-2xl px-5 pb-12 pt-2 sm:px-6 sm:pb-16"
     >
+      {/* Header — outside the box, on the noctilucent gradient.
+          Cream + mist-lavender so the section label reads against
+          the dark sky; same sizing rules as the NoteToTheSky header
+          (Korean title 18-20 px / English subtitle 10 px / 0.32 em
+          tracking) so the two widgets stack as siblings. The LIVE
+          chip rides on the title baseline; "총 N건" is gone. */}
+      <header className="mb-3 px-1">
+        <div className="flex items-center gap-3">
+          <h2
+            id="dl2-whispers-feed"
+            className="text-lg font-semibold leading-tight text-cream sm:text-xl"
+          >
+            바람결 소식
+          </h2>
+          <span className="flex items-center gap-1.5">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500/70" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+            </span>
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-red-400">
+              Live
+            </span>
+          </span>
+        </div>
+        <p className="mt-1 text-[10px] uppercase tracking-[0.32em] text-mist-lavender">
+          Whispers on the Wind
+        </p>
+      </header>
+
       <div
         className="overflow-hidden rounded-2xl"
         style={{
@@ -103,41 +132,6 @@ export function WhispersFeed() {
           border: "1px solid rgba(74, 90, 140, 0.18)",
         }}
       >
-        {/* Header — title + LIVE + count, all inside the box per v0 */}
-        <div className="flex flex-wrap items-center justify-between gap-3 px-5 pb-3 pt-4 sm:px-6 sm:pt-5">
-          <div>
-            <h2
-              id="dl2-whispers-feed"
-              className="text-lg font-semibold leading-tight sm:text-xl"
-              style={{ color: INK }}
-            >
-              바람결 소식
-            </h2>
-            <p
-              className="mt-0.5 text-[10px] uppercase tracking-[0.32em]"
-              style={{ color: INK_SOFT }}
-            >
-              Whispers on the Wind
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500/70" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
-              </span>
-              <span className="text-[10px] font-medium uppercase tracking-wider text-red-600">
-                Live
-              </span>
-            </div>
-            <span className="text-[11px]" style={{ color: INK_SOFT }}>
-              총 {items.length}건
-            </span>
-          </div>
-        </div>
-
-        <div style={{ borderTop: "1px solid rgba(92, 58, 31, 0.18)" }} />
-
         {items.length === 0 ? (
           <p
             className="px-5 py-10 text-center text-xs italic"
