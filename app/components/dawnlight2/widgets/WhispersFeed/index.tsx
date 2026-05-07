@@ -12,6 +12,16 @@ import {
 } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
 import { formatSmart } from "@/src/lib/formatSmart";
+import { Dl2TitlePrefix } from "./Dl2TitlePrefix";
+
+// Ink-brown palette for the warm peach card. Pre-mixed with their
+// effective alpha so we can render every text node fully opaque (only
+// the card surface is translucent — text legibility wins everywhere).
+const INK = "#5c3a1f"; // primary ink (title, nick, body)
+const INK_SOFT = "#8a6a4a"; // secondary ink (subtitle, time, count)
+const INK_PLANE_FILL = "rgba(253, 246, 240, 0.95)"; // cloud, opaque-ish on peach
+const INK_PLANE_STROKE = "rgba(92, 58, 31, 0.55)"; // ink outline so plane reads against the cream
+const TRAIL_DASH = "rgba(253, 246, 240, 0.85)";
 
 // Whispers Feed — Dawnlight 2 activity stream.
 //
@@ -98,11 +108,15 @@ export function WhispersFeed() {
           <div>
             <h2
               id="dl2-whispers-feed"
-              className="font-serif-kr text-lg font-medium leading-tight text-twilight-deep sm:text-xl"
+              className="text-lg font-semibold leading-tight sm:text-xl"
+              style={{ color: INK }}
             >
               바람결 소식
             </h2>
-            <p className="mt-0.5 text-[10px] uppercase tracking-[0.32em] text-twilight-mid/70">
+            <p
+              className="mt-0.5 text-[10px] uppercase tracking-[0.32em]"
+              style={{ color: INK_SOFT }}
+            >
               Whispers on the Wind
             </p>
           </div>
@@ -116,16 +130,19 @@ export function WhispersFeed() {
                 Live
               </span>
             </div>
-            <span className="text-[11px] text-twilight-mid/75">
+            <span className="text-[11px]" style={{ color: INK_SOFT }}>
               총 {items.length}건
             </span>
           </div>
         </div>
 
-        <div style={{ borderTop: "1px solid rgba(74, 90, 140, 0.15)" }} />
+        <div style={{ borderTop: "1px solid rgba(92, 58, 31, 0.18)" }} />
 
         {items.length === 0 ? (
-          <p className="px-5 py-10 text-center font-serif-kr text-xs italic text-twilight-mid/70">
+          <p
+            className="px-5 py-10 text-center text-xs italic"
+            style={{ color: INK_SOFT }}
+          >
             {loaded ? "아직 활동이 없습니다." : "불러오는 중..."}
           </p>
         ) : (
@@ -162,8 +179,8 @@ export function WhispersFeed() {
                       >
                         <path
                           d="M3 3l18 9-18 9 3-9-3-9z"
-                          fill="rgba(42, 31, 74, 0.78)"
-                          stroke="rgba(42, 31, 74, 0.45)"
+                          fill={INK_PLANE_FILL}
+                          stroke={INK_PLANE_STROKE}
                           strokeWidth="1.5"
                           strokeLinejoin="round"
                         />
@@ -171,8 +188,7 @@ export function WhispersFeed() {
                       <div
                         className="absolute right-full top-1/2 h-px w-7"
                         style={{
-                          background:
-                            "repeating-linear-gradient(to left, rgba(42,31,74,0.4) 0px, rgba(42,31,74,0.4) 3px, transparent 3px, transparent 6px)",
+                          background: `repeating-linear-gradient(to left, ${TRAIL_DASH} 0px, ${TRAIL_DASH} 3px, transparent 3px, transparent 6px)`,
                           transform: "translateY(-50%)",
                         }}
                       />
@@ -180,14 +196,18 @@ export function WhispersFeed() {
 
                     {/* Activity text */}
                     <div className="min-w-0 flex-1">
-                      <p className="font-serif-kr text-[13px] leading-snug text-twilight-deep sm:text-sm">
+                      <p
+                        className="text-[13px] leading-snug sm:text-sm"
+                        style={{ color: INK }}
+                      >
                         {matchedNick ? (
                           <>
                             {nickPrefix}
-                            <span className="font-semibold text-twilight-deep">
+                            <Dl2TitlePrefix nickname={matchedNick} />
+                            <span className="font-semibold" style={{ color: INK }}>
                               {matchedNick}
                             </span>
-                            <span className="text-twilight-mid">님</span>
+                            <span style={{ color: INK_SOFT }}>님</span>
                             {nickSuffix}
                           </>
                         ) : (
@@ -203,7 +223,10 @@ export function WhispersFeed() {
                           LIVE
                         </span>
                       )}
-                      <time className="text-[10px] text-twilight-mid/75 sm:text-[11px]">
+                      <time
+                        className="text-[10px] sm:text-[11px]"
+                        style={{ color: INK_SOFT }}
+                      >
                         {timeLabel}
                       </time>
                     </div>
@@ -212,7 +235,7 @@ export function WhispersFeed() {
 
                 const rowProps = {
                   className:
-                    "group relative flex items-center gap-3 rounded-lg py-2 transition-colors hover:bg-twilight-deep/5",
+                    "group relative flex items-center gap-3 rounded-lg py-2 transition-colors hover:bg-[rgba(92,58,31,0.06)]",
                   style: { paddingLeft: `${indent}px` } as const,
                 };
 
@@ -240,28 +263,32 @@ export function WhispersFeed() {
             {totalPages > 1 && (
               <div
                 className="flex items-center justify-between gap-3 px-5 py-3"
-                style={{ borderTop: "1px solid rgba(74, 90, 140, 0.15)" }}
+                style={{ borderTop: "1px solid rgba(92, 58, 31, 0.18)" }}
               >
                 <button
                   type="button"
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={isFirst}
                   aria-label="이전 페이지"
-                  className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] tracking-wider text-twilight-mid transition-all ${
+                  className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] tracking-wider transition-all ${
                     isFirst
                       ? "cursor-not-allowed opacity-30"
-                      : "hover:bg-twilight-deep/5 hover:text-twilight-deep"
+                      : "hover:bg-[rgba(92,58,31,0.06)]"
                   }`}
+                  style={{ color: INK }}
                 >
                   <ChevronLeft className="h-3 w-3" />
                   이전
                 </button>
 
-                <span className="text-[11px] tracking-widest text-twilight-mid/70">
-                  <span className="font-semibold text-twilight-deep">
+                <span
+                  className="text-[11px] tracking-widest"
+                  style={{ color: INK_SOFT }}
+                >
+                  <span className="font-semibold" style={{ color: INK }}>
                     {currentPage}
                   </span>
-                  <span className="mx-1.5 opacity-60">/</span>
+                  <span className="mx-1.5">/</span>
                   <span>{totalPages}</span>
                 </span>
 
@@ -272,11 +299,12 @@ export function WhispersFeed() {
                   }
                   disabled={isLast}
                   aria-label="다음 페이지"
-                  className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] tracking-wider text-twilight-mid transition-all ${
+                  className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] tracking-wider transition-all ${
                     isLast
                       ? "cursor-not-allowed opacity-30"
-                      : "hover:bg-twilight-deep/5 hover:text-twilight-deep"
+                      : "hover:bg-[rgba(92,58,31,0.06)]"
                   }`}
+                  style={{ color: INK }}
                 >
                   다음
                   <ChevronRight className="h-3 w-3" />
