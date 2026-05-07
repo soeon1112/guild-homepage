@@ -8443,6 +8443,16 @@ body.has-redesigned-header .bg-scene {
     -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
 }
 
+/* 길드원 페이지 — 같은 Pretendard universal so search box / page head /
+   section heads / card text all read in the dl2 family. The serif
+   defaults from cosmic globals would otherwise leak through and make
+   the cream-on-glass cards look mismatched against album/notice. */
+.dl2-members,
+.dl2-members * {
+  font-family: "Pretendard Variable", Pretendard, "Noto Sans KR",
+    -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+}
+
 /* Page head: cream title + lavender NOTICE BOARD subtitle.
    Left-aligned (was center) — matches the rest of the dawnlight2
    widget header rhythm where titles sit at the column left edge. */
@@ -9869,7 +9879,12 @@ body.has-redesigned-header .bg-scene {
 
 /* Meta layout container — drop the paper surface so date / caption /
    photographer / tags read directly on the dim backdrop. The wrapper
-   stays for flex layout + centered alignment of every meta line. */
+   stays for flex layout + centered alignment of every meta line.
+   Visual order set via flex `order` (1-4) so dl2 reads
+   date → photo by → 출연자 → 내용 (matches album grid card order)
+   without forking the JSX. cosmic mounts the same DOM without the
+   `.dl2-album-viewer` ancestor → `order` defaults to 0 for every
+   child → DOM order (date → caption → photo by → tags) preserved. */
 .dl2-album-viewer .dl2-album-meta-card {
   width: 100%;
   background: transparent;
@@ -9881,6 +9896,13 @@ body.has-redesigned-header .bg-scene {
   align-items: center;
   gap: 0.45rem;
 }
+.dl2-album-viewer .album-viewer-date { order: 1; }
+.dl2-album-viewer .album-photographer { order: 2; }
+.dl2-album-viewer .dl2-album-meta-card > .album-tags { order: 3; }
+.dl2-album-viewer .minihome-photo-caption { order: 4; }
+/* Action buttons (수정/삭제) at order 5 so they always come last,
+   regardless of which meta lines are populated. */
+.dl2-album-viewer .dl2-album-meta-card > .minihome-modal-actions { order: 5; }
 
 /* Meta text colors — read against the 0.75 black backdrop, so cream-
    forward palette + slight opacity steps for hierarchy. */
