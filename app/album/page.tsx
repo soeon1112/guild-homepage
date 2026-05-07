@@ -39,9 +39,23 @@ const DL2_INK_BROWN = "#5c3a1f";
 const DL2_CORAL = "#b85420";
 const DL2_PAPER_BG = "rgba(205, 216, 224, 0.65)";
 const DL2_PAPER_BORDER = "rgba(42, 69, 112, 0.18)";
-// Person chip — cream pill, ink-brown text, no border. The chip
-// surface contrasts the cream-blue paper card so person tags read as
-// distinct stamps rather than fading into the meta column.
+// Album card — cream-tint translucent surface (matches the 길드원
+// member card pattern) so the photo + meta read as one cream-on-
+// twilight family rather than the paper-plane navy pair below.
+const DL2_GRID_CARD_BG = "rgba(254, 245, 230, 0.12)";
+const DL2_GRID_CARD_BORDER = "rgba(254, 245, 230, 0.25)";
+// Album meta hierarchy (used by both grid + modal so they read as
+// the same surface):
+//   · 날짜       — cream 0.7  regular
+//   · photo by   — #ffd9a6 (옅은 황금빛) italic semibold
+//   · 출연자 칩  — cream bg + ink-brown text, NO border
+//   · 본문 / 제목 — cream weight 700 (가장 또렷)
+//   · 댓글 카운트 — cream 0.6  regular
+const DL2_META_DATE = "rgba(254, 245, 230, 0.7)";
+const DL2_META_PHOTOG = "#ffd9a6";
+const DL2_META_TITLE = DL2_CREAM;
+const DL2_META_COMMENT = "rgba(254, 245, 230, 0.6)";
+// Person chip — cream pill, ink-brown text, no border.
 const DL2_CHIP_BG = DL2_CREAM;
 const DL2_CHIP_TEXT = DL2_INK_BROWN;
 
@@ -502,20 +516,20 @@ export default function AlbumPage() {
                   <div
                     className="flex flex-col gap-1.5 rounded-2xl px-3 py-3"
                     style={{
-                      background: DL2_PAPER_BG,
-                      border: `1px solid ${DL2_PAPER_BORDER}`,
+                      background: DL2_GRID_CARD_BG,
+                      border: `1px solid ${DL2_GRID_CARD_BORDER}`,
                     }}
                   >
-                    {/* Hierarchy (B option):
-                        · 날짜 — regular soft navy (옅은 메타)
-                        · photo by — semibold coral italic (작가 강조)
+                    {/* Hierarchy (cream-on-twilight family):
+                        · 날짜 — cream 0.7 regular
+                        · photo by — #ffd9a6 (옅은 황금빛) italic semibold
                         · 출연자 칩 — cream bg + ink-brown text, NO border
-                        · 본문 제목 — semibold deep navy (가장 또렷)
-                        · 댓글 카운트 — regular soft navy (옅은 메타) */}
+                        · 본문 제목 — cream weight 700 (가장 또렷)
+                        · 댓글 카운트 — cream 0.6 regular */}
                     {p.photoDate && (
                       <div
                         className="text-[11px] tracking-wider"
-                        style={{ color: DL2_NAVY_SOFT }}
+                        style={{ color: DL2_META_DATE }}
                       >
                         {formatPhotoDate(p.photoDate)}
                       </div>
@@ -523,7 +537,7 @@ export default function AlbumPage() {
                     {p.photographer && (
                       <div
                         className="text-[11px] font-semibold italic"
-                        style={{ color: DL2_CORAL }}
+                        style={{ color: DL2_META_PHOTOG }}
                       >
                         photo by {p.photographer}
                       </div>
@@ -546,8 +560,8 @@ export default function AlbumPage() {
                     )}
                     {p.caption && (
                       <div
-                        className="text-[12.5px] font-semibold leading-relaxed"
-                        style={{ color: DL2_NAVY }}
+                        className="text-[12.5px] leading-relaxed"
+                        style={{ color: DL2_META_TITLE, fontWeight: 700 }}
                       >
                         {p.caption}
                       </div>
@@ -555,7 +569,7 @@ export default function AlbumPage() {
                     {count > 0 && (
                       <div
                         className="text-[11px] tracking-wider"
-                        style={{ color: DL2_NAVY_SOFT }}
+                        style={{ color: DL2_META_COMMENT }}
                       >
                         댓글 {count}개
                       </div>

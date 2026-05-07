@@ -9834,11 +9834,11 @@ body.has-redesigned-header .bg-scene {
    re-skinned.
    ════════════════════════════════════════════════════════════════════ */
 
-/* Modal backdrop — slightly darker than cosmic so the cream content
-   reads against a deep dim instead of cosmic's purple-tinged 0.8. */
+/* Modal backdrop — black 0.85 (was 0.75) so the photo + cream meta
+   stand out clearly without ambient leak from whatever's behind. */
 .dl2-album-viewer,
 .dl2-album-upload {
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(0, 0, 0, 0.85);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
@@ -9853,12 +9853,18 @@ body.has-redesigned-header .bg-scene {
     "Segoe UI", system-ui, sans-serif;
 }
 
-/* Card width — match the album page (max-w-3xl = 768 px). The photo
-   viewer card itself stays transparent: only the meta + comments
-   sub-cards carry the paper surface. */
+/* Card width — match the album page (max-w-3xl = 768 px). Photo
+   region container is fully transparent: no bg / border / padding
+   so the photo reads as a free-floating frame on the dim backdrop.
+   Only the meta + comments sub-cards carry visible surfaces. */
 .dl2-album-viewer .minihome-photo-viewer {
   max-width: min(90vw, 768px);
   background: transparent;
+  border: none;
+  padding: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 @media (min-width: 640px) {
   .dl2-album-viewer .minihome-photo-viewer {
@@ -9866,15 +9872,18 @@ body.has-redesigned-header .bg-scene {
   }
 }
 
-/* Close button — navy outline + navy ×. */
+/* Close button — dark disc + cream × so it always stands out against
+   any photo (light or dark) and the dim backdrop. Used to be a navy
+   text on white plate, which faded into cream-tinted images. */
 .dl2-album-viewer .minihome-photo-close {
-  background: rgba(255, 255, 255, 0.6);
-  border-color: rgba(42, 69, 112, 0.25);
-  color: #2a4570;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(254, 245, 230, 0.35);
+  color: #fef5e6;
 }
 .dl2-album-viewer .minihome-photo-close:hover {
-  border-color: rgba(42, 69, 112, 0.5);
-  box-shadow: 0 0 12px rgba(42, 69, 112, 0.25);
+  background: rgba(0, 0, 0, 0.7);
+  border-color: rgba(254, 245, 230, 0.6);
+  box-shadow: 0 0 12px rgba(254, 245, 230, 0.25);
 }
 
 /* Meta layout container — drop the paper surface so date / caption /
@@ -9904,22 +9913,28 @@ body.has-redesigned-header .bg-scene {
    regardless of which meta lines are populated. */
 .dl2-album-viewer .dl2-album-meta-card > .minihome-modal-actions { order: 5; }
 
-/* Meta text colors — read against the 0.75 black backdrop, so cream-
-   forward palette + slight opacity steps for hierarchy. */
+/* Meta text colors — match the album grid card (cream-on-twilight
+   family) so the modal reads as the same surface the user clicked
+   open from the grid. Hierarchy:
+     · 날짜       cream 0.7    regular
+     · photo by   #ffd9a6      italic semibold
+     · 출연자 칩  cream + ink-brown (no border)
+     · 본문 / 제목 cream        weight 700
+*/
 .dl2-album-viewer .album-viewer-date {
-  color: rgba(254, 245, 230, 0.85);
+  color: rgba(254, 245, 230, 0.7);
   text-align: center;
   margin: 0;
 }
 .dl2-album-viewer .minihome-photo-caption {
   color: #fef5e6;
   font-style: normal;
-  font-weight: 600;
+  font-weight: 700;
   text-align: center;
   margin: 0;
 }
 .dl2-album-viewer .album-photographer {
-  color: #ffc785;
+  color: #ffd9a6;
   font-style: italic;
   font-weight: 600;
   text-align: center;
@@ -9960,10 +9975,12 @@ body.has-redesigned-header .bg-scene {
   justify-content: center;
 }
 
-/* Comments section — paper card same surface as meta. */
+/* Comments section — paper card. Bumped to 0.85 (was 0.65) so the
+   navy ink reads cleanly on the lighter surface and the discussion
+   visually separates from the dim backdrop above. */
 .dl2-album-viewer .minihome-photo-comments {
-  background: rgba(205, 216, 224, 0.65);
-  border: 1px solid rgba(42, 69, 112, 0.18);
+  background: rgba(205, 216, 224, 0.85);
+  border: 1px solid rgba(42, 69, 112, 0.22);
   border-radius: 1rem;
 }
 .dl2-album-viewer .minihome-photo-comments-title {
