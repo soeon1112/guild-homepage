@@ -11,7 +11,7 @@ import { useChatInputFocused } from "@/src/lib/uiBus";
 // unchanged.
 //
 // Color reskin (this round):
-//   • Bar bg: bg-abyss/85 → #e0dcd8 (opaque warm grey)
+//   • Bar bg: bg-abyss/85 → #fef5e6 (cream)
 //   • Border: nebula-pink/25 → rgba(92,58,31,0.10) (subtle ink hairline)
 //   • Shadow: purple stack → 0 -4px 12px rgba(92,58,31,0.12)
 //   • Active icon/label: text-stardust → #5c3a1f (ink brown)
@@ -150,7 +150,7 @@ export function Dawnlight2BottomNav() {
       <div
         className="relative mx-auto flex max-w-md items-center justify-around rounded-2xl px-1.5 py-2"
         style={{
-          background: "#e0dcd8",
+          background: "#fef5e6",
           border: "1px solid rgba(92, 58, 31, 0.10)",
           // Soft warm shadow lifting the bar off the page — mirrors
           // the spec's `0 -4px 12px rgba(92,58,31,0.12)`. The inset
