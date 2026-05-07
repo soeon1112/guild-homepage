@@ -224,7 +224,7 @@ export function WhispersFeed() {
                         </span>
                       )}
                       <time
-                        className="text-[10px] sm:text-[11px]"
+                        className="hidden text-[11px] md:inline"
                         style={{ color: INK_SOFT }}
                       >
                         {timeLabel}
