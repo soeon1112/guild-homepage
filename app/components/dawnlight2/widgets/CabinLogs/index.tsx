@@ -461,28 +461,16 @@ export function CabinLogs() {
             border: `1px solid ${PARCHMENT_BORDER}`,
             boxShadow:
               "0 6px 28px rgba(42,20,10,0.30), 0 1px 4px rgba(42,20,10,0.18)",
+            // Cork dot pattern — 사진첩 PhotosSectionD2 와 동일 spec.
+            // 8x8 grid 의 옅은 잉크 갈색 1px 점. 양피지 위 자연스러운
+            // cork 텍스처. 4 corner pins 제거 후 본 박스에 직접 깔음.
+            backgroundImage:
+              "radial-gradient(rgba(92, 58, 31, 0.18) 1px, transparent 1px)",
+            backgroundSize: "8px 8px",
           }}
         >
-          {/* Four corner pins — pressed into the parchment.
-              `inset` drop reads as the pin-head sinking; the outer
-              shadow grounds it on the surface. Positioned 10 px in
-              from each corner. */}
-          {(["tl", "tr", "bl", "br"] as const).map((corner) => (
-            <span
-              key={corner}
-              aria-hidden
-              className="pointer-events-none absolute h-3 w-3 rounded-full"
-              style={{
-                background: "rgba(120, 95, 65, 0.35)",
-                boxShadow:
-                  "inset -2px -2px 3px rgba(0,0,0,0.18), 0 1px 2px rgba(0,0,0,0.15)",
-                top: corner.startsWith("t") ? 10 : "auto",
-                bottom: corner.startsWith("b") ? 10 : "auto",
-                left: corner.endsWith("l") ? 10 : "auto",
-                right: corner.endsWith("r") ? 10 : "auto",
-              }}
-            />
-          ))}
+          {/* 4 corner pins removed (사용자 명시). 점 패턴이 cork
+              substrate 역할을 대신함. */}
           <div className="grid grid-cols-2 gap-4 px-6 py-7 sm:gap-8 sm:px-8 sm:py-8">
             <PhotoCard
               imageUrl={todayScene?.imageUrl ?? null}
