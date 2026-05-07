@@ -10247,6 +10247,23 @@ body.has-redesigned-header .bg-scene {
   background: rgba(42, 69, 112, 0.08);
 }
 
+/* dl2 album viewer 수정/저장 — flat navy pill. Kill the cosmic peach
+   glow inherited from `.minihome-btn` (line 1891), the `:hover`
+   `translateY(-1px)` lift inherited from `.minihome-btn:hover`
+   (line 1895), and the 0.2s transition that animated both. Scoped via
+   `:not(.minihome-btn-cancel)` so 삭제/취소 keep their existing dl2
+   outlined hover, and `.dl2-album-upload` primary keeps its lift. */
+.dl2-album-viewer .minihome-btn:not(.minihome-btn-cancel) {
+  box-shadow: none;
+  transition: none;
+}
+.dl2-album-viewer .minihome-btn:not(.minihome-btn-cancel):hover {
+  background: #2a4570;
+  border-color: #2a4570;
+  box-shadow: none;
+  transform: none;
+}
+
 /* Comment-bar submit pill (smaller variant inside comments). */
 .dl2-album-viewer .cbar-submit {
   background: #2a4570;
