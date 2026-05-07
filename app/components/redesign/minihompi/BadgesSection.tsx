@@ -430,6 +430,11 @@ function BadgeDetailModal({
       style={{
         background: dawnlight2 ? "rgba(0,0,0,0.65)" : "rgba(11,8,33,0.7)",
         backdropFilter: "blur(4px)",
+        // dl2 분기에서만 모달 카드 중앙 정렬. cosmic 은 .modal-safe-frame
+        // 의 align-items: flex-start 그대로. inline style 로 unlayered
+        // class 의 align-items: flex-start 를 cascade 에서 이김 (Tailwind
+        // v4 layer 함정 — utilities layer 보다 unlayered class 가 우선).
+        ...(dawnlight2 ? { alignItems: "center" } : null),
       }}
     >
       {dawnlight2 ? (
@@ -562,6 +567,7 @@ function PrivacyModal({
       style={{
         background: dawnlight2 ? "rgba(0,0,0,0.6)" : "rgba(11,8,33,0.6)",
         backdropFilter: "blur(6px)",
+        ...(dawnlight2 ? { alignItems: "center" } : null),
       }}
     >
       {dawnlight2 ? (
