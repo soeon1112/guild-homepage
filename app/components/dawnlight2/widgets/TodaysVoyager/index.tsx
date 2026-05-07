@@ -440,11 +440,18 @@ function KeywordCard({
           onChange={(e) => handleChange(e.target.value)}
           placeholder="#이 별에게 선물할 키워드"
           maxLength={21}
-          className="min-w-0 flex-1 rounded-lg px-3 py-2 text-[13px] outline-none focus:border-[rgba(42,69,112,0.5)]"
+          className="min-w-0 flex-1 rounded-lg px-3 py-2 outline-none focus:border-[rgba(42,69,112,0.5)]"
+          // inline fontSize beats the unlayered `input { font-size:
+          // 16px }` rule in globals.css (kept in place to block iOS
+          // Safari focus-zoom on its other forms). Tailwind v4
+          // utilities live in `@layer utilities`, so the Tailwind
+          // text-[13px] class loses the layer cascade — inline
+          // style is the only reliable override here.
           style={{
             background: "rgba(255, 255, 255, 0.7)",
             color: NAVY,
             border: "1px solid rgba(42, 69, 112, 0.22)",
+            fontSize: "13px",
           }}
         />
         <button
@@ -517,11 +524,14 @@ function MinihomeGuestbookCard({
           placeholder="오늘의 항해자에게 한마디"
           maxLength={120}
           rows={2}
-          className="min-w-0 flex-1 resize-none rounded-lg px-3 py-2 text-[13px] leading-relaxed outline-none focus:border-[rgba(42,69,112,0.5)]"
+          className="min-w-0 flex-1 resize-none rounded-lg px-3 py-2 leading-relaxed outline-none focus:border-[rgba(42,69,112,0.5)]"
+          // Inline fontSize override — see KeywordCard input above
+          // for the layer-cascade explanation.
           style={{
             background: "rgba(255, 255, 255, 0.7)",
             color: NAVY,
             border: "1px solid rgba(42, 69, 112, 0.22)",
+            fontSize: "13px",
           }}
         />
         <button
