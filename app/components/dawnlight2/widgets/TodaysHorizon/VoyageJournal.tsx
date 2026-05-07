@@ -224,7 +224,7 @@ export function VoyageJournal() {
           onClick={handleStamp}
           disabled={buttonDisabled}
           aria-live="polite"
-          className="group inline-flex select-none items-center gap-2 rounded-full bg-cream px-6 py-2.5 text-sm font-medium tracking-wide text-twilight-deep transition-all duration-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cream/70 focus-visible:ring-offset-2 focus-visible:ring-offset-twilight-deep disabled:cursor-default disabled:hover:-translate-y-0"
+          className="group inline-flex select-none items-center gap-2 rounded-full bg-cream/80 px-6 py-2.5 text-sm font-medium tracking-wide text-twilight-mid transition-all duration-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cream/70 focus-visible:ring-offset-2 focus-visible:ring-offset-twilight-deep disabled:cursor-default disabled:hover:-translate-y-0"
           style={{
             boxShadow: lit
               ? "0 0 22px rgba(255,199,133,0.7), inset 0 0 12px rgba(255,212,184,0.35)"
@@ -234,7 +234,7 @@ export function VoyageJournal() {
           {state === "not_today" && (
             <span
               aria-hidden
-              className="text-base font-light text-twilight-deep/65 transition-transform duration-300 group-hover:rotate-90"
+              className="text-base font-light text-twilight-mid/75 transition-transform duration-300 group-hover:rotate-90"
             >
               +
             </span>
