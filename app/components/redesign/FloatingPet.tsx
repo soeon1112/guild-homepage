@@ -683,10 +683,12 @@ export default function FloatingPet() {
               : pet
                 ? "#6b4ba8"
                 : "rgba(61,46,107,0.55)",
+            // dl2: no hairline — match the borderless cream chat FAB so
+            // the two floating buttons read as one family. Cosmic keeps
+            // its nebula-pink hairline (it's load-bearing on the dark
+            // purple disc).
             border: isDawnlight2
-              ? pet
-                ? "1px solid rgba(42,31,74,0.35)"
-                : "1px solid rgba(42,31,74,0.25)"
+              ? "none"
               : pet
                 ? "1px solid rgba(216,150,200,0.45)"
                 : "1px solid rgba(155,143,184,0.40)",
