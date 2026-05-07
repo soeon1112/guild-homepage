@@ -9,6 +9,7 @@ import { Breadcrumb } from "./Breadcrumb";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
 import { Dawnlight2Topbar } from "@/app/components/dawnlight2/Topbar";
 import { Dawnlight2BottomNav } from "@/app/components/dawnlight2/BottomNav";
+import { StarryBackground } from "@/app/components/dawnlight2/StarryBackground";
 
 /**
  * Legacy logo bar — kept for `/admin/*` routes so the admin UI remains
@@ -66,10 +67,37 @@ export function ChromeShell({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // Background: cosmic users keep CosmicBackground (animated star
+  // canvas). dl2 users get the .dawnlight2 CSS scope (which paints the
+  // fixed twilight gradient via ::before) plus the StarryBackground
+  // twinkle overlay. Wrapping the whole non-admin tree in `.dawnlight2`
+  // means every dl2 page (album/notice/board/...) picks up the gradient
+  // automatically — previously the wrapper lived only inside MainGate
+  // so only the home page got the bg. MainGate now skips its own
+  // wrapper to avoid double-mounting StarryBackground.
+  if (isDawnlight2) {
+    // Wrap the chrome+content in a single `.dawnlight2` div so the
+    // ::before twilight gradient (declared inside the .dawnlight2 CSS
+    // scope) paints behind every dl2 page. StarryBackground twinkle
+    // overlay sits between the gradient and the content. MainGate
+    // skips its own wrapper now (would double-mount the stars).
+    return (
+      <div className="dawnlight2">
+        <StarryBackground />
+        <Dawnlight2Topbar />
+        <Breadcrumb />
+        <main className="relative z-10 flex-1 pb-[calc(12rem+env(safe-area-inset-bottom))]">
+          {children}
+        </main>
+        <Dawnlight2BottomNav />
+      </div>
+    );
+  }
+
   return (
     <>
       <CosmicBackground />
-      {isDawnlight2 ? <Dawnlight2Topbar /> : <TopHeader />}
+      <TopHeader />
       <Breadcrumb />
       {/* Bottom padding clears BOTH the floating BottomNav AND the floating
           chat icon (FloatingChat lives at right-4 bottom-24 with a 56px
@@ -80,7 +108,7 @@ export function ChromeShell({ children }: { children: React.ReactNode }) {
       <main className="relative z-10 flex-1 pb-[calc(12rem+env(safe-area-inset-bottom))]">
         {children}
       </main>
-      {isDawnlight2 ? <Dawnlight2BottomNav /> : <BottomNav />}
+      <BottomNav />
     </>
   );
 }

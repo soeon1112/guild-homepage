@@ -378,26 +378,36 @@ export default function AlbumPage() {
   if (isDawnlight2) {
     return (
       <div className="mx-auto w-full max-w-5xl px-5 pb-12 pt-2 sm:px-6 sm:pb-16">
-        {/* Centered header with cream title + uppercase subtitle —
-            same rhythm as NoteToTheSky / PaperPlaneLetters but
-            center-aligned per spec. */}
-        <header className="mb-3 text-center">
-          <h1 className="text-lg font-semibold leading-tight text-cream sm:text-xl">
-            앨범
-          </h1>
-          <p className="mt-1 text-[10px] uppercase tracking-[0.32em] text-mist-lavender">
-            ALBUM
-          </p>
-        </header>
-
-        {/* Upload button — flat navy pill, same shape as
-            PaperPlaneLetters' 띄우기 button so the album CTA reads as
-            part of the same paper-stationery family. */}
-        <div className="mb-6 flex justify-center">
+        {/* Header row — title + subtitle on the left, navy 사진 올리기
+            pill on the right. Title sizing matches .dl2-notice-page-
+            title (Pretendard 20 px semibold cream) so 앨범 / 공지
+            게시판 / 게시판 read as a consistent family. */}
+        <div className="mb-6 flex items-end justify-between gap-4">
+          <header className="min-w-0">
+            <h1
+              className="text-xl font-semibold leading-tight text-cream"
+              style={{
+                fontFamily:
+                  '"Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
+                letterSpacing: "0.02em",
+              }}
+            >
+              앨범
+            </h1>
+            <p
+              className="mt-1 text-[10px] font-medium uppercase tracking-[0.32em] text-mist-lavender"
+              style={{
+                fontFamily:
+                  '"Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
+              }}
+            >
+              ALBUM
+            </p>
+          </header>
           <button
             type="button"
             onClick={openUpload}
-            className="rounded-full px-4 py-1.5 text-xs font-medium transition-opacity active:scale-95 hover:opacity-90"
+            className="shrink-0 rounded-full px-4 py-1.5 text-xs font-medium transition-opacity active:scale-95 hover:opacity-90"
             style={{ background: DL2_NAVY, color: DL2_CREAM }}
           >
             ✦ 사진 올리기
@@ -420,14 +430,13 @@ export default function AlbumPage() {
               const count = commentCounts[p.id] ?? 0;
               return (
                 <div key={p.id} className="flex flex-col gap-2">
+                  {/* Photo tile — no surrounding paper bg/border so
+                      the image reads as the card's "front face". The
+                      meta panel below carries the paper surface. */}
                   <button
                     type="button"
                     onClick={() => setViewer(p)}
-                    className="group relative aspect-square overflow-hidden rounded-2xl"
-                    style={{
-                      background: DL2_PAPER_BG,
-                      border: `1px solid ${DL2_PAPER_BORDER}`,
-                    }}
+                    className="group relative aspect-square overflow-hidden rounded-2xl bg-transparent"
                   >
                     {resolveFileType(p) === "video" ? (
                       <video
