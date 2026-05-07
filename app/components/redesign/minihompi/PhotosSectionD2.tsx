@@ -412,10 +412,10 @@ function PolaroidTile({
       }}
       aria-label={`사진: ${photo.caption || "제목 없음"}`}
     >
-      {/* Pin — verbatim from CabinLogs Pin() (app/components/dawnlight2/
-          widgets/CabinLogs/index.tsx:163-179), 색만 크라프트 갈색
-          #c9a880 으로 (CabinLogs 는 빨간 #c92a2a). 카드 안 위에서 살짝
-          오버랩, 호버 시 카드와 함께 위로 움직임. */}
+      {/* Pin — CabinLogs Pin() 형태 차용, 색은 크라프트 갈색.
+          이전 라운드의 옅은 cream highlight ellipse (#e0c79a opacity 0.6)
+          가 head 위에 덮여 "노란색"으로 인식되던 문제 → highlight 제거
+          + 잉크 갈색 stroke 0.6 추가로 명확한 갈색 push-pin. */}
       <span
         aria-hidden
         className="relative z-10"
@@ -432,9 +432,16 @@ function PolaroidTile({
           aria-hidden
           className="pointer-events-none"
         >
-          <circle cx="9" cy="8" r="7" fill="#c9a880" />
-          <ellipse cx="6.5" cy="5.5" rx="2.5" ry="1.8" fill="#e0c79a" opacity="0.6" />
-          <ellipse cx="9" cy="12" rx="5.5" ry="1.8" fill="#5c3a1f" opacity="0.25" />
+          <circle
+            cx="9"
+            cy="8"
+            r="7"
+            fill="#c9a880"
+            stroke="#5c3a1f"
+            strokeOpacity="0.4"
+            strokeWidth="0.6"
+          />
+          <ellipse cx="9" cy="12" rx="5.5" ry="1.8" fill="#5c3a1f" opacity="0.22" />
           <line x1="9" y1="14" x2="9" y2="21" stroke="#5c3a1f" strokeWidth="1.4" strokeLinecap="round" />
         </svg>
       </span>
