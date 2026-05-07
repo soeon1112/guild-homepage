@@ -11,6 +11,7 @@ import {
 } from "firebase/firestore";
 import { useAuth } from "../../components/AuthProvider";
 import { db } from "@/src/lib/firebase";
+import { useDawnlight2 } from "@/src/lib/featureFlags";
 import {
   canSeeProposals,
   PROPOSAL_CATEGORIES,
@@ -25,10 +26,13 @@ import {
 
 export default function ProposalsNewPage() {
   const { nickname, ready } = useAuth();
+  const isDawnlight2 = useDawnlight2();
+  const rootClass =
+    "board-content" + (isDawnlight2 ? " dawnlight2 dl2-proposals" : "");
 
   if (!ready) {
     return (
-      <div className="board-content">
+      <div className={rootClass}>
         <p className="board-loading">불러오는 중...</p>
       </div>
     );
@@ -36,8 +40,8 @@ export default function ProposalsNewPage() {
 
   if (!canSeeProposals(nickname)) {
     return (
-      <div className="board-content">
-        <h1 className="board-title">제안하기</h1>
+      <div className={rootClass}>
+        {isDawnlight2 ? null : <h1 className="board-title">제안하기</h1>}
         <div className="proposals-locked-card">
           <p className="proposals-locked-text">준비 중입니다.</p>
         </div>
@@ -45,10 +49,16 @@ export default function ProposalsNewPage() {
     );
   }
 
-  return <FormView authorNick={nickname!} />;
+  return <FormView authorNick={nickname!} isDawnlight2={isDawnlight2} />;
 }
 
-function FormView({ authorNick }: { authorNick: string }) {
+function FormView({
+  authorNick,
+  isDawnlight2,
+}: {
+  authorNick: string;
+  isDawnlight2: boolean;
+}) {
   const router = useRouter();
 
   const [category, setCategory] = useState<ProposalCategory | null>(null);
@@ -133,8 +143,12 @@ function FormView({ authorNick }: { authorNick: string }) {
   };
 
   return (
-    <div className="board-content">
-      <h1 className="board-title">제안하기</h1>
+    <div
+      className={
+        "board-content" + (isDawnlight2 ? " dawnlight2 dl2-proposals" : "")
+      }
+    >
+      {isDawnlight2 ? null : <h1 className="board-title">제안하기</h1>}
 
       <div className="proposals-form-card">
         <div className="proposals-field">

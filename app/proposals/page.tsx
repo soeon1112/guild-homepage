@@ -14,6 +14,7 @@ import {
 } from "firebase/firestore";
 import { useAuth } from "../components/AuthProvider";
 import { db } from "@/src/lib/firebase";
+import { useDawnlight2 } from "@/src/lib/featureFlags";
 import {
   canCancelJoin,
   canJoin,
@@ -66,10 +67,17 @@ type PendingTransition = {
 
 export default function ProposalsListPage() {
   const { nickname, ready } = useAuth();
+  // dl2 reskin: wrap the root with `dawnlight2 dl2-proposals` so the
+  // CSS overrides in globals.css attach. The cosmic gradient title is
+  // replaced with a centered cream "제안 게시판" + lavender PROPOSALS
+  // sub line — same pattern as /notice.
+  const isDawnlight2 = useDawnlight2();
+  const rootClass =
+    "board-content" + (isDawnlight2 ? " dawnlight2 dl2-proposals" : "");
 
   if (!ready) {
     return (
-      <div className="board-content">
+      <div className={rootClass}>
         <p className="board-loading">불러오는 중...</p>
       </div>
     );
@@ -77,8 +85,15 @@ export default function ProposalsListPage() {
 
   if (!canSeeProposals(nickname)) {
     return (
-      <div className="board-content">
-        <h1 className="board-title">제안 게시판</h1>
+      <div className={rootClass}>
+        {isDawnlight2 ? (
+          <header className="dl2-proposals-page-head">
+            <h1 className="dl2-proposals-page-title">제안 게시판</h1>
+            <p className="dl2-proposals-page-sub">PROPOSALS</p>
+          </header>
+        ) : (
+          <h1 className="board-title">제안 게시판</h1>
+        )}
         <div className="proposals-locked-card">
           <p className="proposals-locked-text">준비 중입니다.</p>
         </div>
@@ -86,10 +101,16 @@ export default function ProposalsListPage() {
     );
   }
 
-  return <ListView loginNick={nickname!} />;
+  return <ListView loginNick={nickname!} isDawnlight2={isDawnlight2} />;
 }
 
-function ListView({ loginNick }: { loginNick: string }) {
+function ListView({
+  loginNick,
+  isDawnlight2,
+}: {
+  loginNick: string;
+  isDawnlight2: boolean;
+}) {
   const [allItems, setAllItems] = useState<ProposalListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -218,8 +239,19 @@ function ListView({ loginNick }: { loginNick: string }) {
   };
 
   return (
-    <div className="board-content">
-      <h1 className="board-title">제안 게시판</h1>
+    <div
+      className={
+        "board-content" + (isDawnlight2 ? " dawnlight2 dl2-proposals" : "")
+      }
+    >
+      {isDawnlight2 ? (
+        <header className="dl2-proposals-page-head">
+          <h1 className="dl2-proposals-page-title">제안 게시판</h1>
+          <p className="dl2-proposals-page-sub">PROPOSALS</p>
+        </header>
+      ) : (
+        <h1 className="board-title">제안 게시판</h1>
+      )}
 
       <div className="board-write-btn-wrap">
         <Link href="/proposals/new" className="board-btn">
