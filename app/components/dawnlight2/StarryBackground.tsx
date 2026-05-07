@@ -27,8 +27,11 @@ export function StarryBackground() {
     const generated: Star[] = Array.from({ length: 40 }, () => ({
       top: Math.random() * 100,
       left: Math.random() * 100,
-      size: 1 + Math.random() * 2,
-      duration: 2 + Math.random() * 3,
+      // Larger base footprint + snappier cycle so the strengthened
+      // dl2-twinkle envelope (opacity 0.15→1, scale 0.9→1.4) reads as
+      // a pulse instead of a faint flicker against the dark sky.
+      size: 1.5 + Math.random() * 2.5,
+      duration: 1.5 + Math.random() * 2,
       delay: Math.random() * 5,
     }));
     setStars(generated);
