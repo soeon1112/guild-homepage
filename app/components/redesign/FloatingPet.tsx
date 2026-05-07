@@ -117,9 +117,17 @@ type MemberInfo = {
 };
 
 // Memoized — `size` rarely changes; skips re-render on the FAB's
-// 1-second clock tick.
-const PetButtonIcon = memo(function PetButtonIcon({ size = 22 }: { size?: number }) {
-  // Tiny pixel pet face — neutral cream, theme-independent.
+// 1-second clock tick. `dl2` swaps the cream outline (#f4efff) for
+// ink-brown (#5c3a1f) so the pet silhouette reads on the dawnlight2
+// lavender FAB; cosmic users (dl2 false) keep the cream outline as-is.
+const PetButtonIcon = memo(function PetButtonIcon({
+  size = 22,
+  dl2 = false,
+}: {
+  size?: number;
+  dl2?: boolean;
+}) {
+  const outline = dl2 ? "#5c3a1f" : "#f4efff";
   return (
     <svg
       width={size}
@@ -153,7 +161,7 @@ const PetButtonIcon = memo(function PetButtonIcon({ size = 22 }: { size?: number
               : code === "2"
               ? "#FFB5A7"
               : code === "3"
-              ? "#f4efff"
+              ? outline
               : code === "w"
               ? "#0b0821"
               : code === "B"
@@ -685,7 +693,7 @@ export default function FloatingPet() {
             opacity: pet ? 1 : 0.85,
           }}
         >
-          <PetButtonIcon size={22} />
+          <PetButtonIcon size={22} dl2={isDawnlight2} />
         </span>
 
         {/* Status bubble — dl2 swaps the dark abyss surface for a
