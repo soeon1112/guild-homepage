@@ -18,6 +18,7 @@ import { logActivity } from "@/src/lib/activity";
 import { addPoints } from "@/src/lib/points";
 import { handleEvent } from "@/src/lib/badgeCheck";
 import { useModalBodyLock } from "@/src/lib/useModalBodyLock";
+import { useDawnlight2 } from "@/src/lib/featureFlags";
 import {
   AlbumPhotoViewer,
   formatPhotoDate,
@@ -28,6 +29,17 @@ import {
   type MediaKind,
 } from "@/app/components/shared/AlbumPhotoViewer";
 
+// Dawnlight 2 ink-blue paper palette — same tokens used by
+// PaperPlaneLetters / CabinLogs / NoteToTheSky so the album cards read
+// as part of the same paper-stationery family.
+const DL2_NAVY = "#2a4570";
+const DL2_NAVY_SOFT = "#5a7090";
+const DL2_CREAM = "#fef5e6";
+const DL2_PAPER_BG = "rgba(205, 216, 224, 0.65)";
+const DL2_PAPER_BORDER = "rgba(42, 69, 112, 0.18)";
+const DL2_CHIP_BG = "rgba(42, 69, 112, 0.10)";
+const DL2_CHIP_TEXT = DL2_NAVY;
+
 function detectFileType(file: File): MediaKind {
   const name = file.name.toLowerCase();
   if (file.type.startsWith("video/") || name.endsWith(".mp4")) return "video";
@@ -37,6 +49,10 @@ function detectFileType(file: File): MediaKind {
 
 export default function AlbumPage() {
   const { nickname: loginNick } = useAuth();
+  // Step 4-G: 언쏘만 dl2 앨범 — page size + grid layout + card surface
+  // + upload button + title all branch on this. Cosmic users keep the
+  // existing 4-col / 20-per-page layout byte-identical.
+  const isDawnlight2 = useDawnlight2();
   const [photos, setPhotos] = useState<AlbumPhoto[]>([]);
   const [viewer, setViewer] = useState<AlbumPhoto | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -58,8 +74,10 @@ export default function AlbumPage() {
   );
 
   // Pagination — same prev/next + "current / total" pattern as
-  // GuestbookSection / AdventureLogSection. 20 photos per page.
-  const PAGE_SIZE = 20;
+  // GuestbookSection / AdventureLogSection. Cosmic shows 20 / page;
+  // dl2 shows 12 (3 × 4 grid). User-scoped via isDawnlight2 so every
+  // 우주 사용자 still gets the 5-row layout.
+  const PAGE_SIZE = isDawnlight2 ? 12 : 20;
   const totalPages = Math.max(1, Math.ceil(photos.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages - 1);
   const paged = photos.slice(
@@ -249,97 +267,12 @@ export default function AlbumPage() {
     setUploading(false);
   };
 
-  return (
-    <div className="album-content">
-      <div className="album-head">
-        <h1 className="album-title">앨범</h1>
-        <button className="minihome-btn minihome-btn-small" onClick={openUpload}>
-          사진 올리기
-        </button>
-      </div>
-
-      {photos.length === 0 ? (
-        <p className="minihome-hint">아직 사진이 없습니다.</p>
-      ) : (
-        <div className="album-grid">
-          {paged.map((p) => {
-            const count = commentCounts[p.id] ?? 0;
-            return (
-              <div key={p.id} className="album-photo-card">
-                <button
-                  type="button"
-                  className="minihome-photo-item"
-                  onClick={() => setViewer(p)}
-                >
-                  {resolveFileType(p) === "video" ? (
-                    <video
-                      src={p.imageUrl}
-                      muted
-                      autoPlay
-                      loop
-                      playsInline
-                      preload="metadata"
-                    />
-                  ) : (
-                    <img src={p.imageUrl} alt={p.caption || "photo"} />
-                  )}
-                </button>
-                <div className="album-photo-info">
-                  {p.photoDate && (
-                    <div className="album-photo-date">{formatPhotoDate(p.photoDate)}</div>
-                  )}
-                  {p.photographer && (
-                    <div className="album-photo-by">photo by {p.photographer}</div>
-                  )}
-                  {p.people && p.people.length > 0 && (
-                    <div className="album-photo-people">
-                      {p.people.map((person) => (
-                        <span key={person} className="album-photo-person">
-                          {person}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  {p.caption && (
-                    <div className="album-photo-caption-text">{p.caption}</div>
-                  )}
-                  {count > 0 && (
-                    <div className="album-photo-comment-count">댓글 {count}개</div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Pagination — verbatim copy of Guestbook/AdventureLog. */}
-      {totalPages > 1 && (
-        <div className="mt-6 flex items-center justify-center gap-5 font-serif text-[11px] tracking-wider text-text-sub">
-          <button
-            type="button"
-            onClick={() => setPage((p) => Math.max(0, p - 1))}
-            disabled={currentPage === 0}
-            className="transition-colors hover:text-stardust disabled:cursor-not-allowed disabled:opacity-30"
-            aria-label="이전 페이지"
-          >
-            ← 이전
-          </button>
-          <span className="text-stardust">
-            {currentPage + 1} / {totalPages}
-          </span>
-          <button
-            type="button"
-            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-            disabled={currentPage >= totalPages - 1}
-            className="transition-colors hover:text-stardust disabled:cursor-not-allowed disabled:opacity-30"
-            aria-label="다음 페이지"
-          >
-            다음 →
-          </button>
-        </div>
-      )}
-
+  // Modals (upload, picker, viewer) are mounted identically for cosmic
+  // and dl2. The dl2 surface re-skin for them is the next step (separate
+  // commit) — for now both branches mount the existing markup so the
+  // upload flow + Firestore writes stay byte-identical.
+  const renderModals = () => (
+    <>
       {uploadOpen && typeof document !== "undefined" && createPortal(
         <div className="minihome-modal" onClick={() => setUploadOpen(false)}>
           <div
@@ -439,6 +372,275 @@ export default function AlbumPage() {
           targetCommentId={autoOpenCommentId}
         />
       )}
+    </>
+  );
+
+  if (isDawnlight2) {
+    return (
+      <div className="mx-auto w-full max-w-5xl px-5 pb-12 pt-2 sm:px-6 sm:pb-16">
+        {/* Centered header with cream title + uppercase subtitle —
+            same rhythm as NoteToTheSky / PaperPlaneLetters but
+            center-aligned per spec. */}
+        <header className="mb-3 text-center">
+          <h1 className="text-lg font-semibold leading-tight text-cream sm:text-xl">
+            앨범
+          </h1>
+          <p className="mt-1 text-[10px] uppercase tracking-[0.32em] text-mist-lavender">
+            ALBUM
+          </p>
+        </header>
+
+        {/* Upload button — flat navy pill, same shape as
+            PaperPlaneLetters' 띄우기 button so the album CTA reads as
+            part of the same paper-stationery family. */}
+        <div className="mb-6 flex justify-center">
+          <button
+            type="button"
+            onClick={openUpload}
+            className="rounded-full px-4 py-1.5 text-xs font-medium transition-opacity active:scale-95 hover:opacity-90"
+            style={{ background: DL2_NAVY, color: DL2_CREAM }}
+          >
+            ✦ 사진 올리기
+          </button>
+        </div>
+
+        {photos.length === 0 ? (
+          <p
+            className="py-8 text-center text-sm italic"
+            style={{ color: DL2_NAVY_SOFT }}
+          >
+            아직 사진이 없습니다.
+          </p>
+        ) : (
+          // PC: 3 columns · 4 rows = 12 / page (PAGE_SIZE=12).
+          // Mobile: 2 columns. Grid gap 16 px so cards breathe but
+          // still feel grouped.
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+            {paged.map((p) => {
+              const count = commentCounts[p.id] ?? 0;
+              return (
+                <div key={p.id} className="flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setViewer(p)}
+                    className="group relative aspect-square overflow-hidden rounded-2xl"
+                    style={{
+                      background: DL2_PAPER_BG,
+                      border: `1px solid ${DL2_PAPER_BORDER}`,
+                    }}
+                  >
+                    {resolveFileType(p) === "video" ? (
+                      <video
+                        src={p.imageUrl}
+                        muted
+                        autoPlay
+                        loop
+                        playsInline
+                        preload="metadata"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={p.imageUrl}
+                        alt={p.caption || "photo"}
+                        className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
+                      />
+                    )}
+                  </button>
+                  <div
+                    className="flex flex-col gap-1.5 rounded-2xl px-3 py-3"
+                    style={{
+                      background: DL2_PAPER_BG,
+                      border: `1px solid ${DL2_PAPER_BORDER}`,
+                    }}
+                  >
+                    {p.photoDate && (
+                      <div
+                        className="text-[11px] tracking-wider"
+                        style={{ color: DL2_NAVY_SOFT }}
+                      >
+                        {formatPhotoDate(p.photoDate)}
+                      </div>
+                    )}
+                    {p.photographer && (
+                      <div
+                        className="text-[11px] italic"
+                        style={{ color: DL2_NAVY_SOFT }}
+                      >
+                        photo by {p.photographer}
+                      </div>
+                    )}
+                    {p.people && p.people.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {p.people.map((person) => (
+                          <span
+                            key={person}
+                            className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                            style={{
+                              background: DL2_CHIP_BG,
+                              color: DL2_CHIP_TEXT,
+                            }}
+                          >
+                            {person}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {p.caption && (
+                      <div
+                        className="text-[12.5px] leading-relaxed"
+                        style={{ color: DL2_NAVY }}
+                      >
+                        {p.caption}
+                      </div>
+                    )}
+                    {count > 0 && (
+                      <div
+                        className="text-[11px] tracking-wider"
+                        style={{ color: DL2_NAVY_SOFT }}
+                      >
+                        댓글 {count}개
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <div
+            className="mt-6 flex items-center justify-center gap-5 text-[11px] tracking-wider"
+            style={{ color: DL2_NAVY_SOFT }}
+          >
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={currentPage === 0}
+              className="transition-opacity hover:opacity-70 disabled:cursor-not-allowed disabled:opacity-30"
+              aria-label="이전 페이지"
+              style={{ color: DL2_NAVY_SOFT }}
+            >
+              ← 이전
+            </button>
+            <span style={{ color: DL2_NAVY, fontWeight: 600 }}>
+              {currentPage + 1} / {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={currentPage >= totalPages - 1}
+              className="transition-opacity hover:opacity-70 disabled:cursor-not-allowed disabled:opacity-30"
+              aria-label="다음 페이지"
+              style={{ color: DL2_NAVY_SOFT }}
+            >
+              다음 →
+            </button>
+          </div>
+        )}
+
+        {/* Modals (upload, picker, viewer) reuse the cosmic markup
+            below so the data flow + Firestore writes stay identical.
+            Surface re-skin for them is the next step. */}
+        {renderModals()}
+      </div>
+    );
+  }
+
+  return (
+    <div className="album-content">
+      <div className="album-head">
+        <h1 className="album-title">앨범</h1>
+        <button className="minihome-btn minihome-btn-small" onClick={openUpload}>
+          사진 올리기
+        </button>
+      </div>
+
+      {photos.length === 0 ? (
+        <p className="minihome-hint">아직 사진이 없습니다.</p>
+      ) : (
+        <div className="album-grid">
+          {paged.map((p) => {
+            const count = commentCounts[p.id] ?? 0;
+            return (
+              <div key={p.id} className="album-photo-card">
+                <button
+                  type="button"
+                  className="minihome-photo-item"
+                  onClick={() => setViewer(p)}
+                >
+                  {resolveFileType(p) === "video" ? (
+                    <video
+                      src={p.imageUrl}
+                      muted
+                      autoPlay
+                      loop
+                      playsInline
+                      preload="metadata"
+                    />
+                  ) : (
+                    <img src={p.imageUrl} alt={p.caption || "photo"} />
+                  )}
+                </button>
+                <div className="album-photo-info">
+                  {p.photoDate && (
+                    <div className="album-photo-date">{formatPhotoDate(p.photoDate)}</div>
+                  )}
+                  {p.photographer && (
+                    <div className="album-photo-by">photo by {p.photographer}</div>
+                  )}
+                  {p.people && p.people.length > 0 && (
+                    <div className="album-photo-people">
+                      {p.people.map((person) => (
+                        <span key={person} className="album-photo-person">
+                          {person}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {p.caption && (
+                    <div className="album-photo-caption-text">{p.caption}</div>
+                  )}
+                  {count > 0 && (
+                    <div className="album-photo-comment-count">댓글 {count}개</div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Pagination — verbatim copy of Guestbook/AdventureLog. */}
+      {totalPages > 1 && (
+        <div className="mt-6 flex items-center justify-center gap-5 font-serif text-[11px] tracking-wider text-text-sub">
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            disabled={currentPage === 0}
+            className="transition-colors hover:text-stardust disabled:cursor-not-allowed disabled:opacity-30"
+            aria-label="이전 페이지"
+          >
+            ← 이전
+          </button>
+          <span className="text-stardust">
+            {currentPage + 1} / {totalPages}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+            disabled={currentPage >= totalPages - 1}
+            className="transition-colors hover:text-stardust disabled:cursor-not-allowed disabled:opacity-30"
+            aria-label="다음 페이지"
+          >
+            다음 →
+          </button>
+        </div>
+      )}
+
+      {renderModals()}
     </div>
   );
 }
