@@ -8154,6 +8154,22 @@ body.has-redesigned-header .bg-scene {
   min-height: 100vh;
   color: var(--cream);
   font-family: var(--font-noto-sans), 'Noto Sans KR', system-ui, -apple-system, sans-serif;
+
+  /* Tap-target tree by default — no caret, no I-beam, no accidental
+     selection on the static glyphs and chrome. Form controls re-enable
+     selection explicitly below so future inputs (한마디 / 방명록 /
+     검색 etc.) keep working without a per-component opt-out. */
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: default;
+}
+
+.dawnlight2 input,
+.dawnlight2 textarea,
+.dawnlight2 [contenteditable="true"] {
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
 }
 
 .dawnlight2::before {
@@ -8362,12 +8378,10 @@ body.has-redesigned-header .bg-scene {
   font-size: clamp(0.75rem, 3.4vw, 1.4rem);
   line-height: 1.55;
   max-width: 100%;
-  /* The verse is display-only — clicking it should never place a caret
-     or start a selection. Disable user-select and force the default
-     cursor so the I-beam doesn't appear on hover either. */
-  user-select: none;
-  -webkit-user-select: none;
-  cursor: default;
+  /* `user-select: none` and `cursor: default` are inherited from
+     `.dawnlight2` (tree-wide tap-target default); not re-declared
+     here. The verse is display-only — keep this rule scoped to
+     wrap/sizing concerns. */
 }
 
 @media (prefers-reduced-motion: reduce) {
