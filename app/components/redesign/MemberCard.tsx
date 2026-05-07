@@ -138,7 +138,7 @@ export function MemberCard({
             <div
               className="relative flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full sm:h-16 sm:w-16"
               style={{
-                border: "1.5px dashed rgba(120, 116, 112, 0.5)",
+                border: "1.5px dashed rgba(90, 86, 82, 0.6)",
               }}
               aria-hidden
             >
@@ -147,21 +147,21 @@ export function MemberCard({
                 height="20"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="rgba(120, 116, 112, 0.7)"
+                stroke="rgba(90, 86, 82, 0.7)"
                 strokeWidth="1.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >
                 <path d="M5 21V4" />
-                <path d="M5 4 L17 4 L14 8 L17 12 L5 12" fill="rgba(120, 116, 112, 0.18)" />
+                <path d="M5 4 L17 4 L14 8 L17 12 L5 12" fill="rgba(90, 86, 82, 0.2)" />
               </svg>
             </div>
 
             <div className="flex min-w-0 flex-1 flex-col gap-1.5">
               <span
-                className="truncate text-[13px] font-medium tracking-wide sm:text-sm"
+                className="truncate text-[13px] font-semibold tracking-wide sm:text-sm"
                 style={{
-                  color: "#6a6a6a",
+                  color: "#4a4a4a",
                   fontFamily:
                     '"Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
                 }}
@@ -171,7 +171,7 @@ export function MemberCard({
               <span
                 className="wrap-anywhere text-[11px] italic leading-relaxed sm:text-[12px]"
                 style={{
-                  color: "#8a8580",
+                  color: "#6a6560",
                   display: "-webkit-box",
                   WebkitLineClamp: 2,
                   WebkitBoxOrient: "vertical",
@@ -206,10 +206,10 @@ export function MemberCard({
             className="relative flex items-center gap-2.5 overflow-hidden rounded-2xl p-3 sm:gap-4 sm:p-5"
             style={{
               minHeight: 108,
-              background: "rgba(255, 212, 184, 0.6)",
-              border: "1px solid rgba(184, 84, 32, 0.2)",
+              background: "rgba(255, 212, 184, 0.4)",
+              border: "1px solid rgba(184, 84, 32, 0.15)",
               boxShadow:
-                "0 2px 12px rgba(92, 58, 31, 0.08), inset 0 1px 0 rgba(255, 245, 230, 0.35)",
+                "0 2px 12px rgba(92, 58, 31, 0.06), inset 0 1px 0 rgba(255, 245, 230, 0.3)",
             }}
           >
             <div className="relative h-11 w-11 flex-shrink-0 sm:h-16 sm:w-16">
