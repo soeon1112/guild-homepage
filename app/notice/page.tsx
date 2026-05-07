@@ -193,25 +193,27 @@ function NoticePageInner() {
         )}
       </div>
 
-      <div className="board-pagination">
-        <button
-          className="board-page-btn"
-          disabled={currentPage <= 1}
-          onClick={() => setCurrentPage((p) => p - 1)}
-        >
-          이전
-        </button>
-        <span className="board-page-info">
-          {currentPage} / {totalPages}
-        </span>
-        <button
-          className="board-page-btn"
-          disabled={currentPage >= totalPages}
-          onClick={() => setCurrentPage((p) => p + 1)}
-        >
-          다음
-        </button>
-      </div>
+      {totalPages > 1 && (
+        <div className="board-pagination">
+          <button
+            className="board-page-btn"
+            disabled={currentPage <= 1}
+            onClick={() => setCurrentPage((p) => p - 1)}
+          >
+            이전
+          </button>
+          <span className="board-page-info">
+            {currentPage} / {totalPages}
+          </span>
+          <button
+            className="board-page-btn"
+            disabled={currentPage >= totalPages}
+            onClick={() => setCurrentPage((p) => p + 1)}
+          >
+            다음
+          </button>
+        </div>
+      )}
 
       {/* ── 일정 섹션 (통합 페이지) ─────────────────────────────────── */}
       <ScheduleSection loginNick={nickname} isDawnlight2={isDawnlight2} />
