@@ -10204,9 +10204,15 @@ body.has-redesigned-header .bg-scene {
 }
 
 /* Upload modal — paper card 96% (slightly more opaque than viewer
-   meta because it's a foreground action surface). */
+   meta because it's a foreground action surface). max-width 448 px
+   (max-w-md): a touch roomier than cosmic's 380 so the file picker /
+   date / caption / photographer / people inputs breathe, but
+   clearly narrower than the album page (768) so the modal still
+   reads as a focused form rather than a full-width sheet. The
+   AlbumPhotoViewer (`.dl2-album-viewer`) keeps its 768 px since
+   that one frames a photo, not a form. */
 .dl2-album-upload .minihome-modal-content {
-  max-width: min(90vw, 768px);
+  max-width: min(90vw, 448px);
   background: rgba(205, 216, 224, 0.96);
   border: 1px solid rgba(42, 69, 112, 0.25);
   color: #2a4570;
