@@ -548,6 +548,11 @@ export function CabinLogs() {
           isOwner={loginNick === open.memberNickname}
           memberNickname={open.memberNickname}
           targetCommentId={null}
+          // CabinLogs 는 dl2-only widget — PhotoViewerModal 에 dawnlight2
+          // prop 명시적으로 전달해야 모달 안 댓글/버튼 색감이 dl2 톤.
+          // 추억의 항해 (AlbumPhotoViewer) 는 자체 useDawnlight2 호출
+          // 패턴이라 prop 없어도 동작.
+          dawnlight2
           onClose={() => setOpen(null)}
         />
       )}
