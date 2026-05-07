@@ -73,8 +73,12 @@ export function Dl2TitlePrefix({ nickname }: { nickname: string }) {
   if (!f || !b) return null;
   return (
     <span
-      className="mr-1 text-[12px] font-semibold tracking-tight"
-      style={{ color: "#b85420" }}
+      // 0.7em mirrors the legacy `.title-prefix` rule (cosmic uses the
+      // same proportional sizing). On the 13-px body that resolves to
+      // ~9 px — a clear half-step below the nick so the title feels
+      // like a tag, not a second name.
+      className="mr-1 font-medium tracking-tight"
+      style={{ color: "#b85420", fontSize: "0.7em" }}
     >
       {`⌜${f} ${b}⌟`}
     </span>

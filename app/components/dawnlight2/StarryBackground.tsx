@@ -24,16 +24,27 @@ export function StarryBackground() {
   const [stars, setStars] = useState<Star[]>([]);
 
   useEffect(() => {
-    const generated: Star[] = Array.from({ length: 40 }, () => ({
-      top: Math.random() * 100,
-      left: Math.random() * 100,
-      // Larger base footprint + snappier cycle so the strengthened
-      // dl2-twinkle envelope (opacity 0.15→1, scale 0.9→1.4) reads as
-      // a pulse instead of a faint flicker against the dark sky.
-      size: 1.5 + Math.random() * 2.5,
-      duration: 1.5 + Math.random() * 2,
-      delay: Math.random() * 5,
-    }));
+    // Jittered grid (8 cols × 5 rows = 40 cells, 1 star per cell at a
+    // random sub-position). Pure Math.random sampling produced visible
+    // 2-3-star clumps and matching voids — the grid guarantees one
+    // star per cell so the spread is even, while the in-cell jitter
+    // keeps it from looking like a printed pattern. Same per-star
+    // size / duration / delay randomness as before keeps each star
+    // independent in its twinkle phase.
+    const COLS = 8;
+    const ROWS = 5;
+    const generated: Star[] = [];
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        generated.push({
+          top: ((row + Math.random()) / ROWS) * 100,
+          left: ((col + Math.random()) / COLS) * 100,
+          size: 1.5 + Math.random() * 2.5,
+          duration: 1.5 + Math.random() * 2,
+          delay: Math.random() * 5,
+        });
+      }
+    }
     setStars(generated);
   }, []);
 

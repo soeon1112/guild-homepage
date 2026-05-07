@@ -8224,8 +8224,8 @@ body.has-redesigned-header .bg-scene {
   50%      { transform: translateY(-4px) rotate(1.5deg); }
 }
 @keyframes dl2-twinkle {
-  0%, 100% { opacity: 0.15; transform: scale(0.9); }
-  50%      { opacity: 1; transform: scale(1.4); }
+  0%, 100% { opacity: 0.35; transform: scale(1); }
+  50%      { opacity: 0.85; transform: scale(1.15); }
 }
 @keyframes dl2-float-up {
   0%, 100% { transform: translateY(0); }
