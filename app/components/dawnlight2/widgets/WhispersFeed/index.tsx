@@ -156,7 +156,7 @@ export function WhispersFeed() {
                 const live = isLiveItem(a);
 
                 const planeRotate = 30 + (index % 3) * 10;
-                const indent = 4 + (index % 3) * 6;
+                const indent = 2 + (index % 3) * 4;
 
                 const rowBody = (
                   <>
@@ -167,7 +167,7 @@ export function WhispersFeed() {
                     >
                       <svg
                         viewBox="0 0 24 24"
-                        className="h-5 w-5 sm:h-6 sm:w-6"
+                        className="h-4 w-4 sm:h-5 sm:w-5"
                         fill="none"
                         aria-hidden
                       >
@@ -180,7 +180,7 @@ export function WhispersFeed() {
                         />
                       </svg>
                       <div
-                        className="absolute right-full top-1/2 h-px w-7"
+                        className="absolute right-full top-1/2 h-px w-5"
                         style={{
                           background: `repeating-linear-gradient(to left, ${TRAIL_DASH} 0px, ${TRAIL_DASH} 3px, transparent 3px, transparent 6px)`,
                           transform: "translateY(-50%)",
@@ -229,7 +229,7 @@ export function WhispersFeed() {
 
                 const rowProps = {
                   className:
-                    "group relative flex items-center gap-3 rounded-lg py-2 transition-colors hover:bg-[rgba(92,58,31,0.06)]",
+                    "group relative flex items-center gap-2 rounded-lg py-2 transition-colors hover:bg-[rgba(92,58,31,0.06)]",
                   style: { paddingLeft: `${indent}px` } as const,
                 };
 
