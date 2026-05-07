@@ -36,7 +36,7 @@ export default function MyPage() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
 
   const wrapperClass = isDawnlight2
-    ? "mypage-content dl2-mypage dawnlight2"
+    ? "mypage-content dl2-mypage"
     : "mypage-content";
 
   useEffect(() => {

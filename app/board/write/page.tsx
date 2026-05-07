@@ -115,7 +115,7 @@ export default function BoardWritePage() {
   };
 
   const rootClass =
-    "board-content" + (isDawnlight2 ? " dawnlight2 dl2-board" : "");
+    "board-content" + (isDawnlight2 ? " dl2-board" : "");
   const renderHead = () =>
     isDawnlight2 ? (
       <header className="dl2-board-page-head">

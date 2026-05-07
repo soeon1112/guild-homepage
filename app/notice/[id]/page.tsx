@@ -47,7 +47,7 @@ export default function NoticeDetailPage({
   const router = useRouter();
   const { nickname: loginNick } = useAuth();
   const isDawnlight2 = useDawnlight2();
-  const rootClass = "board-content" + (isDawnlight2 ? " dawnlight2 dl2-notice" : "");
+  const rootClass = "board-content" + (isDawnlight2 ? " dl2-notice" : "");
   const [post, setPost] = useState<NoticeData | null>(null);
   const [loading, setLoading] = useState(true);
 

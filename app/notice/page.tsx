@@ -147,7 +147,7 @@ function NoticePageInner() {
   return (
     <div
       className={
-        "board-content" + (isDawnlight2 ? " dawnlight2 dl2-notice" : "")
+        "board-content" + (isDawnlight2 ? " dl2-notice" : "")
       }
     >
       {isDawnlight2 ? (

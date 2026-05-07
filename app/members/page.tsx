@@ -181,7 +181,7 @@ export default function MembersPage() {
 
   if (isDawnlight2) {
     return (
-      <div className="dawnlight2 dl2-members relative mx-auto max-w-2xl px-4 pt-3">
+      <div className="dl2-members relative mx-auto max-w-2xl px-4 pt-3">
         {/* Page head — left-aligned cream title + MEMBERS subtitle. */}
         <header className="mb-6">
           <h1

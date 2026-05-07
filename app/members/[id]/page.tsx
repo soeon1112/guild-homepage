@@ -307,7 +307,7 @@ export default function MemberMiniHomePage({
   return (
     <div
       ref={wrapperRef}
-      className={`minihome mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 pt-3 pb-6 sm:gap-7${dawnlight2 ? " dl2-minihome dawnlight2" : ""}`}
+      className={`minihome mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 pt-3 pb-6 sm:gap-7${dawnlight2 ? " dl2-minihome" : ""}`}
       style={{
         opacity: scrollPending ? 0 : 1,
         transition: "opacity 150ms ease-out",

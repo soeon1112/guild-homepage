@@ -36,7 +36,7 @@ function detectFileType(file: File): AttachmentType {
 export default function NoticeWritePage() {
   const router = useRouter();
   const isDawnlight2 = useDawnlight2();
-  const rootClass = "board-content" + (isDawnlight2 ? " dawnlight2 dl2-notice" : "");
+  const rootClass = "board-content" + (isDawnlight2 ? " dl2-notice" : "");
   const [pw, setPw] = useState("");
   const [verified, setVerified] = useState(false);
   const [gateErr, setGateErr] = useState("");

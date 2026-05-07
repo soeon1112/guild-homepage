@@ -113,7 +113,7 @@ export default function BoardPage() {
   return (
     <div
       className={
-        "board-content" + (isDawnlight2 ? " dawnlight2 dl2-board" : "")
+        "board-content" + (isDawnlight2 ? " dl2-board" : "")
       }
     >
       {isDawnlight2 ? (
