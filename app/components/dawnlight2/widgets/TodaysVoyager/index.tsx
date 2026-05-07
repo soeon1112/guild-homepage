@@ -40,6 +40,31 @@ const CREAM = "#fef5e6";
 const PILL_CLASS =
   "inline-flex items-center justify-center gap-1 rounded-full px-4 py-1.5 text-xs font-medium transition-opacity hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50";
 
+// v0 유리병 SVG — verbatim from GuestbookSectionD2 BottleIcon so the
+// "오늘의 항해자" 미니 카드 라벨이 미니홈피 유리병 쪽지 헤더와 시각적
+// 으로 통일된다.
+function BottleIcon() {
+  return (
+    <svg width="14" height="16" viewBox="0 0 14 16" fill="none" aria-hidden>
+      <path
+        d="M5 1h4v2l2 3v7a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6l2-3V1z"
+        stroke="#2a4570"
+        strokeWidth="1.1"
+        fill="rgba(200,230,240,0.35)"
+      />
+      <line x1="5" y1="1" x2="9" y2="1" stroke="#2a4570" strokeWidth="1.1" strokeLinecap="round" />
+      <path
+        d="M4.5 9 Q7 11 9.5 9"
+        stroke="#2a4570"
+        strokeWidth="0.9"
+        strokeLinecap="round"
+        fill="none"
+        opacity="0.6"
+      />
+    </svg>
+  );
+}
+
 // ── KST + deterministic shuffle (verbatim from cosmic StarOfDay) ──
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 function kstDayNumber(date = new Date()): number {
@@ -512,10 +537,11 @@ function MinihomeGuestbookCard({
       }}
     >
       <p
-        className="mb-2 text-[13px] font-semibold uppercase tracking-[0.18em]"
+        className="mb-2 flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-[0.18em]"
         style={{ color: NAVY }}
       >
-        ✉ 방명록에 한마디
+        <BottleIcon />
+        유리병 쪽지
       </p>
       <div className="flex items-start gap-2">
         <textarea
@@ -540,7 +566,7 @@ function MinihomeGuestbookCard({
           className={`${PILL_CLASS} self-end`}
           style={{ background: NAVY, color: CREAM }}
         >
-          {done ? "전달됨" : "✦ 띄우기"}
+          {done ? "전달됨" : "✦ 보내기"}
         </button>
       </div>
     </form>
