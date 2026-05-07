@@ -95,7 +95,6 @@ export function HorizonIllustration() {
           cy="430"
           r="160"
           fill="url(#dl2-sun)"
-          style={{ transformOrigin: "600px 430px" }}
         />
         <circle cx="600" cy="430" r="42" fill="#ffe5c2" opacity="0.9" />
 
