@@ -261,23 +261,41 @@ export function CharacterForm({
             {/* Header */}
             <div
               className="flex shrink-0 items-center justify-between border-b border-nebula-pink/20 px-5 py-4"
-              style={{
-                background:
-                  "linear-gradient(90deg, rgba(61,46,107,0.35) 0%, rgba(61,46,107,0.15) 60%, transparent 100%)",
-              }}
+              style={
+                dl2
+                  ? {
+                      background: "rgba(205, 216, 224, 0.95)",
+                      borderBottom: "1px solid rgba(42, 69, 112, 0.18)",
+                    }
+                  : {
+                      background:
+                        "linear-gradient(90deg, rgba(61,46,107,0.35) 0%, rgba(61,46,107,0.15) 60%, transparent 100%)",
+                    }
+              }
             >
               <h3
                 className="font-serif text-base tracking-wider"
-                style={{
-                  fontFamily: "'Noto Serif KR', serif",
-                  backgroundImage:
-                    "linear-gradient(135deg, #FFE5C4, #D896C8)",
-                  WebkitBackgroundClip: "text",
-                  backgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  color: "transparent",
-                  filter: "drop-shadow(0 0 6px rgba(216,150,200,0.3))",
-                }}
+                style={
+                  dl2
+                    ? {
+                        fontFamily:
+                          "'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif",
+                        color: "#2a4570",
+                        fontWeight: 700,
+                        letterSpacing: 0.4,
+                      }
+                    : {
+                        fontFamily: "'Noto Serif KR', serif",
+                        backgroundImage:
+                          "linear-gradient(135deg, #FFE5C4, #D896C8)",
+                        WebkitBackgroundClip: "text",
+                        backgroundClip: "text",
+                        WebkitTextFillColor: "transparent",
+                        color: "transparent",
+                        filter:
+                          "drop-shadow(0 0 6px rgba(216,150,200,0.3))",
+                      }
+                }
               >
                 {initial.id ? "캐릭터 수정" : "캐릭터 추가"}
               </h3>
@@ -286,11 +304,23 @@ export function CharacterForm({
                 onClick={onClose}
                 disabled={submitting}
                 aria-label="닫기"
-                className="flex h-8 w-8 items-center justify-center rounded-full text-stardust transition-colors hover:bg-nebula-pink/20 disabled:opacity-50"
-                style={{
-                  background: "rgba(11,8,33,0.6)",
-                  border: "1px solid rgba(216,150,200,0.3)",
-                }}
+                className={
+                  dl2
+                    ? "flex h-8 w-8 items-center justify-center rounded-full transition-colors disabled:opacity-50"
+                    : "flex h-8 w-8 items-center justify-center rounded-full text-stardust transition-colors hover:bg-nebula-pink/20 disabled:opacity-50"
+                }
+                style={
+                  dl2
+                    ? {
+                        background: "rgba(255, 245, 230, 0.85)",
+                        border: "1px solid rgba(92, 58, 31, 0.25)",
+                        color: "#5c3a1f",
+                      }
+                    : {
+                        background: "rgba(11,8,33,0.6)",
+                        border: "1px solid rgba(216,150,200,0.3)",
+                      }
+                }
               >
                 <X className="h-4 w-4" />
               </button>
@@ -473,12 +503,32 @@ export function CharacterForm({
             </div>
 
             {/* Footer actions */}
-            <div className="flex shrink-0 items-center justify-end gap-2 border-t border-nebula-pink/20 px-5 py-3">
+            <div
+              className="flex shrink-0 items-center justify-end gap-2 border-t border-nebula-pink/20 px-5 py-3"
+              style={
+                dl2
+                  ? { borderTop: "1px solid rgba(42, 69, 112, 0.18)" }
+                  : undefined
+              }
+            >
               <button
                 type="button"
                 onClick={onClose}
                 disabled={submitting}
-                className="rounded-full border border-nebula-pink/30 bg-abyss-deep/50 px-4 py-2 font-serif text-[11px] tracking-wider text-text-sub transition-colors hover:text-stardust disabled:opacity-50"
+                className={
+                  dl2
+                    ? "rounded-full px-4 py-2 font-serif text-[11px] tracking-wider transition-colors disabled:opacity-50"
+                    : "rounded-full border border-nebula-pink/30 bg-abyss-deep/50 px-4 py-2 font-serif text-[11px] tracking-wider text-text-sub transition-colors hover:text-stardust disabled:opacity-50"
+                }
+                style={
+                  dl2
+                    ? {
+                        background: "rgba(255, 245, 230, 0.6)",
+                        border: "1px solid rgba(42, 69, 112, 0.3)",
+                        color: "#2a4570",
+                      }
+                    : undefined
+                }
               >
                 취소
               </button>
@@ -486,11 +536,25 @@ export function CharacterForm({
                 type="button"
                 onClick={handleSubmit}
                 disabled={submitting}
-                className="rounded-full px-5 py-2 font-serif text-[11px] font-medium tracking-wider text-abyss-deep transition-all hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50"
-                style={{
-                  background: "linear-gradient(135deg, #FFE5C4, #FFB5A7)",
-                  boxShadow: "0 0 14px rgba(255, 181, 167, 0.5)",
-                }}
+                className={
+                  dl2
+                    ? "rounded-full px-5 py-2 font-serif text-[11px] font-medium tracking-wider transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                    : "rounded-full px-5 py-2 font-serif text-[11px] font-medium tracking-wider text-abyss-deep transition-all hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50"
+                }
+                style={
+                  dl2
+                    ? {
+                        background: "#2a4570",
+                        color: "#fef5e6",
+                        border: "none",
+                        boxShadow: "none",
+                        fontWeight: 600,
+                      }
+                    : {
+                        background: "linear-gradient(135deg, #FFE5C4, #FFB5A7)",
+                        boxShadow: "0 0 14px rgba(255, 181, 167, 0.5)",
+                      }
+                }
               >
                 {submitting ? "저장 중..." : initial.id ? "저장" : "추가"}
               </button>
