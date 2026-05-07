@@ -8418,13 +8418,23 @@ body.has-redesigned-header .bg-scene {
    ───────────────────────────────────────────────────────────────── */
 
 /* Page width — match dawnlight2 main column (max-w-2xl = 672 px).
-   The font-family cascade is set on `.dl2-notice` itself + a universal
+   ★ Compound `.dl2-notice.board-content` so the cap only applies to
+   the page root (which has BOTH classes) — NOT to the modal portal
+   backdrop, which also carries `dl2-notice` for its color/font
+   overrides but is `position: fixed; inset: 0` and must span the
+   full viewport. The previous `.dl2-notice { max-width: 672px }`
+   was clamping the backdrop too, leaving it stuck in the left half.
+
+   The font-family cascade is set on `.dl2-notice` itself (any element
+   with the class, including the modal backdrop) + a universal
    descendant rule so children that have their OWN cosmic font-family
    (e.g. `.board-title` declares Noto Serif KR) get re-pointed. The
    universal selector keeps single-class specificity (0,1,0) so the
    cascade-order tiebreak picks our (later) declaration over cosmic. */
-.dl2-notice {
+.dl2-notice.board-content {
   max-width: 672px;
+}
+.dl2-notice {
   font-family: "Pretendard Variable", Pretendard, "Noto Sans KR",
     -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
 }
