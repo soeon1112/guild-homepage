@@ -8,6 +8,7 @@ import { BottomNav } from "./BottomNav";
 import { Breadcrumb } from "./Breadcrumb";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
 import { Dawnlight2Topbar } from "@/app/components/dawnlight2/Topbar";
+import { Dawnlight2BottomNav } from "@/app/components/dawnlight2/BottomNav";
 
 /**
  * Legacy logo bar — kept for `/admin/*` routes so the admin UI remains
@@ -79,7 +80,7 @@ export function ChromeShell({ children }: { children: React.ReactNode }) {
       <main className="relative z-10 flex-1 pb-[calc(12rem+env(safe-area-inset-bottom))]">
         {children}
       </main>
-      <BottomNav />
+      {isDawnlight2 ? <Dawnlight2BottomNav /> : <BottomNav />}
     </>
   );
 }
