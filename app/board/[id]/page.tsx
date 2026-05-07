@@ -289,7 +289,12 @@ function BoardDetailPageInner({
       <div className="board-detail">
         <h1 className="board-detail-title">{post.title}</h1>
         <div className="board-detail-meta">
-          <NicknameLink nickname={post.nickname} />
+          {isDawnlight2 && <Dl2TitlePrefix nickname={post.nickname} />}
+          <NicknameLink
+            nickname={post.nickname}
+            hideTitle={isDawnlight2}
+            className={isDawnlight2 ? "dl2-board-nick" : undefined}
+          />
           <span>{formatDate(post.createdAt)}</span>
         </div>
         <div className="board-detail-body">
@@ -542,7 +547,11 @@ function BoardCommentItem({
     <div className="board-comment-item" data-comment-id={comment.id}>
       <div className="board-comment-header">
         {isDawnlight2 ? <Dl2TitlePrefix nickname={comment.nickname} /> : null}
-        <NicknameLink nickname={comment.nickname} className="board-comment-nick" />
+        <NicknameLink
+          nickname={comment.nickname}
+          className="board-comment-nick"
+          hideTitle={isDawnlight2}
+        />
         <div
           style={{
             marginLeft: "auto",
@@ -585,7 +594,11 @@ function BoardCommentItem({
                   <span style={{ display: "inline-flex", alignItems: "center" }}>
                     <span style={{ marginRight: 4, color: "#5a7090" }}>↳</span>
                     <Dl2TitlePrefix nickname={r.nickname} />
-                    <NicknameLink nickname={r.nickname} className="board-comment-nick" />
+                    <NicknameLink
+                      nickname={r.nickname}
+                      className="board-comment-nick"
+                      hideTitle
+                    />
                   </span>
                 ) : (
                   <NicknameLink nickname={r.nickname} className="board-comment-nick" prefix="↳ " />
