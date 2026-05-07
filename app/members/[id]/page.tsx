@@ -50,6 +50,7 @@ import { BadgesSection } from "@/app/components/redesign/minihompi/BadgesSection
 import { GuestbookSection as GuestbookSectionV2 } from "@/app/components/redesign/minihompi/GuestbookSection";
 import { AdventureLogSection } from "@/app/components/redesign/minihompi/AdventureLogSection";
 import { PhotosSection } from "@/app/components/redesign/minihompi/PhotosSection";
+import { PhotosSectionD2 } from "@/app/components/redesign/minihompi/PhotosSectionD2";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
 
 // `decodeURIComponent` throws on malformed input ("%E"). Be defensive —
@@ -343,26 +344,58 @@ export default function MemberMiniHomePage({
           onChange={setMember}
         />
       )}
+      {/* dawnlight2 페이지 순서: 프로필 → 배지 → 사진첩 → 모험 → 방명록.
+          cosmic 순서: 프로필 → 배지 → 방명록 → 모험 → 사진첩.
+          PhotosSectionD2 가 자체 id="minihome-photos" 를 갖고 있어
+          deep-link anchor 동일하게 매칭. URLSearchParams ?photo / ?comment
+          parsing 도 동일 동작 (cosmic 코드 1:1 복사).
+          GuestbookSection 의 anchor id 는 web cosmic 패턴상 최상위 wrapper
+          가 아닌 GuestbookSection 내부 id 이므로 순서 변경 영향 X.
+          AdventureLogSection / GuestbookSectionV2 는 cosmic 그대로 (다음 라운드). */}
       {member?.nickname && <BadgesSection nickname={member.nickname} />}
-      <GuestbookSectionV2
-        id={resolvedId}
-        loginNick={loginNick}
-        memberNickname={member?.nickname ?? null}
-        autoJumpEntryId={guestbookEntryId}
-      />
-      <AdventureLogSection
-        id={resolvedId}
-        isOwner={isOwner}
-        memberNickname={member?.nickname ?? null}
-      />
-      <div id="minihome-photos">
-        <PhotosSection
-          id={resolvedId}
-          isOwner={isOwner}
-          loginNick={loginNick}
-          memberNickname={member?.nickname ?? null}
-        />
-      </div>
+      {dawnlight2 ? (
+        <>
+          <PhotosSectionD2
+            id={resolvedId}
+            isOwner={isOwner}
+            loginNick={loginNick}
+            memberNickname={member?.nickname ?? null}
+          />
+          <AdventureLogSection
+            id={resolvedId}
+            isOwner={isOwner}
+            memberNickname={member?.nickname ?? null}
+          />
+          <GuestbookSectionV2
+            id={resolvedId}
+            loginNick={loginNick}
+            memberNickname={member?.nickname ?? null}
+            autoJumpEntryId={guestbookEntryId}
+          />
+        </>
+      ) : (
+        <>
+          <GuestbookSectionV2
+            id={resolvedId}
+            loginNick={loginNick}
+            memberNickname={member?.nickname ?? null}
+            autoJumpEntryId={guestbookEntryId}
+          />
+          <AdventureLogSection
+            id={resolvedId}
+            isOwner={isOwner}
+            memberNickname={member?.nickname ?? null}
+          />
+          <div id="minihome-photos">
+            <PhotosSection
+              id={resolvedId}
+              isOwner={isOwner}
+              loginNick={loginNick}
+              memberNickname={member?.nickname ?? null}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 }

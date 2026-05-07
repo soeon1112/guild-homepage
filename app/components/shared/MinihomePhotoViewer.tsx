@@ -95,6 +95,7 @@ export function PhotoViewerModal({
   memberNickname,
   targetCommentId,
   onClose,
+  dawnlight2 = false,
 }: {
   memberId: string;
   photo: PhotoEntry;
@@ -103,6 +104,10 @@ export function PhotoViewerModal({
   memberNickname: string | null;
   targetCommentId: string | null;
   onClose: () => void;
+  // dawnlight2 = true일 때 외곽/닫기/사진 컨테이너/댓글 박스 색감을
+  // cream 양피지 톤으로 분기. 텍스트 세부 색은 cosmic 그대로 (다음
+  // 라운드에서 작업).
+  dawnlight2?: boolean;
 }) {
   const [editMode, setEditMode] = useState(false);
   const [editCaption, setEditCaption] = useState(photo.caption);
@@ -208,10 +213,13 @@ export function PhotoViewerModal({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
-      className="modal-safe-frame fixed inset-0 z-[80] flex items-center justify-center"
+      className={
+        "modal-safe-frame fixed inset-0 z-[80] flex items-center justify-center" +
+        (dawnlight2 ? " dl2-minihome" : "")
+      }
       onClick={saving || deleting ? undefined : onClose}
       style={{
-        background: "rgba(11,8,33,0.85)",
+        background: dawnlight2 ? "rgba(0,0,0,0.88)" : "rgba(11,8,33,0.85)",
         backdropFilter: "blur(10px)",
       }}
       role="dialog"
@@ -242,17 +250,31 @@ export function PhotoViewerModal({
           onClick={onClose}
           disabled={saving || deleting}
           aria-label="닫기"
-          className="flex h-10 w-10 items-center justify-center self-end rounded-full text-stardust transition-colors hover:bg-nebula-pink/20 disabled:opacity-50"
-          style={{
-            background: "rgba(11,8,33,0.6)",
-            border: "1px solid rgba(216,150,200,0.3)",
-          }}
+          className="flex h-10 w-10 items-center justify-center self-end rounded-full transition-colors disabled:opacity-50"
+          style={
+            dawnlight2
+              ? {
+                  background: "rgba(0,0,0,0.4)",
+                  border: "1px solid rgba(254,245,230,0.55)",
+                  color: "#fef5e6",
+                }
+              : {
+                  background: "rgba(11,8,33,0.6)",
+                  border: "1px solid rgba(216,150,200,0.3)",
+                  color: "var(--color-stardust, #FFE5C4)",
+                }
+          }
         >
           <X className="h-5 w-5" />
         </button>
 
-        {/* Photo / video — separate rounded box (matches RN viewerMedia). */}
-        <div className="w-full flex-shrink-0 overflow-hidden rounded-xl bg-abyss-deep/45">
+        {/* Photo / video — dl2: 박스 X (백드랍 바로). cosmic: rounded box. */}
+        <div
+          className={
+            "w-full flex-shrink-0 overflow-hidden" +
+            (dawnlight2 ? "" : " rounded-xl bg-abyss-deep/45")
+          }
+        >
           {kind === "video" ? (
             <video
               src={photo.imageUrl}
@@ -261,6 +283,7 @@ export function PhotoViewerModal({
               playsInline
               onLoadedData={() => setImgLoaded(true)}
               className="block max-h-[60vh] w-full object-contain"
+              style={dawnlight2 ? { background: "transparent" } : undefined}
             />
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
@@ -269,6 +292,7 @@ export function PhotoViewerModal({
               alt={photo.caption || "photo"}
               onLoad={() => setImgLoaded(true)}
               className="block max-h-[60vh] w-full object-contain"
+              style={dawnlight2 ? { background: "transparent" } : undefined}
             />
           )}
         </div>
@@ -357,6 +381,7 @@ export function PhotoViewerModal({
             markScrollResolved={markScrollResolved}
             cardHeight={cardHeight}
             imgLoaded={imgLoaded}
+            dawnlight2={dawnlight2}
           />
         </div>
       </motion.div>
@@ -375,6 +400,7 @@ function PhotoComments({
   markScrollResolved,
   cardHeight,
   imgLoaded,
+  dawnlight2 = false,
 }: {
   memberId: string;
   photoId: string;
@@ -388,6 +414,7 @@ function PhotoComments({
   markScrollResolved?: () => void;
   cardHeight?: number;
   imgLoaded?: boolean;
+  dawnlight2?: boolean;
 }) {
   const [comments, setComments] = useState<PhotoCommentDoc[]>([]);
   const [content, setContent] = useState("");
@@ -544,8 +571,30 @@ function PhotoComments({
   };
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-nebula-pink/15 bg-abyss-deep/70 p-4">
-      <h4 className="font-serif text-[11px] tracking-[0.3em] text-text-sub uppercase">
+    <div
+      className={
+        "flex flex-col gap-3 rounded-2xl p-4" +
+        (dawnlight2
+          ? ""
+          : " border border-nebula-pink/15 bg-abyss-deep/70")
+      }
+      style={
+        dawnlight2
+          ? {
+              background: "rgba(232, 216, 184, 0.92)",
+              border: "1px solid rgba(92, 58, 31, 0.2)",
+            }
+          : undefined
+      }
+    >
+      <h4
+        className={
+          dawnlight2
+            ? "text-[11px] font-semibold tracking-[0.3em] uppercase"
+            : "font-serif text-[11px] tracking-[0.3em] text-text-sub uppercase"
+        }
+        style={dawnlight2 ? { color: "#5c3a1f" } : undefined}
+      >
         댓글 ({totalCount})
       </h4>
 
