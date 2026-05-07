@@ -178,11 +178,11 @@ export function PaperPlaneLetters() {
           }}
         >
           <div className="flex items-stretch gap-3 px-4 py-4 sm:items-center sm:gap-6 sm:px-7 sm:py-5">
-            {/* `ml-2` nudges the plane 8 px right of the card's left
-                padding on mobile so it doesn't read as glued to the
-                edge; `sm:ml-0` resets the offset on desktop where the
-                wider px-7 padding already gives enough breathing room. */}
-            <div className="ml-2 flex-shrink-0 self-center animate-plane-float sm:ml-0">
+            {/* `ml-4` nudges the plane 16 px right of the card's left
+                padding on mobile (8 px wasn't enough breathing room
+                on phones); `sm:ml-0` resets on desktop where the
+                wider px-7 padding already handles spacing. */}
+            <div className="ml-4 flex-shrink-0 self-center animate-plane-float sm:ml-0">
               <LargePaperPlane />
             </div>
 
