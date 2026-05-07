@@ -10041,6 +10041,14 @@ body.has-redesigned-header .bg-scene {
   }
 }
 
+/* Photo media — 미니홈피 사진첩 D2 모달과 통일하여 각진 모서리.
+   base `.minihome-photo-viewer img/video { border-radius: 8px }` 가
+   두 모달 공유라, dl2-album-viewer 스코프에서만 0 으로 override. */
+.dl2-album-viewer .minihome-photo-viewer img,
+.dl2-album-viewer .minihome-photo-viewer video {
+  border-radius: 0;
+}
+
 /* Close button — dark disc + cream × so it always stands out against
    any photo (light or dark) and the dim backdrop. Used to be a navy
    text on white plate, which faded into cream-tinted images. */
@@ -10549,16 +10557,119 @@ body.has-redesigned-header .bg-scene {
 }
 
 /* dl2 미니홈피 5단계 — 유리병 쪽지: cosmic .nickname-link/.title-prefix
-   specificity 가 inline color 를 이김. scope 룰로 강제 ink 톤 박기. */
+   specificity 가 inline color 를 이김. scope 룰로 강제 ink 톤 박기.
+   게시판 댓글 패턴 (.dl2-board .board-comment-* 시리즈) 와 일치. */
 .dl2-minihome #minihome-guestbook .title-prefix {
   color: #8a6710 !important;
   font-size: 9px !important;
   font-weight: 700 !important;
 }
-.dl2-minihome #minihome-guestbook .nickname-link {
-  color: #2a4570 !important;
+.dl2-minihome #minihome-guestbook .nickname-link,
+.dl2-minihome #minihome-guestbook .dl2-gb-nick {
+  color: #5c3a1f !important;
   font-weight: 600 !important;
   font-size: 12px !important;
+  font-family: 'Pretendard', system-ui, sans-serif;
+}
+.dl2-minihome #minihome-guestbook .dl2-gb-date {
+  color: #5a7090;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  font-family: 'Pretendard', system-ui, sans-serif;
+}
+.dl2-minihome #minihome-guestbook .dl2-gb-action {
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: #5a7090;
+  font-size: 11px;
+  font-family: 'Pretendard', system-ui, sans-serif;
+}
+.dl2-minihome #minihome-guestbook .dl2-gb-action:hover {
+  color: #2a4570;
+}
+.dl2-minihome #minihome-guestbook .dl2-gb-body {
+  color: #2a4570;
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-family: 'Pretendard', system-ui, sans-serif;
+}
+
+/* 사진 모달 (앨범 + 미니홈피 사진첩) dl2 댓글 — 게시판 댓글 패턴.
+   header (좌:칭호+닉 / 우:날짜+답글+삭제) + body 분리. 댓글 묶음
+   사이 1px solid sky-blue 구분선. 답글 묶음은 좌측 borderLeft 2 +
+   paddingLeft 16 (게시판 .board-reply-list 동일). */
+.dl2-photo-comment-block {
+  padding: 12px 0;
+}
+.dl2-photo-comment-block + .dl2-photo-comment-block {
+  border-top: 1px solid rgba(42, 69, 112, 0.18);
+}
+.dl2-photo-comment-header {
+  display: flex;
+  align-items: baseline;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+.dl2-photo-comment-header .nickname-link,
+.dl2-photo-comment-nick {
+  color: #5c3a1f !important;
+  font-weight: 600 !important;
+  font-size: 12px !important;
+  font-family: 'Pretendard', system-ui, sans-serif;
+}
+.dl2-photo-comment-header .title-prefix {
+  color: #8a6710 !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+}
+.dl2-photo-comment-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.dl2-photo-comment-date {
+  color: #5a7090;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  font-family: 'Pretendard', system-ui, sans-serif;
+}
+.dl2-photo-comment-action {
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: #5a7090;
+  font-size: 11px;
+  font-family: 'Pretendard', system-ui, sans-serif;
+}
+.dl2-photo-comment-action:hover {
+  color: #2a4570;
+}
+.dl2-photo-comment-body {
+  color: #2a4570;
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-family: 'Pretendard', system-ui, sans-serif;
+}
+.dl2-photo-comment-replies {
+  margin-top: 10px;
+  padding-left: 16px;
+  border-left: 2px solid rgba(42, 69, 112, 0.18);
+}
+.dl2-photo-comment-reply {
+  padding: 8px 0;
+}
+.dl2-photo-comment-reply.has-prev {
+  border-top: 1px solid rgba(42, 69, 112, 0.12);
 }
 
 /* Big numeric values (combatPower 카드, 길드 통계, weekly TOP 점수)
