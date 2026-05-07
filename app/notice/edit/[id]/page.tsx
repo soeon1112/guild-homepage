@@ -174,7 +174,14 @@ export default function NoticeEditPage({
   if (!verified) {
     return (
       <div className={rootClass}>
-        <h1 className="board-title">공지 수정</h1>
+        {isDawnlight2 ? (
+          <header className="dl2-notice-page-head">
+            <h1 className="dl2-notice-page-title">공지 수정</h1>
+            <p className="dl2-notice-page-sub">EDIT NOTICE</p>
+          </header>
+        ) : (
+          <h1 className="board-title">공지 수정</h1>
+        )}
         <div className="notice-gate">
           <input
             type="password"

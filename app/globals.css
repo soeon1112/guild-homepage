@@ -8417,24 +8417,31 @@ body.has-redesigned-header .bg-scene {
    class (handled inline in notice/page.tsx).
    ───────────────────────────────────────────────────────────────── */
 
-/* Page width — match dawnlight2 main column (max-w-2xl = 672 px). */
+/* Page width — match dawnlight2 main column (max-w-2xl = 672 px).
+   The font-family cascade is set on `.dl2-notice` itself + a universal
+   descendant rule so children that have their OWN cosmic font-family
+   (e.g. `.board-title` declares Noto Serif KR) get re-pointed. The
+   universal selector keeps single-class specificity (0,1,0) so the
+   cascade-order tiebreak picks our (later) declaration over cosmic. */
 .dl2-notice {
   max-width: 672px;
+  font-family: "Pretendard Variable", Pretendard, "Noto Sans KR",
+    -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+}
+.dl2-notice * {
+  font-family: "Pretendard Variable", Pretendard, "Noto Sans KR",
+    -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
 }
 
-/* New page head: 공지 게시판 (cream center) + NOTICE BOARD subtitle.
-   Keeps the cosmic page's normal vertical rhythm; cosmic still uses
-   the gradient-text .board-title h1 (we render this <header> instead
-   when dl2). */
+/* Page head: cream title + lavender NOTICE BOARD subtitle.
+   Left-aligned (was center) — matches the rest of the dawnlight2
+   widget header rhythm where titles sit at the column left edge. */
 .dl2-notice .dl2-notice-page-head {
   margin-bottom: 1.5rem;
-  text-align: center;
+  text-align: left;
 }
 .dl2-notice .dl2-notice-page-title {
   margin: 0;
-  font-family:
-    "Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont,
-    "Segoe UI", system-ui, sans-serif;
   font-size: 20px;
   font-weight: 600;
   color: #fef5e6;
@@ -8443,9 +8450,6 @@ body.has-redesigned-header .bg-scene {
 }
 .dl2-notice .dl2-notice-page-sub {
   margin: 4px 0 0;
-  font-family:
-    "Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont,
-    "Segoe UI", system-ui, sans-serif;
   font-size: 10px;
   font-weight: 500;
   color: #c8b8e8;
@@ -8499,6 +8503,25 @@ body.has-redesigned-header .bg-scene {
 }
 .dl2-notice .board-table {
   color: #2a4570;
+}
+/* Row dividers in dl2: navy hairline (cosmic uses lavender 0.1).
+   Hover background gets a soft navy wash so the click target reads. */
+.dl2-notice .board-table tbody tr {
+  border-top: 1px solid rgba(42, 69, 112, 0.15);
+}
+.dl2-notice .board-table tbody tr:first-child {
+  border-top: none;
+}
+.dl2-notice .board-table tbody tr:hover {
+  background: rgba(42, 69, 112, 0.05);
+}
+/* Row number — was opaque navy-soft, hard to read against the
+   paper-plane bg. Bump to full ink navy + slight weight so the
+   index column stays legible. */
+.dl2-notice .board-table .col-no {
+  color: #2a4570;
+  font-weight: 500;
+  opacity: 1;
 }
 .dl2-notice .board-post-link {
   color: #2a4570;
@@ -8684,10 +8707,34 @@ body.has-redesigned-header .bg-scene {
 
 /* Modal — backdrop stays dark for focus, the card adopts the paper-
    plane palette (a hair higher alpha than the list boxes so titles
-   read clearly when the modal floats over varied page content). */
+   read clearly when the modal floats over varied page content).
+
+   `.dawnlight2` (which we add to the portal backdrop alongside
+   `.dl2-notice` so Pretendard cascades into the modal tree) declares
+   `position: relative` at line ~8125, which is later in source order
+   than `.notice-schedule-modal-backdrop`'s `position: fixed`. Without
+   this re-assertion the backdrop goes back into the document flow
+   and the flex centering anchors at the top-left of the page. The
+   compound selector below has higher specificity (0,2,0) so it wins
+   regardless of source order. */
+.dawnlight2.notice-schedule-modal-backdrop,
 .dl2-notice .notice-schedule-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: rgba(11, 8, 33, 0.7);
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 200;
+}
+/* `.dawnlight2` also paints a `min-height: 100vh` and `color: cream`
+   on the wrapper. Neither would visually break the modal, but reset
+   them on the backdrop so the dim layer behaves as a flat overlay
+   regardless of the inherited tokens. */
+.dawnlight2.notice-schedule-modal-backdrop {
+  min-height: 0;
 }
 .dl2-notice .notice-schedule-modal-card {
   background: rgba(205, 216, 224, 0.96);
@@ -8752,4 +8799,448 @@ body.has-redesigned-header .bg-scene {
   opacity: 0.9;
   background: #2a4570;
   color: #fef5e6;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Dawnlight 2 — proposals (게시판 + 작성) reskin (Step 4-F)
+   Scoped to `.dl2-proposals`. Status surfaces map to the existing
+   dawnlight2 widget palette so the page reads as a member of the
+   same family:
+     모집중   → #ffd4b8 / 0.72  (TodaysSky 피치)
+     진행중   → #cdd8e0 / 0.65  (PaperPlaneLetters 하늘색)
+     완료/미완/취소 → #d8d4d0 opaque (죽은 회입희)
+   Buttons collapse to one tone — coral #b85420 pill + cream label —
+   so the action language is uniform across recruit/transition/promote.
+   ───────────────────────────────────────────────────────────────── */
+
+.dl2-proposals {
+  max-width: 672px;
+}
+
+.dl2-proposals .dl2-proposals-page-head {
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+.dl2-proposals .dl2-proposals-page-title {
+  margin: 0;
+  font-family:
+    "Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", system-ui, sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: #fef5e6;
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+}
+.dl2-proposals .dl2-proposals-page-sub {
+  margin: 4px 0 0;
+  font-family:
+    "Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  color: #c8b8e8;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+}
+
+/* Top-right "제안하기" — coral pill, no warm-gradient halo. */
+.dl2-proposals .board-write-btn-wrap .board-btn,
+.dl2-proposals .board-write-btn-wrap .board-btn:hover {
+  background: #b85420;
+  color: #fef5e6;
+  border: none;
+  box-shadow: none;
+  text-shadow: none;
+  transform: none;
+}
+
+/* Loading + pagination tones — sit on the dark cosmic backdrop, so
+   we keep a cream/lavender ink range (no dark-ink on dark-bg). */
+.dl2-proposals .board-loading {
+  color: #c8b8e8;
+}
+.dl2-proposals .board-pagination {
+  color: #c8b8e8;
+}
+.dl2-proposals .board-page-btn {
+  background: transparent;
+  border-color: rgba(254, 245, 230, 0.45);
+  color: #fef5e6;
+  box-shadow: none;
+}
+.dl2-proposals .board-page-btn:hover:not(:disabled) {
+  border-color: #fef5e6;
+  background: rgba(254, 245, 230, 0.08);
+  color: #fef5e6;
+  box-shadow: none;
+}
+.dl2-proposals .board-page-btn:disabled {
+  opacity: 0.4;
+}
+.dl2-proposals .board-page-info {
+  color: #fef5e6;
+}
+
+/* Cards — drop the cosmic glassmorphism + nebula radial overlays so
+   the dl2 status tints read as their own surfaces. */
+.dl2-proposals .proposals-card-grid {
+  /* PC 2-col layout intentionally kept (cosmic media query) — only
+     the card surfaces change. */
+}
+.dl2-proposals .proposals-card {
+  background: transparent;
+  background-image: none;
+  border: none;
+  border-radius: 16px;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  color: inherit;
+}
+
+/* 모집중 — TodaySky 피치. drop the cosmic glow/pulse/gradient border. */
+.dl2-proposals .proposals-card[data-status="recruiting"] {
+  background: rgba(255, 212, 184, 0.72);
+  border: 1px solid rgba(184, 84, 32, 0.18);
+  box-shadow: 0 4px 14px rgba(11, 8, 33, 0.18);
+  animation: none;
+}
+.dl2-proposals .proposals-card[data-status="recruiting"]::before {
+  /* 우주 gradient mask 보더 제거 */
+  display: none;
+}
+
+/* 진행중 — 종이비행기 편지 톤 */
+.dl2-proposals .proposals-card[data-status="in_progress"] {
+  background: rgba(205, 216, 224, 0.65);
+  border: 1px solid rgba(42, 69, 112, 0.18);
+  box-shadow: 0 4px 14px rgba(11, 8, 33, 0.18);
+}
+.dl2-proposals .proposals-card[data-status="in_progress"]::before {
+  display: none;
+}
+
+/* 완료/미완료/취소 — 죽은 회입희 */
+.dl2-proposals .proposals-card[data-status="completed"],
+.dl2-proposals .proposals-card[data-status="incomplete"],
+.dl2-proposals .proposals-card[data-status="cancelled"] {
+  background: #d8d4d0;
+  background-image: none;
+  border: 1px solid rgba(90, 90, 90, 0.18);
+  box-shadow: 0 2px 8px rgba(11, 8, 33, 0.12);
+  opacity: 1;
+}
+.dl2-proposals .proposals-card[data-status="cancelled"] .proposals-card-title {
+  color: #6a6a6a;
+}
+.dl2-proposals .proposals-card[data-status="cancelled"] .proposals-card-description {
+  color: #6a6a6a;
+}
+
+/* Title + body — palette ink swaps per status */
+.dl2-proposals .proposals-card[data-status="recruiting"] .proposals-card-title {
+  color: #5c3a1f;
+  text-shadow: none;
+  font-family:
+    "Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", system-ui, sans-serif;
+  font-weight: 600;
+}
+.dl2-proposals .proposals-card[data-status="recruiting"] .proposals-card-description {
+  color: rgba(92, 58, 31, 0.85);
+}
+.dl2-proposals .proposals-card[data-status="in_progress"] .proposals-card-title {
+  color: #2a4570;
+  text-shadow: none;
+  font-family:
+    "Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", system-ui, sans-serif;
+  font-weight: 600;
+}
+.dl2-proposals .proposals-card[data-status="in_progress"] .proposals-card-description {
+  color: rgba(42, 69, 112, 0.85);
+}
+.dl2-proposals .proposals-card[data-status="completed"] .proposals-card-title,
+.dl2-proposals .proposals-card[data-status="incomplete"] .proposals-card-title,
+.dl2-proposals .proposals-card[data-status="cancelled"] .proposals-card-title {
+  color: #5a5a5a;
+  text-shadow: none;
+  font-family:
+    "Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", system-ui, sans-serif;
+  font-weight: 600;
+}
+.dl2-proposals .proposals-card[data-status="completed"] .proposals-card-description,
+.dl2-proposals .proposals-card[data-status="incomplete"] .proposals-card-description,
+.dl2-proposals .proposals-card[data-status="cancelled"] .proposals-card-description {
+  color: #6a6a6a;
+}
+
+/* 일시 / 인원 sub-card — dim panel inside the tinted card. */
+.dl2-proposals .proposals-card[data-status="recruiting"] .proposals-highlight-card {
+  background: rgba(254, 245, 230, 0.55);
+  border: 1px solid rgba(184, 84, 32, 0.15);
+}
+.dl2-proposals .proposals-card[data-status="recruiting"] .proposals-highlight-label {
+  color: #8a6a4a;
+}
+.dl2-proposals .proposals-card[data-status="recruiting"] .proposals-highlight-value {
+  color: #5c3a1f;
+}
+.dl2-proposals .proposals-card[data-status="in_progress"] .proposals-highlight-card {
+  background: rgba(254, 245, 230, 0.55);
+  border: 1px solid rgba(42, 69, 112, 0.15);
+}
+.dl2-proposals .proposals-card[data-status="in_progress"] .proposals-highlight-label {
+  color: #5a7090;
+}
+.dl2-proposals .proposals-card[data-status="in_progress"] .proposals-highlight-value {
+  color: #2a4570;
+}
+.dl2-proposals .proposals-card[data-status="completed"] .proposals-highlight-card,
+.dl2-proposals .proposals-card[data-status="incomplete"] .proposals-highlight-card,
+.dl2-proposals .proposals-card[data-status="cancelled"] .proposals-highlight-card {
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(90, 90, 90, 0.15);
+}
+.dl2-proposals .proposals-card[data-status="completed"] .proposals-highlight-label,
+.dl2-proposals .proposals-card[data-status="incomplete"] .proposals-highlight-label,
+.dl2-proposals .proposals-card[data-status="cancelled"] .proposals-highlight-label {
+  color: #6a6a6a;
+}
+.dl2-proposals .proposals-card[data-status="completed"] .proposals-highlight-value,
+.dl2-proposals .proposals-card[data-status="incomplete"] .proposals-highlight-value,
+.dl2-proposals .proposals-card[data-status="cancelled"] .proposals-highlight-value {
+  color: #5a5a5a;
+}
+
+/* Divider + meta rows */
+.dl2-proposals .proposals-card[data-status="recruiting"] .proposals-divider {
+  background: rgba(184, 84, 32, 0.18);
+}
+.dl2-proposals .proposals-card[data-status="in_progress"] .proposals-divider {
+  background: rgba(42, 69, 112, 0.18);
+}
+.dl2-proposals .proposals-card[data-status="completed"] .proposals-divider,
+.dl2-proposals .proposals-card[data-status="incomplete"] .proposals-divider,
+.dl2-proposals .proposals-card[data-status="cancelled"] .proposals-divider {
+  background: rgba(90, 90, 90, 0.18);
+}
+
+.dl2-proposals .proposals-card[data-status="recruiting"] .proposals-meta-label {
+  color: #8a6a4a;
+}
+.dl2-proposals .proposals-card[data-status="recruiting"] .proposals-meta-value {
+  color: #5c3a1f;
+}
+.dl2-proposals .proposals-card[data-status="in_progress"] .proposals-meta-label {
+  color: #5a7090;
+}
+.dl2-proposals .proposals-card[data-status="in_progress"] .proposals-meta-value {
+  color: #2a4570;
+}
+.dl2-proposals .proposals-card[data-status="completed"] .proposals-meta-label,
+.dl2-proposals .proposals-card[data-status="incomplete"] .proposals-meta-label,
+.dl2-proposals .proposals-card[data-status="cancelled"] .proposals-meta-label {
+  color: #6a6a6a;
+}
+.dl2-proposals .proposals-card[data-status="completed"] .proposals-meta-value,
+.dl2-proposals .proposals-card[data-status="incomplete"] .proposals-meta-value,
+.dl2-proposals .proposals-card[data-status="cancelled"] .proposals-meta-value {
+  color: #5a5a5a;
+}
+
+/* Cancelled banner inside the dead grey card */
+.dl2-proposals .proposals-card[data-status="cancelled"] .proposals-cancelled-banner {
+  background: rgba(255, 255, 255, 0.4);
+  border-color: rgba(90, 90, 90, 0.3);
+  color: #5a5a5a;
+}
+
+/* Category chip (좌상단) — cream pill, ink color matches card status */
+.dl2-proposals .proposals-card[data-status="recruiting"] .proposals-category-tag {
+  background: #fef5e6;
+  border: 1px solid rgba(184, 84, 32, 0.25);
+  color: #5c3a1f;
+}
+.dl2-proposals .proposals-card[data-status="in_progress"] .proposals-category-tag {
+  background: #fef5e6;
+  border: 1px solid rgba(42, 69, 112, 0.25);
+  color: #2a4570;
+}
+.dl2-proposals .proposals-card[data-status="completed"] .proposals-category-tag,
+.dl2-proposals .proposals-card[data-status="incomplete"] .proposals-category-tag,
+.dl2-proposals .proposals-card[data-status="cancelled"] .proposals-category-tag {
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(90, 90, 90, 0.25);
+  color: #5a5a5a;
+}
+
+/* Status badge (우상단) — warm coral / navy / dead grey, all cream text */
+.dl2-proposals .proposals-status-recruiting {
+  background: #b85420;
+  color: #fef5e6;
+  border: none;
+  box-shadow: none;
+  font-weight: 600;
+}
+.dl2-proposals .proposals-status-in_progress {
+  background: #2a4570;
+  color: #fef5e6;
+  border: none;
+}
+.dl2-proposals .proposals-status-completed,
+.dl2-proposals .proposals-status-incomplete,
+.dl2-proposals .proposals-status-cancelled {
+  background: #6a6a6a;
+  color: #fef5e6;
+  border: none;
+}
+
+/* Action buttons (참가/취소/진행/취소/홍보) — single coral pill, flat */
+.dl2-proposals .proposals-action-primary,
+.dl2-proposals .proposals-action-default {
+  background: #b85420;
+  color: #fef5e6;
+  border: none;
+  box-shadow: none;
+  text-shadow: none;
+  font-family:
+    "Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", system-ui, sans-serif;
+  font-weight: 500;
+}
+.dl2-proposals .proposals-action-primary:hover,
+.dl2-proposals .proposals-action-default:hover {
+  opacity: 0.9;
+  background: #b85420;
+  color: #fef5e6;
+  transform: none;
+  box-shadow: none;
+}
+.dl2-proposals .proposals-action-disabled,
+.dl2-proposals .proposals-action-promote-disabled {
+  background: rgba(184, 84, 32, 0.35);
+  color: rgba(254, 245, 230, 0.75);
+  border: none;
+  box-shadow: none;
+  font-family:
+    "Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", system-ui, sans-serif;
+}
+
+/* Empty / locked card on the dl2 board page — keep them on the
+   cosmic backdrop with paper-plane tone so the empty state still
+   reads as part of the page. */
+.dl2-proposals .proposals-empty-card,
+.dl2-proposals .proposals-locked-card {
+  background: rgba(205, 216, 224, 0.65);
+  background-image: none;
+  border: 1px solid rgba(42, 69, 112, 0.18);
+  color: #2a4570;
+}
+.dl2-proposals .proposals-empty-text,
+.dl2-proposals .proposals-locked-text {
+  color: #5a7090;
+}
+
+/* ── 작성 페이지 (/proposals/new) ────────────────────────────── */
+
+/* Form 박스 — 종이비행기 톤 */
+.dl2-proposals .proposals-form-card {
+  background: rgba(205, 216, 224, 0.65);
+  background-image: none;
+  border: 1px solid rgba(42, 69, 112, 0.18);
+  border-radius: 16px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Field label */
+.dl2-proposals .proposals-field-label {
+  color: #2a4570;
+  font-family:
+    "Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", system-ui, sans-serif;
+  font-weight: 600;
+}
+
+/* Inputs */
+.dl2-proposals .board-input,
+.dl2-proposals .board-textarea {
+  background: #ffffff;
+  border: 1px solid rgba(42, 69, 112, 0.2);
+  color: #2a4570;
+  font-family:
+    "Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", system-ui, sans-serif;
+}
+.dl2-proposals .board-input::placeholder,
+.dl2-proposals .board-textarea::placeholder {
+  color: #5a7090;
+  font-style: normal;
+}
+.dl2-proposals .board-input:focus,
+.dl2-proposals .board-textarea:focus {
+  border-color: rgba(42, 69, 112, 0.45);
+  box-shadow: 0 0 0 3px rgba(42, 69, 112, 0.1);
+  outline: none;
+}
+
+/* Category chips on the form — 7 pills, inactive cream / active coral */
+.dl2-proposals .proposals-chip {
+  background: #fef5e6;
+  border: 1px solid rgba(42, 69, 112, 0.25);
+  color: #2a4570;
+  box-shadow: none;
+  font-family:
+    "Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", system-ui, sans-serif;
+  font-weight: 500;
+}
+.dl2-proposals .proposals-chip:hover {
+  border-color: rgba(42, 69, 112, 0.5);
+  box-shadow: none;
+}
+.dl2-proposals .proposals-chip-selected,
+.dl2-proposals .proposals-chip-selected:hover {
+  background: #b85420;
+  border-color: transparent;
+  color: #fef5e6;
+  box-shadow: none;
+}
+
+/* Anonymous checkbox */
+.dl2-proposals .proposals-checkbox-box {
+  background: #ffffff;
+  border: 1px solid rgba(42, 69, 112, 0.4);
+}
+.dl2-proposals .proposals-checkbox-box[data-checked="true"] {
+  background: #b85420;
+  border-color: #b85420;
+}
+.dl2-proposals .proposals-checkbox-mark {
+  color: #fef5e6;
+}
+.dl2-proposals .proposals-checkbox-label {
+  color: #2a4570;
+}
+
+/* 등록 / 취소 — coral solid + coral outline */
+.dl2-proposals .board-form-buttons .board-btn,
+.dl2-proposals .board-form-buttons .board-btn:hover {
+  background: #b85420;
+  color: #fef5e6;
+  border: none;
+  box-shadow: none;
+  text-shadow: none;
+  transform: none;
+}
+.dl2-proposals .board-form-buttons .board-btn.board-btn-cancel,
+.dl2-proposals .board-form-buttons .board-btn.board-btn-cancel:hover {
+  background: transparent;
+  color: #b85420;
+  border: 1px solid #b85420;
+  box-shadow: none;
 }
