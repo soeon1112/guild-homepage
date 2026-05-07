@@ -163,7 +163,7 @@ export function AdventureLogSectionD2({
           {/* 상단 한 줄 — 좌측 날짜 / 우측 등록 */}
           <div className="mb-2 flex items-center justify-between gap-2">
             <label
-              className="cursor-pointer rounded-md px-3 py-1.5 text-[12px] font-semibold transition-colors"
+              className="relative cursor-pointer rounded-md px-3 py-1.5 text-[12px] font-semibold transition-colors"
               style={{
                 background: "rgba(184, 132, 90, 0.18)",
                 border: "1px solid rgba(184, 132, 90, 0.35)",
@@ -171,14 +171,19 @@ export function AdventureLogSectionD2({
               }}
               htmlFor="adventure-date-input-d2"
             >
-              {formatDateLong(date)}
+              <span>{formatDateLong(date)}</span>
+              {/* input 을 label 위에 absolute inset-0 으로 깔아서 클릭
+                  영역 전체 = label 영역. opacity:0 로 시각적 invisible
+                  이지만 pointer-events 활성화 → 클릭 시 native date
+                  picker 가 user-gesture 로 자동 표시. 이전 라운드의
+                  width:0/height:0/pointer-events:none 패턴은 picker
+                  trigger 가 안 됐음. */}
               <input
                 id="adventure-date-input-d2"
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="absolute opacity-0"
-                style={{ pointerEvents: "none", width: 0, height: 0 }}
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                 aria-label="모험 기록 날짜"
               />
             </label>
@@ -242,7 +247,10 @@ export function AdventureLogSectionD2({
             aria-hidden
             className="pointer-events-none absolute"
             style={{
-              left: 28,
+              // 좌측 점선 16px — 이전 라운드 28px 은 점 마커가 카드에서
+              // 너무 멀어 텍스트 박스가 좁아 보였음. 점 마커도 좌측으로
+              // 따라 이동 (entryWrap paddingLeft 40 + pin left 9).
+              left: 16,
               top: 14,
               bottom: 14,
               borderLeft: "2px dotted rgba(254, 245, 230, 0.4)",
@@ -404,14 +412,15 @@ function AdventureEntryRowD2({
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.3, delay: index * 0.04 }}
       className="group relative"
-      style={{ paddingLeft: 56 }}
+      style={{ paddingLeft: 40 }}
     >
-      {/* 점 마커 — 점선 위에 겹쳐서 표시 */}
+      {/* 점 마커 — 점선 위에 겹쳐서 표시 (점선 left:16 + 점 폭 14 의
+          중심 정렬: left = 16 - 14/2 = 9) */}
       <span
         aria-hidden
         className="absolute z-10"
         style={{
-          left: 21,
+          left: 9,
           top: 14,
           width: 14,
           height: 14,
