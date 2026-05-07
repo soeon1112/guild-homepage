@@ -30,6 +30,7 @@ import { addPoints } from "@/src/lib/points";
 import { handleEvent } from "@/src/lib/badgeCheck";
 import { useModalBodyLock } from "@/src/lib/useModalBodyLock";
 import { CollapsibleSection } from "./CollapsibleSection";
+import { useDawnlight2 } from "@/src/lib/featureFlags";
 import {
   PhotoViewerModal,
   resolveFileType,
@@ -55,6 +56,12 @@ export function PhotosSection({
   loginNick: string | null;
   memberNickname: string | null;
 }) {
+  // Belt-and-suspenders: page.tsx 가 dl2 일 때 PhotosSectionD2 로
+  // 분기하지만, 어떤 사유 (SSR/CSR mismatch / hydration race / 사용자
+  // 본 빌드 = 이전 commit) 로 cosmic PhotosSection 이 dl2 사용자에게
+  // 렌더되는 케이스 발견. 이 경우에도 사진 올리기 버튼 색만이라도
+  // dl2 톤으로 보장. cosmic 사용자 (useDawnlight2 false) 는 그대로.
+  const dl2 = useDawnlight2();
   const [photos, setPhotos] = useState<PhotoEntry[]>([]);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [viewer, setViewer] = useState<PhotoEntry | null>(null);
@@ -237,11 +244,33 @@ export function PhotosSection({
                   e.stopPropagation();
                   setUploadOpen(true);
                 }}
-                className="flex items-center gap-1.5 rounded-full px-3 py-1.5 font-serif text-[11px] font-medium tracking-wider text-abyss-deep transition-all duration-200 hover:scale-[1.02]"
-                style={{
-                  background: "linear-gradient(135deg, #FFE5C4, #FFB5A7)",
-                  boxShadow: "0 0 10px rgba(255,181,167,0.5)",
-                }}
+                className={
+                  dl2
+                    ? "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold tracking-wide transition-colors"
+                    : "flex items-center gap-1.5 rounded-full px-3 py-1.5 font-serif text-[11px] font-medium tracking-wider text-abyss-deep transition-all duration-200 hover:scale-[1.02]"
+                }
+                style={
+                  dl2
+                    ? { background: "#ffd4b8", color: "#5c3a1f" }
+                    : {
+                        background: "linear-gradient(135deg, #FFE5C4, #FFB5A7)",
+                        boxShadow: "0 0 10px rgba(255,181,167,0.5)",
+                      }
+                }
+                onMouseEnter={
+                  dl2
+                    ? (e) =>
+                        ((e.currentTarget as HTMLButtonElement).style.background =
+                          "#fef5e6")
+                    : undefined
+                }
+                onMouseLeave={
+                  dl2
+                    ? (e) =>
+                        ((e.currentTarget as HTMLButtonElement).style.background =
+                          "#ffd4b8")
+                    : undefined
+                }
               >
                 <Upload className="h-3 w-3" />
                 사진 올리기
