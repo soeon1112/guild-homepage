@@ -52,7 +52,7 @@ import { AdventureLogSection } from "@/app/components/redesign/minihompi/Adventu
 import { AdventureLogSectionD2 } from "@/app/components/redesign/minihompi/AdventureLogSectionD2";
 import { PhotosSection } from "@/app/components/redesign/minihompi/PhotosSection";
 import { PhotosSectionD2 } from "@/app/components/redesign/minihompi/PhotosSectionD2";
-import { useDawnlight2, DAWNLIGHT2_USERS } from "@/src/lib/featureFlags";
+import { useDawnlight2 } from "@/src/lib/featureFlags";
 
 // `decodeURIComponent` throws on malformed input ("%E"). Be defensive —
 // fall back to the raw value rather than crashing the page.
@@ -321,33 +321,6 @@ export default function MemberMiniHomePage({
         paddingBottom: "300vh",
       }}
     >
-      {/* TEMP DEBUG — useDawnlight2 결과 + nickname + 등록 리스트 노출.
-          dl2 미반영 원인 진단용. 사용자 본인 화면 캡쳐로 비교 후 다음
-          라운드에서 제거. */}
-      <div
-        style={{
-          position: "fixed",
-          top: 60,
-          right: 8,
-          zIndex: 9999,
-          padding: "6px 10px",
-          borderRadius: 6,
-          background: "#ef4444",
-          color: "#fff",
-          fontSize: 11,
-          fontFamily: "monospace",
-          fontWeight: 700,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.5)",
-          pointerEvents: "none",
-          maxWidth: "calc(100vw - 16px)",
-          wordBreak: "break-all",
-          lineHeight: 1.5,
-        }}
-      >
-        <div>dl2={String(dawnlight2)}</div>
-        <div>nick={JSON.stringify(loginNick)}</div>
-        <div>list={JSON.stringify(DAWNLIGHT2_USERS)}</div>
-      </div>
       {loading ? (
         <p className="py-8 text-center font-serif italic text-text-sub">
           로딩 중...

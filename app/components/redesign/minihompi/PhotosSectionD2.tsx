@@ -214,25 +214,6 @@ export function PhotosSectionD2({
 
   return (
     <>
-      {/* TEMP DEBUG — D2 컴포넌트 마운트 표시. 다음 라운드 제거. */}
-      <div
-        style={{
-          position: "fixed",
-          top: 130,
-          right: 8,
-          zIndex: 9998,
-          padding: "4px 8px",
-          borderRadius: 4,
-          background: "#22c55e",
-          color: "#fff",
-          fontSize: 10,
-          fontFamily: "monospace",
-          fontWeight: 700,
-          pointerEvents: "none",
-        }}
-      >
-        RENDER: PhotosSectionD2
-      </div>
       <section
         id={SECTION_ID}
         className="overflow-hidden rounded-2xl"
@@ -284,19 +265,11 @@ export function PhotosSectionD2({
             <button
               type="button"
               onClick={() => setUploadOpen(true)}
-              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold tracking-wide transition-colors"
+              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold tracking-wide"
               style={{
-                background: "#ffd4b8",
+                background: "#fef5e6",
                 color: "#5c3a1f",
               }}
-              onMouseEnter={(e) =>
-                ((e.currentTarget as HTMLButtonElement).style.background =
-                  "#fef5e6")
-              }
-              onMouseLeave={(e) =>
-                ((e.currentTarget as HTMLButtonElement).style.background =
-                  "#ffd4b8")
-              }
             >
               <Upload className="h-3 w-3" />
               사진 올리기
@@ -431,10 +404,8 @@ function PolaroidTile({
       }}
       aria-label={`사진: ${photo.caption || "제목 없음"}`}
     >
-      {/* Pin — CabinLogs Pin() 형태 차용, 색은 크라프트 갈색.
-          이전 라운드의 옅은 cream highlight ellipse (#e0c79a opacity 0.6)
-          가 head 위에 덮여 "노란색"으로 인식되던 문제 → highlight 제거
-          + 잉크 갈색 stroke 0.6 추가로 명확한 갈색 push-pin. */}
+      {/* Pin — CabinLogs Pin() (app/components/dawnlight2/widgets/
+          CabinLogs/index.tsx:163-179) verbatim 차용. 색·SVG 구조 동일. */}
       <span
         aria-hidden
         className="relative z-10"
@@ -447,21 +418,14 @@ function PolaroidTile({
           width="18"
           height="22"
           viewBox="0 0 18 22"
-          xmlns="http://www.w3.org/2000/svg"
           aria-hidden
+          xmlns="http://www.w3.org/2000/svg"
           className="pointer-events-none"
         >
-          <circle
-            cx="9"
-            cy="8"
-            r="7"
-            fill="#c9a880"
-            stroke="#5c3a1f"
-            strokeOpacity="0.4"
-            strokeWidth="0.6"
-          />
-          <ellipse cx="9" cy="12" rx="5.5" ry="1.8" fill="#5c3a1f" opacity="0.22" />
-          <line x1="9" y1="14" x2="9" y2="21" stroke="#5c3a1f" strokeWidth="1.4" strokeLinecap="round" />
+          <circle cx="9" cy="8" r="7" fill="#c92a2a" />
+          <ellipse cx="6.5" cy="5.5" rx="2.5" ry="1.8" fill="#f06060" opacity="0.55" />
+          <ellipse cx="9" cy="12" rx="5.5" ry="1.8" fill="#6a1010" opacity="0.2" />
+          <line x1="9" y1="14" x2="9" y2="21" stroke="#8a6840" strokeWidth="1.4" strokeLinecap="round" />
         </svg>
       </span>
 
