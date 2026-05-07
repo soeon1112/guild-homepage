@@ -334,12 +334,14 @@ function CombatPageInner() {
         onAdd={handleAdd}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        dl2={isDawnlight2}
       />
 
       <GrowthAnalysisSection
         characters={guildCharacters as GrowthCharacter[]}
         owner={owner}
         ready={ready}
+        dl2={isDawnlight2}
       />
 
       {loading ? (
@@ -350,6 +352,7 @@ function CombatPageInner() {
         <GuildMembersSection
           characters={guildCharacters}
           loginNick={owner}
+          dl2={isDawnlight2}
         />
       )}
 

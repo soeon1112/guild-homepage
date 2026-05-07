@@ -90,10 +90,12 @@ export function GrowthAnalysisSection({
   characters,
   owner,
   ready,
+  dl2 = false,
 }: {
   characters: GrowthCharacter[];
   owner: string | null;
   ready: boolean;
+  dl2?: boolean;
 }) {
   const myCharacters = useMemo(
     () => (owner ? characters.filter((c) => c.owner === owner) : []),
@@ -391,8 +393,8 @@ export function GrowthAnalysisSection({
                         x2="1"
                         y2="0"
                       >
-                        <stop offset="0%" stopColor="#FFB5A7" />
-                        <stop offset="100%" stopColor="#D896C8" />
+                        <stop offset="0%" stopColor={dl2 ? "#ffc785" : "#FFB5A7"} />
+                        <stop offset="100%" stopColor={dl2 ? "#b85420" : "#D896C8"} />
                       </linearGradient>
                       <linearGradient
                         id="powerAreaGradient"
@@ -401,24 +403,24 @@ export function GrowthAnalysisSection({
                         x2="0"
                         y2="1"
                       >
-                        <stop offset="0%" stopColor="#D896C8" stopOpacity={0.5} />
-                        <stop offset="100%" stopColor="#6B4BA8" stopOpacity={0} />
+                        <stop offset="0%" stopColor={dl2 ? "#ff9a6c" : "#D896C8"} stopOpacity={dl2 ? 0.35 : 0.5} />
+                        <stop offset="100%" stopColor={dl2 ? "#b85420" : "#6B4BA8"} stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid
-                      stroke="rgba(216,150,200,0.08)"
+                      stroke={dl2 ? "rgba(42,69,112,0.1)" : "rgba(216,150,200,0.08)"}
                       vertical={false}
                     />
                     <XAxis
                       dataKey="date"
-                      stroke="rgba(155, 143, 184, 0.6)"
+                      stroke={dl2 ? "#5a7090" : "rgba(155, 143, 184, 0.6)"}
                       fontSize={10}
                       tickLine={false}
-                      axisLine={{ stroke: "rgba(216,150,200,0.15)" }}
+                      axisLine={{ stroke: dl2 ? "rgba(42,69,112,0.15)" : "rgba(216,150,200,0.15)" }}
                       interval={Math.max(Math.floor(series.length / 6), 0)}
                     />
                     <YAxis
-                      stroke="rgba(155, 143, 184, 0.6)"
+                      stroke={dl2 ? "#5a7090" : "rgba(155, 143, 184, 0.6)"}
                       fontSize={10}
                       tickLine={false}
                       axisLine={false}
@@ -432,20 +434,20 @@ export function GrowthAnalysisSection({
                     />
                     <Tooltip
                       cursor={{
-                        stroke: "rgba(216,150,200,0.35)",
+                        stroke: dl2 ? "rgba(184,84,32,0.45)" : "rgba(216,150,200,0.35)",
                         strokeDasharray: "3 3",
                       }}
                       contentStyle={{
-                        background: "rgba(11,8,33,0.94)",
-                        border: "1px solid rgba(216,150,200,0.3)",
+                        background: dl2 ? "rgba(205,216,224,0.98)" : "rgba(11,8,33,0.94)",
+                        border: dl2 ? "1px solid rgba(42,69,112,0.22)" : "1px solid rgba(216,150,200,0.3)",
                         borderRadius: 8,
                         fontSize: 11,
                         fontFamily: "'Noto Serif KR', serif",
                         backdropFilter: "blur(10px)",
                         padding: "8px 10px",
                       }}
-                      labelStyle={{ color: "#9B8FB8" }}
-                      itemStyle={{ color: "#FFE5C4" }}
+                      labelStyle={{ color: dl2 ? "#5a7090" : "#9B8FB8" }}
+                      itemStyle={{ color: dl2 ? "#b85420" : "#FFE5C4" }}
                       formatter={(v) => [
                         typeof v === "number" ? v.toLocaleString() : String(v),
                         "투력",
@@ -455,18 +457,18 @@ export function GrowthAnalysisSection({
                       type="monotone"
                       dataKey="power"
                       stroke="url(#powerLineGradient)"
-                      strokeWidth={2}
+                      strokeWidth={2.5}
                       fill="url(#powerAreaGradient)"
                       dot={{
                         r: 2,
-                        fill: "#FFE5C4",
-                        stroke: "#D896C8",
+                        fill: dl2 ? "#b85420" : "#FFE5C4",
+                        stroke: dl2 ? "#b85420" : "#D896C8",
                         strokeWidth: 1,
                       }}
                       activeDot={{
                         r: 4,
-                        fill: "#FFE5C4",
-                        stroke: "#FFB5A7",
+                        fill: dl2 ? "#b85420" : "#FFE5C4",
+                        stroke: dl2 ? "#ff9a6c" : "#FFB5A7",
                         strokeWidth: 2,
                       }}
                       animationDuration={900}

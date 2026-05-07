@@ -81,9 +81,11 @@ type Group = {
 export function GuildMembersSection({
   characters,
   loginNick,
+  dl2 = false,
 }: {
   characters: GuildCharacter[];
   loginNick: string | null;
+  dl2?: boolean;
 }) {
   const [sortKey, setSortKey] = useState<SortKey>("nickname");
   const [queryText, setQueryText] = useState("");
@@ -181,12 +183,21 @@ export function GuildMembersSection({
                 }`}
                 style={
                   active
-                    ? {
-                        background: "rgba(255, 181, 167, 0.12)",
-                        border: "1px solid rgba(255, 181, 167, 0.5)",
-                        boxShadow: "0 0 10px rgba(255, 181, 167, 0.25)",
-                      }
-                    : { border: "1px solid transparent" }
+                    ? dl2
+                      ? {
+                          background: "#2a4570",
+                          border: "1px solid #2a4570",
+                          color: "#fef5e6",
+                          boxShadow: "none",
+                        }
+                      : {
+                          background: "rgba(255, 181, 167, 0.12)",
+                          border: "1px solid rgba(255, 181, 167, 0.5)",
+                          boxShadow: "0 0 10px rgba(255, 181, 167, 0.25)",
+                        }
+                    : dl2
+                      ? { border: "1px solid #2a4570", color: "#2a4570" }
+                      : { border: "1px solid transparent" }
                 }
               >
                 {o.label}
@@ -232,6 +243,7 @@ export function GuildMembersSection({
                 }))
               }
               loginNick={loginNick}
+              dl2={dl2}
             />
           ))}
         </AnimatePresence>
@@ -260,11 +272,13 @@ function GroupBlock({
   collapsed,
   onToggle,
   loginNick,
+  dl2 = false,
 }: {
   group: Group;
   collapsed: boolean;
   onToggle: () => void;
   loginNick: string | null;
+  dl2?: boolean;
 }) {
   const topPower = Math.max(
     ...group.characters.map((c) => c.combatPower || 0),
@@ -277,26 +291,37 @@ function GroupBlock({
       exit={{ opacity: 0, y: -4 }}
       transition={{ duration: 0.25 }}
       data-nick={group.representative}
-      className="overflow-hidden rounded-2xl border border-nebula-pink/20 bg-abyss-deep/35 backdrop-blur-xl"
+      className="overflow-hidden rounded-2xl backdrop-blur-xl"
       style={{
-        boxShadow:
-          "0 6px 20px rgba(11, 8, 33, 0.4), inset 0 1px 0 rgba(255, 229, 196, 0.04), inset 0 0 30px rgba(107, 75, 168, 0.06)",
+        background: dl2 ? "rgba(205, 216, 224, 0.7)" : undefined,
+        border: dl2
+          ? "1px solid rgba(42, 69, 112, 0.18)"
+          : "1px solid rgba(216, 150, 200, 0.2)",
+        boxShadow: dl2
+          ? "none"
+          : "0 6px 20px rgba(11, 8, 33, 0.4), inset 0 1px 0 rgba(255, 229, 196, 0.04), inset 0 0 30px rgba(107, 75, 168, 0.06)",
       }}
     >
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={!collapsed}
-        className="group flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-nebula-violet/10 sm:px-5"
+        className="group flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors sm:px-5"
         style={{
-          background:
-            "linear-gradient(90deg, rgba(61, 46, 107, 0.35) 0%, rgba(61, 46, 107, 0.18) 60%, transparent 100%)",
+          background: dl2
+            ? "rgba(205, 216, 224, 0.95)"
+            : "linear-gradient(90deg, rgba(61, 46, 107, 0.35) 0%, rgba(61, 46, 107, 0.18) 60%, transparent 100%)",
         }}
       >
         <div className="flex items-center gap-2.5">
           <span
-            className="text-peach-accent"
-            style={{ filter: "drop-shadow(0 0 6px rgba(255, 181, 167, 0.65))" }}
+            style={{
+              color: dl2 ? "#b85420" : undefined,
+              filter: dl2
+                ? "drop-shadow(0 0 4px rgba(184, 84, 32, 0.45))"
+                : "drop-shadow(0 0 6px rgba(255, 181, 167, 0.65))",
+            }}
+            className={dl2 ? "" : "text-peach-accent"}
             aria-hidden
           >
             ◆
@@ -304,11 +329,18 @@ function GroupBlock({
           <NicknameLink
             nickname={group.representative}
             hideTitle
-            className="font-serif text-[15px] font-medium tracking-wide text-stardust"
+            className={
+              dl2
+                ? "font-serif text-[16px] font-bold tracking-wide"
+                : "font-serif text-[15px] font-medium tracking-wide text-stardust"
+            }
           />
-          <span className="font-mono text-[10px] tracking-wider text-text-sub">
+          <span
+            className="font-mono text-[10px] tracking-wider"
+            style={{ color: dl2 ? "#5a7090" : undefined }}
+          >
             최고{" "}
-            <span className="text-stardust">
+            <span style={{ color: dl2 ? "#b85420" : undefined }}>
               {topPower.toLocaleString()}
             </span>
           </span>
@@ -316,15 +348,23 @@ function GroupBlock({
 
         <div className="flex items-center gap-2">
           <span
-            className="rounded-full border border-nebula-pink/30 bg-abyss-deep/60 px-2 py-0.5 font-serif text-[10px] tracking-wider text-stardust"
-            style={{ boxShadow: "inset 0 0 6px rgba(216, 150, 200, 0.15)" }}
+            className="rounded-full px-2 py-0.5 font-serif text-[10px] tracking-wider"
+            style={{
+              background: dl2 ? "#fef5e6" : undefined,
+              border: dl2
+                ? "1px solid rgba(42, 69, 112, 0.2)"
+                : "1px solid rgba(216, 150, 200, 0.3)",
+              color: dl2 ? "#2a4570" : undefined,
+              boxShadow: dl2 ? "none" : "inset 0 0 6px rgba(216, 150, 200, 0.15)",
+            }}
           >
             {group.characters.length} 캐릭
           </span>
           <motion.span
             animate={{ rotate: collapsed ? -90 : 0 }}
             transition={{ duration: 0.22 }}
-            className="text-nebula-pink/80"
+            className={dl2 ? "" : "text-nebula-pink/80"}
+            style={dl2 ? { color: "#2a4570" } : undefined}
             aria-hidden
           >
             <ChevronDown className="h-4 w-4" />
@@ -345,7 +385,7 @@ function GroupBlock({
             <ul className="divide-y divide-nebula-pink/10 px-2 py-1 sm:px-3">
               {group.characters.map((c) => (
                 <li key={c.id}>
-                  <CharacterRow char={c} loginNick={loginNick} />
+                  <CharacterRow char={c} loginNick={loginNick} dl2={dl2} />
                 </li>
               ))}
             </ul>
@@ -359,9 +399,11 @@ function GroupBlock({
 function CharacterRow({
   char,
   loginNick,
+  dl2 = false,
 }: {
   char: GuildCharacter;
   loginNick: string | null;
+  dl2?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const floor = parseAbyssFloor(char.hellStage);
@@ -384,11 +426,15 @@ function CharacterRow({
         className="grid w-full grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors enabled:hover:bg-nebula-pink/10 disabled:cursor-default sm:grid-cols-[28px_minmax(0,1fr)_60px_90px_140px_28px] sm:gap-4 sm:px-3"
       >
         <span
-          className="flex h-7 w-7 items-center justify-center rounded-full text-stardust"
+          className="flex h-7 w-7 items-center justify-center rounded-full"
           style={{
-            background:
-              "linear-gradient(135deg, rgba(107, 75, 168, 0.45), rgba(216, 150, 200, 0.25))",
-            border: "1px solid rgba(216, 150, 200, 0.3)",
+            background: dl2
+              ? "rgba(184, 84, 32, 0.12)"
+              : "linear-gradient(135deg, rgba(107, 75, 168, 0.45), rgba(216, 150, 200, 0.25))",
+            border: dl2
+              ? "1px solid rgba(184, 84, 32, 0.35)"
+              : "1px solid rgba(216, 150, 200, 0.3)",
+            color: dl2 ? "#b85420" : "#ffe5c4",
           }}
         >
           <JobIcon job={char.job} size={14} />
@@ -397,35 +443,57 @@ function CharacterRow({
         <div className="flex min-w-0 flex-col gap-0.5">
           <div className="flex items-center gap-1.5">
             <span
-              className="truncate font-serif text-[13px] tracking-wide text-stardust"
-              style={{ fontFamily: "'Noto Serif KR', serif" }}
+              className="truncate font-serif text-[13px] tracking-wide"
+              style={{
+                fontFamily: "'Noto Serif KR', serif",
+                color: dl2 ? "#2a4570" : undefined,
+                fontWeight: dl2 ? 600 : undefined,
+              }}
             >
               {char.nickname}
             </span>
-            <span className="rounded-full border border-nebula-pink/20 px-1.5 py-0.5 font-serif text-[9px] tracking-wider text-text-sub sm:hidden">
+            <span
+              className="rounded-full px-1.5 py-0.5 font-serif text-[9px] tracking-wider sm:hidden"
+              style={{
+                background: dl2 ? "#fef5e6" : undefined,
+                border: dl2
+                  ? "1px solid rgba(42, 69, 112, 0.2)"
+                  : "1px solid rgba(216, 150, 200, 0.2)",
+                color: dl2 ? "#5c3a1f" : undefined,
+              }}
+            >
               {char.job}
             </span>
           </div>
           <div className="flex items-center justify-between gap-2 sm:hidden">
-            <PowerNumber value={char.combatPower || 0} small />
+            <PowerNumber value={char.combatPower || 0} small dl2={dl2} />
             <div className="flex items-center gap-2">
-              <AbyssInline floor={floor} progress={progress} />
-              <ChallengeDot challenge={char.challenge} />
+              <AbyssInline floor={floor} progress={progress} dl2={dl2} />
+              <ChallengeDot challenge={char.challenge} dl2={dl2} />
             </div>
           </div>
         </div>
 
-        <span className="hidden items-center justify-center rounded-full border border-nebula-pink/20 px-2 py-0.5 font-serif text-[10px] tracking-wider text-text-sub sm:inline-flex">
+        <span
+          className="hidden items-center justify-center rounded-full px-2 py-0.5 font-serif text-[10px] tracking-wider sm:inline-flex"
+          style={{
+            background: dl2 ? "#fef5e6" : undefined,
+            border: dl2
+              ? "1px solid rgba(42, 69, 112, 0.2)"
+              : "1px solid rgba(216, 150, 200, 0.2)",
+            color: dl2 ? "#5c3a1f" : undefined,
+          }}
+        >
           {char.job}
         </span>
         <div className="hidden justify-end sm:flex">
-          <PowerNumber value={char.combatPower || 0} />
+          <PowerNumber value={char.combatPower || 0} dl2={dl2} />
         </div>
         <div className="hidden justify-start sm:flex">
-          <AbyssInline floor={floor} progress={progress} />
+          <AbyssInline floor={floor} progress={progress} dl2={dl2} />
         </div>
         <div className="hidden justify-center sm:flex">
-          <ChallengeDot challenge={char.challenge} />
+          <ChallengeDot challenge={char.challenge} dl2={dl2} />
         </div>
       </button>
 
@@ -468,17 +536,29 @@ function CharacterRow({
   );
 }
 
-function PowerNumber({ value, small }: { value: number; small?: boolean }) {
+function PowerNumber({
+  value,
+  small,
+  dl2 = false,
+}: {
+  value: number;
+  small?: boolean;
+  dl2?: boolean;
+}) {
   return (
     <span
-      className={`font-mono font-medium tabular-nums ${small ? "text-[11px]" : "text-sm"}`}
-      style={{
-        backgroundImage: "linear-gradient(135deg, #FFE5C4, #D896C8)",
-        WebkitBackgroundClip: "text",
-        backgroundClip: "text",
-        WebkitTextFillColor: "transparent",
-        color: "transparent",
-      }}
+      className={`font-mono ${dl2 ? "font-semibold" : "font-medium"} tabular-nums ${small ? "text-[11px]" : "text-sm"}`}
+      style={
+        dl2
+          ? { color: "#b85420" }
+          : {
+              backgroundImage: "linear-gradient(135deg, #FFE5C4, #D896C8)",
+              WebkitBackgroundClip: "text",
+              backgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              color: "transparent",
+            }
+      }
     >
       {value.toLocaleString()}
     </span>
@@ -488,22 +568,31 @@ function PowerNumber({ value, small }: { value: number; small?: boolean }) {
 function AbyssInline({
   floor,
   progress,
+  dl2 = false,
 }: {
   floor: number;
   progress: number;
+  dl2?: boolean;
 }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="font-mono text-[11px] tabular-nums text-stardust">
+      <span
+        className="font-mono text-[11px] tabular-nums"
+        style={{ color: dl2 ? "#2a4570" : "#ffe5c4" }}
+      >
         {floor > 0 ? (
           `지옥${floor}`
         ) : (
-          <span className="text-text-sub/70">미도전</span>
+          <span style={{ color: dl2 ? "#5a7090" : "rgba(155,143,184,0.7)" }}>
+            미도전
+          </span>
         )}
       </span>
       <div
         className="relative h-1.5 w-16 overflow-hidden rounded-full"
-        style={{ background: "rgba(107, 75, 168, 0.2)" }}
+        style={{
+          background: dl2 ? "rgba(42, 69, 112, 0.15)" : "rgba(107, 75, 168, 0.2)",
+        }}
       >
         <motion.div
           initial={{ width: "0%" }}
@@ -511,8 +600,12 @@ function AbyssInline({
           transition={{ duration: 0.9, ease: "easeOut" }}
           className="h-full rounded-full"
           style={{
-            background: "linear-gradient(90deg, #6B4BA8 0%, #D896C8 70%, #FFB5A7 100%)",
-            boxShadow: "0 0 6px rgba(216, 150, 200, 0.55)",
+            background: dl2
+              ? "linear-gradient(90deg, #ffc785 0%, #ff9a6c 50%, #b85420 100%)"
+              : "linear-gradient(90deg, #6B4BA8 0%, #D896C8 70%, #FFB5A7 100%)",
+            boxShadow: dl2
+              ? "0 0 6px rgba(184, 84, 32, 0.4)"
+              : "0 0 6px rgba(216, 150, 200, 0.55)",
           }}
         />
       </div>
@@ -520,8 +613,14 @@ function AbyssInline({
   );
 }
 
-function ChallengeDot({ challenge }: { challenge: Challenge }) {
-  const map: Record<
+function ChallengeDot({
+  challenge,
+  dl2 = false,
+}: {
+  challenge: Challenge;
+  dl2?: boolean;
+}) {
+  const cosmicMap: Record<
     Challenge,
     { bg: string; border: string; fg: string; glyph: string }
   > = {
@@ -544,6 +643,31 @@ function ChallengeDot({ challenge }: { challenge: Challenge }) {
       glyph: "✕",
     },
   };
+  // dl2 — coral / peach / grey trio in the dawnlight2 family.
+  const dl2Map: Record<
+    Challenge,
+    { bg: string; border: string; fg: string; glyph: string }
+  > = {
+    있음: {
+      bg: "rgba(184, 84, 32, 0.16)",
+      border: "rgba(184, 84, 32, 0.55)",
+      fg: "#b85420",
+      glyph: "✓",
+    },
+    "다소 있음": {
+      bg: "rgba(255, 154, 108, 0.18)",
+      border: "rgba(255, 154, 108, 0.55)",
+      fg: "#ff9a6c",
+      glyph: "△",
+    },
+    없음: {
+      bg: "rgba(106, 106, 106, 0.16)",
+      border: "rgba(106, 106, 106, 0.55)",
+      fg: "#6a6a6a",
+      glyph: "✕",
+    },
+  };
+  const map = dl2 ? dl2Map : cosmicMap;
   const c = map[challenge] ?? map["있음"];
   return (
     <span
