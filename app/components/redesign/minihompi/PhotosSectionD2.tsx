@@ -272,7 +272,7 @@ export function PhotosSectionD2({
               }}
               onMouseEnter={(e) =>
                 ((e.currentTarget as HTMLButtonElement).style.background =
-                  "#ff9a6c")
+                  "#fef5e6")
               }
               onMouseLeave={(e) =>
                 ((e.currentTarget as HTMLButtonElement).style.background =
@@ -412,19 +412,32 @@ function PolaroidTile({
       }}
       aria-label={`사진: ${photo.caption || "제목 없음"}`}
     >
-      {/* Pin (선실의 기록 톤 — 크라프트 갈색) — 카드 안에 들어가서
-          호버 시 카드와 함께 위로 움직임. */}
+      {/* Pin — verbatim from CabinLogs Pin() (app/components/dawnlight2/
+          widgets/CabinLogs/index.tsx:163-179), 색만 크라프트 갈색
+          #c9a880 으로 (CabinLogs 는 빨간 #c92a2a). 카드 안 위에서 살짝
+          오버랩, 호버 시 카드와 함께 위로 움직임. */}
       <span
         aria-hidden
-        className="relative z-10 mb-[-9px] block h-[18px] w-[18px] rounded-full"
+        className="relative z-10"
         style={{
-          background:
-            "radial-gradient(circle at 35% 35%, #e0c79a, #c9a880 60%, #a0825a)",
-          border: "1px solid rgba(92, 58, 31, 0.4)",
-          boxShadow:
-            "0 1px 3px rgba(80, 50, 10, 0.45), inset 0 1px 1px rgba(255,255,255,0.35)",
+          marginBottom: -10,
+          filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.32))",
         }}
-      />
+      >
+        <svg
+          width="18"
+          height="22"
+          viewBox="0 0 18 22"
+          xmlns="http://www.w3.org/2000/svg"
+          aria-hidden
+          className="pointer-events-none"
+        >
+          <circle cx="9" cy="8" r="7" fill="#c9a880" />
+          <ellipse cx="6.5" cy="5.5" rx="2.5" ry="1.8" fill="#e0c79a" opacity="0.6" />
+          <ellipse cx="9" cy="12" rx="5.5" ry="1.8" fill="#5c3a1f" opacity="0.25" />
+          <line x1="9" y1="14" x2="9" y2="21" stroke="#5c3a1f" strokeWidth="1.4" strokeLinecap="round" />
+        </svg>
+      </span>
 
       {/* Polaroid mat — cover photo + caption */}
       <div
@@ -589,6 +602,10 @@ function UploadModalD2({
       style={{
         background: "rgba(0,0,0,0.6)",
         backdropFilter: "blur(4px)",
+        // .modal-safe-frame { align-items: flex-start } 가 unlayered 라
+        // Tailwind items-center 를 cascade 에서 이김. inline override 로
+        // 중앙 정렬 강제 (배지 모달과 동일 처방).
+        alignItems: "center",
       }}
       role="dialog"
       aria-modal="true"

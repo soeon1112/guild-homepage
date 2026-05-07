@@ -221,6 +221,9 @@ export function PhotoViewerModal({
       style={{
         background: dawnlight2 ? "rgba(0,0,0,0.88)" : "rgba(11,8,33,0.85)",
         backdropFilter: "blur(10px)",
+        // .modal-safe-frame { align-items: flex-start } cascade override
+        // (배지 모달과 동일 처방). dl2 분기 시에만 중앙 정렬.
+        ...(dawnlight2 ? { alignItems: "center" } : null),
       }}
       role="dialog"
       aria-modal="true"
@@ -298,9 +301,16 @@ export function PhotoViewerModal({
         </div>
 
         {/* Caption + comments — no inner scroll. The whole modal scrolls
-            as one block via the parent .modal-safe-frame. */}
+            as one block via the parent .modal-safe-frame.
+            dl2: 본문 중앙 정렬 (앨범 모달 패턴). cosmic: 좌측 정렬 그대로. */}
         <div className="flex flex-col">
-          <div className="flex flex-wrap items-center gap-2 px-5 pb-3 pt-4">
+          <div
+            className={
+              dawnlight2
+                ? "flex flex-col items-center gap-3 px-5 pb-3 pt-4"
+                : "flex flex-wrap items-center gap-2 px-5 pb-3 pt-4"
+            }
+          >
             {editMode ? (
               <div className="flex w-full flex-col gap-2">
                 <input
@@ -310,17 +320,36 @@ export function PhotoViewerModal({
                   placeholder="설명"
                   maxLength={120}
                   disabled={saving}
-                  className="w-full rounded-full border border-nebula-pink/25 bg-abyss-deep/60 px-3 py-2 font-serif text-[12px] text-text-primary focus:border-peach-accent/60 focus:outline-none focus:ring-2 focus:ring-peach-accent/30 disabled:opacity-60"
+                  className={
+                    dawnlight2
+                      ? "w-full rounded-full px-3 py-2 text-[12px] focus:outline-none disabled:opacity-60"
+                      : "w-full rounded-full border border-nebula-pink/25 bg-abyss-deep/60 px-3 py-2 font-serif text-[12px] text-text-primary focus:border-peach-accent/60 focus:outline-none focus:ring-2 focus:ring-peach-accent/30 disabled:opacity-60"
+                  }
+                  style={
+                    dawnlight2
+                      ? {
+                          background: "#ffffff",
+                          border: "1px solid rgba(92, 58, 31, 0.25)",
+                          color: "#5c3a1f",
+                        }
+                      : undefined
+                  }
                 />
-                <div className="flex gap-2">
+                <div className={dawnlight2 ? "flex justify-center gap-2" : "flex gap-2"}>
                   <button
                     type="button"
                     onClick={handleSave}
                     disabled={saving}
-                    className="rounded-full px-3 py-1 font-serif text-[11px] font-medium tracking-wider text-abyss-deep transition-all duration-200 hover:scale-[1.02] disabled:opacity-50"
-                    style={{
-                      background: "linear-gradient(135deg, #FFE5C4, #FFB5A7)",
-                    }}
+                    className={
+                      dawnlight2
+                        ? "rounded-full px-4 py-1.5 text-[11px] font-semibold tracking-wider transition-colors disabled:opacity-50"
+                        : "rounded-full px-3 py-1 font-serif text-[11px] font-medium tracking-wider text-abyss-deep transition-all duration-200 hover:scale-[1.02] disabled:opacity-50"
+                    }
+                    style={
+                      dawnlight2
+                        ? { background: "#2a4570", color: "#fef5e6" }
+                        : { background: "linear-gradient(135deg, #FFE5C4, #FFB5A7)" }
+                    }
                   >
                     {saving ? "저장 중..." : "저장"}
                   </button>
@@ -328,26 +357,74 @@ export function PhotoViewerModal({
                     type="button"
                     onClick={() => setEditMode(false)}
                     disabled={saving}
-                    className="rounded-full border border-nebula-pink/30 bg-abyss-deep/50 px-3 py-1 font-serif text-[11px] tracking-wider text-text-sub transition-colors hover:text-stardust disabled:opacity-50"
+                    className={
+                      dawnlight2
+                        ? "rounded-full px-4 py-1.5 text-[11px] tracking-wider transition-colors disabled:opacity-50"
+                        : "rounded-full border border-nebula-pink/30 bg-abyss-deep/50 px-3 py-1 font-serif text-[11px] tracking-wider text-text-sub transition-colors hover:text-stardust disabled:opacity-50"
+                    }
+                    style={
+                      dawnlight2
+                        ? {
+                            background: "transparent",
+                            border: "1px solid #2a4570",
+                            color: "#2a4570",
+                          }
+                        : undefined
+                    }
                   >
                     취소
                   </button>
                 </div>
               </div>
             ) : (
-              <p className="wrap-anywhere min-w-0 flex-1 font-serif text-[13px] italic leading-relaxed text-text-primary">
+              <p
+                className={
+                  dawnlight2
+                    ? "wrap-anywhere w-full text-center text-[14px] italic leading-relaxed"
+                    : "wrap-anywhere min-w-0 flex-1 font-serif text-[13px] italic leading-relaxed text-text-primary"
+                }
+                style={dawnlight2 ? { color: "#fef5e6" } : undefined}
+              >
                 {photo.caption || (
-                  <span className="text-text-sub/60">설명 없음</span>
+                  <span
+                    className={
+                      dawnlight2
+                        ? "italic"
+                        : "text-text-sub/60"
+                    }
+                    style={
+                      dawnlight2
+                        ? { color: "rgba(254, 245, 230, 0.6)" }
+                        : undefined
+                    }
+                  >
+                    설명 없음
+                  </span>
                 )}
               </p>
             )}
             {isOwner && !editMode && (
-              <div className="flex shrink-0 items-center gap-2 font-serif text-[11px] tracking-wider">
+              <div
+                className={
+                  dawnlight2
+                    ? "flex items-center justify-center gap-2 text-[11px]"
+                    : "flex shrink-0 items-center gap-2 font-serif text-[11px] tracking-wider"
+                }
+              >
                 <button
                   type="button"
                   onClick={startEdit}
                   disabled={deleting}
-                  className="text-text-sub transition-colors hover:text-stardust disabled:opacity-50"
+                  className={
+                    dawnlight2
+                      ? "rounded-full px-4 py-1.5 font-semibold tracking-wider transition-colors disabled:opacity-50"
+                      : "text-text-sub transition-colors hover:text-stardust disabled:opacity-50"
+                  }
+                  style={
+                    dawnlight2
+                      ? { background: "#2a4570", color: "#fef5e6" }
+                      : undefined
+                  }
                 >
                   수정
                 </button>
@@ -355,7 +432,20 @@ export function PhotoViewerModal({
                   type="button"
                   onClick={handleDelete}
                   disabled={deleting}
-                  className="text-text-sub transition-colors hover:text-peach-accent disabled:opacity-50"
+                  className={
+                    dawnlight2
+                      ? "rounded-full px-4 py-1.5 font-semibold tracking-wider transition-colors disabled:opacity-50"
+                      : "text-text-sub transition-colors hover:text-peach-accent disabled:opacity-50"
+                  }
+                  style={
+                    dawnlight2
+                      ? {
+                          background: "transparent",
+                          border: "1px solid #2a4570",
+                          color: "#2a4570",
+                        }
+                      : undefined
+                  }
                 >
                   {deleting ? "삭제 중..." : "삭제"}
                 </button>
@@ -581,8 +671,10 @@ function PhotoComments({
       style={
         dawnlight2
           ? {
-              background: "rgba(232, 216, 184, 0.92)",
-              border: "1px solid rgba(92, 58, 31, 0.2)",
+              // 옅은 양피지 #f0e4cc — cream 위 가독성 좋음. 칭호 골드,
+              // 닉네임 잉크 갈색, 본문 잉크 남색 등 텍스트 색이 또렷.
+              background: "rgba(240, 228, 204, 0.95)",
+              border: "1px solid rgba(92, 58, 31, 0.25)",
             }
           : undefined
       }
@@ -590,7 +682,7 @@ function PhotoComments({
       <h4
         className={
           dawnlight2
-            ? "text-[11px] font-semibold tracking-[0.3em] uppercase"
+            ? "text-[12px] font-semibold tracking-[0.2em] uppercase"
             : "font-serif text-[11px] tracking-[0.3em] text-text-sub uppercase"
         }
         style={dawnlight2 ? { color: "#5c3a1f" } : undefined}
@@ -600,7 +692,14 @@ function PhotoComments({
 
       {/* Comment list */}
       {comments.length === 0 ? (
-        <p className="py-2 text-center font-serif text-[11px] italic text-text-sub/70">
+        <p
+          className={
+            dawnlight2
+              ? "py-2 text-center text-[11px] italic"
+              : "py-2 text-center font-serif text-[11px] italic text-text-sub/70"
+          }
+          style={dawnlight2 ? { color: "rgba(92, 58, 31, 0.6)" } : undefined}
+        >
           첫 댓글을 남겨보세요.
         </p>
       ) : (
@@ -620,6 +719,7 @@ function PhotoComments({
               onCloseReply={() => setOpenReplyId(null)}
               onReplyCountChange={reportReplyCount}
               registerRef={setItemRef(c.id)}
+              dawnlight2={dawnlight2}
             />
           ))}
         </div>
@@ -633,10 +733,17 @@ function PhotoComments({
             handleSubmit();
           }}
           className="flex items-center gap-2 rounded-full px-2 py-1.5"
-          style={{
-            background: "rgba(11,8,33,0.5)",
-            border: "1px solid rgba(216,150,200,0.2)",
-          }}
+          style={
+            dawnlight2
+              ? {
+                  background: "#ffffff",
+                  border: "1px solid rgba(42, 69, 112, 0.3)",
+                }
+              : {
+                  background: "rgba(11,8,33,0.5)",
+                  border: "1px solid rgba(216,150,200,0.2)",
+                }
+          }
         >
           <input
             type="text"
@@ -646,7 +753,12 @@ function PhotoComments({
             maxLength={200}
             disabled={submitting}
             aria-label="댓글 내용"
-            className="min-w-0 flex-1 border-none bg-transparent px-2 py-1 font-serif text-[12px] text-text-primary placeholder:text-text-sub/70 focus:outline-none disabled:opacity-60"
+            className={
+              dawnlight2
+                ? "min-w-0 flex-1 border-none bg-transparent px-2 py-1 text-[12px] focus:outline-none disabled:opacity-60"
+                : "min-w-0 flex-1 border-none bg-transparent px-2 py-1 font-serif text-[12px] text-text-primary placeholder:text-text-sub/70 focus:outline-none disabled:opacity-60"
+            }
+            style={dawnlight2 ? { color: "#2a4570" } : undefined}
           />
           <CommentImageAttach
             file={image}
@@ -656,16 +768,29 @@ function PhotoComments({
           <button
             type="submit"
             disabled={submitting || (!content.trim() && !image)}
-            className="shrink-0 rounded-full px-3 py-1 font-serif text-[10px] font-medium tracking-wider text-abyss-deep transition-all duration-200 hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50"
-            style={{
-              background: "linear-gradient(135deg, #FFE5C4, #FFB5A7)",
-            }}
+            className={
+              dawnlight2
+                ? "shrink-0 rounded-full px-3 py-1 text-[10px] font-semibold tracking-wider transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                : "shrink-0 rounded-full px-3 py-1 font-serif text-[10px] font-medium tracking-wider text-abyss-deep transition-all duration-200 hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50"
+            }
+            style={
+              dawnlight2
+                ? { background: "#2a4570", color: "#fef5e6" }
+                : { background: "linear-gradient(135deg, #FFE5C4, #FFB5A7)" }
+            }
           >
             {submitting ? "..." : "등록"}
           </button>
         </form>
       ) : (
-        <p className="text-center font-serif text-[11px] italic text-text-sub">
+        <p
+          className={
+            dawnlight2
+              ? "text-center text-[11px] italic"
+              : "text-center font-serif text-[11px] italic text-text-sub"
+          }
+          style={dawnlight2 ? { color: "rgba(92, 58, 31, 0.7)" } : undefined}
+        >
           로그인이 필요합니다
         </p>
       )}
@@ -684,6 +809,7 @@ function PhotoCommentItem({
   onCloseReply,
   onReplyCountChange,
   registerRef,
+  dawnlight2 = false,
 }: {
   memberId: string;
   photoId: string;
@@ -697,6 +823,7 @@ function PhotoCommentItem({
   // Deep-link target registration — outer div ref is registered with
   // PhotoComments via this callback so the modal can scroll to it.
   registerRef?: (el: HTMLDivElement | null) => void;
+  dawnlight2?: boolean;
 }) {
   const [replies, setReplies] = useState<PhotoCommentDoc[]>([]);
   const [msg, setMsg] = useState("");
@@ -835,23 +962,63 @@ function PhotoCommentItem({
   return (
     <div ref={registerRef} data-comment-id={comment.id}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <p className="wrap-anywhere min-w-0 flex-1 font-serif text-[12px] leading-relaxed text-text-primary">
-          <NicknameLink
-            nickname={comment.nickname}
-            className="font-medium text-stardust"
-          />
-          <span className="text-text-sub"> : </span>
+        <p
+          className={
+            dawnlight2
+              ? "wrap-anywhere min-w-0 flex-1 text-[12px] leading-relaxed"
+              : "wrap-anywhere min-w-0 flex-1 font-serif text-[12px] leading-relaxed text-text-primary"
+          }
+          style={dawnlight2 ? { color: "#2a4570" } : undefined}
+        >
+          {dawnlight2 ? (
+            <span style={{ color: "#5c3a1f" }}>
+              <NicknameLink
+                nickname={comment.nickname}
+                className="font-semibold"
+              />
+            </span>
+          ) : (
+            <NicknameLink
+              nickname={comment.nickname}
+              className="font-medium text-stardust"
+            />
+          )}
+          <span
+            className={dawnlight2 ? undefined : "text-text-sub"}
+            style={dawnlight2 ? { color: "#8a6a4a" } : undefined}
+          >
+            {" "}
+            :{" "}
+          </span>
           {comment.content}
         </p>
-        <div className="flex shrink-0 items-center gap-2 font-serif text-[11px] tracking-wider">
-          <span className="text-[10px] tracking-wider text-text-sub">
+        <div
+          className={
+            dawnlight2
+              ? "flex shrink-0 items-center gap-2 text-[11px] tracking-wider"
+              : "flex shrink-0 items-center gap-2 font-serif text-[11px] tracking-wider"
+          }
+        >
+          <span
+            className={
+              dawnlight2
+                ? "text-[10px] tracking-wider"
+                : "text-[10px] tracking-wider text-text-sub"
+            }
+            style={dawnlight2 ? { color: "#8a6a4a" } : undefined}
+          >
             {formatTime(comment.createdAt)}
           </span>
           {loginNick && (
             <button
               type="button"
               onClick={onToggleReply}
-              className="text-text-sub transition-colors hover:text-peach-accent"
+              className={
+                dawnlight2
+                  ? "transition-colors"
+                  : "text-text-sub transition-colors hover:text-peach-accent"
+              }
+              style={dawnlight2 ? { color: "#2a4570" } : undefined}
             >
               {replyOpen ? "닫기" : "답글"}
             </button>
@@ -860,7 +1027,12 @@ function PhotoCommentItem({
             <button
               type="button"
               onClick={handleDeleteComment}
-              className="text-text-sub transition-colors hover:text-peach-accent"
+              className={
+                dawnlight2
+                  ? "transition-colors"
+                  : "text-text-sub transition-colors hover:text-peach-accent"
+              }
+              style={dawnlight2 ? { color: "#2a4570" } : undefined}
             >
               삭제
             </button>
@@ -878,30 +1050,75 @@ function PhotoCommentItem({
           {replies.map((r) => (
             <div key={r.id} className="flex items-start gap-2">
               <span
-                className="shrink-0 font-serif text-xs leading-relaxed text-text-sub/70"
+                className={
+                  dawnlight2
+                    ? "shrink-0 text-xs leading-relaxed"
+                    : "shrink-0 font-serif text-xs leading-relaxed text-text-sub/70"
+                }
+                style={dawnlight2 ? { color: "#8a6a4a" } : undefined}
                 aria-hidden
               >
                 └
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <p className="wrap-anywhere min-w-0 flex-1 font-serif text-[11.5px] leading-relaxed text-text-primary">
-                    <NicknameLink
-                      nickname={r.nickname}
-                      className="font-medium text-stardust"
-                    />
-                    <span className="text-text-sub"> : </span>
+                  <p
+                    className={
+                      dawnlight2
+                        ? "wrap-anywhere min-w-0 flex-1 text-[11.5px] leading-relaxed"
+                        : "wrap-anywhere min-w-0 flex-1 font-serif text-[11.5px] leading-relaxed text-text-primary"
+                    }
+                    style={dawnlight2 ? { color: "#2a4570" } : undefined}
+                  >
+                    {dawnlight2 ? (
+                      <span style={{ color: "#5c3a1f" }}>
+                        <NicknameLink
+                          nickname={r.nickname}
+                          className="font-semibold"
+                        />
+                      </span>
+                    ) : (
+                      <NicknameLink
+                        nickname={r.nickname}
+                        className="font-medium text-stardust"
+                      />
+                    )}
+                    <span
+                      className={dawnlight2 ? undefined : "text-text-sub"}
+                      style={dawnlight2 ? { color: "#8a6a4a" } : undefined}
+                    >
+                      {" "}
+                      :{" "}
+                    </span>
                     {r.content}
                   </p>
-                  <div className="flex shrink-0 items-center gap-2 font-serif text-[11px] tracking-wider">
-                    <span className="text-[10px] tracking-wider text-text-sub">
+                  <div
+                    className={
+                      dawnlight2
+                        ? "flex shrink-0 items-center gap-2 text-[11px] tracking-wider"
+                        : "flex shrink-0 items-center gap-2 font-serif text-[11px] tracking-wider"
+                    }
+                  >
+                    <span
+                      className={
+                        dawnlight2
+                          ? "text-[10px] tracking-wider"
+                          : "text-[10px] tracking-wider text-text-sub"
+                      }
+                      style={dawnlight2 ? { color: "#8a6a4a" } : undefined}
+                    >
                       {formatTime(r.createdAt)}
                     </span>
                     {loginNick === r.nickname && (
                       <button
                         type="button"
                         onClick={() => handleDeleteReply(r.id)}
-                        className="text-text-sub transition-colors hover:text-peach-accent"
+                        className={
+                          dawnlight2
+                            ? "transition-colors"
+                            : "text-text-sub transition-colors hover:text-peach-accent"
+                        }
+                        style={dawnlight2 ? { color: "#2a4570" } : undefined}
                       >
                         삭제
                       </button>
@@ -928,11 +1145,18 @@ function PhotoCommentItem({
               >
                 <div
                   className="mt-1 flex items-center gap-2 rounded-full px-2 py-1.5"
-                  style={{
-                    background: "rgba(11,8,33,0.45)",
-                    border: "1px solid rgba(216,150,200,0.22)",
-                    backdropFilter: "blur(14px)",
-                  }}
+                  style={
+                    dawnlight2
+                      ? {
+                          background: "#ffffff",
+                          border: "1px solid rgba(42, 69, 112, 0.3)",
+                        }
+                      : {
+                          background: "rgba(11,8,33,0.45)",
+                          border: "1px solid rgba(216,150,200,0.22)",
+                          backdropFilter: "blur(14px)",
+                        }
+                  }
                 >
                   <input
                     type="text"
@@ -948,7 +1172,12 @@ function PhotoCommentItem({
                     maxLength={200}
                     disabled={submitting}
                     autoFocus
-                    className="min-w-0 flex-1 border-none bg-transparent px-3 py-1 font-serif text-[12px] text-text-primary placeholder:text-text-sub/70 focus:outline-none disabled:opacity-60"
+                    className={
+                      dawnlight2
+                        ? "min-w-0 flex-1 border-none bg-transparent px-3 py-1 text-[12px] focus:outline-none disabled:opacity-60"
+                        : "min-w-0 flex-1 border-none bg-transparent px-3 py-1 font-serif text-[12px] text-text-primary placeholder:text-text-sub/70 focus:outline-none disabled:opacity-60"
+                    }
+                    style={dawnlight2 ? { color: "#2a4570" } : undefined}
                   />
                   <CommentImageAttach
                     file={replyImage}
@@ -959,11 +1188,19 @@ function PhotoCommentItem({
                     type="button"
                     onClick={handleReply}
                     disabled={submitting || (!msg.trim() && !replyImage)}
-                    className="shrink-0 rounded-full px-3 py-1 font-serif text-[10px] font-medium tracking-wider text-abyss-deep transition-all duration-200 hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50"
-                    style={{
-                      background: "linear-gradient(135deg, #FFE5C4, #FFB5A7)",
-                      boxShadow: "0 0 10px rgba(255,181,167,0.5)",
-                    }}
+                    className={
+                      dawnlight2
+                        ? "shrink-0 rounded-full px-3 py-1 text-[10px] font-semibold tracking-wider transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                        : "shrink-0 rounded-full px-3 py-1 font-serif text-[10px] font-medium tracking-wider text-abyss-deep transition-all duration-200 hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50"
+                    }
+                    style={
+                      dawnlight2
+                        ? { background: "#2a4570", color: "#fef5e6" }
+                        : {
+                            background: "linear-gradient(135deg, #FFE5C4, #FFB5A7)",
+                            boxShadow: "0 0 10px rgba(255,181,167,0.5)",
+                          }
+                    }
                   >
                     {submitting ? "..." : "등록"}
                   </button>
