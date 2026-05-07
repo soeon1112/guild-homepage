@@ -452,6 +452,19 @@ export default function AlbumPage() {
                     onClick={() => setViewer(p)}
                     className="group relative block aspect-square overflow-hidden rounded-2xl border-0 bg-transparent p-0"
                   >
+                    {/* Inline `width / height / object-fit` because the
+                        Tailwind v4 `@layer utilities` rules (.h-full,
+                        .w-full, .object-cover) lose the cascade to the
+                        unlayered `img, video { max-width:100%; height:
+                        auto }` rule at globals.css:202. Unlayered
+                        styles come AFTER all @layer styles in the
+                        cascade, so the Tailwind class for height
+                        loses despite higher specificity. Inline
+                        styles (specificity 1,0,0,0) beat both
+                        layered and unlayered rules — bulletproof
+                        equivalent of cosmic's `.minihome-photo-item
+                        img` rule which is itself unlayered with
+                        higher specificity. */}
                     {resolveFileType(p) === "video" ? (
                       <video
                         src={p.imageUrl}
@@ -460,14 +473,25 @@ export default function AlbumPage() {
                         loop
                         playsInline
                         preload="metadata"
-                        className="h-full w-full object-cover"
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          display: "block",
+                        }}
                       />
                     ) : (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={p.imageUrl}
                         alt={p.caption || "photo"}
-                        className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
+                        className="transition-transform group-hover:scale-[1.02]"
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          display: "block",
+                        }}
                       />
                     )}
                   </button>
