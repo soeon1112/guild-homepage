@@ -40,6 +40,24 @@ const CREAM = "#fef5e6";
 const PILL_CLASS =
   "inline-flex items-center justify-center gap-1 rounded-full px-4 py-1.5 text-xs font-medium transition-opacity hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50";
 
+// 라벨/꼬리표 아이콘 — "키워드 선물하기" 라벨 앞에 붙는다. 좌측 끝
+// 뾰족 + 우측 사각형 + 좌측 작은 동그라미(구멍). stroke 색은 라벨
+// 글자 색(NAVY)과 동일.
+function TagIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M 20.59 13.41 L 13.42 20.58 C 13.0449 20.9551 12.5363 21.1657 12.006 21.1657 C 11.4757 21.1657 10.9671 20.9551 10.592 20.58 L 2 12 V 2 H 12 L 20.59 10.59 C 21.37 11.37 21.37 12.63 20.59 13.41 Z"
+        stroke="#2a4570"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+        fill="none"
+      />
+      <circle cx="7" cy="7" r="1.5" fill="#2a4570" />
+    </svg>
+  );
+}
+
 // v0 유리병 SVG — verbatim from GuestbookSectionD2 BottleIcon so the
 // "오늘의 항해자" 미니 카드 라벨이 미니홈피 유리병 쪽지 헤더와 시각적
 // 으로 통일된다.
@@ -453,10 +471,11 @@ function KeywordCard({
       }}
     >
       <p
-        className="mb-2 text-[13px] font-semibold uppercase tracking-[0.18em]"
+        className="mb-2 flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-[0.18em]"
         style={{ color: NAVY }}
       >
-        ✦ 키워드 선물하기
+        <TagIcon />
+        키워드 선물하기
       </p>
       <div className="flex items-center gap-2">
         <input
