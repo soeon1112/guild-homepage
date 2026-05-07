@@ -960,9 +960,9 @@ export function CabinLogs() {
               aria-hidden
               className="pointer-events-none absolute h-3 w-3 rounded-full"
               style={{
-                background: "rgba(92, 58, 31, 0.55)",
+                background: "rgba(120, 95, 65, 0.35)",
                 boxShadow:
-                  "inset -2px -2px 3px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.30)",
+                  "inset -2px -2px 3px rgba(0,0,0,0.18), 0 1px 2px rgba(0,0,0,0.15)",
                 top: corner.startsWith("t") ? 10 : "auto",
                 bottom: corner.startsWith("b") ? 10 : "auto",
                 left: corner.endsWith("l") ? 10 : "auto",
