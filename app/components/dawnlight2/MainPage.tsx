@@ -2,6 +2,7 @@
 
 import { TodaysHorizon } from "./widgets/TodaysHorizon";
 import { WhispersFeed } from "./widgets/WhispersFeed";
+import { NoteToTheSky } from "./widgets/NoteToTheSky";
 
 // 하늘섬 (Dawnlight 2) main page. Widgets land here in sequence:
 //   1. Today's Horizon (3-C)  — attendance parchment + sky quote
@@ -13,6 +14,7 @@ export function Dawnlight2MainPage() {
     <main className="relative z-10 mx-auto w-full max-w-2xl px-0 pb-32 pt-8 sm:pt-12">
       <TodaysHorizon />
       <WhispersFeed />
+      <NoteToTheSky />
     </main>
   );
 }
