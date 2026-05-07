@@ -39,7 +39,7 @@ export function CollapsibleSectionD2({
         aria-expanded={open}
         className="flex w-full items-center justify-between rounded-2xl px-5 py-3.5 text-left transition-all hover:brightness-110"
         style={{
-          background: "rgba(184, 84, 120, 0.88)",
+          background: "rgba(184, 84, 120, 0.85)",
           boxShadow: "0 4px 14px rgba(80, 20, 30, 0.22)",
         }}
       >
