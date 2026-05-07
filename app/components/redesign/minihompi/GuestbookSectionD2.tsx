@@ -26,6 +26,7 @@ import {
   CommentImageView,
 } from "@/app/components/CommentImage";
 import NicknameLink from "@/app/components/NicknameLink";
+import { Dl2TitlePrefix } from "@/app/components/dawnlight2/widgets/WhispersFeed/Dl2TitlePrefix";
 import { formatSmart } from "@/src/lib/formatSmart";
 import { handleEvent } from "@/src/lib/badgeCheck";
 import { josa, truncate } from "@/src/lib/text";
@@ -276,7 +277,8 @@ export function GuestbookSectionD2({
         </p>
       )}
 
-      {/* Entries */}
+      {/* Entries — 게시판 댓글 패턴 (header / body 분리, 댓글 묶음 사이
+          1px dashed sky-blue 구분선, 마지막 항목 borderBottom 없음). */}
       {entries.length === 0 ? (
         <p
           className="py-8 text-center text-[11px] italic"
@@ -290,10 +292,10 @@ export function GuestbookSectionD2({
             <li
               key={e.id}
               data-gb-entry-id={e.id}
-              className="py-2"
+              className="py-3"
               style={
                 idx < visible.length - 1
-                  ? { borderBottom: "1px dashed rgba(42, 69, 112, 0.25)" }
+                  ? { borderBottom: "1px solid rgba(42, 69, 112, 0.18)" }
                   : undefined
               }
             >
@@ -526,89 +528,97 @@ function GuestbookItemD2({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
     >
-      {/* 한 줄 가로: [칭호닉네임]: 본문… [시간 답글 삭제] */}
-      <div className="flex items-center gap-2">
-        <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
-          <span className="flex-shrink-0">
-            <NicknameLink nickname={entry.nickname} />
-          </span>
-          <span
-            className="truncate text-[12px] leading-relaxed"
-            style={{ color: "#4a2a1a" }}
-          >
-            : {entry.message}
-          </span>
-        </div>
-        <time
-          className="flex-shrink-0 text-[10px] tabular-nums"
-          style={{ color: "#5a7090" }}
+      {/* 게시판 댓글 패턴 — header (좌:칭호+닉, 우:날짜+답글+삭제) + body. */}
+      <div
+        className="flex items-baseline"
+        style={{ marginBottom: 6 }}
+      >
+        <Dl2TitlePrefix nickname={entry.nickname} tone="cool" />
+        <NicknameLink
+          nickname={entry.nickname}
+          className="dl2-gb-nick"
+          hideTitle
+        />
+        <div
+          className="flex items-center"
+          style={{ marginLeft: "auto", gap: "0.6rem" }}
         >
-          {formatTime(entry.createdAt)}
-        </time>
-        {loginNick && (
-          <button
-            type="button"
-            onClick={onToggleReply}
-            className="flex-shrink-0 text-[11px] transition-opacity"
-            style={{ color: "#5a7090" }}
-          >
-            {replyOpen ? "닫기" : "답글"}
-          </button>
-        )}
-        {loginNick === entry.nickname && (
-          <button
-            type="button"
-            onClick={handleDeleteEntry}
-            className="flex-shrink-0 text-[11px] transition-opacity"
-            style={{ color: "#5a7090" }}
-          >
-            삭제
-          </button>
-        )}
+          <span className="dl2-gb-date">{formatTime(entry.createdAt)}</span>
+          {loginNick && (
+            <button
+              type="button"
+              onClick={onToggleReply}
+              className="dl2-gb-action"
+            >
+              {replyOpen ? "닫기" : "답글"}
+            </button>
+          )}
+          {loginNick === entry.nickname && (
+            <button
+              type="button"
+              onClick={handleDeleteEntry}
+              className="dl2-gb-action"
+            >
+              삭제
+            </button>
+          )}
+        </div>
       </div>
+      <p className="dl2-gb-body">{entry.message}</p>
       {entry.imageUrl && (
         <div className="mt-2">
           <CommentImageView url={entry.imageUrl} />
         </div>
       )}
 
-      {/* Replies — 좌측 들여쓰기 + 세로선 */}
+      {/* Replies — 부모 묶음 안. 좌측 borderLeft + 들여쓰기 (게시판
+          board-reply-list 동일 패턴). 답글 사이는 idx>0 borderTop 옅게. */}
       {(replies.length > 0 || replyOpen) && (
         <div
-          className="mt-2 flex flex-col gap-2 pl-3"
-          style={{ borderLeft: "2px solid rgba(42, 69, 112, 0.2)" }}
+          className="mt-3"
+          style={{
+            paddingLeft: 16,
+            borderLeft: "2px solid rgba(42, 69, 112, 0.18)",
+          }}
         >
-          {replies.map((r) => (
-            <div key={r.id}>
-              <div className="flex items-center gap-2">
-                <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
-                  <span className="flex-shrink-0">
-                    <NicknameLink nickname={r.nickname} />
-                  </span>
-                  <span
-                    className="truncate text-[12px] leading-relaxed"
-                    style={{ color: "#4a2a1a" }}
-                  >
-                    : {r.message}
-                  </span>
-                </div>
-                <time
-                  className="flex-shrink-0 text-[10px] tabular-nums"
-                  style={{ color: "#5a7090" }}
+          {replies.map((r, idx) => (
+            <div
+              key={r.id}
+              style={{
+                paddingTop: idx > 0 ? 8 : 0,
+                paddingBottom: 8,
+                borderTop:
+                  idx > 0 ? "1px solid rgba(42, 69, 112, 0.12)" : undefined,
+              }}
+            >
+              <div
+                className="flex items-baseline"
+                style={{ marginBottom: 6 }}
+              >
+                <span style={{ marginRight: 4, color: "#5a7090" }}>↳</span>
+                <Dl2TitlePrefix nickname={r.nickname} tone="cool" />
+                <NicknameLink
+                  nickname={r.nickname}
+                  className="dl2-gb-nick"
+                  hideTitle
+                />
+                <div
+                  className="flex items-center"
+                  style={{ marginLeft: "auto", gap: "0.6rem" }}
                 >
-                  {formatTime(r.createdAt)}
-                </time>
-                {loginNick === r.nickname && (
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteReply(r.id)}
-                    className="flex-shrink-0 text-[11px]"
-                    style={{ color: "#5a7090" }}
-                  >
-                    삭제
-                  </button>
-                )}
+                  <span className="dl2-gb-date">{formatTime(r.createdAt)}</span>
+                  {loginNick === r.nickname && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteReply(r.id)}
+                      className="dl2-gb-action"
+                    >
+                      삭제
+                    </button>
+                  )}
+                </div>
               </div>
+              <p className="dl2-gb-body">{r.message}</p>
               {r.imageUrl && (
                 <div className="mt-1">
                   <CommentImageView url={r.imageUrl} />

@@ -47,6 +47,7 @@ import {
   CommentImageView,
 } from "@/app/components/CommentImage";
 import NicknameLink from "@/app/components/NicknameLink";
+import { Dl2TitlePrefix } from "@/app/components/dawnlight2/widgets/WhispersFeed/Dl2TitlePrefix";
 import { formatSmart } from "@/src/lib/formatSmart";
 import { handleEvent } from "@/src/lib/badgeCheck";
 import { josa, truncate } from "@/src/lib/text";
@@ -704,7 +705,7 @@ function PhotoComments({
         </p>
       ) : (
         <div className="flex flex-col gap-3">
-          {comments.map((c) => (
+          {comments.map((c, idx) => (
             <PhotoCommentItem
               key={c.id}
               memberId={memberId}
@@ -720,6 +721,7 @@ function PhotoComments({
               onReplyCountChange={reportReplyCount}
               registerRef={setItemRef(c.id)}
               dawnlight2={dawnlight2}
+              isLast={idx === comments.length - 1}
             />
           ))}
         </div>
@@ -810,6 +812,7 @@ function PhotoCommentItem({
   onReplyCountChange,
   registerRef,
   dawnlight2 = false,
+  isLast = false,
 }: {
   memberId: string;
   photoId: string;
@@ -824,6 +827,7 @@ function PhotoCommentItem({
   // PhotoComments via this callback so the modal can scroll to it.
   registerRef?: (el: HTMLDivElement | null) => void;
   dawnlight2?: boolean;
+  isLast?: boolean;
 }) {
   const [replies, setReplies] = useState<PhotoCommentDoc[]>([]);
   const [msg, setMsg] = useState("");
@@ -960,85 +964,88 @@ function PhotoCommentItem({
   };
 
   return (
-    <div ref={registerRef} data-comment-id={comment.id}>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <p
-          className={
-            dawnlight2
-              ? "wrap-anywhere min-w-0 flex-1 text-[12px] leading-relaxed"
-              : "wrap-anywhere min-w-0 flex-1 font-serif text-[12px] leading-relaxed text-text-primary"
-          }
-          style={dawnlight2 ? { color: "#2a4570" } : undefined}
-        >
-          {dawnlight2 ? (
-            <span style={{ color: "#5c3a1f" }}>
-              <NicknameLink
-                nickname={comment.nickname}
-                className="font-semibold"
-              />
-            </span>
-          ) : (
+    <div
+      ref={registerRef}
+      data-comment-id={comment.id}
+      className={
+        dawnlight2
+          ? "dl2-photo-comment-block" + (isLast ? "" : "")
+          : undefined
+      }
+    >
+      {dawnlight2 ? (
+        <>
+          {/* 게시판 댓글 패턴 — header (좌:칭호+닉, 우:날짜+답글+삭제) + body */}
+          <div className="dl2-photo-comment-header">
+            <Dl2TitlePrefix nickname={comment.nickname} tone="cool" />
+            <NicknameLink
+              nickname={comment.nickname}
+              className="dl2-photo-comment-nick"
+              hideTitle
+            />
+            <div className="dl2-photo-comment-actions">
+              <span className="dl2-photo-comment-date">
+                {formatTime(comment.createdAt)}
+              </span>
+              {loginNick && (
+                <button
+                  type="button"
+                  className="dl2-photo-comment-action"
+                  onClick={onToggleReply}
+                >
+                  {replyOpen ? "닫기" : "답글"}
+                </button>
+              )}
+              {loginNick === comment.nickname && (
+                <button
+                  type="button"
+                  className="dl2-photo-comment-action"
+                  onClick={handleDeleteComment}
+                >
+                  삭제
+                </button>
+              )}
+            </div>
+          </div>
+          {!!comment.content && (
+            <p className="dl2-photo-comment-body">{comment.content}</p>
+          )}
+        </>
+      ) : (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <p className="wrap-anywhere min-w-0 flex-1 font-serif text-[12px] leading-relaxed text-text-primary">
             <NicknameLink
               nickname={comment.nickname}
               className="font-medium text-stardust"
             />
-          )}
-          <span
-            className={dawnlight2 ? undefined : "text-text-sub"}
-            style={dawnlight2 ? { color: "#8a6a4a" } : undefined}
-          >
-            {" "}
-            :{" "}
-          </span>
-          {comment.content}
-        </p>
-        <div
-          className={
-            dawnlight2
-              ? "flex shrink-0 items-center gap-2 text-[11px] tracking-wider"
-              : "flex shrink-0 items-center gap-2 font-serif text-[11px] tracking-wider"
-          }
-        >
-          <span
-            className={
-              dawnlight2
-                ? "text-[10px] tracking-wider"
-                : "text-[10px] tracking-wider text-text-sub"
-            }
-            style={dawnlight2 ? { color: "#8a6a4a" } : undefined}
-          >
-            {formatTime(comment.createdAt)}
-          </span>
-          {loginNick && (
-            <button
-              type="button"
-              onClick={onToggleReply}
-              className={
-                dawnlight2
-                  ? "transition-colors"
-                  : "text-text-sub transition-colors hover:text-peach-accent"
-              }
-              style={dawnlight2 ? { color: "#2a4570" } : undefined}
-            >
-              {replyOpen ? "닫기" : "답글"}
-            </button>
-          )}
-          {loginNick === comment.nickname && (
-            <button
-              type="button"
-              onClick={handleDeleteComment}
-              className={
-                dawnlight2
-                  ? "transition-colors"
-                  : "text-text-sub transition-colors hover:text-peach-accent"
-              }
-              style={dawnlight2 ? { color: "#2a4570" } : undefined}
-            >
-              삭제
-            </button>
-          )}
+            <span className="text-text-sub"> : </span>
+            {comment.content}
+          </p>
+          <div className="flex shrink-0 items-center gap-2 font-serif text-[11px] tracking-wider">
+            <span className="text-[10px] tracking-wider text-text-sub">
+              {formatTime(comment.createdAt)}
+            </span>
+            {loginNick && (
+              <button
+                type="button"
+                onClick={onToggleReply}
+                className="text-text-sub transition-colors hover:text-peach-accent"
+              >
+                {replyOpen ? "닫기" : "답글"}
+              </button>
+            )}
+            {loginNick === comment.nickname && (
+              <button
+                type="button"
+                onClick={handleDeleteComment}
+                className="text-text-sub transition-colors hover:text-peach-accent"
+              >
+                삭제
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
       {comment.imageUrl && (
         <div className="mt-2">
           <CommentImageView url={comment.imageUrl} />
@@ -1046,93 +1053,95 @@ function PhotoCommentItem({
       )}
 
       {(replies.length > 0 || replyOpen) && (
-        <div className="mt-2 ml-5 flex flex-col gap-2">
-          {replies.map((r) => (
-            <div key={r.id} className="flex items-start gap-2">
-              <span
+        <div
+          className={
+            dawnlight2
+              ? "dl2-photo-comment-replies"
+              : "mt-2 ml-5 flex flex-col gap-2"
+          }
+        >
+          {replies.map((r, idx) =>
+            dawnlight2 ? (
+              <div
+                key={r.id}
                 className={
-                  dawnlight2
-                    ? "shrink-0 text-xs leading-relaxed"
-                    : "shrink-0 font-serif text-xs leading-relaxed text-text-sub/70"
+                  "dl2-photo-comment-reply" + (idx > 0 ? " has-prev" : "")
                 }
-                style={dawnlight2 ? { color: "#8a6a4a" } : undefined}
-                aria-hidden
               >
-                └
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <p
-                    className={
-                      dawnlight2
-                        ? "wrap-anywhere min-w-0 flex-1 text-[11.5px] leading-relaxed"
-                        : "wrap-anywhere min-w-0 flex-1 font-serif text-[11.5px] leading-relaxed text-text-primary"
-                    }
-                    style={dawnlight2 ? { color: "#2a4570" } : undefined}
-                  >
-                    {dawnlight2 ? (
-                      <span style={{ color: "#5c3a1f" }}>
-                        <NicknameLink
-                          nickname={r.nickname}
-                          className="font-semibold"
-                        />
-                      </span>
-                    ) : (
-                      <NicknameLink
-                        nickname={r.nickname}
-                        className="font-medium text-stardust"
-                      />
-                    )}
-                    <span
-                      className={dawnlight2 ? undefined : "text-text-sub"}
-                      style={dawnlight2 ? { color: "#8a6a4a" } : undefined}
-                    >
-                      {" "}
-                      :{" "}
-                    </span>
-                    {r.content}
-                  </p>
-                  <div
-                    className={
-                      dawnlight2
-                        ? "flex shrink-0 items-center gap-2 text-[11px] tracking-wider"
-                        : "flex shrink-0 items-center gap-2 font-serif text-[11px] tracking-wider"
-                    }
-                  >
-                    <span
-                      className={
-                        dawnlight2
-                          ? "text-[10px] tracking-wider"
-                          : "text-[10px] tracking-wider text-text-sub"
-                      }
-                      style={dawnlight2 ? { color: "#8a6a4a" } : undefined}
-                    >
+                <div className="dl2-photo-comment-header">
+                  <span style={{ marginRight: 4, color: "#5a7090" }}>↳</span>
+                  <Dl2TitlePrefix nickname={r.nickname} tone="cool" />
+                  <NicknameLink
+                    nickname={r.nickname}
+                    className="dl2-photo-comment-nick"
+                    hideTitle
+                  />
+                  <div className="dl2-photo-comment-actions">
+                    <span className="dl2-photo-comment-date">
                       {formatTime(r.createdAt)}
                     </span>
                     {loginNick === r.nickname && (
                       <button
                         type="button"
+                        className="dl2-photo-comment-action"
                         onClick={() => handleDeleteReply(r.id)}
-                        className={
-                          dawnlight2
-                            ? "transition-colors"
-                            : "text-text-sub transition-colors hover:text-peach-accent"
-                        }
-                        style={dawnlight2 ? { color: "#2a4570" } : undefined}
                       >
                         삭제
                       </button>
                     )}
                   </div>
                 </div>
+                {!!r.content && (
+                  <p className="dl2-photo-comment-body">{r.content}</p>
+                )}
                 {r.imageUrl && (
                   <div className="mt-2">
                     <CommentImageView url={r.imageUrl} />
                   </div>
                 )}
               </div>
-            </div>
-          ))}
+            ) : (
+              <div key={r.id} className="flex items-start gap-2">
+                <span
+                  className="shrink-0 font-serif text-xs leading-relaxed text-text-sub/70"
+                  aria-hidden
+                >
+                  └
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <p className="wrap-anywhere min-w-0 flex-1 font-serif text-[11.5px] leading-relaxed text-text-primary">
+                      <NicknameLink
+                        nickname={r.nickname}
+                        className="font-medium text-stardust"
+                      />
+                      <span className="text-text-sub"> : </span>
+                      {r.content}
+                    </p>
+                    <div className="flex shrink-0 items-center gap-2 font-serif text-[11px] tracking-wider">
+                      <span className="text-[10px] tracking-wider text-text-sub">
+                        {formatTime(r.createdAt)}
+                      </span>
+                      {loginNick === r.nickname && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteReply(r.id)}
+                          className="text-text-sub transition-colors hover:text-peach-accent"
+                        >
+                          삭제
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {r.imageUrl && (
+                    <div className="mt-2">
+                      <CommentImageView url={r.imageUrl} />
+                    </div>
+                  )}
+                </div>
+              </div>
+            ),
+          )}
 
           <AnimatePresence>
             {replyOpen && loginNick && (

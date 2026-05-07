@@ -892,89 +892,172 @@ function AlbumCommentItem({
   };
 
   return (
-    <div ref={setItemRef} className="minihome-photo-comment-block">
-      <div className="minihome-photo-comment">
-        <span
-          style={{
-            float: "right",
-            display: "inline-flex",
-            alignItems: "baseline",
-            gap: "0.25rem",
-            whiteSpace: "nowrap",
-            marginLeft: "0.5rem",
-          }}
-        >
-          <span className="minihome-gb-time" style={{ marginLeft: 0 }}>
-            {formatTime(comment.createdAt)}
+    <div
+      ref={setItemRef}
+      className={
+        "minihome-photo-comment-block" +
+        (dl2 ? " dl2-photo-comment-block" : "")
+      }
+    >
+      {dl2 ? (
+        <>
+          {/* 게시판 댓글 패턴 — header (좌:칭호+닉, 우:날짜+답글+삭제) + body */}
+          <div className="dl2-photo-comment-header">
+            <Dl2TitlePrefix nickname={comment.nickname} tone="cool" />
+            <NicknameLink
+              nickname={comment.nickname}
+              className="dl2-photo-comment-nick"
+              hideTitle
+            />
+            <div className="dl2-photo-comment-actions">
+              <span className="dl2-photo-comment-date">
+                {formatTime(comment.createdAt)}
+              </span>
+              {loginNick && (
+                <button
+                  type="button"
+                  className="dl2-photo-comment-action"
+                  onClick={onToggleReply}
+                >
+                  답글
+                </button>
+              )}
+              {loginNick === comment.nickname && (
+                <button
+                  type="button"
+                  className="dl2-photo-comment-action"
+                  onClick={handleDeleteComment}
+                >
+                  삭제
+                </button>
+              )}
+            </div>
+          </div>
+          {!!comment.content && (
+            <p className="dl2-photo-comment-body">{comment.content}</p>
+          )}
+        </>
+      ) : (
+        <div className="minihome-photo-comment">
+          <span
+            style={{
+              float: "right",
+              display: "inline-flex",
+              alignItems: "baseline",
+              gap: "0.25rem",
+              whiteSpace: "nowrap",
+              marginLeft: "0.5rem",
+            }}
+          >
+            <span className="minihome-gb-time" style={{ marginLeft: 0 }}>
+              {formatTime(comment.createdAt)}
+            </span>
+            {loginNick && (
+              <button
+                type="button"
+                className="minihome-reply-btn"
+                onClick={onToggleReply}
+                style={{ marginLeft: 0 }}
+              >
+                답글
+              </button>
+            )}
+            {loginNick === comment.nickname && (
+              <button
+                type="button"
+                className="minihome-reply-btn"
+                onClick={handleDeleteComment}
+                style={{ marginLeft: 0 }}
+              >
+                삭제
+              </button>
+            )}
           </span>
-          {loginNick && (
-            <button
-              type="button"
-              className="minihome-reply-btn"
-              onClick={onToggleReply}
-              style={{ marginLeft: 0 }}
-            >
-              답글
-            </button>
-          )}
-          {loginNick === comment.nickname && (
-            <button
-              type="button"
-              className="minihome-reply-btn"
-              onClick={handleDeleteComment}
-              style={{ marginLeft: 0 }}
-            >
-              삭제
-            </button>
-          )}
-        </span>
-        {dl2 && <Dl2TitlePrefix nickname={comment.nickname} tone="cool" />}
-        <NicknameLink
-          nickname={comment.nickname}
-          className="minihome-gb-nick"
-          hideTitle={dl2}
-        />
-        <span className="minihome-gb-msg">: {comment.content}</span>
-      </div>
+          <NicknameLink
+            nickname={comment.nickname}
+            className="minihome-gb-nick"
+          />
+          <span className="minihome-gb-msg">: {comment.content}</span>
+        </div>
+      )}
       {comment.imageUrl && <CommentImageView url={comment.imageUrl} />}
       {(replies.length > 0 || replyOpen) && (
-        <div className="minihome-gb-replies">
-          {replies.map((r) => (
-            <div key={r.id} className="minihome-gb-reply">
-              <div>
-                <span
-                  style={{
-                    float: "right",
-                    display: "inline-flex",
-                    alignItems: "baseline",
-                    gap: "0.25rem",
-                    whiteSpace: "nowrap",
-                    marginLeft: "0.5rem",
-                  }}
-                >
-                  <span className="minihome-gb-time" style={{ marginLeft: 0 }}>
-                    {formatTime(r.createdAt)}
-                  </span>
-                  {loginNick === r.nickname && (
-                    <button
-                      type="button"
-                      className="minihome-reply-btn"
-                      onClick={() => handleDeleteReply(r.id)}
-                      style={{ marginLeft: 0 }}
-                    >
-                      삭제
-                    </button>
+        <div
+          className={
+            "minihome-gb-replies" + (dl2 ? " dl2-photo-comment-replies" : "")
+          }
+        >
+          {replies.map((r, idx) => (
+            <div
+              key={r.id}
+              className={
+                "minihome-gb-reply" +
+                (dl2 ? ` dl2-photo-comment-reply${idx > 0 ? " has-prev" : ""}` : "")
+              }
+            >
+              {dl2 ? (
+                <>
+                  <div className="dl2-photo-comment-header">
+                    <span style={{ marginRight: 4, color: "#5a7090" }}>↳</span>
+                    <Dl2TitlePrefix nickname={r.nickname} tone="cool" />
+                    <NicknameLink
+                      nickname={r.nickname}
+                      className="dl2-photo-comment-nick"
+                      hideTitle
+                    />
+                    <div className="dl2-photo-comment-actions">
+                      <span className="dl2-photo-comment-date">
+                        {formatTime(r.createdAt)}
+                      </span>
+                      {loginNick === r.nickname && (
+                        <button
+                          type="button"
+                          className="dl2-photo-comment-action"
+                          onClick={() => handleDeleteReply(r.id)}
+                        >
+                          삭제
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {!!r.content && (
+                    <p className="dl2-photo-comment-body">{r.content}</p>
                   )}
-                </span>
-                {dl2 && <Dl2TitlePrefix nickname={r.nickname} tone="cool" />}
-                <NicknameLink
-                  nickname={r.nickname}
-                  className="minihome-gb-nick"
-                  prefix="↳ "
-                  hideTitle={dl2}
-                />
-                <span className="minihome-gb-msg">: {r.content}</span>
-              </div>
+                </>
+              ) : (
+                <div>
+                  <span
+                    style={{
+                      float: "right",
+                      display: "inline-flex",
+                      alignItems: "baseline",
+                      gap: "0.25rem",
+                      whiteSpace: "nowrap",
+                      marginLeft: "0.5rem",
+                    }}
+                  >
+                    <span className="minihome-gb-time" style={{ marginLeft: 0 }}>
+                      {formatTime(r.createdAt)}
+                    </span>
+                    {loginNick === r.nickname && (
+                      <button
+                        type="button"
+                        className="minihome-reply-btn"
+                        onClick={() => handleDeleteReply(r.id)}
+                        style={{ marginLeft: 0 }}
+                      >
+                        삭제
+                      </button>
+                    )}
+                  </span>
+                  <NicknameLink
+                    nickname={r.nickname}
+                    className="minihome-gb-nick"
+                    prefix="↳ "
+                  />
+                  <span className="minihome-gb-msg">: {r.content}</span>
+                </div>
+              )}
               {r.imageUrl && <CommentImageView url={r.imageUrl} />}
             </div>
           ))}
