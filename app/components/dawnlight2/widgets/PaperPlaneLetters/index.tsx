@@ -177,19 +177,21 @@ export function PaperPlaneLetters() {
             border: "1px solid rgba(42, 69, 112, 0.18)",
           }}
         >
-          {/* On mobile, the plane + right column ride together as a
-              content-width bundle and the row centers them inside the
-              card (`justify-center`). On sm:+ the bundle expands —
-              `sm:justify-start` releases the centering and the right
-              column reclaims `flex-1` so buttons can drift to the
-              card's right edge for the desktop one-line layout. */}
-          <div className="flex items-stretch justify-center gap-3 px-4 py-4 sm:items-center sm:justify-start sm:gap-6 sm:px-7 sm:py-5">
-            <div className="flex-shrink-0 self-center animate-plane-float">
+          <div className="flex items-stretch gap-3 px-4 py-4 sm:items-center sm:gap-6 sm:px-7 sm:py-5">
+            {/* `ml-5` (20 px) gives the plane a visible inset from the
+                card's left edge on mobile — 16 px (the previous ml-4)
+                still read as too tight after the centering rollback.
+                `sm:ml-0` resets on desktop where the wider px-7 padding
+                already handles spacing. */}
+            <div className="ml-5 flex-shrink-0 self-center animate-plane-float sm:ml-0">
               <LargePaperPlane />
             </div>
 
-            <div className="flex min-w-0 flex-col items-center gap-3 sm:flex-1 sm:flex-row sm:items-center sm:gap-6">
-              <div className="min-w-0 text-center sm:flex-1 sm:text-left">
+            {/* `items-center` centers the children inside this column
+                horizontally on mobile (where it's flex-col) and
+                vertically on desktop (where sm:flex-row kicks in). */}
+            <div className="flex min-w-0 flex-1 flex-col items-center gap-3 sm:flex-row sm:items-center sm:gap-6">
+              <div className="min-w-0 flex-1 text-center sm:text-left">
                 <h3
                   className="text-base font-semibold leading-snug sm:text-lg"
                   style={{ color: NAVY }}
