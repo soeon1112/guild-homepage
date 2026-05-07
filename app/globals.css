@@ -8406,3 +8406,350 @@ body.has-redesigned-header .bg-scene {
     opacity: 1;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────
+   Dawnlight 2 — notice page reskin (Step 4-E)
+   Scoped to `.dl2-notice` so it never bleeds onto cosmic users (the
+   wrapper is added in JSX only when useDawnlight2() returns true).
+   Box surfaces match the PaperPlaneLetters widget: cdd8e0/0.65 bg,
+   navy/0.18 hairline border, navy ink text, navy "띄우기" pill.
+   Modals reach via createPortal so the backdrop also carries the
+   class (handled inline in notice/page.tsx).
+   ───────────────────────────────────────────────────────────────── */
+
+/* Page width — match dawnlight2 main column (max-w-2xl = 672 px). */
+.dl2-notice {
+  max-width: 672px;
+}
+
+/* New page head: 공지 게시판 (cream center) + NOTICE BOARD subtitle.
+   Keeps the cosmic page's normal vertical rhythm; cosmic still uses
+   the gradient-text .board-title h1 (we render this <header> instead
+   when dl2). */
+.dl2-notice .dl2-notice-page-head {
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+.dl2-notice .dl2-notice-page-title {
+  margin: 0;
+  font-family:
+    "Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", system-ui, sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: #fef5e6;
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+}
+.dl2-notice .dl2-notice-page-sub {
+  margin: 4px 0 0;
+  font-family:
+    "Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  color: #c8b8e8;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+}
+
+/* Section row (공지 / 일정) — keep the flex layout from cosmic, only
+   recolor the title + recast the add button as a navy pill. */
+.dl2-notice .notice-schedule-title {
+  font-family:
+    "Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", system-ui, sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: #fef5e6;
+  letter-spacing: 0.02em;
+  text-shadow: none;
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  -webkit-text-fill-color: currentColor;
+  filter: none;
+}
+
+/* "글쓰기" / "일정 추가" — paper-plane navy pill. */
+.dl2-notice .notice-schedule-add-btn {
+  background: #2a4570;
+  color: #fef5e6;
+  border: none;
+  border-radius: 999px;
+  padding: 0.375rem 1rem;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  box-shadow: none;
+  text-shadow: none;
+}
+.dl2-notice .notice-schedule-add-btn:hover {
+  opacity: 0.9;
+  background: #2a4570;
+  color: #fef5e6;
+}
+
+/* Notice list box — paper-plane surface. */
+.dl2-notice .board-table-wrap {
+  background: rgba(205, 216, 224, 0.65);
+  border: 1px solid rgba(42, 69, 112, 0.18);
+  border-radius: 16px;
+  backdrop-filter: blur(8px);
+}
+.dl2-notice .board-table {
+  color: #2a4570;
+}
+.dl2-notice .board-post-link {
+  color: #2a4570;
+}
+.dl2-notice .board-post-link:hover {
+  color: #1a2f50;
+}
+.dl2-notice .board-loading {
+  color: #5a7090;
+}
+.dl2-notice .board-pagination {
+  color: #5a7090;
+}
+.dl2-notice .board-page-btn {
+  color: #2a4570;
+  border-color: rgba(42, 69, 112, 0.3);
+  background: transparent;
+}
+.dl2-notice .board-page-btn:disabled {
+  opacity: 0.45;
+}
+.dl2-notice .board-page-info {
+  color: #5a7090;
+}
+
+/* Schedule list — paper-plane card per row, soft horizontal divider
+   between sections. */
+.dl2-notice .notice-schedule-divider {
+  border-color: rgba(42, 69, 112, 0.18);
+}
+.dl2-notice .notice-schedule-list {
+  background: rgba(205, 216, 224, 0.65);
+  border: 1px solid rgba(42, 69, 112, 0.18);
+  border-radius: 16px;
+  padding: 8px;
+  backdrop-filter: blur(8px);
+}
+.dl2-notice .notice-schedule-empty {
+  color: #5a7090;
+}
+.dl2-notice .notice-schedule-item {
+  background: transparent;
+  border-bottom: 1px solid rgba(42, 69, 112, 0.12);
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  border-radius: 0;
+  color: #2a4570;
+}
+.dl2-notice .notice-schedule-item:last-child {
+  border-bottom: none;
+}
+.dl2-notice .notice-schedule-item-highlight {
+  background: rgba(255, 229, 196, 0.35);
+}
+.dl2-notice .notice-schedule-item-date {
+  color: #2a4570;
+  font-weight: 600;
+}
+.dl2-notice .notice-schedule-item-sep {
+  color: rgba(42, 69, 112, 0.4);
+}
+.dl2-notice .notice-schedule-item-title {
+  color: #2a4570;
+}
+.dl2-notice .notice-schedule-item-desc {
+  color: #5a7090;
+}
+.dl2-notice .notice-schedule-mini-btn {
+  background: transparent;
+  border: 1px solid rgba(42, 69, 112, 0.3);
+  color: #2a4570;
+  border-radius: 999px;
+}
+.dl2-notice .notice-schedule-mini-btn:hover {
+  border-color: #2a4570;
+  background: rgba(42, 69, 112, 0.06);
+}
+.dl2-notice .notice-schedule-mini-btn-danger {
+  border-color: rgba(184, 84, 32, 0.35);
+  color: #b85420;
+}
+.dl2-notice .notice-schedule-mini-btn-danger:hover {
+  border-color: #b85420;
+  background: rgba(184, 84, 32, 0.08);
+}
+
+/* Detail page — same paper-plane substrate. */
+.dl2-notice .board-detail {
+  background: rgba(205, 216, 224, 0.65);
+  border: 1px solid rgba(42, 69, 112, 0.18);
+  border-radius: 16px;
+  backdrop-filter: blur(8px);
+  box-shadow: none;
+}
+.dl2-notice .back-link {
+  color: #fef5e6;
+}
+.dl2-notice .back-link:hover {
+  color: #c8b8e8;
+}
+.dl2-notice .board-detail-title {
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  -webkit-text-fill-color: currentColor;
+  color: #2a4570;
+  filter: none;
+  text-shadow: none;
+  font-family:
+    "Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", system-ui, sans-serif;
+  font-weight: 600;
+}
+.dl2-notice .board-detail-body {
+  color: #2a4570;
+}
+.dl2-notice .board-link {
+  color: #b85420;
+}
+.dl2-notice .board-link:hover {
+  color: #8a3e1a;
+}
+.dl2-notice .board-btn {
+  background: #2a4570;
+  color: #fef5e6;
+  border: none;
+  border-radius: 999px;
+  padding: 0.5rem 1rem;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: none;
+  text-shadow: none;
+}
+.dl2-notice .board-btn:hover {
+  opacity: 0.9;
+  background: #2a4570;
+  color: #fef5e6;
+}
+.dl2-notice .board-btn.board-btn-cancel {
+  background: transparent;
+  border: 1px solid #2a4570;
+  color: #2a4570;
+}
+.dl2-notice .board-btn.board-btn-cancel:hover {
+  background: rgba(42, 69, 112, 0.08);
+  color: #2a4570;
+}
+
+/* Notice write/edit form (the standalone /notice/write and
+   /notice/edit/[id] pages — full-page forms, not modals). */
+.dl2-notice .board-form,
+.dl2-notice .board-form-card {
+  background: rgba(205, 216, 224, 0.65);
+  border: 1px solid rgba(42, 69, 112, 0.18);
+  border-radius: 16px;
+  backdrop-filter: blur(8px);
+}
+.dl2-notice .board-form-title {
+  color: #2a4570;
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  -webkit-text-fill-color: currentColor;
+  filter: none;
+  text-shadow: none;
+}
+.dl2-notice .board-input,
+.dl2-notice .board-textarea {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(42, 69, 112, 0.3);
+  color: #2a4570;
+}
+.dl2-notice .board-input::placeholder,
+.dl2-notice .board-textarea::placeholder {
+  color: rgba(42, 69, 112, 0.5);
+}
+.dl2-notice .board-input:focus,
+.dl2-notice .board-textarea:focus {
+  border-color: #2a4570;
+  outline: none;
+}
+
+/* Modal — backdrop stays dark for focus, the card adopts the paper-
+   plane palette (a hair higher alpha than the list boxes so titles
+   read clearly when the modal floats over varied page content). */
+.dl2-notice .notice-schedule-modal-backdrop {
+  background: rgba(11, 8, 33, 0.7);
+  backdrop-filter: blur(8px);
+}
+.dl2-notice .notice-schedule-modal-card {
+  background: rgba(205, 216, 224, 0.96);
+  border: 1px solid rgba(42, 69, 112, 0.22);
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(11, 8, 33, 0.45);
+}
+.dl2-notice .notice-schedule-modal-card::before,
+.dl2-notice .notice-schedule-modal-card::after {
+  display: none;
+}
+.dl2-notice .notice-schedule-modal-title {
+  color: #2a4570;
+  font-family:
+    "Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", system-ui, sans-serif;
+  font-weight: 600;
+  text-shadow: none;
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  -webkit-text-fill-color: currentColor;
+}
+.dl2-notice .notice-schedule-modal-label {
+  color: #2a4570;
+}
+.dl2-notice .notice-schedule-modal-input {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(42, 69, 112, 0.3);
+  color: #2a4570;
+}
+.dl2-notice .notice-schedule-modal-input::placeholder {
+  color: rgba(42, 69, 112, 0.5);
+}
+.dl2-notice .notice-schedule-modal-input:focus {
+  border-color: #2a4570;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(42, 69, 112, 0.12);
+}
+.dl2-notice .notice-schedule-modal-err {
+  color: #b85420;
+}
+.dl2-notice .notice-schedule-modal-cancel {
+  background: transparent;
+  border: 1px solid #2a4570;
+  color: #2a4570;
+  border-radius: 999px;
+}
+.dl2-notice .notice-schedule-modal-cancel:hover {
+  background: rgba(42, 69, 112, 0.08);
+  color: #2a4570;
+}
+.dl2-notice .notice-schedule-modal-confirm {
+  background: #2a4570;
+  border: none;
+  color: #fef5e6;
+  border-radius: 999px;
+  box-shadow: none;
+  text-shadow: none;
+}
+.dl2-notice .notice-schedule-modal-confirm:hover {
+  opacity: 0.9;
+  background: #2a4570;
+  color: #fef5e6;
+}

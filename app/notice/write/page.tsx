@@ -13,6 +13,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "@/src/lib/firebase";
 import { logActivity } from "@/src/lib/activity";
 import { josa, truncate } from "@/src/lib/text";
+import { useDawnlight2 } from "@/src/lib/featureFlags";
 
 const ADMIN_PASSWORD = "dawnlight2024";
 
@@ -34,6 +35,8 @@ function detectFileType(file: File): AttachmentType {
 
 export default function NoticeWritePage() {
   const router = useRouter();
+  const isDawnlight2 = useDawnlight2();
+  const rootClass = "board-content" + (isDawnlight2 ? " dawnlight2 dl2-notice" : "");
   const [pw, setPw] = useState("");
   const [verified, setVerified] = useState(false);
   const [gateErr, setGateErr] = useState("");
@@ -119,7 +122,7 @@ export default function NoticeWritePage() {
 
   if (!verified) {
     return (
-      <div className="board-content">
+      <div className={rootClass}>
         <h1 className="board-title">공지 작성</h1>
         <div className="notice-gate">
           <input
@@ -143,7 +146,7 @@ export default function NoticeWritePage() {
   }
 
   return (
-    <div className="board-content">
+    <div className={rootClass}>
       <h1 className="board-title">공지 작성</h1>
 
       <div className="board-form">

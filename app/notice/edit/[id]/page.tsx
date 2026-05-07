@@ -11,6 +11,7 @@ import {
   deleteObject,
 } from "firebase/storage";
 import { db, storage } from "@/src/lib/firebase";
+import { useDawnlight2 } from "@/src/lib/featureFlags";
 
 const ADMIN_PASSWORD = "dawnlight2024";
 
@@ -42,6 +43,8 @@ export default function NoticeEditPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
+  const isDawnlight2 = useDawnlight2();
+  const rootClass = "board-content" + (isDawnlight2 ? " dawnlight2 dl2-notice" : "");
   const [pw, setPw] = useState("");
   const [verified, setVerified] = useState(false);
   const [gateErr, setGateErr] = useState("");
@@ -154,7 +157,7 @@ export default function NoticeEditPage({
 
   if (loading) {
     return (
-      <div className="board-content">
+      <div className={rootClass}>
         <p className="board-loading">불러오는 중...</p>
       </div>
     );
@@ -162,7 +165,7 @@ export default function NoticeEditPage({
 
   if (notFound) {
     return (
-      <div className="board-content">
+      <div className={rootClass}>
         <p className="board-loading">존재하지 않는 공지입니다.</p>
       </div>
     );
@@ -170,7 +173,7 @@ export default function NoticeEditPage({
 
   if (!verified) {
     return (
-      <div className="board-content">
+      <div className={rootClass}>
         <h1 className="board-title">공지 수정</h1>
         <div className="notice-gate">
           <input
@@ -194,7 +197,7 @@ export default function NoticeEditPage({
   }
 
   return (
-    <div className="board-content">
+    <div className={rootClass}>
       <h1 className="board-title">공지 수정</h1>
 
       <div className="board-form">

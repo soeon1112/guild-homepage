@@ -9,6 +9,7 @@ import { db, storage } from "@/src/lib/firebase";
 import { deleteActivitiesByLink } from "@/src/lib/activity";
 import { useAuth } from "@/app/components/AuthProvider";
 import { handleEvent } from "@/src/lib/badgeCheck";
+import { useDawnlight2 } from "@/src/lib/featureFlags";
 
 const ADMIN_PASSWORD = "dawnlight2024";
 
@@ -45,6 +46,8 @@ export default function NoticeDetailPage({
   const { id } = use(params);
   const router = useRouter();
   const { nickname: loginNick } = useAuth();
+  const isDawnlight2 = useDawnlight2();
+  const rootClass = "board-content" + (isDawnlight2 ? " dawnlight2 dl2-notice" : "");
   const [post, setPost] = useState<NoticeData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -101,7 +104,7 @@ export default function NoticeDetailPage({
 
   if (loading) {
     return (
-      <div className="board-content">
+      <div className={rootClass}>
         <p className="board-loading">불러오는 중...</p>
       </div>
     );
@@ -109,7 +112,7 @@ export default function NoticeDetailPage({
 
   if (!post) {
     return (
-      <div className="board-content">
+      <div className={rootClass}>
         <p className="board-loading">존재하지 않는 공지입니다.</p>
         <Link href="/notice" className="board-btn" style={{ display: "inline-block", marginTop: "1rem" }}>
           목록으로
@@ -119,7 +122,7 @@ export default function NoticeDetailPage({
   }
 
   return (
-    <div className="board-content">
+    <div className={rootClass}>
       <Link href="/notice" className="back-link">
         ← 목록으로
       </Link>

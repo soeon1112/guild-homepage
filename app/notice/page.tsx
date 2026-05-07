@@ -38,6 +38,7 @@ import { canAddSchedule } from "@/src/lib/scheduleAdmin";
 import { formatScheduleDate, josa, truncate } from "@/src/lib/text";
 import { useDeepLinkParam } from "@/src/lib/useDeepLinkParam";
 import { useModalBodyLock } from "@/src/lib/useModalBodyLock";
+import { useDawnlight2 } from "@/src/lib/featureFlags";
 
 // Phase 2-A: 통합 페이지. /schedule (기존) 도 양쪽 공존 — 다음 단계에서 제거.
 // activity link 가 /notice?schedule=<id> 형태면 일정 섹션으로 자동 스크롤
@@ -86,6 +87,10 @@ function formatRowDate(dateKey: string): string {
 
 function NoticePageInner() {
   const { nickname } = useAuth();
+  // Dawnlight 2 reskin gate. Wraps the page (and the schedule
+  // editor's portal-rendered modal) in `.dawnlight2 .dl2-notice`
+  // so the additive overrides at the bottom of globals.css apply.
+  const isDawnlight2 = useDawnlight2();
   const [items, setItems] = useState<Notice[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -140,8 +145,19 @@ function NoticePageInner() {
   };
 
   return (
-    <div className="board-content">
-      <h1 className="board-title">공지 게시판</h1>
+    <div
+      className={
+        "board-content" + (isDawnlight2 ? " dawnlight2 dl2-notice" : "")
+      }
+    >
+      {isDawnlight2 ? (
+        <header className="dl2-notice-page-head">
+          <h1 className="dl2-notice-page-title">공지 게시판</h1>
+          <p className="dl2-notice-page-sub">NOTICE BOARD</p>
+        </header>
+      ) : (
+        <h1 className="board-title">공지 게시판</h1>
+      )}
 
       {/* 공지 섹션 헤더 — 일정 섹션과 동일한 .notice-schedule-header 행
           스타일 재사용 ("schedule" prefix 지만 공지/일정 공통 row 스타일).
@@ -150,7 +166,7 @@ function NoticePageInner() {
       <div className="notice-schedule-header">
         <h2 className="notice-schedule-title">공지</h2>
         <Link href="/notice/write" className="notice-schedule-add-btn">
-          글쓰기
+          {isDawnlight2 ? "✦ 글쓰기" : "글쓰기"}
         </Link>
       </div>
 
@@ -198,7 +214,7 @@ function NoticePageInner() {
       </div>
 
       {/* ── 일정 섹션 (통합 페이지) ─────────────────────────────────── */}
-      <ScheduleSection loginNick={nickname} />
+      <ScheduleSection loginNick={nickname} isDawnlight2={isDawnlight2} />
     </div>
   );
 }
@@ -211,7 +227,13 @@ export default function NoticePage() {
   );
 }
 
-function ScheduleSection({ loginNick }: { loginNick: string | null }) {
+function ScheduleSection({
+  loginNick,
+  isDawnlight2,
+}: {
+  loginNick: string | null;
+  isDawnlight2: boolean;
+}) {
   const [items, setItems] = useState<ScheduleItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [editor, setEditor] = useState<ScheduleEditorMode>(null);
@@ -308,7 +330,7 @@ function ScheduleSection({ loginNick }: { loginNick: string | null }) {
             className="notice-schedule-add-btn"
             onClick={handleAdd}
           >
-            + 일정 추가
+            {isDawnlight2 ? "✦ 일정 추가" : "+ 일정 추가"}
           </button>
         ) : null}
       </div>
@@ -366,6 +388,7 @@ function ScheduleSection({ loginNick }: { loginNick: string | null }) {
 
       {pendingAction && (
         <ScheduleAdminGate
+          isDawnlight2={isDawnlight2}
           onCancel={() => setPendingAction(null)}
           onSuccess={() => {
             setAdminVerified(true);
@@ -377,7 +400,11 @@ function ScheduleSection({ loginNick }: { loginNick: string | null }) {
       )}
 
       {editor && (
-        <ScheduleEditor mode={editor} onClose={() => setEditor(null)} />
+        <ScheduleEditor
+          mode={editor}
+          isDawnlight2={isDawnlight2}
+          onClose={() => setEditor(null)}
+        />
       )}
     </section>
   );
@@ -386,9 +413,11 @@ function ScheduleSection({ loginNick }: { loginNick: string | null }) {
 function ScheduleAdminGate({
   onCancel,
   onSuccess,
+  isDawnlight2,
 }: {
   onCancel: () => void;
   onSuccess: () => void;
+  isDawnlight2: boolean;
 }) {
   const [pw, setPw] = useState("");
   const [err, setErr] = useState("");
@@ -403,7 +432,13 @@ function ScheduleAdminGate({
 
   if (typeof document === "undefined") return null;
   return createPortal(
-    <div className="notice-schedule-modal-backdrop" onClick={onCancel}>
+    <div
+      className={
+        "notice-schedule-modal-backdrop" +
+        (isDawnlight2 ? " dawnlight2 dl2-notice" : "")
+      }
+      onClick={onCancel}
+    >
       <div
         className="notice-schedule-modal-card"
         onClick={(e) => e.stopPropagation()}
@@ -446,9 +481,11 @@ function ScheduleAdminGate({
 function ScheduleEditor({
   mode,
   onClose,
+  isDawnlight2,
 }: {
   mode: Exclude<ScheduleEditorMode, null>;
   onClose: () => void;
+  isDawnlight2: boolean;
 }) {
   const initial =
     mode.kind === "edit"
@@ -504,7 +541,13 @@ function ScheduleEditor({
 
   if (typeof document === "undefined") return null;
   return createPortal(
-    <div className="notice-schedule-modal-backdrop" onClick={onClose}>
+    <div
+      className={
+        "notice-schedule-modal-backdrop" +
+        (isDawnlight2 ? " dawnlight2 dl2-notice" : "")
+      }
+      onClick={onClose}
+    >
       <div
         className="notice-schedule-modal-card"
         onClick={(e) => e.stopPropagation()}
