@@ -46,17 +46,28 @@ export function MyCharactersSection({
         <div>
           <h2
             className="font-serif leading-none"
-            style={{
-              fontFamily: "'Noto Serif KR', serif",
-              fontSize: "clamp(22px, 4vw, 28px)",
-              fontWeight: 300,
-              letterSpacing: "0.06em",
-              backgroundImage: "linear-gradient(135deg, #FFE5C4, #D896C8)",
-              WebkitBackgroundClip: "text",
-              backgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              color: "transparent",
-            }}
+            style={
+              dl2
+                ? {
+                    fontFamily:
+                      "'Pretendard Variable', Pretendard, 'Noto Sans KR', sans-serif",
+                    fontSize: "clamp(20px, 4vw, 26px)",
+                    fontWeight: 600,
+                    letterSpacing: "0.02em",
+                    color: "#fef5e6",
+                  }
+                : {
+                    fontFamily: "'Noto Serif KR', serif",
+                    fontSize: "clamp(22px, 4vw, 28px)",
+                    fontWeight: 300,
+                    letterSpacing: "0.06em",
+                    backgroundImage: "linear-gradient(135deg, #FFE5C4, #D896C8)",
+                    WebkitBackgroundClip: "text",
+                    backgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    color: "transparent",
+                  }
+            }
           >
             내 캐릭터
           </h2>
@@ -223,7 +234,16 @@ function MyCharacterCard({
           <div className="flex flex-col">
             <h3
               className="font-serif text-base tracking-wide text-stardust"
-              style={{ fontFamily: "'Noto Serif KR', serif" }}
+              style={
+                dl2
+                  ? {
+                      fontFamily:
+                        "'Pretendard Variable', Pretendard, 'Noto Sans KR', sans-serif",
+                      fontWeight: 600,
+                      color: "#2a4570",
+                    }
+                  : { fontFamily: "'Noto Serif KR', serif" }
+              }
             >
               {char.nickname}
             </h3>

@@ -151,17 +151,28 @@ export function GuildMembersSection({
         <div>
           <h2
             className="font-serif leading-none"
-            style={{
-              fontFamily: "'Noto Serif KR', serif",
-              fontSize: "clamp(22px, 4vw, 28px)",
-              fontWeight: 300,
-              letterSpacing: "0.06em",
-              backgroundImage: "linear-gradient(135deg, #FFE5C4, #D896C8)",
-              WebkitBackgroundClip: "text",
-              backgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              color: "transparent",
-            }}
+            style={
+              dl2
+                ? {
+                    fontFamily:
+                      "'Pretendard Variable', Pretendard, 'Noto Sans KR', sans-serif",
+                    fontSize: "clamp(20px, 4vw, 26px)",
+                    fontWeight: 600,
+                    letterSpacing: "0.02em",
+                    color: "#fef5e6",
+                  }
+                : {
+                    fontFamily: "'Noto Serif KR', serif",
+                    fontSize: "clamp(22px, 4vw, 28px)",
+                    fontWeight: 300,
+                    letterSpacing: "0.06em",
+                    backgroundImage: "linear-gradient(135deg, #FFE5C4, #D896C8)",
+                    WebkitBackgroundClip: "text",
+                    backgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    color: "transparent",
+                  }
+            }
           >
             전체 길드원
           </h2>
@@ -455,7 +466,9 @@ function CharacterRow({
             <span
               className="truncate font-serif text-[13px] tracking-wide"
               style={{
-                fontFamily: "'Noto Serif KR', serif",
+                fontFamily: dl2
+                  ? "'Pretendard Variable', Pretendard, 'Noto Sans KR', sans-serif"
+                  : "'Noto Serif KR', serif",
                 color: dl2 ? "#2a4570" : undefined,
                 fontWeight: dl2 ? 600 : undefined,
               }}

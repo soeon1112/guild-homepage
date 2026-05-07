@@ -279,7 +279,7 @@ export function CharacterForm({
                   dl2
                     ? {
                         fontFamily:
-                          "'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif",
+                          "'Pretendard Variable', Pretendard, 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif",
                         color: "#2a4570",
                         fontWeight: 700,
                         letterSpacing: 0.4,

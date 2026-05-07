@@ -311,17 +311,28 @@ export function GrowthAnalysisSection({
         <div>
           <h2
             className="font-serif leading-none"
-            style={{
-              fontFamily: "'Noto Serif KR', serif",
-              fontSize: "clamp(22px, 4vw, 28px)",
-              fontWeight: 300,
-              letterSpacing: "0.06em",
-              backgroundImage: "linear-gradient(135deg, #FFE5C4, #D896C8)",
-              WebkitBackgroundClip: "text",
-              backgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              color: "transparent",
-            }}
+            style={
+              dl2
+                ? {
+                    fontFamily:
+                      "'Pretendard Variable', Pretendard, 'Noto Sans KR', sans-serif",
+                    fontSize: "clamp(20px, 4vw, 26px)",
+                    fontWeight: 600,
+                    letterSpacing: "0.02em",
+                    color: "#fef5e6",
+                  }
+                : {
+                    fontFamily: "'Noto Serif KR', serif",
+                    fontSize: "clamp(22px, 4vw, 28px)",
+                    fontWeight: 300,
+                    letterSpacing: "0.06em",
+                    backgroundImage: "linear-gradient(135deg, #FFE5C4, #D896C8)",
+                    WebkitBackgroundClip: "text",
+                    backgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    color: "transparent",
+                  }
+            }
           >
             성장 분석
           </h2>
@@ -445,7 +456,9 @@ export function GrowthAnalysisSection({
                         border: dl2 ? "1px solid rgba(42,69,112,0.22)" : "1px solid rgba(216,150,200,0.3)",
                         borderRadius: 8,
                         fontSize: 11,
-                        fontFamily: "'Noto Serif KR', serif",
+                        fontFamily: dl2
+                          ? "'Pretendard Variable', Pretendard, 'Noto Sans KR', sans-serif"
+                          : "'Noto Serif KR', serif",
                         backdropFilter: "blur(10px)",
                         padding: "8px 10px",
                       }}

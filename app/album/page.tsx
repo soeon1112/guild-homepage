@@ -411,7 +411,7 @@ export default function AlbumPage() {
               className="text-xl font-semibold leading-tight text-cream"
               style={{
                 fontFamily:
-                  '"Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
+                  '"Pretendard Variable", Pretendard, "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
                 letterSpacing: "0.02em",
               }}
             >
@@ -421,7 +421,7 @@ export default function AlbumPage() {
               className="mt-1 text-[10px] font-medium uppercase tracking-[0.32em] text-mist-lavender"
               style={{
                 fontFamily:
-                  '"Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
+                  '"Pretendard Variable", Pretendard, "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
               }}
             >
               ALBUM
