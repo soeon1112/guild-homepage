@@ -230,17 +230,23 @@ export function BgmPlayerD2({ bgmUrl }: { bgmUrl?: string }) {
                 aria-label={playing ? "일시정지" : "재생"}
                 onClick={togglePlay}
                 disabled={!ready}
-                className="flex h-9 w-9 items-center justify-center rounded-full transition-all duration-200 hover:scale-105 disabled:opacity-50"
-                style={{
-                  background: "linear-gradient(135deg, #fef5e6, #f4a87a)",
-                  boxShadow: "0 2px 8px rgba(244,168,122,0.5)",
-                  color: "#3a2a1a",
-                }}
+                className="flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200 hover:scale-105 disabled:opacity-50"
+                style={
+                  playing
+                    ? {
+                        background: "#ff9a6c",
+                        color: "#fef5e6",
+                      }
+                    : {
+                        background: "#ffd4b8",
+                        color: "#5c3a1f",
+                      }
+                }
               >
                 {playing ? (
-                  <Pause className="h-4 w-4" />
+                  <Pause className="h-3.5 w-3.5" />
                 ) : (
-                  <Play className="h-4 w-4 translate-x-[1px]" />
+                  <Play className="h-3.5 w-3.5 translate-x-[1px]" />
                 )}
               </button>
             </div>

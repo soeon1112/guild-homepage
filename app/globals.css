@@ -8975,6 +8975,30 @@ body.has-redesigned-header .bg-scene {
   max-width: 672px;
 }
 
+/* Pretendard universal — forces the warm Korean serif off everywhere
+   under the dl2 wrapper. Mirror of `.dl2-notice *` / `.dl2-board *`. */
+.dl2-proposals * {
+  font-family: "Pretendard Variable", Pretendard, "Noto Sans KR",
+    -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+}
+
+/* 일시 / 인원 sub-card 박스 비율 — 일시 시간(예: "05-09 (토) 21:00")이
+   한 줄에 잘리지 않도록 2:1 로 가중. cosmic 측은 1fr 1fr 유지. */
+.dl2-proposals .proposals-highlight-row {
+  grid-template-columns: 2fr 1fr;
+}
+
+/* Weight 위계 — 데이터/제목 700, 라벨/본문 regular. dl2 분기 한정. */
+.dl2-proposals .proposals-card-title {
+  font-weight: 700;
+}
+.dl2-proposals .proposals-highlight-value {
+  font-weight: 700;
+}
+.dl2-proposals .proposals-meta-value {
+  font-weight: 700;
+}
+
 .dl2-proposals .dl2-proposals-page-head {
   margin-bottom: 1.5rem;
   text-align: center;
@@ -9116,7 +9140,7 @@ body.has-redesigned-header .bg-scene {
   font-family:
     "Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont,
     "Segoe UI", system-ui, sans-serif;
-  font-weight: 600;
+  font-weight: 700;
 }
 .dl2-proposals .proposals-card[data-status="recruiting"] .proposals-card-description {
   color: rgba(92, 58, 31, 0.85);
@@ -9127,7 +9151,7 @@ body.has-redesigned-header .bg-scene {
   font-family:
     "Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont,
     "Segoe UI", system-ui, sans-serif;
-  font-weight: 600;
+  font-weight: 700;
 }
 .dl2-proposals .proposals-card[data-status="in_progress"] .proposals-card-description {
   color: rgba(42, 69, 112, 0.85);
@@ -9140,7 +9164,7 @@ body.has-redesigned-header .bg-scene {
   font-family:
     "Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont,
     "Segoe UI", system-ui, sans-serif;
-  font-weight: 600;
+  font-weight: 700;
 }
 .dl2-proposals .proposals-card[data-status="completed"] .proposals-card-description,
 .dl2-proposals .proposals-card[data-status="incomplete"] .proposals-card-description,
@@ -10575,4 +10599,20 @@ body.has-redesigned-header .bg-scene {
   --tw-ring-color: rgba(42, 69, 112, 0.2) !important;
   border-color: #2a4570 !important;
   outline: none !important;
+}
+
+/* ── Mini-homepage (dawnlight2 1단계) — Pretendard universal ──
+   The dl2 mini-homepage tree mixes new components (ProfileSectionD2 /
+   KeywordsSectionD2 / BgmPlayerD2) with cosmic-era sections (BadgesSection,
+   GuestbookSection, AdventureLogSection, PhotosSection) that were authored
+   with `font-serif` Tailwind classes and inline `font-family: 'Noto Serif
+   KR'`. Inside `.dl2-minihome` we force every descendant to inherit
+   Pretendard (matching the rest of the dawnlight2 page tree) so the type
+   reads as one consistent system, regardless of what each child component
+   set inline. !important is required because a few child components carry
+   inline fontFamily styles that would otherwise win the cascade. */
+.dl2-minihome,
+.dl2-minihome * {
+  font-family: "Pretendard Variable", Pretendard, "Noto Sans KR",
+    var(--font-noto-sans), system-ui, -apple-system, sans-serif !important;
 }

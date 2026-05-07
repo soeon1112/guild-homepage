@@ -623,10 +623,10 @@ export function ProfileSectionD2({
           </div>
         ) : (
           <>
-            {/* Nickname + small flag (v0 그대로) */}
+            {/* Nickname + mood emoji (깃발 제거 — 닉네임 옆 깃발 element) */}
             <div className="flex items-center gap-2">
               <h1
-                className="font-serif text-2xl font-semibold leading-none"
+                className="text-2xl font-semibold leading-none"
                 style={{ color: "#3a2a1a" }}
               >
                 {member.nickname}
@@ -636,11 +636,6 @@ export function ProfileSectionD2({
                   {moodEmoji}
                 </span>
               )}
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
-                <line x1="6" y1="18" x2="6" y2="4" stroke="#3a2a1a" strokeWidth="1.4" strokeLinecap="round" />
-                <path d="M 6 5 L 16 8 L 6 11 Z" fill="#f4a87a" opacity="0.92" />
-                <circle cx="6" cy="5" r="5" fill="#fff5a0" opacity="0.22" />
-              </svg>
             </div>
 
             {/* MBTI: ✦ + ENFP only (compass dot 제거) */}
@@ -670,16 +665,15 @@ export function ProfileSectionD2({
                     border: "1px solid rgba(160,120,70,0.20)",
                   }}
                 >
-                  {/* Horizontal tape — single piece, slight tilt, ~1/3 of memo width */}
+                  {/* Horizontal kraft-paper tape — opaque #c9a880, slight tilt */}
                   <div
                     className="absolute -top-2 left-1/2 h-[14px] w-20 -translate-x-1/2"
                     style={{
-                      background:
-                        "linear-gradient(180deg, rgba(255,235,200,0.45) 0%, rgba(244,168,122,0.42) 50%, rgba(255,235,200,0.45) 100%)",
-                      border: "1px solid rgba(160,120,70,0.18)",
+                      background: "#c9a880",
+                      opacity: 0.92,
                       borderRadius: "2px",
                       boxShadow:
-                        "0 1px 3px rgba(80,40,10,0.18), inset 0 1px 0 rgba(255,255,255,0.55)",
+                        "0 1px 2px rgba(92,58,31,0.2), inset 0 1px 0 rgba(255,255,255,0.18)",
                       transform: "rotate(-2deg)",
                     }}
                     aria-hidden
