@@ -33,7 +33,7 @@ type Entry = {
   createdAt: Timestamp | null;
 };
 
-const PAGE_SIZE = 6;
+const PAGE_SIZE = 5;
 const MAX_LENGTH = 80;
 
 function StarMark() {
