@@ -44,10 +44,13 @@ import Avatar, {
 } from "@/app/components/Avatar";
 import { handleEvent } from "@/src/lib/badgeCheck";
 import { ProfileSection as ProfileSectionV2 } from "@/app/components/redesign/minihompi/ProfileSection";
+import { ProfileSectionD2 } from "@/app/components/redesign/minihompi/ProfileSectionD2";
+import { IslandHeroD2 } from "@/app/components/redesign/minihompi/IslandHeroD2";
 import { BadgesSection } from "@/app/components/redesign/minihompi/BadgesSection";
 import { GuestbookSection as GuestbookSectionV2 } from "@/app/components/redesign/minihompi/GuestbookSection";
 import { AdventureLogSection } from "@/app/components/redesign/minihompi/AdventureLogSection";
 import { PhotosSection } from "@/app/components/redesign/minihompi/PhotosSection";
+import { useDawnlight2 } from "@/src/lib/featureFlags";
 
 // `decodeURIComponent` throws on malformed input ("%E"). Be defensive —
 // fall back to the raw value rather than crashing the page.
@@ -159,6 +162,11 @@ export default function MemberMiniHomePage({
   // so every downstream Firestore lookup compares against real text.
   const id = safeDecode(rawId);
   const { nickname: loginNick } = useAuth();
+  // dawnlight2 톤은 "보는 사람" 기준 (현재 로그인 유저). 언쏘가 다른
+  // 길드원 미니홈피를 봐도 양피지 톤, 다른 길드원은 누구 미니홈피든
+  // cosmic 톤. ProfileSection / 떠있는 섬 / BGM 만 분기 — 배지·방명록·
+  // 모험기록·사진첩 섹션은 1단계에서 cosmic 그대로 유지.
+  const dawnlight2 = useDawnlight2();
   const [member, setMember] = useState<MemberDoc | null>(null);
   // Resolved members doc id (= URL slug for slot-keyed legacy docs, or
   // the matched doc id when the URL slug is a nickname but the actual
@@ -315,6 +323,17 @@ export default function MemberMiniHomePage({
         <p className="py-8 text-center font-serif italic text-text-sub">
           로딩 중...
         </p>
+      ) : dawnlight2 ? (
+        <>
+          <IslandHeroD2 nickname={member?.nickname ?? "새벽"} />
+          <ProfileSectionD2
+            id={resolvedId}
+            member={member}
+            loginNick={loginNick}
+            isOwner={isOwner}
+            onChange={setMember}
+          />
+        </>
       ) : (
         <ProfileSectionV2
           id={resolvedId}
