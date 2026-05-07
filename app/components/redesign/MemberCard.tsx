@@ -160,11 +160,7 @@ export function MemberCard({
             <div className="flex min-w-0 flex-1 flex-col gap-1.5">
               <span
                 className="truncate text-[13px] font-semibold tracking-wide sm:text-sm"
-                style={{
-                  color: "#4a4a4a",
-                  fontFamily:
-                    '"Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
-                }}
+                style={{ color: "#4a4a4a" }}
               >
                 {nickname || "미등록된 새벽"}
               </span>
@@ -176,8 +172,6 @@ export function MemberCard({
                   WebkitLineClamp: 2,
                   WebkitBoxOrient: "vertical",
                   overflow: "hidden",
-                  fontFamily:
-                    '"Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
                 }}
               >
                 {nickname ? "아직 정착하지 않은 섬" : "아직 깃발이 꽂히지 않은 자리"}
@@ -206,10 +200,12 @@ export function MemberCard({
             className="relative flex items-center gap-2.5 overflow-hidden rounded-2xl p-3 sm:gap-4 sm:p-5"
             style={{
               minHeight: 108,
-              background: "rgba(255, 212, 184, 0.4)",
-              border: "1px solid rgba(184, 84, 32, 0.15)",
+              background: "rgba(254, 245, 230, 0.12)",
+              border: "1px solid rgba(254, 245, 230, 0.25)",
+              backdropFilter: "blur(16px)",
+              WebkitBackdropFilter: "blur(16px)",
               boxShadow:
-                "0 2px 12px rgba(92, 58, 31, 0.06), inset 0 1px 0 rgba(255, 245, 230, 0.3)",
+                "0 2px 14px rgba(11, 8, 33, 0.18), inset 0 1px 0 rgba(254, 245, 230, 0.08)",
             }}
           >
             <div className="relative h-11 w-11 flex-shrink-0 sm:h-16 sm:w-16">
@@ -240,7 +236,7 @@ export function MemberCard({
                 style={{
                   background: statusStyle.color,
                   boxShadow: statusStyle.glow,
-                  border: "2px solid #fef5e6",
+                  border: "2px solid rgba(254, 245, 230, 0.95)",
                 }}
               />
             </div>
@@ -248,11 +244,7 @@ export function MemberCard({
             <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5">
               <span
                 className="truncate text-[13px] font-semibold tracking-wide sm:text-[15px]"
-                style={{
-                  color: "#5c3a1f",
-                  fontFamily:
-                    '"Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
-                }}
+                style={{ color: "#fef5e6" }}
               >
                 {nickname}
               </span>
@@ -260,13 +252,11 @@ export function MemberCard({
               <span
                 className="wrap-anywhere text-[11px] italic leading-relaxed sm:text-[12.5px]"
                 style={{
-                  color: "rgba(92, 58, 31, 0.65)",
+                  color: "rgba(254, 245, 230, 0.7)",
                   display: "-webkit-box",
                   WebkitLineClamp: 2,
                   WebkitBoxOrient: "vertical",
                   overflow: "hidden",
-                  fontFamily:
-                    '"Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
                 }}
               >
                 {bio && bio.trim() ? bio : "..."}
@@ -276,7 +266,7 @@ export function MemberCard({
             <span
               aria-hidden
               className="pointer-events-none absolute right-3 top-3 transition-transform duration-300 group-hover:scale-110"
-              style={{ color: "#b85420" }}
+              style={{ color: "rgba(254, 245, 230, 0.85)" }}
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
                 <path d="M12 2 L13.5 9.5 L21 11 L13.5 12.5 L12 20 L10.5 12.5 L3 11 L10.5 9.5 Z" />

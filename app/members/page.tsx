@@ -181,13 +181,7 @@ export default function MembersPage() {
 
   if (isDawnlight2) {
     return (
-      <div
-        className="dawnlight2 dl2-members relative mx-auto max-w-2xl px-4 pt-3"
-        style={{
-          fontFamily:
-            '"Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
-        }}
-      >
+      <div className="dawnlight2 dl2-members relative mx-auto max-w-2xl px-4 pt-3">
         {/* Page head — left-aligned cream title + MEMBERS subtitle. */}
         <header className="mb-6">
           <h1
@@ -221,8 +215,6 @@ export default function MembersPage() {
                 background: "rgba(255, 255, 255, 0.1)",
                 border: "1px solid rgba(254, 245, 230, 0.3)",
                 color: "#fef5e6",
-                fontFamily:
-                  '"Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
                 backdropFilter: "blur(16px)",
                 WebkitBackdropFilter: "blur(16px)",
               }}
