@@ -62,12 +62,40 @@ const STATUS_STYLE: Record<
   },
 };
 
+// Dawnlight2 (하늘섬) status palette — sunset-gold accent + soft
+// ink-brown for offline. Reuses the same recent/online judgement as
+// cosmic so the badge logic stays unchanged; only the colors shift.
+const DL2_STATUS_STYLE: Record<
+  Status,
+  { color: string; glow: string; label: string }
+> = {
+  online: {
+    color: "#ffc785",
+    glow:
+      "0 0 6px rgba(255,199,133,0.85), 0 0 12px rgba(255,154,108,0.45)",
+    label: "온라인",
+  },
+  recent: {
+    color: "#ffc785",
+    glow:
+      "0 0 6px rgba(255,199,133,0.7), 0 0 10px rgba(255,154,108,0.3)",
+    label: "최근 접속",
+  },
+  offline: {
+    color: "rgba(138, 106, 74, 0.4)",
+    glow: "none",
+    label: "오프라인",
+  },
+};
+
 export function MemberCard({
   member,
   index,
+  dl2 = false,
 }: {
   member: MemberCardData;
   index: number;
+  dl2?: boolean;
 }) {
   const { id, nickname, bio, profileImage, registered, lastSeenHours } = member;
   const recent = lastSeenHours != null && lastSeenHours < 1;
@@ -83,7 +111,182 @@ export function MemberCard({
   }, [nickname]);
 
   const status = getStatus(lastSeenHours);
-  const statusStyle = STATUS_STYLE[status];
+  const statusStyle = (dl2 ? DL2_STATUS_STYLE : STATUS_STYLE)[status];
+
+  if (dl2 && !registered) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        whileHover={{ y: -2 }}
+        transition={{ duration: 0.4, delay: Math.min(index * 0.02, 0.2) }}
+        className="group relative"
+      >
+        <Link
+          href={`/members/${id}`}
+          className="relative block rounded-2xl"
+          aria-label="아직 정착하지 않은 섬 — 프로필 등록하러 가기"
+        >
+          <div
+            className="relative flex items-center gap-2.5 rounded-2xl p-3 transition-transform duration-300 group-hover:-translate-y-0.5 sm:gap-4 sm:p-5"
+            style={{
+              minHeight: 104,
+              background: "rgba(168, 164, 160, 0.4)",
+              border: "1px dashed rgba(168, 164, 160, 0.6)",
+            }}
+          >
+            <div
+              className="relative flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full sm:h-16 sm:w-16"
+              style={{
+                border: "1.5px dashed rgba(120, 116, 112, 0.5)",
+              }}
+              aria-hidden
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="rgba(120, 116, 112, 0.7)"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M5 21V4" />
+                <path d="M5 4 L17 4 L14 8 L17 12 L5 12" fill="rgba(120, 116, 112, 0.18)" />
+              </svg>
+            </div>
+
+            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+              <span
+                className="truncate text-[13px] font-medium tracking-wide sm:text-sm"
+                style={{
+                  color: "#6a6a6a",
+                  fontFamily:
+                    '"Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
+                }}
+              >
+                {nickname || "미등록된 새벽"}
+              </span>
+              <span
+                className="wrap-anywhere text-[11px] italic leading-relaxed sm:text-[12px]"
+                style={{
+                  color: "#8a8580",
+                  display: "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden",
+                  fontFamily:
+                    '"Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
+                }}
+              >
+                {nickname ? "아직 정착하지 않은 섬" : "아직 깃발이 꽂히지 않은 자리"}
+              </span>
+            </div>
+          </div>
+        </Link>
+      </motion.div>
+    );
+  }
+
+  if (dl2) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, delay: Math.min(index * 0.03, 0.3) }}
+        className="group relative"
+      >
+        <Link
+          href={`/members/${id}`}
+          className="relative block rounded-2xl transition-transform duration-300 hover:-translate-y-0.5 hover:scale-[1.015]"
+          aria-label={`${nickname} 프로필 보기`}
+        >
+          <div
+            className="relative flex items-center gap-2.5 overflow-hidden rounded-2xl p-3 sm:gap-4 sm:p-5"
+            style={{
+              minHeight: 108,
+              background: "rgba(255, 212, 184, 0.6)",
+              border: "1px solid rgba(184, 84, 32, 0.2)",
+              boxShadow:
+                "0 2px 12px rgba(92, 58, 31, 0.08), inset 0 1px 0 rgba(255, 245, 230, 0.35)",
+            }}
+          >
+            <div className="relative h-11 w-11 flex-shrink-0 sm:h-16 sm:w-16">
+              <div className="origin-top-left scale-[0.6875] sm:scale-100">
+                <MemberAvatar
+                  imageUrl={profileImage}
+                  nickname={nickname}
+                  size={64}
+                  ring
+                />
+              </div>
+
+              {recent && (
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 rounded-full"
+                  style={{
+                    border: "1px solid rgba(255, 199, 133, 0.7)",
+                    animation: "pulse-ring 2.4s cubic-bezier(0,0,0.2,1) infinite",
+                  }}
+                />
+              )}
+
+              <span
+                aria-label={statusStyle.label}
+                title={statusStyle.label}
+                className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full"
+                style={{
+                  background: statusStyle.color,
+                  boxShadow: statusStyle.glow,
+                  border: "2px solid #fef5e6",
+                }}
+              />
+            </div>
+
+            <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5">
+              <span
+                className="truncate text-[13px] font-semibold tracking-wide sm:text-[15px]"
+                style={{
+                  color: "#5c3a1f",
+                  fontFamily:
+                    '"Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
+                }}
+              >
+                {nickname}
+              </span>
+
+              <span
+                className="wrap-anywhere text-[11px] italic leading-relaxed sm:text-[12.5px]"
+                style={{
+                  color: "rgba(92, 58, 31, 0.65)",
+                  display: "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden",
+                  fontFamily:
+                    '"Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
+                }}
+              >
+                {bio && bio.trim() ? bio : "..."}
+              </span>
+            </div>
+
+            <span
+              aria-hidden
+              className="pointer-events-none absolute right-3 top-3 transition-transform duration-300 group-hover:scale-110"
+              style={{ color: "#b85420" }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                <path d="M12 2 L13.5 9.5 L21 11 L13.5 12.5 L12 20 L10.5 12.5 L3 11 L10.5 9.5 Z" />
+              </svg>
+            </span>
+          </div>
+        </Link>
+      </motion.div>
+    );
+  }
 
   if (!registered) {
     return (
