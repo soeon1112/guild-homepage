@@ -218,7 +218,7 @@ export function PhotosSectionD2({
         id={SECTION_ID}
         className="overflow-hidden rounded-2xl"
         style={{
-          background: "rgba(184, 132, 90, 0.85)",
+          background: "rgba(184, 132, 90, 0.7)",
           boxShadow: "0 4px 18px rgba(80, 50, 10, 0.22)",
         }}
       >

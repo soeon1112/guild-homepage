@@ -350,7 +350,7 @@ export function GuestbookSectionD2({
       id="minihome-guestbook"
       className="overflow-hidden rounded-2xl"
       style={{
-        background: "rgba(205, 216, 224, 0.85)",
+        background: "rgba(205, 216, 224, 0.7)",
         boxShadow: "0 4px 12px rgba(42, 69, 112, 0.2)",
       }}
     >
@@ -589,41 +589,58 @@ function GuestbookItemD2({
                 paddingBottom: 8,
                 borderTop:
                   idx > 0 ? "1px solid rgba(42, 69, 112, 0.12)" : undefined,
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 6,
               }}
             >
-              <div
-                className="flex items-baseline"
-                style={{ marginBottom: 6 }}
+              {/* 좌측 ↳ 고정 — 우측 column (header + body) 안에서 wrap */}
+              <span
+                style={{
+                  flexShrink: 0,
+                  color: "#5a7090",
+                  fontSize: 12,
+                  lineHeight: 1.6,
+                }}
               >
-                <span style={{ marginRight: 4, color: "#5a7090" }}>↳</span>
-                <Dl2TitlePrefix nickname={r.nickname} tone="cool" />
-                <NicknameLink
-                  nickname={r.nickname}
-                  className="dl2-gb-nick"
-                  hideTitle
-                />
+                ↳
+              </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <div
-                  className="flex items-center"
-                  style={{ marginLeft: "auto", gap: "0.6rem" }}
+                  className="flex items-baseline"
+                  style={{ marginBottom: 6 }}
                 >
-                  <span className="dl2-gb-date">{formatTime(r.createdAt)}</span>
-                  {loginNick === r.nickname && (
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteReply(r.id)}
-                      className="dl2-gb-action"
-                    >
-                      삭제
-                    </button>
-                  )}
+                  <Dl2TitlePrefix nickname={r.nickname} tone="cool" />
+                  <NicknameLink
+                    nickname={r.nickname}
+                    className="dl2-gb-nick"
+                    hideTitle
+                  />
+                  <div
+                    className="flex items-center"
+                    style={{ marginLeft: "auto", gap: "0.6rem" }}
+                  >
+                    <span className="dl2-gb-date">
+                      {formatTime(r.createdAt)}
+                    </span>
+                    {loginNick === r.nickname && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteReply(r.id)}
+                        className="dl2-gb-action"
+                      >
+                        삭제
+                      </button>
+                    )}
+                  </div>
                 </div>
+                <p className="dl2-gb-body">{r.message}</p>
+                {r.imageUrl && (
+                  <div className="mt-1">
+                    <CommentImageView url={r.imageUrl} />
+                  </div>
+                )}
               </div>
-              <p className="dl2-gb-body">{r.message}</p>
-              {r.imageUrl && (
-                <div className="mt-1">
-                  <CommentImageView url={r.imageUrl} />
-                </div>
-              )}
             </div>
           ))}
 

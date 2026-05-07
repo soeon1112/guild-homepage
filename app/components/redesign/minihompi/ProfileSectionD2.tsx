@@ -332,7 +332,7 @@ export function ProfileSectionD2({
       <section
         className="relative overflow-hidden rounded-2xl px-5 py-8 sm:px-6 sm:py-10"
         style={{
-          background: "rgba(232, 200, 168, 0.85)",
+          background: "rgba(232, 200, 168, 0.7)",
           border: "1px dashed rgba(140, 100, 60, 0.45)",
           boxShadow: "0 4px 22px rgba(80,40,10,0.18)",
         }}
@@ -393,7 +393,7 @@ export function ProfileSectionD2({
     <section
       className="relative overflow-hidden rounded-2xl"
       style={{
-        background: "rgba(232, 200, 168, 0.85)",
+        background: "rgba(232, 200, 168, 0.7)",
         boxShadow: "0 4px 24px rgba(80, 40, 10, 0.18)",
       }}
     >

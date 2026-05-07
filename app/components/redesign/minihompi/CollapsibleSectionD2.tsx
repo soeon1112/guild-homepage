@@ -39,7 +39,7 @@ export function CollapsibleSectionD2({
         aria-expanded={open}
         className="flex w-full items-center justify-between rounded-2xl px-5 py-3.5 text-left transition-all hover:brightness-110"
         style={{
-          background: "rgba(184, 84, 120, 0.85)",
+          background: "rgba(184, 84, 120, 0.7)",
           boxShadow: "0 4px 14px rgba(80, 20, 30, 0.22)",
         }}
       >
@@ -95,7 +95,7 @@ export function CollapsibleSectionD2({
               <div
                 className="rounded-2xl px-4 py-4 sm:px-5 sm:py-5"
                 style={{
-                  background: "rgba(184, 84, 120, 0.22)",
+                  background: "rgba(184, 84, 120, 0.2)",
                   border: "1px solid rgba(184, 84, 120, 0.4)",
                 }}
               >
@@ -109,7 +109,7 @@ export function CollapsibleSectionD2({
           <div
             className="rounded-2xl px-4 py-4 sm:px-5 sm:py-5"
             style={{
-              background: "rgba(184, 84, 120, 0.22)",
+              background: "rgba(184, 84, 120, 0.2)",
               border: "1px solid rgba(184, 84, 120, 0.4)",
             }}
           >

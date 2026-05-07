@@ -306,7 +306,7 @@ export function AdventureLogSectionD2({
       id="minihome-adventure"
       className="overflow-hidden rounded-2xl"
       style={{
-        background: "rgba(139, 90, 60, 0.85)",
+        background: "rgba(139, 90, 60, 0.7)",
         boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)",
       }}
     >
