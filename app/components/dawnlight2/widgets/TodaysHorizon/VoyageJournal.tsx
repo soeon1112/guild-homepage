@@ -234,7 +234,11 @@ export function VoyageJournal() {
           disabled={buttonDisabled}
           aria-live="polite"
           className={[
-            "group inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-medium tracking-wide transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cream/70 focus-visible:ring-offset-2 focus-visible:ring-offset-twilight-deep",
+            // `select-none` lives on the base class string so it covers
+            // both active and disabled branches (and the inner +/label
+            // <span>s inherit it) — clicks on the button never engage
+            // the browser's text-selection / caret path.
+            "group inline-flex select-none items-center gap-2 rounded-full px-6 py-2.5 text-sm font-medium tracking-wide transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cream/70 focus-visible:ring-offset-2 focus-visible:ring-offset-twilight-deep",
             buttonDisabled
               ? "cursor-not-allowed bg-cream/35 text-twilight-deep/55"
               : "bg-cream text-twilight-deep shadow-[0_6px_18px_-8px_rgba(254,245,230,0.45)] hover:-translate-y-0.5 hover:bg-cream/95 hover:shadow-[0_10px_28px_-10px_rgba(254,245,230,0.7)]",
