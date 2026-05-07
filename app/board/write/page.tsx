@@ -12,6 +12,7 @@ import {
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "@/src/lib/firebase";
 import { useAuth } from "@/app/components/AuthProvider";
+import { useDawnlight2 } from "@/src/lib/featureFlags";
 import { logActivity } from "@/src/lib/activity";
 import { addPoints } from "@/src/lib/points";
 import { handleEvent } from "@/src/lib/badgeCheck";
@@ -36,6 +37,7 @@ function detectFileType(file: File): AttachmentType {
 export default function BoardWritePage() {
   const router = useRouter();
   const { nickname, ready } = useAuth();
+  const isDawnlight2 = useDawnlight2();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [pending, setPending] = useState<PendingFile[]>([]);
@@ -112,9 +114,21 @@ export default function BoardWritePage() {
     }
   };
 
+  const rootClass =
+    "board-content" + (isDawnlight2 ? " dawnlight2 dl2-board" : "");
+  const renderHead = () =>
+    isDawnlight2 ? (
+      <header className="dl2-board-page-head">
+        <h1 className="dl2-board-page-title">게시글 작성</h1>
+        <p className="dl2-board-page-sub">WRITE POST</p>
+      </header>
+    ) : (
+      <h1 className="board-title">글쓰기</h1>
+    );
+
   if (!ready) {
     return (
-      <div className="board-content">
+      <div className={rootClass}>
         <p className="board-loading">불러오는 중...</p>
       </div>
     );
@@ -122,16 +136,16 @@ export default function BoardWritePage() {
 
   if (!nickname) {
     return (
-      <div className="board-content">
-        <h1 className="board-title">글쓰기</h1>
+      <div className={rootClass}>
+        {renderHead()}
         <p className="login-required">로그인이 필요합니다.</p>
       </div>
     );
   }
 
   return (
-    <div className="board-content">
-      <h1 className="board-title">글쓰기</h1>
+    <div className={rootClass}>
+      {renderHead()}
 
       <div className="board-form">
         <input

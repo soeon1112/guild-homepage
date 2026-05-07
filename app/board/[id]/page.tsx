@@ -26,6 +26,8 @@ import {
   CommentImageView,
 } from "@/app/components/CommentImage";
 import NicknameLink from "@/app/components/NicknameLink";
+import { Dl2TitlePrefix } from "@/app/components/dawnlight2/widgets/WhispersFeed/Dl2TitlePrefix";
+import { useDawnlight2 } from "@/src/lib/featureFlags";
 import { formatSmart } from "@/src/lib/formatSmart";
 import { handleEvent } from "@/src/lib/badgeCheck";
 import { josa, truncate } from "@/src/lib/text";
@@ -73,6 +75,7 @@ function BoardDetailPageInner({
 }) {
   const { id } = use(params);
   const router = useRouter();
+  const isDawnlight2 = useDawnlight2();
   // Deep-link comment scroll: /board/X?comment=Y from NebulaWhispers
   // navigates here. useDeepLinkParam sealed the
   // useSearchParams-empty-on-first-render race once and for all.
@@ -249,9 +252,12 @@ function BoardDetailPageInner({
     setCommentSubmitting(false);
   };
 
+  const rootClass =
+    "board-content" + (isDawnlight2 ? " dawnlight2 dl2-board" : "");
+
   if (loading) {
     return (
-      <div className="board-content">
+      <div className={rootClass}>
         <p className="board-loading">불러오는 중...</p>
       </div>
     );
@@ -259,7 +265,7 @@ function BoardDetailPageInner({
 
   if (!post) {
     return (
-      <div className="board-content">
+      <div className={rootClass}>
         <p className="board-loading">존재하지 않는 게시글입니다.</p>
         <Link href="/board" className="board-btn" style={{ display: "inline-block", marginTop: "1rem" }}>
           목록으로
@@ -270,7 +276,7 @@ function BoardDetailPageInner({
 
   return (
     <div
-      className="board-content"
+      className={rootClass}
       style={{
         opacity: scrollPending ? 0 : 1,
         transition: "opacity 150ms ease-out",
@@ -359,6 +365,7 @@ function BoardDetailPageInner({
               boardId={id}
               comment={c}
               loginNick={loginNick}
+              isDawnlight2={isDawnlight2}
               formatDate={formatDate}
               replyOpen={openReplyId === c.id}
               onToggleReply={() =>
@@ -419,6 +426,7 @@ function BoardCommentItem({
   boardId,
   comment,
   loginNick,
+  isDawnlight2,
   formatDate,
   replyOpen,
   onToggleReply,
@@ -428,6 +436,7 @@ function BoardCommentItem({
   boardId: string;
   comment: Comment;
   loginNick: string | null;
+  isDawnlight2: boolean;
   formatDate: (d: Date) => string;
   replyOpen: boolean;
   onToggleReply: () => void;
@@ -532,6 +541,7 @@ function BoardCommentItem({
   return (
     <div className="board-comment-item" data-comment-id={comment.id}>
       <div className="board-comment-header">
+        {isDawnlight2 ? <Dl2TitlePrefix nickname={comment.nickname} /> : null}
         <NicknameLink nickname={comment.nickname} className="board-comment-nick" />
         <div
           style={{
@@ -571,7 +581,15 @@ function BoardCommentItem({
           {replies.map((r) => (
             <div key={r.id} className="board-reply-item">
               <div className="board-comment-header">
-                <NicknameLink nickname={r.nickname} className="board-comment-nick" prefix="↳ " />
+                {isDawnlight2 ? (
+                  <span style={{ display: "inline-flex", alignItems: "center" }}>
+                    <span style={{ marginRight: 4, color: "#5a7090" }}>↳</span>
+                    <Dl2TitlePrefix nickname={r.nickname} />
+                    <NicknameLink nickname={r.nickname} className="board-comment-nick" />
+                  </span>
+                ) : (
+                  <NicknameLink nickname={r.nickname} className="board-comment-nick" prefix="↳ " />
+                )}
                 <div
                   style={{
                     marginLeft: "auto",

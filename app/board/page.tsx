@@ -15,6 +15,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
 import NicknameLink from "@/app/components/NicknameLink";
+import { useDawnlight2 } from "@/src/lib/featureFlags";
 import { formatSmart } from "@/src/lib/formatSmart";
 
 interface Post {
@@ -28,6 +29,10 @@ interface Post {
 const PAGE_SIZE = 10;
 
 export default function BoardPage() {
+  // dl2 reskin: wrap root with `dawnlight2 dl2-board` so the CSS
+  // overrides in globals.css attach. Page head + table + pagination
+  // are recolored centrally — same pattern as /notice and /proposals.
+  const isDawnlight2 = useDawnlight2();
   const [posts, setPosts] = useState<Post[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -105,12 +110,23 @@ export default function BoardPage() {
   };
 
   return (
-    <div className="board-content">
-      <h1 className="board-title">게시판</h1>
+    <div
+      className={
+        "board-content" + (isDawnlight2 ? " dawnlight2 dl2-board" : "")
+      }
+    >
+      {isDawnlight2 ? (
+        <header className="dl2-board-page-head">
+          <h1 className="dl2-board-page-title">게시판</h1>
+          <p className="dl2-board-page-sub">BOARD</p>
+        </header>
+      ) : (
+        <h1 className="board-title">게시판</h1>
+      )}
 
       <div className="board-write-btn-wrap">
         <Link href="/board/write" className="board-btn">
-          글쓰기
+          {isDawnlight2 ? "✦ 글쓰기" : "글쓰기"}
         </Link>
       </div>
 

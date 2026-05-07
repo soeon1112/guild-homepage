@@ -12,6 +12,7 @@ import {
 } from "firebase/storage";
 import { db, storage } from "@/src/lib/firebase";
 import { useAuth } from "@/app/components/AuthProvider";
+import { useDawnlight2 } from "@/src/lib/featureFlags";
 
 type AttachmentType = "image" | "video" | "gif";
 
@@ -42,6 +43,7 @@ export default function BoardEditPage({
   const { id } = use(params);
   const router = useRouter();
   const { nickname: loginNick, ready } = useAuth();
+  const isDawnlight2 = useDawnlight2();
   const [authorNick, setAuthorNick] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -139,9 +141,21 @@ export default function BoardEditPage({
     }
   };
 
+  const rootClass =
+    "board-content" + (isDawnlight2 ? " dawnlight2 dl2-board" : "");
+  const renderHead = () =>
+    isDawnlight2 ? (
+      <header className="dl2-board-page-head">
+        <h1 className="dl2-board-page-title">게시글 수정</h1>
+        <p className="dl2-board-page-sub">EDIT POST</p>
+      </header>
+    ) : (
+      <h1 className="board-title">글 수정</h1>
+    );
+
   if (loading || !ready) {
     return (
-      <div className="board-content">
+      <div className={rootClass}>
         <p className="board-loading">불러오는 중...</p>
       </div>
     );
@@ -149,7 +163,7 @@ export default function BoardEditPage({
 
   if (authorNick === null) {
     return (
-      <div className="board-content">
+      <div className={rootClass}>
         <p className="board-loading">존재하지 않는 게시글입니다.</p>
       </div>
     );
@@ -157,15 +171,15 @@ export default function BoardEditPage({
 
   if (!loginNick || loginNick !== authorNick) {
     return (
-      <div className="board-content">
+      <div className={rootClass}>
         <p className="login-required">작성자만 수정할 수 있습니다.</p>
       </div>
     );
   }
 
   return (
-    <div className="board-content">
-      <h1 className="board-title">글 수정</h1>
+    <div className={rootClass}>
+      {renderHead()}
 
       <div className="board-form">
         <input

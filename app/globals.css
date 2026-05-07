@@ -9412,3 +9412,569 @@ body.has-redesigned-header .bg-scene {
   opacity: 0.5;
   box-shadow: none;
 }
+
+/* ─────────────────────────────────────────────────────────────────
+   Dawnlight 2 — board (게시판 + 본문 + 작성/수정) reskin (Step 4-H)
+   Scoped to `.dl2-board`. Paper-plane palette inherited from /notice
+   so the two flat-ink boards (공지 / 게시판) read as one family.
+   Comment subbox is intentionally a hair lighter (0.4 vs 0.65) so
+   the body card and discussion card visibly separate.
+   ───────────────────────────────────────────────────────────────── */
+
+/* max-width clamp: compound selector so it lands on the page root only.
+   Modal backdrops (e.g. lightbox / confirm) live outside `.board-content`
+   wrapper so they keep fullscreen — same fix as the notice page. */
+.dl2-board.board-content {
+  max-width: 672px;
+}
+
+/* Pretendard universal — forces the warm Korean serif off everywhere
+   under the dl2 wrapper. Mirror of `.dl2-notice *` rule. */
+.dl2-board * {
+  font-family:
+    "Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", system-ui, sans-serif;
+}
+
+/* Page head — cream "게시판/게시글 작성/게시글 수정" + lavender
+   uppercase EN sub line. Left-aligned to match the dawnlight2 widget
+   header rhythm (album / notice). */
+.dl2-board .dl2-board-page-head {
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+.dl2-board .dl2-board-page-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #fef5e6;
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+  text-align: left;
+}
+.dl2-board .dl2-board-page-sub {
+  margin: 4px 0 0;
+  font-size: 10px;
+  font-weight: 500;
+  color: #c8b8e8;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  text-align: left;
+}
+
+/* Top-right "글쓰기" — navy solid pill (not the cosmic warm-gradient). */
+.dl2-board .board-write-btn-wrap .board-btn,
+.dl2-board .board-write-btn-wrap .board-btn:hover {
+  background: #2a4570;
+  color: #fef5e6;
+  border: none;
+  box-shadow: none;
+  text-shadow: none;
+  transform: none;
+  border-radius: 999px;
+}
+
+/* List card (table wrapper) — paper-plane surface */
+.dl2-board .board-table-wrap {
+  background: rgba(205, 216, 224, 0.65);
+  border: 1px solid rgba(42, 69, 112, 0.18);
+  border-radius: 16px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: none;
+}
+.dl2-board .board-table {
+  color: #2a4570;
+}
+.dl2-board .board-table tbody tr {
+  border-top: 1px solid rgba(42, 69, 112, 0.12);
+}
+.dl2-board .board-table tbody tr:hover {
+  background: rgba(42, 69, 112, 0.05);
+}
+.dl2-board .board-table .col-no {
+  color: #5a7090;
+}
+.dl2-board .board-table .col-author {
+  color: #2a4570;
+  font-weight: 500;
+}
+.dl2-board .board-table .col-date {
+  color: #5a7090;
+}
+.dl2-board .board-post-link {
+  color: #2a4570;
+}
+.dl2-board .board-post-link:hover {
+  color: #1a2f50;
+  text-shadow: none;
+}
+.dl2-board .comment-count {
+  color: #b85420;
+}
+
+/* Loading / pagination — sits on the cosmic backdrop, so cream/lavender
+   ink (no dark-on-dark). */
+.dl2-board .board-loading {
+  color: #c8b8e8;
+}
+.dl2-board .board-pagination {
+  color: #c8b8e8;
+}
+.dl2-board .board-page-btn {
+  background: transparent;
+  border-color: rgba(254, 245, 230, 0.45);
+  color: #fef5e6;
+  box-shadow: none;
+}
+.dl2-board .board-page-btn:hover:not(:disabled) {
+  border-color: #fef5e6;
+  background: rgba(254, 245, 230, 0.08);
+  color: #fef5e6;
+  box-shadow: none;
+}
+.dl2-board .board-page-btn:disabled {
+  opacity: 0.4;
+}
+.dl2-board .board-page-info {
+  color: #fef5e6;
+}
+
+/* Back link — appears on the cosmic backdrop above the body card. */
+.dl2-board .back-link {
+  color: #fef5e6;
+}
+.dl2-board .back-link:hover {
+  color: #c8b8e8;
+}
+
+/* Detail body card — paper-plane surface, navy ink */
+.dl2-board .board-detail {
+  background: rgba(205, 216, 224, 0.65);
+  border: 1px solid rgba(42, 69, 112, 0.18);
+  border-radius: 16px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: none;
+}
+.dl2-board .board-detail-title {
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  -webkit-text-fill-color: currentColor;
+  color: #2a4570;
+  text-shadow: none;
+  filter: none;
+  font-weight: 600;
+}
+.dl2-board .board-detail-meta {
+  color: #5a7090;
+}
+.dl2-board .board-detail-meta a {
+  color: #2a4570;
+  font-weight: 500;
+}
+.dl2-board .board-detail-body {
+  color: #2a4570;
+}
+.dl2-board .board-link {
+  color: #b85420;
+}
+.dl2-board .board-link:hover {
+  color: #8a3e1a;
+}
+
+/* Detail action buttons (수정 / 삭제 / 목록으로) */
+.dl2-board .board-detail-actions .board-btn,
+.dl2-board .board-detail-actions .board-btn:hover {
+  background: #2a4570;
+  color: #fef5e6;
+  border: none;
+  box-shadow: none;
+  text-shadow: none;
+  transform: none;
+  border-radius: 999px;
+}
+.dl2-board .board-detail-actions .board-btn.board-btn-cancel,
+.dl2-board .board-detail-actions .board-btn.board-btn-cancel:hover {
+  background: transparent;
+  color: #2a4570;
+  border: 1px solid #2a4570;
+  box-shadow: none;
+}
+
+/* Comments subbox — visibly separated from the body card. Spec: 0.4 alpha
+   vs body 0.65, lighter hairline. */
+.dl2-board .board-comments {
+  background: rgba(205, 216, 224, 0.4);
+  border: 1px solid rgba(42, 69, 112, 0.12);
+  border-radius: 16px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: none;
+}
+.dl2-board .board-comments-title {
+  color: #5a7090;
+  letter-spacing: 0.06em;
+  text-transform: none;
+  font-size: 13px;
+  font-weight: 600;
+}
+.dl2-board .board-comment-item {
+  border-bottom-color: rgba(42, 69, 112, 0.12);
+}
+.dl2-board .board-comment-nick {
+  color: #2a4570;
+  font-weight: 600;
+  font-size: 12px;
+}
+.dl2-board .board-comment-date {
+  color: #5a7090;
+  font-size: 10px;
+}
+.dl2-board .board-comment-body {
+  color: #2a4570;
+  font-size: 13px;
+}
+.dl2-board .board-reply-btn {
+  color: #5a7090;
+  font-size: 11px;
+}
+.dl2-board .board-reply-btn:hover {
+  color: #2a4570;
+}
+.dl2-board .board-reply-list {
+  border-left-color: rgba(42, 69, 112, 0.18);
+}
+.dl2-board .board-reply-item + .board-reply-item {
+  border-top-color: rgba(42, 69, 112, 0.1);
+}
+
+/* Inputs (form + comment + reply) */
+.dl2-board .board-input,
+.dl2-board .board-textarea {
+  background: #ffffff;
+  border: 1px solid rgba(42, 69, 112, 0.2);
+  color: #2a4570;
+}
+.dl2-board .board-input::placeholder,
+.dl2-board .board-textarea::placeholder {
+  color: #5a7090;
+  font-style: normal;
+}
+.dl2-board .board-input:focus,
+.dl2-board .board-textarea:focus {
+  border-color: rgba(42, 69, 112, 0.5);
+  box-shadow: 0 0 0 3px rgba(42, 69, 112, 0.1);
+  outline: none;
+}
+
+/* Comment / reply submit pill (.cbar .cbar-submit / .cbar > .board-btn). */
+.dl2-board .cbar .cbar-submit,
+.dl2-board .cbar .cbar-submit:hover,
+.dl2-board .board-comment-form .board-btn,
+.dl2-board .board-comment-form .board-btn:hover {
+  background: #2a4570;
+  color: #fef5e6;
+  border: none;
+  box-shadow: none;
+  text-shadow: none;
+  transform: none;
+  border-radius: 999px;
+}
+
+/* Form (write/edit) — same paper-plane card, navy form buttons. */
+.dl2-board .board-form {
+  background: rgba(205, 216, 224, 0.65);
+  border: 1px solid rgba(42, 69, 112, 0.18);
+  border-radius: 16px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: none;
+}
+.dl2-board .board-form-buttons .board-btn,
+.dl2-board .board-form-buttons .board-btn:hover {
+  background: #2a4570;
+  color: #fef5e6;
+  border: none;
+  box-shadow: none;
+  text-shadow: none;
+  transform: none;
+  border-radius: 999px;
+}
+.dl2-board .board-form-buttons .board-btn.board-btn-cancel,
+.dl2-board .board-form-buttons .board-btn.board-btn-cancel:hover {
+  background: transparent;
+  color: #2a4570;
+  border: 1px solid #2a4570;
+  box-shadow: none;
+}
+
+/* Attachment area — keep layout, swap surface tones */
+.dl2-board .board-attach-label {
+  background: rgba(255, 255, 255, 0.4);
+  border: 1px dashed rgba(42, 69, 112, 0.35);
+  color: #2a4570;
+}
+.dl2-board .board-attach-label-text {
+  color: #5a7090;
+}
+.dl2-board .board-attach-list {
+  background: transparent;
+}
+.dl2-board .board-attach-item {
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(42, 69, 112, 0.15);
+  color: #2a4570;
+}
+.dl2-board .board-attach-name {
+  color: #2a4570;
+}
+.dl2-board .board-attach-remove {
+  color: #b85420;
+}
+
+.dl2-board .login-required {
+  color: #5a7090;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Step 4-G: dl2 album viewer + upload modal overrides.
+
+   The shared AlbumPhotoViewer adds `dl2-album-viewer` to its outermost
+   .minihome-modal when isDawnlight2; the album-page upload modal adds
+   `dl2-album-upload` to its own .minihome-modal. Cosmic users keep
+   isDawnlight2=false → none of the overrides below apply, original
+   .minihome-* CSS wins.
+
+   The override rules use compound `.dl2-album-viewer .minihome-foo`
+   selectors so they're more specific than the base .minihome-foo rule
+   (specificity 0,2,0 vs 0,1,0). Where the base rule sets a property
+   the override doesn't touch (e.g. layout/positioning), the cosmic
+   value carries through — only the colours / surfaces / fonts are
+   re-skinned.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Modal backdrop — slightly darker than cosmic so the cream content
+   reads against a deep dim instead of cosmic's purple-tinged 0.8. */
+.dl2-album-viewer,
+.dl2-album-upload {
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* Pretendard for everything inside dl2 viewers (matches notice/board). */
+.dl2-album-viewer,
+.dl2-album-viewer *,
+.dl2-album-upload,
+.dl2-album-upload * {
+  font-family:
+    "Pretendard", "Noto Serif KR", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", system-ui, sans-serif;
+}
+
+/* Card width — match the album page (max-w-3xl = 768 px). The photo
+   viewer card itself stays transparent: only the meta + comments
+   sub-cards carry the paper surface. */
+.dl2-album-viewer .minihome-photo-viewer {
+  max-width: min(90vw, 768px);
+  background: transparent;
+}
+@media (min-width: 640px) {
+  .dl2-album-viewer .minihome-photo-viewer {
+    max-width: 768px;
+  }
+}
+
+/* Close button — navy outline + navy ×. */
+.dl2-album-viewer .minihome-photo-close {
+  background: rgba(255, 255, 255, 0.6);
+  border-color: rgba(42, 69, 112, 0.25);
+  color: #2a4570;
+}
+.dl2-album-viewer .minihome-photo-close:hover {
+  border-color: rgba(42, 69, 112, 0.5);
+  box-shadow: 0 0 12px rgba(42, 69, 112, 0.25);
+}
+
+/* Meta paper card — wraps photo date + caption + photographer + tags
+   + edit/delete buttons (or the edit form). */
+.dl2-album-viewer .dl2-album-meta-card {
+  width: 100%;
+  background: rgba(205, 216, 224, 0.65);
+  border: 1px solid rgba(42, 69, 112, 0.18);
+  border-radius: 1rem;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+/* Meta text colors. */
+.dl2-album-viewer .album-viewer-date {
+  color: #5a7090;
+  text-align: left;
+  margin: 0;
+}
+.dl2-album-viewer .minihome-photo-caption {
+  color: #2a4570;
+  font-style: normal;
+  font-weight: 600;
+  text-align: left;
+  margin: 0;
+}
+.dl2-album-viewer .album-photographer {
+  color: #b85420;
+  font-style: italic;
+  font-weight: 600;
+  text-align: left;
+  margin: 0;
+}
+.dl2-album-viewer .album-date-label-text {
+  color: #2a4570;
+}
+
+/* Person tag chips — cream pill, ink-brown semibold text, no border. */
+.dl2-album-viewer .album-tag,
+.dl2-album-viewer .album-tag-readonly {
+  background: #fef5e6;
+  border: none;
+  color: #5c3a1f;
+  font-weight: 600;
+}
+.dl2-album-viewer .album-tag-remove {
+  color: #5c3a1f;
+}
+.dl2-album-viewer .album-tag-remove:hover {
+  color: #b85420;
+}
+
+/* Comments section — paper card same surface as meta. */
+.dl2-album-viewer .minihome-photo-comments {
+  background: rgba(205, 216, 224, 0.65);
+  border: 1px solid rgba(42, 69, 112, 0.18);
+  border-radius: 1rem;
+}
+.dl2-album-viewer .minihome-photo-comments-title {
+  color: #2a4570;
+}
+.dl2-album-viewer .minihome-photo-comment-block {
+  border-bottom-color: rgba(42, 69, 112, 0.12);
+}
+
+/* Comment author / message / time. dl2 nick is 12 px navy semibold,
+   prefix (Dl2TitlePrefix) handles the title chip in coral. */
+.dl2-album-viewer .minihome-gb-nick {
+  color: #2a4570;
+  font-weight: 600;
+}
+.dl2-album-viewer .minihome-gb-msg {
+  color: #2a4570;
+}
+.dl2-album-viewer .minihome-gb-time {
+  color: #5a7090;
+}
+.dl2-album-viewer .minihome-reply-btn {
+  color: #5a7090;
+}
+.dl2-album-viewer .minihome-reply-btn:hover {
+  color: #2a4570;
+}
+.dl2-album-viewer .minihome-gb-replies {
+  border-left-color: rgba(42, 69, 112, 0.18);
+}
+.dl2-album-viewer .minihome-hint {
+  color: #5a7090;
+}
+.dl2-album-viewer .login-required {
+  color: #5a7090;
+}
+
+/* Inputs (comment + edit form). */
+.dl2-album-viewer .minihome-input,
+.dl2-album-upload .minihome-input,
+.dl2-album-upload .minihome-file {
+  background: #ffffff;
+  border: 1px solid rgba(42, 69, 112, 0.2);
+  color: #2a4570;
+}
+.dl2-album-viewer .minihome-input::placeholder,
+.dl2-album-upload .minihome-input::placeholder {
+  color: #5a7090;
+}
+.dl2-album-viewer .minihome-input:focus,
+.dl2-album-upload .minihome-input:focus,
+.dl2-album-upload .minihome-file:focus {
+  border-color: #2a4570;
+  box-shadow: 0 0 0 3px rgba(42, 69, 112, 0.15);
+  outline: none;
+}
+
+/* Modal action buttons — navy pill primary, outlined navy secondary. */
+.dl2-album-viewer .minihome-btn,
+.dl2-album-upload .minihome-btn {
+  background: #2a4570;
+  color: #fef5e6;
+  border: 1px solid #2a4570;
+  text-shadow: none;
+  filter: none;
+  -webkit-text-fill-color: #fef5e6;
+  background-image: none;
+}
+.dl2-album-viewer .minihome-btn:hover,
+.dl2-album-upload .minihome-btn:hover {
+  background: #1f3559;
+  border-color: #1f3559;
+  box-shadow: 0 2px 8px rgba(42, 69, 112, 0.25);
+}
+.dl2-album-viewer .minihome-btn-cancel,
+.dl2-album-upload .minihome-btn-cancel {
+  background: transparent;
+  color: #2a4570;
+  border: 1px solid #2a4570;
+  -webkit-text-fill-color: #2a4570;
+}
+.dl2-album-viewer .minihome-btn-cancel:hover,
+.dl2-album-upload .minihome-btn-cancel:hover {
+  background: rgba(42, 69, 112, 0.08);
+}
+
+/* Comment-bar submit pill (smaller variant inside comments). */
+.dl2-album-viewer .cbar-submit {
+  background: #2a4570;
+  color: #fef5e6;
+  border-color: #2a4570;
+}
+
+/* Upload modal — paper card 96% (slightly more opaque than viewer
+   meta because it's a foreground action surface). */
+.dl2-album-upload .minihome-modal-content {
+  max-width: min(90vw, 768px);
+  background: rgba(205, 216, 224, 0.96);
+  border: 1px solid rgba(42, 69, 112, 0.25);
+  color: #2a4570;
+}
+.dl2-album-upload .minihome-modal-title {
+  color: #2a4570;
+  background: none;
+  -webkit-text-fill-color: #2a4570;
+  filter: none;
+}
+.dl2-album-upload .album-date-label-text {
+  color: #2a4570;
+}
+.dl2-album-upload .album-tag,
+.dl2-album-upload .album-tag-readonly {
+  background: #fef5e6;
+  border: none;
+  color: #5c3a1f;
+  font-weight: 600;
+}
+.dl2-album-upload .album-tag-remove {
+  color: #5c3a1f;
+}
+.dl2-album-upload .album-tag-remove:hover {
+  color: #b85420;
+}
