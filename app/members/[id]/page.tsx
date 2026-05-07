@@ -49,6 +49,7 @@ import { IslandHeroD2 } from "@/app/components/redesign/minihompi/IslandHeroD2";
 import { BadgesSection } from "@/app/components/redesign/minihompi/BadgesSection";
 import { GuestbookSection as GuestbookSectionV2 } from "@/app/components/redesign/minihompi/GuestbookSection";
 import { AdventureLogSection } from "@/app/components/redesign/minihompi/AdventureLogSection";
+import { AdventureLogSectionD2 } from "@/app/components/redesign/minihompi/AdventureLogSectionD2";
 import { PhotosSection } from "@/app/components/redesign/minihompi/PhotosSection";
 import { PhotosSectionD2 } from "@/app/components/redesign/minihompi/PhotosSectionD2";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
@@ -361,7 +362,7 @@ export default function MemberMiniHomePage({
             loginNick={loginNick}
             memberNickname={member?.nickname ?? null}
           />
-          <AdventureLogSection
+          <AdventureLogSectionD2
             id={resolvedId}
             isOwner={isOwner}
             memberNickname={member?.nickname ?? null}
