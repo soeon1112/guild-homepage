@@ -9763,6 +9763,8 @@ body.has-redesigned-header .bg-scene {
   color: #2a4570;
   text-shadow: none;
   filter: none;
+  font-family: "Pretendard Variable", Pretendard, "Noto Sans KR",
+    -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   font-weight: 600;
 }
 .dl2-board .board-detail-meta {
@@ -9976,6 +9978,14 @@ body.has-redesigned-header .bg-scene {
    re-skinned.
    ════════════════════════════════════════════════════════════════════ */
 
+/* 앨범 페이지 root — Pretendard universal so 카드 메타 / 빈상태 / 페이지네이션 등
+   inline Pretendard 으로 안 박혀있는 자식 element 도 cosmic serif 잔재 없이 통일. */
+.dl2-album,
+.dl2-album * {
+  font-family: "Pretendard Variable", Pretendard, "Noto Sans KR",
+    -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+}
+
 /* Modal backdrop — black 0.85 (was 0.75) so the photo + cream meta
    stand out clearly without ambient leak from whatever's behind. */
 .dl2-album-viewer,
@@ -10000,7 +10010,11 @@ body.has-redesigned-header .bg-scene {
    so the photo reads as a free-floating frame on the dim backdrop.
    Only the meta + comments sub-cards carry visible surfaces. */
 .dl2-album-viewer .minihome-photo-viewer {
-  max-width: min(90vw, 768px);
+  /* 앨범 페이지 max-w-3xl(768) 보다 한 단계 좁은 580 — 페이지 padding(px-5
+     좌우 40)을 고려하면 grid 컨테이너 실폭 ≈ 728. 모달은 photo + meta
+     가 가운데 한 컬럼이라 페이지 폭과 동일하면 사진이 너무 크게 읽힌다.
+     580 은 album page 에 보이는 단일 photo 카드 약 2장 폭에 해당. */
+  max-width: min(92vw, 580px);
   background: transparent;
   border: none;
   padding: 0;
@@ -10010,7 +10024,7 @@ body.has-redesigned-header .bg-scene {
 }
 @media (min-width: 640px) {
   .dl2-album-viewer .minihome-photo-viewer {
-    max-width: 768px;
+    max-width: 580px;
   }
 }
 

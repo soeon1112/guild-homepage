@@ -400,7 +400,7 @@ export default function AlbumPage() {
 
   if (isDawnlight2) {
     return (
-      <div className="mx-auto w-full max-w-3xl px-5 pb-12 pt-2 sm:px-6 sm:pb-16">
+      <div className="dl2-album mx-auto w-full max-w-3xl px-5 pb-12 pt-2 sm:px-6 sm:pb-16">
         {/* Header row — title + subtitle on the left, navy 사진 올리기
             pill on the right. Title sizing matches .dl2-notice-page-
             title (Pretendard 20 px semibold cream) so 앨범 / 공지
