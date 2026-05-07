@@ -35,10 +35,15 @@ import {
 const DL2_NAVY = "#2a4570";
 const DL2_NAVY_SOFT = "#5a7090";
 const DL2_CREAM = "#fef5e6";
+const DL2_INK_BROWN = "#5c3a1f";
+const DL2_CORAL = "#b85420";
 const DL2_PAPER_BG = "rgba(205, 216, 224, 0.65)";
 const DL2_PAPER_BORDER = "rgba(42, 69, 112, 0.18)";
-const DL2_CHIP_BG = "rgba(42, 69, 112, 0.10)";
-const DL2_CHIP_TEXT = DL2_NAVY;
+// Person chip — cream pill, ink-brown text, no border. The chip
+// surface contrasts the cream-blue paper card so person tags read as
+// distinct stamps rather than fading into the meta column.
+const DL2_CHIP_BG = DL2_CREAM;
+const DL2_CHIP_TEXT = DL2_INK_BROWN;
 
 function detectFileType(file: File): MediaKind {
   const name = file.name.toLowerCase();
@@ -464,6 +469,12 @@ export default function AlbumPage() {
                       border: `1px solid ${DL2_PAPER_BORDER}`,
                     }}
                   >
+                    {/* Hierarchy (B option):
+                        · 날짜 — regular soft navy (옅은 메타)
+                        · photo by — semibold coral italic (작가 강조)
+                        · 출연자 칩 — cream bg + ink-brown text, NO border
+                        · 본문 제목 — semibold deep navy (가장 또렷)
+                        · 댓글 카운트 — regular soft navy (옅은 메타) */}
                     {p.photoDate && (
                       <div
                         className="text-[11px] tracking-wider"
@@ -474,8 +485,8 @@ export default function AlbumPage() {
                     )}
                     {p.photographer && (
                       <div
-                        className="text-[11px] italic"
-                        style={{ color: DL2_NAVY_SOFT }}
+                        className="text-[11px] font-semibold italic"
+                        style={{ color: DL2_CORAL }}
                       >
                         photo by {p.photographer}
                       </div>
@@ -485,7 +496,7 @@ export default function AlbumPage() {
                         {p.people.map((person) => (
                           <span
                             key={person}
-                            className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                            className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
                             style={{
                               background: DL2_CHIP_BG,
                               color: DL2_CHIP_TEXT,
@@ -498,7 +509,7 @@ export default function AlbumPage() {
                     )}
                     {p.caption && (
                       <div
-                        className="text-[12.5px] leading-relaxed"
+                        className="text-[12.5px] font-semibold leading-relaxed"
                         style={{ color: DL2_NAVY }}
                       >
                         {p.caption}
