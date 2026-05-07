@@ -165,72 +165,84 @@ export function PaperPlaneLetters() {
           </p>
         </header>
 
-        {/* Hazy sky card */}
+        {/* Hazy sky card. Plane stays pinned to the left at every
+            width; the right column stacks vertically on mobile (text
+            → subtitle → buttons) and lays the buttons inline beside
+            the text from sm: up so the desktop row reads as one
+            sentence with a CTA. */}
         <div
           className="overflow-hidden rounded-2xl"
           style={{
-            background: "rgba(205, 216, 224, 0.72)",
+            background: "rgba(205, 216, 224, 0.65)",
             border: "1px solid rgba(42, 69, 112, 0.18)",
           }}
         >
-          <div className="flex flex-wrap items-center gap-4 px-5 py-4 sm:flex-nowrap sm:gap-6 sm:px-7 sm:py-5">
-            <div className="flex-shrink-0 animate-plane-float">
+          <div className="flex items-stretch gap-3 px-4 py-4 sm:items-center sm:gap-6 sm:px-7 sm:py-5">
+            <div className="flex-shrink-0 self-center animate-plane-float">
               <LargePaperPlane />
             </div>
 
-            <div className="min-w-0 flex-1">
-              <h3
-                className="text-base font-semibold leading-snug sm:text-lg"
-                style={{ color: NAVY }}
-              >
-                익명의 마음을 띄워요
-              </h3>
-            </div>
+            <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
+              <div className="min-w-0 flex-1">
+                <h3
+                  className="text-base font-semibold leading-snug sm:text-lg"
+                  style={{ color: NAVY }}
+                >
+                  익명의 마음을 띄워요
+                </h3>
+                <p
+                  className="mt-1 text-[11px] leading-relaxed sm:text-xs"
+                  style={{ color: NAVY_SOFT }}
+                >
+                  누군가의 마음에 닿을 편지 한 통
+                </p>
+              </div>
 
-            {/* Buttons — match the NoteToTheSky pill shape (rounded-full
-                px-4 py-1.5 text-xs font-medium). Filled navy for the
-                primary, outlined navy for the secondary. */}
-            <div className="flex flex-shrink-0 items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  if (!nickname) {
-                    alert("로그인이 필요합니다.");
-                    return;
-                  }
-                  setModal("compose");
-                }}
-                className="rounded-full px-4 py-1.5 text-xs font-medium transition-opacity active:scale-95 hover:opacity-90"
-                style={{ background: NAVY, color: CREAM }}
-              >
-                ✦ 띄우기
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!nickname) {
-                    alert("로그인이 필요합니다.");
-                    return;
-                  }
-                  setModal("inbox");
-                }}
-                className="relative rounded-full px-4 py-1.5 text-xs font-medium transition-colors active:scale-95 hover:bg-[rgba(42,69,112,0.08)]"
-                style={{
-                  border: `1px solid ${NAVY}`,
-                  color: NAVY,
-                  background: "transparent",
-                }}
-              >
-                ✉ 편지함
-                {unreadCount > 0 && (
-                  <span
-                    className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[9px] font-bold"
-                    style={{ background: "#dc2626", color: CREAM }}
-                  >
-                    {unreadCount > 99 ? "99+" : unreadCount}
-                  </span>
-                )}
-              </button>
+              {/* Buttons — match the NoteToTheSky pill shape
+                  (rounded-full px-4 py-1.5 text-xs font-medium).
+                  Filled navy primary, outlined navy secondary. */}
+              <div className="flex flex-shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!nickname) {
+                      alert("로그인이 필요합니다.");
+                      return;
+                    }
+                    setModal("compose");
+                  }}
+                  className="rounded-full px-4 py-1.5 text-xs font-medium transition-opacity active:scale-95 hover:opacity-90"
+                  style={{ background: NAVY, color: CREAM }}
+                >
+                  ✦ 띄우기
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!nickname) {
+                      alert("로그인이 필요합니다.");
+                      return;
+                    }
+                    setModal("inbox");
+                  }}
+                  className="relative rounded-full px-4 py-1.5 text-xs font-medium transition-colors active:scale-95 hover:bg-[rgba(42,69,112,0.08)]"
+                  style={{
+                    border: `1px solid ${NAVY}`,
+                    color: NAVY,
+                    background: "transparent",
+                  }}
+                >
+                  ✉ 편지함
+                  {unreadCount > 0 && (
+                    <span
+                      className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[9px] font-bold"
+                      style={{ background: "#dc2626", color: CREAM }}
+                    >
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
