@@ -165,11 +165,10 @@ export function PaperPlaneLetters() {
           </p>
         </header>
 
-        {/* Hazy sky card. Plane stays pinned to the left at every
-            width; the right column stacks vertically on mobile (text
-            → subtitle → buttons) and lays the buttons inline beside
-            the text from sm: up so the desktop row reads as one
-            sentence with a CTA. */}
+        {/* Hazy sky card. On mobile the plane + right column are
+            centered as one bundle (right column is content-fit, items
+            inside left-aligned). From sm: up the right column expands
+            so buttons sit at the far right of the row. */}
         <div
           className="overflow-hidden rounded-2xl"
           style={{
@@ -177,21 +176,13 @@ export function PaperPlaneLetters() {
             border: "1px solid rgba(42, 69, 112, 0.18)",
           }}
         >
-          <div className="flex items-stretch gap-3 px-4 py-4 sm:items-center sm:gap-6 sm:px-7 sm:py-5">
-            {/* `ml-5` (20 px) gives the plane a visible inset from the
-                card's left edge on mobile — 16 px (the previous ml-4)
-                still read as too tight after the centering rollback.
-                `sm:ml-0` resets on desktop where the wider px-7 padding
-                already handles spacing. */}
-            <div className="ml-5 flex-shrink-0 self-center animate-plane-float sm:ml-0">
+          <div className="flex items-center justify-center gap-5 px-4 py-4 sm:justify-start sm:gap-6 sm:px-7 sm:py-5">
+            <div className="flex-shrink-0 self-center animate-plane-float">
               <LargePaperPlane />
             </div>
 
-            {/* `items-center` centers the children inside this column
-                horizontally on mobile (where it's flex-col) and
-                vertically on desktop (where sm:flex-row kicks in). */}
-            <div className="flex min-w-0 flex-1 flex-col items-center gap-3 sm:flex-row sm:items-center sm:gap-6">
-              <div className="min-w-0 flex-1 text-center sm:text-left">
+            <div className="flex min-w-0 flex-col items-start gap-3 sm:flex-1 sm:flex-row sm:items-center sm:gap-6">
+              <div className="min-w-0 text-left sm:flex-1">
                 <h3
                   className="text-base font-semibold leading-snug sm:text-lg"
                   style={{ color: NAVY }}
