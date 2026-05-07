@@ -191,7 +191,7 @@ export default function ShopPage() {
   const { nickname, ready } = useAuth();
   const isDawnlight2 = useDawnlight2();
   const shopPageClass = isDawnlight2
-    ? "shop-page dl2-shop dawnlight2"
+    ? "shop-page dl2-shop"
     : "shop-page";
   const [mainTab, setMainTab] = useState<"title" | "avatar">("title");
   const [avatarSubTab, setAvatarSubTab] = useState<AvatarSubTab>("eyes");

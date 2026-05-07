@@ -28,7 +28,7 @@ export default function ProposalsNewPage() {
   const { nickname, ready } = useAuth();
   const isDawnlight2 = useDawnlight2();
   const rootClass =
-    "board-content" + (isDawnlight2 ? " dawnlight2 dl2-proposals" : "");
+    "board-content" + (isDawnlight2 ? " dl2-proposals" : "");
 
   if (!ready) {
     return (
@@ -145,7 +145,7 @@ function FormView({
   return (
     <div
       className={
-        "board-content" + (isDawnlight2 ? " dawnlight2 dl2-proposals" : "")
+        "board-content" + (isDawnlight2 ? " dl2-proposals" : "")
       }
     >
       {isDawnlight2 ? null : <h1 className="board-title">제안하기</h1>}

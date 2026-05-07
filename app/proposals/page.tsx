@@ -73,7 +73,7 @@ export default function ProposalsListPage() {
   // sub line — same pattern as /notice.
   const isDawnlight2 = useDawnlight2();
   const rootClass =
-    "board-content" + (isDawnlight2 ? " dawnlight2 dl2-proposals" : "");
+    "board-content" + (isDawnlight2 ? " dl2-proposals" : "");
 
   if (!ready) {
     return (
@@ -241,7 +241,7 @@ function ListView({
   return (
     <div
       className={
-        "board-content" + (isDawnlight2 ? " dawnlight2 dl2-proposals" : "")
+        "board-content" + (isDawnlight2 ? " dl2-proposals" : "")
       }
     >
       {isDawnlight2 ? (
