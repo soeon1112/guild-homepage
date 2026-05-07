@@ -1,34 +1,21 @@
 "use client";
 
-import { X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import {
-  addDoc,
   collection,
-  deleteDoc,
-  doc,
   getDocs,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp,
   Timestamp,
 } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
 import { useAuth } from "@/app/components/AuthProvider";
 import {
-  deleteActivitiesByTargetPath,
-  logActivity,
-} from "@/src/lib/activity";
-import { addPoints } from "@/src/lib/points";
-import { handleEvent } from "@/src/lib/badgeCheck";
-import { josa, truncate } from "@/src/lib/text";
+  PhotoViewerModal,
+  type PhotoEntry,
+} from "@/app/components/shared/MinihomePhotoViewer";
+import {
+  AlbumPhotoViewer,
+  type AlbumPhoto as CosmicAlbumPhoto,
+} from "@/app/components/shared/AlbumPhotoViewer";
 
 // Cabin Logs — Dawnlight 2 daily-rotating photo spotlight.
 //
@@ -50,17 +37,22 @@ import { josa, truncate } from "@/src/lib/text";
 //   • "추억의 항해" (Voyages Past) — random photo from the root
 //     `album` collection. Same KST pick on its own pool.
 //
-// Click either card → a portal-style fixed modal renders the
-// full-size image; backdrop / × / Esc closes. No navigation —
-// minihome / album browse remains the way to dive deeper.
+// Click either polaroid → cosmic's ORIGINAL post modal mounts:
+// PhotoViewerModal for scenery (members minihome), AlbumPhotoViewer
+// for voyage (album board). Both come from the share modules
+// `app/components/shared/{MinihomePhotoViewer,AlbumPhotoViewer}`,
+// so the dawnlight2 widget and the cosmic minihome / album pages
+// render the literal same component (single source of truth).
 
 type ScenePhoto = {
-  id: string;
+  // The plain photo doc id (NOT the composite key) — what cosmic's
+  // PhotoViewerModal expects in `photo.id`.
+  photoId: string;
   ownerId: string;
   ownerNickname: string;
   imageUrl: string;
   caption: string;
-  fileType: string;
+  fileType: PhotoEntry["fileType"];
   createdAt: Timestamp | null;
 };
 
@@ -69,8 +61,9 @@ type AlbumPhoto = {
   imageUrl: string;
   caption: string;
   photographer: string;
+  people: string[];
   photoDate: string;
-  fileType: string;
+  fileType: CosmicAlbumPhoto["fileType"];
   createdAt: Timestamp | null;
 };
 
@@ -271,563 +264,23 @@ function PhotoCard({
   );
 }
 
-/* ─── Post modal — full original-post UX, not just an image ─────
-   Renders the photo + caption + meta AND a working comments+replies
-   block whose Firestore writes are byte-identical to cosmic's
-   PhotoViewerModal / AlbumPhotoViewer. The `kind` discriminator
-   chooses the collection root + activity-message shape so the same
-   modal serves both 오늘의 풍경 (members/{id}/photos) and
-   추억의 항해 (album).
-
-   Skipped vs cosmic (deferred): comment image attachments,
-   deep-link scroll-to-comment. Everything else (read, write,
-   reply, delete, activity log, points, badges) matches 1:1.       */
-
-type PostKind = "scene" | "voyage";
-
-type CommentDoc = {
-  id: string;
-  nickname: string;
-  content: string;
-  createdAt: Timestamp | null;
-};
-
-function commentColPath(
-  kind: PostKind,
-  ownerId: string | null,
-  photoId: string,
-): string[] {
-  return kind === "scene"
-    ? ["members", ownerId ?? "", "photos", photoId, "comments"]
-    : ["album", photoId, "comments"];
-}
-function replyColPath(
-  kind: PostKind,
-  ownerId: string | null,
-  photoId: string,
-  commentId: string,
-): string[] {
-  return [...commentColPath(kind, ownerId, photoId), commentId, "replies"];
-}
-
-function formatCommentTime(t: Timestamp | null): string {
-  if (!t) return "";
-  const d = t.toDate();
-  const now = new Date();
-  const sameDay =
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate();
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  if (sameDay) return `${hh}:${mm}`;
-  return `${d.getMonth() + 1}/${d.getDate()} ${hh}:${mm}`;
-}
-
-function PostModal({
-  kind,
-  ownerId,
-  ownerNickname,
-  photoId,
-  imageUrl,
-  caption,
-  meta,
-  onClose,
-}: {
-  kind: PostKind;
-  ownerId: string | null;
-  ownerNickname: string | null;
-  photoId: string;
-  imageUrl: string;
-  caption: string;
-  meta: string;
-  onClose: () => void;
-}) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
-    };
-  }, [onClose]);
-
-  return (
-    <div
-      className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto p-4 sm:items-center"
-      style={{
-        background: "rgba(11, 8, 33, 0.85)",
-        backdropFilter: "blur(8px)",
-      }}
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-    >
-      <div
-        className="relative flex w-full max-w-3xl flex-col gap-3"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="닫기"
-          className="absolute right-0 top-0 -translate-y-10 rounded-full p-2 text-cream transition-colors hover:bg-white/10"
-        >
-          <X className="h-5 w-5" />
-        </button>
-        <div
-          className="overflow-hidden rounded-xl"
-          style={{ background: "rgba(11,8,33,0.45)" }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={imageUrl}
-            alt={caption}
-            className="block max-h-[60vh] w-full"
-            style={{ objectFit: "contain" }}
-          />
-        </div>
-        {(caption || meta) && (
-          <div className="px-1 text-cream">
-            {caption && (
-              <p className="text-sm leading-relaxed">{caption}</p>
-            )}
-            {meta && (
-              <p className="mt-1 text-[11px] text-mist-lavender">{meta}</p>
-            )}
-          </div>
-        )}
-
-        <PostComments
-          kind={kind}
-          ownerId={ownerId}
-          ownerNickname={ownerNickname}
-          photoId={photoId}
-        />
-      </div>
-    </div>
-  );
-}
-
-function PostComments({
-  kind,
-  ownerId,
-  ownerNickname,
-  photoId,
-}: {
-  kind: PostKind;
-  ownerId: string | null;
-  ownerNickname: string | null;
-  photoId: string;
-}) {
-  const { nickname: loginNick } = useAuth();
-  const [comments, setComments] = useState<CommentDoc[]>([]);
-  const [content, setContent] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [openReplyId, setOpenReplyId] = useState<string | null>(null);
-  const [replyCounts, setReplyCounts] = useState<Record<string, number>>({});
-
-  const reportReplyCount = useCallback((commentId: string, count: number) => {
-    setReplyCounts((prev) =>
-      prev[commentId] === count ? prev : { ...prev, [commentId]: count },
-    );
-  }, []);
-
-  useEffect(() => {
-    const path = commentColPath(kind, ownerId, photoId);
-    const q = query(
-      collection(db, path[0], ...path.slice(1)),
-      orderBy("createdAt", "asc"),
-    );
-    const unsub = onSnapshot(q, (snap) => {
-      setComments(
-        snap.docs.map((d) => ({ id: d.id, ...d.data() })) as CommentDoc[],
-      );
-    });
-    return () => unsub();
-  }, [kind, ownerId, photoId]);
-
-  const totalCount =
-    comments.length +
-    comments.reduce((n, c) => n + (replyCounts[c.id] ?? 0), 0);
-
-  const handleSubmit = async () => {
-    if (!loginNick || submitting) return;
-    const trimmed = content.trim();
-    if (!trimmed) return;
-    setSubmitting(true);
-    try {
-      const path = commentColPath(kind, ownerId, photoId);
-      const ref = await addDoc(
-        collection(db, path[0], ...path.slice(1)),
-        {
-          nickname: loginNick,
-          content: trimmed,
-          imageUrl: "",
-          createdAt: serverTimestamp(),
-        },
-      );
-      setContent("");
-      if (kind === "scene" && ownerId && ownerNickname) {
-        await logActivity(
-          "minihome_photo_comment",
-          loginNick,
-          `${ownerNickname}님의 사진첩 댓글에 '${truncate(trimmed, 25)}'${josa(trimmed, "이/가")} 달렸어요`,
-          `/members/${ownerId}?photo=${photoId}&comment=${ref.id}`,
-          `members/${ownerId}/photos/${photoId}/comments/${ref.id}`,
-        );
-        await addPoints(loginNick, "댓글", 1, `${ownerNickname}님 사진에 댓글 작성`);
-      } else if (kind === "voyage") {
-        await logActivity(
-          "album_comment",
-          loginNick,
-          `앨범 댓글에 ${loginNick}님이 '${truncate(trimmed, 25)}'${josa(trimmed, "을/를")} 달았어요`,
-          `/album?photo=${photoId}&comment=${ref.id}`,
-          `album/${photoId}/comments/${ref.id}`,
-        );
-        await addPoints(loginNick, "댓글", 1, "앨범에 댓글 작성");
-      }
-      handleEvent({
-        type: "comment",
-        nickname: loginNick,
-        content: trimmed,
-        when: new Date(),
-      });
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <div
-      className="flex flex-col gap-3 rounded-2xl border p-4"
-      style={{
-        background: "rgba(11,8,33,0.7)",
-        borderColor: "rgba(216,150,200,0.18)",
-      }}
-    >
-      <h4 className="text-[11px] uppercase tracking-[0.3em] text-mist-lavender">
-        댓글 ({totalCount})
-      </h4>
-
-      {comments.length === 0 ? (
-        <p className="py-2 text-center text-[11px] italic text-mist-lavender/80">
-          첫 댓글을 남겨보세요.
-        </p>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {comments.map((c) => (
-            <CommentRow
-              key={c.id}
-              kind={kind}
-              ownerId={ownerId}
-              ownerNickname={ownerNickname}
-              photoId={photoId}
-              comment={c}
-              loginNick={loginNick}
-              replyOpen={openReplyId === c.id}
-              onToggleReply={() =>
-                setOpenReplyId((cur) => (cur === c.id ? null : c.id))
-              }
-              onCloseReply={() => setOpenReplyId(null)}
-              onReplyCountChange={reportReplyCount}
-            />
-          ))}
-        </div>
-      )}
-
-      {loginNick ? (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleSubmit();
-          }}
-          className="flex items-center gap-2 rounded-full px-2 py-1.5"
-          style={{
-            background: "rgba(11,8,33,0.5)",
-            border: "1px solid rgba(216,150,200,0.2)",
-          }}
-        >
-          <input
-            type="text"
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="댓글을 남겨주세요"
-            maxLength={200}
-            disabled={submitting}
-            aria-label="댓글 내용"
-            className="min-w-0 flex-1 border-none bg-transparent px-2 py-1 text-cream placeholder:text-mist-lavender/70 focus:outline-none disabled:opacity-60"
-            style={{ fontSize: "13px" }}
-          />
-          <button
-            type="submit"
-            disabled={submitting || !content.trim()}
-            className="shrink-0 rounded-full px-3 py-1 text-[10px] font-medium tracking-wider transition-all duration-200 hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50"
-            style={{
-              background: "linear-gradient(135deg, #FFE5C4, #FFB5A7)",
-              color: "#0b0821",
-            }}
-          >
-            {submitting ? "..." : "등록"}
-          </button>
-        </form>
-      ) : (
-        <p className="text-center text-[11px] italic text-mist-lavender/80">
-          로그인이 필요합니다
-        </p>
-      )}
-    </div>
-  );
-}
-
-function CommentRow({
-  kind,
-  ownerId,
-  ownerNickname,
-  photoId,
-  comment,
-  loginNick,
-  replyOpen,
-  onToggleReply,
-  onCloseReply,
-  onReplyCountChange,
-}: {
-  kind: PostKind;
-  ownerId: string | null;
-  ownerNickname: string | null;
-  photoId: string;
-  comment: CommentDoc;
-  loginNick: string | null;
-  replyOpen: boolean;
-  onToggleReply: () => void;
-  onCloseReply: () => void;
-  onReplyCountChange: (commentId: string, count: number) => void;
-}) {
-  const [replies, setReplies] = useState<CommentDoc[]>([]);
-  const [msg, setMsg] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const reportRef = useRef(onReplyCountChange);
-  reportRef.current = onReplyCountChange;
-
-  useEffect(() => {
-    const path = replyColPath(kind, ownerId, photoId, comment.id);
-    const q = query(
-      collection(db, path[0], ...path.slice(1)),
-      orderBy("createdAt", "asc"),
-    );
-    const unsub = onSnapshot(q, (snap) => {
-      setReplies(
-        snap.docs.map((d) => ({ id: d.id, ...d.data() })) as CommentDoc[],
-      );
-      reportRef.current(comment.id, snap.size);
-    });
-    return () => unsub();
-  }, [kind, ownerId, photoId, comment.id]);
-
-  const handleReply = async () => {
-    if (!loginNick || submitting) return;
-    const trimmed = msg.trim();
-    if (!trimmed) return;
-    setSubmitting(true);
-    try {
-      const path = replyColPath(kind, ownerId, photoId, comment.id);
-      const ref = await addDoc(
-        collection(db, path[0], ...path.slice(1)),
-        {
-          nickname: loginNick,
-          content: trimmed,
-          imageUrl: "",
-          createdAt: serverTimestamp(),
-        },
-      );
-      setMsg("");
-      onCloseReply();
-      if (kind === "scene" && ownerId && ownerNickname) {
-        await logActivity(
-          "minihome_photo_comment",
-          loginNick,
-          `${ownerNickname}님의 사진첩 댓글에 '${truncate(trimmed, 25)}'${josa(trimmed, "이/가")} 달렸어요`,
-          `/members/${ownerId}?photo=${photoId}&comment=${comment.id}`,
-          `members/${ownerId}/photos/${photoId}/comments/${comment.id}/replies/${ref.id}`,
-        );
-        await addPoints(loginNick, "대댓글", 1, `${ownerNickname}님 사진에 대댓글 작성`);
-      } else if (kind === "voyage") {
-        await logActivity(
-          "album_comment",
-          loginNick,
-          `앨범 댓글에 ${loginNick}님이 '${truncate(trimmed, 25)}'${josa(trimmed, "을/를")} 달았어요`,
-          `/album?photo=${photoId}&comment=${comment.id}`,
-          `album/${photoId}/comments/${comment.id}/replies/${ref.id}`,
-        );
-        await addPoints(loginNick, "대댓글", 1, "앨범에 대댓글 작성");
-      }
-      handleEvent({
-        type: "comment",
-        nickname: loginNick,
-        content: trimmed,
-        when: new Date(),
-      });
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleDelete = async (replyId?: string) => {
-    if (!confirm("정말 삭제하시겠습니까?")) return;
-    try {
-      if (replyId) {
-        const path = [
-          ...replyColPath(kind, ownerId, photoId, comment.id),
-          replyId,
-        ];
-        await deleteDoc(doc(db, path[0], ...path.slice(1)));
-        await deleteActivitiesByTargetPath(path.join("/"));
-      } else {
-        const path = [...commentColPath(kind, ownerId, photoId), comment.id];
-        await deleteDoc(doc(db, path[0], ...path.slice(1)));
-        await deleteActivitiesByTargetPath(path.join("/"));
-      }
-    } catch (e) {
-      console.error(e);
-      alert("삭제에 실패했습니다.");
-    }
-  };
-
-  return (
-    <div>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <p className="min-w-0 flex-1 text-[12px] leading-relaxed text-cream">
-          <span className="font-medium text-stardust">{comment.nickname}</span>
-          <span className="text-mist-lavender"> : </span>
-          <span style={{ overflowWrap: "anywhere" }}>{comment.content}</span>
-        </p>
-        <div className="flex shrink-0 items-center gap-2 text-[11px]">
-          <span className="text-[10px] text-mist-lavender/80">
-            {formatCommentTime(comment.createdAt)}
-          </span>
-          {loginNick && (
-            <button
-              type="button"
-              onClick={onToggleReply}
-              className="text-mist-lavender transition-colors hover:text-peach-accent"
-            >
-              {replyOpen ? "닫기" : "답글"}
-            </button>
-          )}
-          {loginNick === comment.nickname && (
-            <button
-              type="button"
-              onClick={() => handleDelete()}
-              className="text-mist-lavender transition-colors hover:text-peach-accent"
-            >
-              삭제
-            </button>
-          )}
-        </div>
-      </div>
-
-      {(replies.length > 0 || replyOpen) && (
-        <div className="mt-2 ml-5 flex flex-col gap-2">
-          {replies.map((r) => (
-            <div key={r.id} className="flex items-start gap-2">
-              <span className="shrink-0 text-xs leading-relaxed text-mist-lavender/70">
-                └
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <p className="min-w-0 flex-1 text-[11.5px] leading-relaxed text-cream">
-                    <span className="font-medium text-stardust">
-                      {r.nickname}
-                    </span>
-                    <span className="text-mist-lavender"> : </span>
-                    <span style={{ overflowWrap: "anywhere" }}>
-                      {r.content}
-                    </span>
-                  </p>
-                  <div className="flex shrink-0 items-center gap-2 text-[11px]">
-                    <span className="text-[10px] text-mist-lavender/80">
-                      {formatCommentTime(r.createdAt)}
-                    </span>
-                    {loginNick === r.nickname && (
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(r.id)}
-                        className="text-mist-lavender transition-colors hover:text-peach-accent"
-                      >
-                        삭제
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-
-          {replyOpen && loginNick && (
-            <div
-              className="mt-1 flex items-center gap-2 rounded-full px-2 py-1.5"
-              style={{
-                background: "rgba(11,8,33,0.45)",
-                border: "1px solid rgba(216,150,200,0.22)",
-              }}
-            >
-              <input
-                type="text"
-                value={msg}
-                onChange={(e) => setMsg(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.nativeEvent.isComposing) {
-                    e.preventDefault();
-                    handleReply();
-                  }
-                }}
-                placeholder="대댓글"
-                maxLength={200}
-                disabled={submitting}
-                autoFocus
-                className="min-w-0 flex-1 border-none bg-transparent px-3 py-1 text-cream placeholder:text-mist-lavender/70 focus:outline-none disabled:opacity-60"
-                style={{ fontSize: "13px" }}
-              />
-              <button
-                type="button"
-                onClick={handleReply}
-                disabled={submitting || !msg.trim()}
-                className="shrink-0 rounded-full px-3 py-1 text-[10px] font-medium tracking-wider transition-all duration-200 hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50"
-                style={{
-                  background: "linear-gradient(135deg, #FFE5C4, #FFB5A7)",
-                  color: "#0b0821",
-                }}
-              >
-                {submitting ? "..." : "등록"}
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 /* ─── Main widget ──────────────────────────────────────────────── */
 
-type OpenState = {
-  kind: PostKind;
-  ownerId: string | null;
-  ownerNickname: string | null;
-  photoId: string;
-  url: string;
-  cap: string;
-  meta: string;
-};
+// Click target carries enough context to mount cosmic's original
+// modal exactly as it would mount on the source page (members
+// minihome / album board). Deep-link `targetCommentId` is null —
+// the widget never deep-links to a specific comment.
+type OpenState =
+  | {
+      kind: "scene";
+      memberId: string;
+      memberNickname: string;
+      photo: PhotoEntry;
+    }
+  | { kind: "voyage"; photo: CosmicAlbumPhoto };
 
 export function CabinLogs() {
+  const { nickname: loginNick } = useAuth();
   const [scenePool, setScenePool] = useState<ScenePhoto[]>([]);
   const [albumPool, setAlbumPool] = useState<AlbumPhoto[]>([]);
   const [open, setOpen] = useState<OpenState | null>(null);
@@ -849,12 +302,12 @@ export function CabinLogs() {
               const url = (d.imageUrl as string) ?? "";
               if (!url) continue;
               acc.push({
-                id: `${m.id}/${p.id}`,
+                photoId: p.id,
                 ownerId: m.id,
                 ownerNickname: nick,
                 imageUrl: url,
                 caption: (d.caption as string) ?? "",
-                fileType: (d.fileType as string) ?? "image",
+                fileType: (d.fileType as PhotoEntry["fileType"]) ?? "image",
                 createdAt: (d.createdAt as Timestamp | null) ?? null,
               });
             }
@@ -863,7 +316,9 @@ export function CabinLogs() {
           }
         }
         // Stable order so the daily index points at the same photo
-        acc.sort((a, b) => a.id.localeCompare(b.id));
+        acc.sort((a, b) =>
+          `${a.ownerId}/${a.photoId}`.localeCompare(`${b.ownerId}/${b.photoId}`),
+        );
         if (!cancelled) setScenePool(acc);
       } catch (e) {
         console.error(e);
@@ -891,8 +346,9 @@ export function CabinLogs() {
             imageUrl: url,
             caption: (data.caption as string) ?? "",
             photographer: (data.photographer as string) ?? "",
+            people: (data.people as string[]) ?? [],
             photoDate: (data.photoDate as string) ?? "",
-            fileType: (data.fileType as string) ?? "image",
+            fileType: (data.fileType as CosmicAlbumPhoto["fileType"]) ?? "image",
             createdAt: (data.createdAt as Timestamp | null) ?? null,
           });
         }
@@ -988,22 +444,17 @@ export function CabinLogs() {
               rotate="-2deg"
               onOpen={() => {
                 if (!todayScene) return;
-                // ScenePhoto.id is `${memberId}/${photoId}` — split off the
-                // photo doc id so the modal can subscribe to its comments.
-                const slash = todayScene.id.indexOf("/");
-                const photoId =
-                  slash >= 0 ? todayScene.id.slice(slash + 1) : todayScene.id;
-                const dateStr = todayScene.createdAt
-                  ? formatPostDate(todayScene.createdAt.toDate())
-                  : null;
                 setOpen({
                   kind: "scene",
-                  ownerId: todayScene.ownerId,
-                  ownerNickname: todayScene.ownerNickname,
-                  photoId,
-                  url: todayScene.imageUrl,
-                  cap: todayScene.caption,
-                  meta: buildMeta(dateStr, todayScene.ownerNickname),
+                  memberId: todayScene.ownerId,
+                  memberNickname: todayScene.ownerNickname,
+                  photo: {
+                    id: todayScene.photoId,
+                    imageUrl: todayScene.imageUrl,
+                    caption: todayScene.caption,
+                    fileType: todayScene.fileType,
+                    createdAt: todayScene.createdAt,
+                  },
                 });
               }}
             />
@@ -1025,19 +476,18 @@ export function CabinLogs() {
               rotate="2deg"
               onOpen={() => {
                 if (!todayVoyage) return;
-                const dateStr =
-                  todayVoyage.photoDate ||
-                  (todayVoyage.createdAt
-                    ? formatPostDate(todayVoyage.createdAt.toDate())
-                    : null);
                 setOpen({
                   kind: "voyage",
-                  ownerId: null,
-                  ownerNickname: null,
-                  photoId: todayVoyage.id,
-                  url: todayVoyage.imageUrl,
-                  cap: todayVoyage.caption,
-                  meta: buildMeta(dateStr, todayVoyage.photographer),
+                  photo: {
+                    id: todayVoyage.id,
+                    imageUrl: todayVoyage.imageUrl,
+                    caption: todayVoyage.caption,
+                    photographer: todayVoyage.photographer,
+                    people: todayVoyage.people,
+                    photoDate: todayVoyage.photoDate,
+                    fileType: todayVoyage.fileType,
+                    createdAt: todayVoyage.createdAt,
+                  },
                 });
               }}
             />
@@ -1045,15 +495,22 @@ export function CabinLogs() {
         </div>
       </section>
 
-      {open && (
-        <PostModal
-          kind={open.kind}
-          ownerId={open.ownerId}
-          ownerNickname={open.ownerNickname}
-          photoId={open.photoId}
-          imageUrl={open.url}
-          caption={open.cap}
-          meta={open.meta}
+      {open?.kind === "scene" && (
+        <PhotoViewerModal
+          memberId={open.memberId}
+          photo={open.photo}
+          loginNick={loginNick}
+          isOwner={loginNick === open.memberNickname}
+          memberNickname={open.memberNickname}
+          targetCommentId={null}
+          onClose={() => setOpen(null)}
+        />
+      )}
+      {open?.kind === "voyage" && (
+        <AlbumPhotoViewer
+          photo={open.photo}
+          loginNick={loginNick}
+          targetCommentId={null}
           onClose={() => setOpen(null)}
         />
       )}
