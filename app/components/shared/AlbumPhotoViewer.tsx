@@ -40,6 +40,8 @@ import NicknameLink from "@/app/components/NicknameLink";
 import { formatSmart } from "@/src/lib/formatSmart";
 import { handleEvent } from "@/src/lib/badgeCheck";
 import { josa, truncate } from "@/src/lib/text";
+import { useDawnlight2 } from "@/src/lib/featureFlags";
+import { Dl2TitlePrefix } from "@/app/components/dawnlight2/widgets/WhispersFeed/Dl2TitlePrefix";
 
 // `uploadBytes` and `getDownloadURL` are not used by the modal stack
 // itself — they're used by the album upload flow which lives in the
@@ -121,6 +123,12 @@ export function AlbumPhotoViewer({
   onClose: () => void;
   targetCommentId?: string | null;
 }) {
+  // Step 4-G: 언쏘만 dl2 viewer surface. Adds the `dl2-album-viewer`
+  // class to the outermost .minihome-modal so a single CSS block in
+  // globals.css can re-skin every cosmic class inside (paper bg, navy
+  // text, cream chips, navy pill buttons). Cosmic users keep
+  // isDawnlight2=false → byte-identical markup + cosmic CSS.
+  const dl2 = useDawnlight2();
   // Scroll container = .minihome-modal (position:fixed, overflow-y:auto).
   // The card .minihome-photo-viewer has no overflow of its own — entire
   // card scrolls together. Comments compute their absolute y relative
@@ -263,7 +271,7 @@ export function AlbumPhotoViewer({
   return createPortal(
     <div
       ref={modalRef}
-      className="minihome-modal"
+      className={dl2 ? "minihome-modal dl2-album-viewer" : "minihome-modal"}
       onClick={onClose}
     >
       <div
@@ -296,121 +304,58 @@ export function AlbumPhotoViewer({
             onLoad={() => setImgLoaded(true)}
           />
         )}
-        {editMode ? (
-          <>
-            <label className="album-date-label">
-              <span className="album-date-label-text">촬영 날짜</span>
-              <input
-                type="date"
-                className="minihome-input"
-                value={editPhotoDate}
-                onChange={(e) => setEditPhotoDate(e.target.value)}
-                max={todayISO()}
-              />
-            </label>
-            <input
-              className="minihome-input"
-              placeholder="설명"
-              value={editCaption}
-              onChange={(e) => setEditCaption(e.target.value)}
-              maxLength={120}
+        {/* Meta block — wrapped in `.dl2-album-meta-card` when dl2 so
+            CSS can paint a paper surface around it. Cosmic keeps the
+            naked layout (text on the modal backdrop). The wrapper is
+            a simple <div> with no other change to inner markup. */}
+        {dl2 ? (
+          <div className="dl2-album-meta-card">
+            <AlbumViewerMetaInner
+              photo={photo}
+              editMode={editMode}
+              editPhotoDate={editPhotoDate}
+              setEditPhotoDate={setEditPhotoDate}
+              editCaption={editCaption}
+              setEditCaption={setEditCaption}
+              editPhotographer={editPhotographer}
+              setEditPhotographer={setEditPhotographer}
+              editPeople={editPeople}
+              editPeopleInput={editPeopleInput}
+              setEditPeopleInput={setEditPeopleInput}
+              addEditPerson={addEditPerson}
+              removeEditPerson={removeEditPerson}
+              handleSave={handleSave}
+              cancelEdit={cancelEdit}
+              saving={saving}
+              isOwner={isOwner}
+              startEdit={startEdit}
+              handleDelete={handleDelete}
+              deleting={deleting}
             />
-            <input
-              className="minihome-input"
-              placeholder="촬영자"
-              value={editPhotographer}
-              onChange={(e) => setEditPhotographer(e.target.value)}
-              maxLength={30}
-            />
-            <div className="album-people-input">
-              {editPeople.length > 0 && (
-                <div className="album-tags">
-                  {editPeople.map((p) => (
-                    <span key={p} className="album-tag">
-                      {p}
-                      <button
-                        type="button"
-                        className="album-tag-remove"
-                        onClick={() => removeEditPerson(p)}
-                        aria-label={`${p} 제거`}
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
-              <input
-                className="minihome-input"
-                placeholder="출연자 (엔터로 추가)"
-                value={editPeopleInput}
-                onChange={(e) => setEditPeopleInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.nativeEvent.isComposing) {
-                    e.preventDefault();
-                    addEditPerson();
-                  }
-                }}
-                maxLength={30}
-              />
-            </div>
-            <div className="minihome-modal-actions">
-              <button
-                className="minihome-btn minihome-btn-small"
-                onClick={handleSave}
-                disabled={saving}
-              >
-                {saving ? "저장 중..." : "저장"}
-              </button>
-              <button
-                className="minihome-btn minihome-btn-small minihome-btn-cancel"
-                onClick={cancelEdit}
-                disabled={saving}
-              >
-                취소
-              </button>
-            </div>
-          </>
-        ) : (
-          <>
-            {photo.photoDate && (
-              <p className="album-viewer-date">{formatPhotoDate(photo.photoDate)}</p>
-            )}
-            {photo.caption && (
-              <p className="minihome-photo-caption">{photo.caption}</p>
-            )}
-            {photo.photographer && (
-              <p className="album-photographer">photo by {photo.photographer}</p>
-            )}
-            {photo.people && photo.people.length > 0 && (
-              <div className="album-tags">
-                {photo.people.map((p) => (
-                  <span key={p} className="album-tag album-tag-readonly">
-                    {p}
-                  </span>
-                ))}
-              </div>
-            )}
-          </>
-        )}
-
-        {!editMode && isOwner && (
-          <div className="minihome-modal-actions">
-            <button
-              className="minihome-btn minihome-btn-small"
-              onClick={startEdit}
-              disabled={deleting}
-            >
-              수정
-            </button>
-            <button
-              className="minihome-btn minihome-btn-small minihome-btn-cancel"
-              onClick={handleDelete}
-              disabled={deleting}
-            >
-              {deleting ? "삭제 중..." : "삭제"}
-            </button>
           </div>
+        ) : (
+          <AlbumViewerMetaInner
+            photo={photo}
+            editMode={editMode}
+            editPhotoDate={editPhotoDate}
+            setEditPhotoDate={setEditPhotoDate}
+            editCaption={editCaption}
+            setEditCaption={setEditCaption}
+            editPhotographer={editPhotographer}
+            setEditPhotographer={setEditPhotographer}
+            editPeople={editPeople}
+            editPeopleInput={editPeopleInput}
+            setEditPeopleInput={setEditPeopleInput}
+            addEditPerson={addEditPerson}
+            removeEditPerson={removeEditPerson}
+            handleSave={handleSave}
+            cancelEdit={cancelEdit}
+            saving={saving}
+            isOwner={isOwner}
+            startEdit={startEdit}
+            handleDelete={handleDelete}
+            deleting={deleting}
+          />
         )}
 
         <AlbumCommentsSection
@@ -425,6 +370,174 @@ export function AlbumPhotoViewer({
       </div>
     </div>,
     document.body,
+  );
+}
+
+// Inner meta block — extracted so the dl2 / cosmic branches at the
+// call site can wrap (or not wrap) it in `.dl2-album-meta-card`
+// without duplicating ~80 lines of edit-form / display-mode JSX.
+function AlbumViewerMetaInner({
+  photo,
+  editMode,
+  editPhotoDate,
+  setEditPhotoDate,
+  editCaption,
+  setEditCaption,
+  editPhotographer,
+  setEditPhotographer,
+  editPeople,
+  editPeopleInput,
+  setEditPeopleInput,
+  addEditPerson,
+  removeEditPerson,
+  handleSave,
+  cancelEdit,
+  saving,
+  isOwner,
+  startEdit,
+  handleDelete,
+  deleting,
+}: {
+  photo: AlbumPhoto;
+  editMode: boolean;
+  editPhotoDate: string;
+  setEditPhotoDate: (v: string) => void;
+  editCaption: string;
+  setEditCaption: (v: string) => void;
+  editPhotographer: string;
+  setEditPhotographer: (v: string) => void;
+  editPeople: string[];
+  editPeopleInput: string;
+  setEditPeopleInput: (v: string) => void;
+  addEditPerson: () => void;
+  removeEditPerson: (v: string) => void;
+  handleSave: () => void;
+  cancelEdit: () => void;
+  saving: boolean;
+  isOwner: boolean;
+  startEdit: () => void;
+  handleDelete: () => void;
+  deleting: boolean;
+}) {
+  return (
+    <>
+      {editMode ? (
+        <>
+          <label className="album-date-label">
+            <span className="album-date-label-text">촬영 날짜</span>
+            <input
+              type="date"
+              className="minihome-input"
+              value={editPhotoDate}
+              onChange={(e) => setEditPhotoDate(e.target.value)}
+              max={todayISO()}
+            />
+          </label>
+          <input
+            className="minihome-input"
+            placeholder="설명"
+            value={editCaption}
+            onChange={(e) => setEditCaption(e.target.value)}
+            maxLength={120}
+          />
+          <input
+            className="minihome-input"
+            placeholder="촬영자"
+            value={editPhotographer}
+            onChange={(e) => setEditPhotographer(e.target.value)}
+            maxLength={30}
+          />
+          <div className="album-people-input">
+            {editPeople.length > 0 && (
+              <div className="album-tags">
+                {editPeople.map((p) => (
+                  <span key={p} className="album-tag">
+                    {p}
+                    <button
+                      type="button"
+                      className="album-tag-remove"
+                      onClick={() => removeEditPerson(p)}
+                      aria-label={`${p} 제거`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <input
+              className="minihome-input"
+              placeholder="출연자 (엔터로 추가)"
+              value={editPeopleInput}
+              onChange={(e) => setEditPeopleInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                  e.preventDefault();
+                  addEditPerson();
+                }
+              }}
+              maxLength={30}
+            />
+          </div>
+          <div className="minihome-modal-actions">
+            <button
+              className="minihome-btn minihome-btn-small"
+              onClick={handleSave}
+              disabled={saving}
+            >
+              {saving ? "저장 중..." : "저장"}
+            </button>
+            <button
+              className="minihome-btn minihome-btn-small minihome-btn-cancel"
+              onClick={cancelEdit}
+              disabled={saving}
+            >
+              취소
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          {photo.photoDate && (
+            <p className="album-viewer-date">{formatPhotoDate(photo.photoDate)}</p>
+          )}
+          {photo.caption && (
+            <p className="minihome-photo-caption">{photo.caption}</p>
+          )}
+          {photo.photographer && (
+            <p className="album-photographer">photo by {photo.photographer}</p>
+          )}
+          {photo.people && photo.people.length > 0 && (
+            <div className="album-tags">
+              {photo.people.map((p) => (
+                <span key={p} className="album-tag album-tag-readonly">
+                  {p}
+                </span>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {!editMode && isOwner && (
+        <div className="minihome-modal-actions">
+          <button
+            className="minihome-btn minihome-btn-small"
+            onClick={startEdit}
+            disabled={deleting}
+          >
+            수정
+          </button>
+          <button
+            className="minihome-btn minihome-btn-small minihome-btn-cancel"
+            onClick={handleDelete}
+            disabled={deleting}
+          >
+            {deleting ? "삭제 중..." : "삭제"}
+          </button>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -681,6 +794,12 @@ function AlbumCommentItem({
   onReplyCountChange: (commentId: string, count: number) => void;
   setItemRef?: (el: HTMLDivElement | null) => void;
 }) {
+  // dl2 swap: render Dl2TitlePrefix beside the nick (`hideTitle` skips
+  // the cosmic TitlePrefix that NicknameLink renders by default), and
+  // tag the cosmic .minihome-gb-nick with the dl2 navy ink color via
+  // the parent .dl2-album-viewer scope. cosmic users see the original
+  // gold-stardust prefix-inside-nick layout.
+  const dl2 = useDawnlight2();
   const [replies, setReplies] = useState<AlbumComment[]>([]);
   const [msg, setMsg] = useState("");
   const [replyImage, setReplyImage] = useState<File | null>(null);
@@ -809,7 +928,12 @@ function AlbumCommentItem({
             </button>
           )}
         </span>
-        <NicknameLink nickname={comment.nickname} className="minihome-gb-nick" />
+        {dl2 && <Dl2TitlePrefix nickname={comment.nickname} />}
+        <NicknameLink
+          nickname={comment.nickname}
+          className="minihome-gb-nick"
+          hideTitle={dl2}
+        />
         <span className="minihome-gb-msg">: {comment.content}</span>
       </div>
       {comment.imageUrl && <CommentImageView url={comment.imageUrl} />}
@@ -842,7 +966,13 @@ function AlbumCommentItem({
                     </button>
                   )}
                 </span>
-                <NicknameLink nickname={r.nickname} className="minihome-gb-nick" prefix="↳ " />
+                {dl2 && <Dl2TitlePrefix nickname={r.nickname} />}
+                <NicknameLink
+                  nickname={r.nickname}
+                  className="minihome-gb-nick"
+                  prefix="↳ "
+                  hideTitle={dl2}
+                />
                 <span className="minihome-gb-msg">: {r.content}</span>
               </div>
               {r.imageUrl && <CommentImageView url={r.imageUrl} />}

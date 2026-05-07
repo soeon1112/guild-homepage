@@ -9624,9 +9624,21 @@ body.has-redesigned-header .bg-scene {
   border-bottom-color: rgba(42, 69, 112, 0.12);
 }
 .dl2-board .board-comment-nick {
-  color: #2a4570;
+  color: #b85420;
   font-weight: 600;
   font-size: 12px;
+}
+/* Detail-page author nick + board-list author nick — coral semibold,
+   matches the comment-nick coral so author/commenter read as a single
+   visual family against the ink-navy body text. */
+.dl2-board .board-detail-meta .nickname-link {
+  color: #b85420 !important;
+  font-weight: 600;
+}
+.dl2-board-nick,
+.dl2-board-nick.nickname-link {
+  color: #b85420 !important;
+  font-weight: 600;
 }
 .dl2-board .board-comment-date {
   color: #5a7090;

@@ -279,7 +279,10 @@ export default function AlbumPage() {
   const renderModals = () => (
     <>
       {uploadOpen && typeof document !== "undefined" && createPortal(
-        <div className="minihome-modal" onClick={() => setUploadOpen(false)}>
+        <div
+          className={isDawnlight2 ? "minihome-modal dl2-album-upload" : "minihome-modal"}
+          onClick={() => setUploadOpen(false)}
+        >
           <div
             className="minihome-modal-content"
             onClick={(e) => e.stopPropagation()}
@@ -358,6 +361,7 @@ export default function AlbumPage() {
       {pickerOpen && (
         <MemberPickerModal
           initial={people}
+          dl2={isDawnlight2}
           onClose={() => setPickerOpen(false)}
           onDone={(sel) => {
             setPeople(sel);
@@ -382,7 +386,7 @@ export default function AlbumPage() {
 
   if (isDawnlight2) {
     return (
-      <div className="mx-auto w-full max-w-5xl px-5 pb-12 pt-2 sm:px-6 sm:pb-16">
+      <div className="mx-auto w-full max-w-3xl px-5 pb-12 pt-2 sm:px-6 sm:pb-16">
         {/* Header row — title + subtitle on the left, navy 사진 올리기
             pill on the right. Title sizing matches .dl2-notice-page-
             title (Pretendard 20 px semibold cream) so 앨범 / 공지
@@ -707,10 +711,12 @@ const SPECIAL_TAGS = ["우리 길원들", "기타"];
 
 function MemberPickerModal({
   initial,
+  dl2 = false,
   onClose,
   onDone,
 }: {
   initial: string[];
+  dl2?: boolean;
   onClose: () => void;
   onDone: (selected: string[]) => void;
 }) {
@@ -768,7 +774,10 @@ function MemberPickerModal({
   // Portal-mount — see AlbumPhotoViewer above. Same trap.
   if (typeof document === "undefined") return null;
   return createPortal(
-    <div className="minihome-modal" onClick={onClose}>
+    <div
+      className={dl2 ? "minihome-modal dl2-album-upload" : "minihome-modal"}
+      onClick={onClose}
+    >
       <div
         className="minihome-modal-content"
         onClick={(e) => e.stopPropagation()}
