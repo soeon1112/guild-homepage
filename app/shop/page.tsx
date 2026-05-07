@@ -18,6 +18,7 @@ import Avatar, {
   useAvatarData,
 } from "@/app/components/Avatar";
 import { db } from "@/src/lib/firebase";
+import { useDawnlight2 } from "@/src/lib/featureFlags";
 import { avatarUrl, partUrl } from "@/src/lib/avatarAssets";
 import {
   FASHION_CATEGORY_TABS,
@@ -188,6 +189,10 @@ const HAIR_GROUPS: {
 
 export default function ShopPage() {
   const { nickname, ready } = useAuth();
+  const isDawnlight2 = useDawnlight2();
+  const shopPageClass = isDawnlight2
+    ? "shop-page dl2-shop dawnlight2"
+    : "shop-page";
   const [mainTab, setMainTab] = useState<"title" | "avatar">("title");
   const [avatarSubTab, setAvatarSubTab] = useState<AvatarSubTab>("eyes");
   const [hairSubTab, setHairSubTab] = useState<HairSubTab>("male");
@@ -547,7 +552,7 @@ export default function ShopPage() {
 
   if (!ready) {
     return (
-      <div className="shop-page">
+      <div className={shopPageClass}>
         <p className="shop-hint">불러오는 중...</p>
       </div>
     );
@@ -555,7 +560,7 @@ export default function ShopPage() {
 
   if (!nickname) {
     return (
-      <div className="shop-page">
+      <div className={shopPageClass}>
         <p className="login-required">로그인이 필요합니다.</p>
       </div>
     );
@@ -725,11 +730,18 @@ export default function ShopPage() {
   };
 
   return (
-    <div className="shop-page">
+    <div className={shopPageClass}>
       <div className="shop-container">
-        <header className="shop-header">
-          <h1 className="shop-title">상점</h1>
-        </header>
+        {isDawnlight2 ? (
+          <header className="dl2-shop-head">
+            <h1 className="dl2-shop-title">상점</h1>
+            <p className="dl2-shop-sub">SHOP</p>
+          </header>
+        ) : (
+          <header className="shop-header">
+            <h1 className="shop-title">상점</h1>
+          </header>
+        )}
 
         <div className="shop-tabs shop-main-tabs">
           <button

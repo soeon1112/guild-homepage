@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/app/components/AuthProvider";
 import { db } from "@/src/lib/firebase";
+import { useDawnlight2 } from "@/src/lib/featureFlags";
 import { formatSmart } from "@/src/lib/formatSmart";
 import {
   collection,
@@ -30,8 +31,13 @@ function formatDate(ts: Timestamp | null): string {
 
 export default function MyPage() {
   const { nickname, ready } = useAuth();
+  const isDawnlight2 = useDawnlight2();
   const [points, setPoints] = useState(0);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+
+  const wrapperClass = isDawnlight2
+    ? "mypage-content dl2-mypage dawnlight2"
+    : "mypage-content";
 
   useEffect(() => {
     if (!nickname) return;
@@ -59,7 +65,7 @@ export default function MyPage() {
 
   if (!ready) {
     return (
-      <div className="mypage-content">
+      <div className={wrapperClass}>
         <p className="mypage-hint">불러오는 중...</p>
       </div>
     );
@@ -67,14 +73,20 @@ export default function MyPage() {
 
   if (!nickname) {
     return (
-      <div className="mypage-content">
+      <div className={wrapperClass}>
         <p className="login-required">로그인이 필요합니다.</p>
       </div>
     );
   }
 
   return (
-    <div className="mypage-content">
+    <div className={wrapperClass}>
+      {isDawnlight2 && (
+        <header className="dl2-mypage-head">
+          <h1 className="dl2-mypage-title">마이페이지</h1>
+          <p className="dl2-mypage-sub">MY PAGE</p>
+        </header>
+      )}
       <section className="mypage-card">
         <h1 className="mypage-nick">{nickname}</h1>
         <div className="mypage-points-wrap">
@@ -116,9 +128,11 @@ export default function MyPage() {
         )}
       </section>
 
-      <div className="mypage-footer-actions">
-        <Link href="/" className="minihome-btn">홈으로</Link>
-      </div>
+      {!isDawnlight2 && (
+        <div className="mypage-footer-actions">
+          <Link href="/" className="minihome-btn">홈으로</Link>
+        </div>
+      )}
     </div>
   );
 }
