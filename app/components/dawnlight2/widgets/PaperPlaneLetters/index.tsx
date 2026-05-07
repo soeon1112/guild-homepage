@@ -182,8 +182,14 @@ export function PaperPlaneLetters() {
               <LargePaperPlane />
             </div>
 
-            <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
-              <div className="min-w-0 flex-1">
+            {/* `items-center` centers the children inside this column
+                horizontally on mobile (where it's flex-col) and
+                vertically on desktop (where sm:flex-row kicks in) —
+                same shorthand works for both axes because flex's
+                `items-*` is the cross-axis. Text + buttons therefore
+                read centered on phones and inline-aligned on PC. */}
+            <div className="flex min-w-0 flex-1 flex-col items-center gap-3 sm:flex-row sm:items-center sm:gap-6">
+              <div className="min-w-0 flex-1 text-center sm:text-left">
                 <h3
                   className="text-base font-semibold leading-snug sm:text-lg"
                   style={{ color: NAVY }}
