@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   addDoc,
   collection,
@@ -73,6 +73,42 @@ export function NoteToTheSky() {
   const [busy, setBusy] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
+  // Deep-link auto-scroll from whisper push tap. Push payload carries
+  // /?whispers=<entryId>; we scroll the 한마디란 section into view once.
+  // Lazy-init useState (instead of useSearchParams) because the home
+  // page is a server component without a Suspense wrapper. Cosmic web
+  // mirror lives in WhispersToStars; we register here so the dl2 widget
+  // (this is the dl2 equivalent) handles the same push path.
+  // Multi-retry to ride out TodaysHorizon / WhispersFeed late layout
+  // shifts — same cadence cosmic web WhispersToStars uses.
+  const [initialWhispersFlag] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("whispers") != null;
+  });
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const whispersHandledRef = useRef(false);
+  useEffect(() => {
+    if (!initialWhispersFlag) return;
+    if (whispersHandledRef.current) return;
+    whispersHandledRef.current = true;
+    const handles: ReturnType<typeof setTimeout>[] = [];
+    const doScroll = () => {
+      const el = sectionRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const targetY = Math.max(0, Math.round(rect.top + window.scrollY - 16));
+      window.scrollTo(0, targetY);
+      document.documentElement.scrollTop = targetY;
+      document.body.scrollTop = targetY;
+    };
+    for (const ms of [100, 500, 1500, 3000]) {
+      handles.push(setTimeout(doScroll, ms));
+    }
+    return () => {
+      for (const h of handles) clearTimeout(h);
+    };
+  }, [initialWhispersFlag]);
+
   useEffect(() => {
     const q = query(collection(db, "guestbook"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(q, (snap) => {
@@ -127,6 +163,7 @@ export function NoteToTheSky() {
 
   return (
     <section
+      ref={sectionRef}
       aria-labelledby="dl2-note-to-the-sky"
       className="mx-auto w-full max-w-2xl px-5 pb-12 pt-2 sm:px-6 sm:pb-16"
     >

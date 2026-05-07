@@ -5,6 +5,7 @@ import {
   type FormEvent,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import {
@@ -116,6 +117,25 @@ export function PaperPlaneLetters() {
   const { nickname } = useAuth();
   const [inbox, setInbox] = useState<Letter[]>([]);
   const [modal, setModal] = useState<"compose" | "inbox" | null>(null);
+
+  // Deep-link auto-open from letter push tap. Push payload carries
+  // /?letter=true; we flip the inbox modal open once per arrival.
+  // Lazy-init useState (instead of useSearchParams) because the home
+  // page is a server component without a Suspense wrapper and the flag
+  // is set at navigation time and never changes — same pattern cosmic
+  // ShootingStarLetter uses for this same param.
+  const [initialLetterFlag] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("letter") === "true";
+  });
+  const lastLetterHandledRef = useRef(false);
+  useEffect(() => {
+    if (!initialLetterFlag) return;
+    if (!nickname) return;
+    if (lastLetterHandledRef.current) return;
+    lastLetterHandledRef.current = true;
+    setModal("inbox");
+  }, [initialLetterFlag, nickname]);
 
   // Live inbox subscription so the unread badge keeps updating even
   // while the user has the inbox modal closed. Same shape the cosmic
