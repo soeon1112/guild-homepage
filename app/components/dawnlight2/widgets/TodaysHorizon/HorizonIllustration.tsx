@@ -87,8 +87,16 @@ export function HorizonIllustration() {
           </symbol>
         </defs>
 
-        {/* Sun glow on horizon — round halo (~3.8× the sun body radius). */}
-        <circle cx="600" cy="430" r="160" fill="url(#dl2-sun)" />
+        {/* Sun glow on horizon — round halo (~3.8× the sun body radius)
+            with a slow ambient pulse (scale 1↔1.08, opacity 0.85↔1). */}
+        <circle
+          className="animate-sun-pulse"
+          cx="600"
+          cy="430"
+          r="160"
+          fill="url(#dl2-sun)"
+          style={{ transformOrigin: "600px 430px" }}
+        />
         <circle cx="600" cy="430" r="42" fill="#ffe5c2" opacity="0.9" />
 
         {/* Distant island silhouettes — gentle vertical bob */}

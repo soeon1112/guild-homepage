@@ -8269,6 +8269,15 @@ body.has-redesigned-header .bg-scene {
   100% { opacity: 0;   transform: scale(1.15); }
 }
 
+/* Slow ambient pulse for the sun halo circle. Subtle on purpose — the
+   halo gently breathes (scale 1↔1.08, opacity 0.85↔1) instead of
+   strobing. transform-origin is set on the utility so the breath
+   centers on the circle's middle, not the SVG origin. */
+@keyframes dl2-sun-pulse {
+  0%, 100% { opacity: 0.85; transform: scale(1); }
+  50%      { opacity: 1;    transform: scale(1.08); }
+}
+
 /* ── Animation utility classes — scoped to .dawnlight2 ──
    The bare `.animate-twinkle` / `.animate-drift` already exist globally
    for the cosmic UI; declaring `.dawnlight2 .animate-*` makes the more
@@ -8330,6 +8339,11 @@ body.has-redesigned-header .bg-scene {
 .dawnlight2 .animate-sunset-glow {
   animation: dl2-sunset-glow 1.8s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
+.dawnlight2 .animate-sun-pulse {
+  animation: dl2-sun-pulse 5s ease-in-out infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
 
 /* Quote text (sky-quote inside Today's Horizon).
    white-space: pre  → only literal "\n" in the verse string breaks a
@@ -8367,7 +8381,8 @@ body.has-redesigned-header .bg-scene {
   .dawnlight2 .animate-plane-shake,
   .dawnlight2 .animate-plane-float,
   .dawnlight2 .animate-boat-bob,
-  .dawnlight2 .animate-sunset-glow {
+  .dawnlight2 .animate-sunset-glow,
+  .dawnlight2 .animate-sun-pulse {
     animation: none;
   }
   .dawnlight2 .animate-stamp-press {
