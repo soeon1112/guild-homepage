@@ -87,8 +87,8 @@ export function HorizonIllustration() {
           </symbol>
         </defs>
 
-        {/* Sun glow on horizon */}
-        <ellipse cx="600" cy="430" rx="380" ry="160" fill="url(#dl2-sun)" />
+        {/* Sun glow on horizon — round halo (~3.8× the sun body radius). */}
+        <circle cx="600" cy="430" r="160" fill="url(#dl2-sun)" />
         <circle cx="600" cy="430" r="42" fill="#ffe5c2" opacity="0.9" />
 
         {/* Distant island silhouettes — gentle vertical bob */}
