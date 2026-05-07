@@ -149,6 +149,10 @@ export function VoyageJournal() {
   const showParchment = state === "not_today" || state === "stamping";
   const showQuote = state === "already_today" || state === "just_attended";
   const isDone = showQuote;
+  // `lit` mirrors cosmic TodaySky's lit boolean — true once today's
+  // attendance is registered (whether reached via the stamp animation
+  // or detected from a fresh page load). Drives the warm boxShadow.
+  const lit = showQuote;
   const buttonDisabled =
     state === "loading" ||
     state === "logged_out" ||
@@ -204,47 +208,30 @@ export function VoyageJournal() {
           </div>
         )}
 
-        {/* Warm-glow flash — only mounts on the just_attended transition,
-            not on already_today (page reload). The keyframe ends at
-            opacity 0 so the overlay is invisible afterwards even though
-            it stays in the DOM, and animation-fill-mode: both keeps it
-            from snapping back to opacity 1 mid-cleanup. */}
-        {state === "just_attended" && (
-          <div
-            aria-hidden
-            className="animate-sunset-glow pointer-events-none absolute inset-0"
-            style={{
-              background:
-                "radial-gradient(60% 60% at 50% 50%, rgba(255, 199, 133, 0.85) 0%, rgba(255, 199, 133, 0.45) 35%, rgba(255, 199, 133, 0) 75%)",
-              mixBlendMode: "screen",
-            }}
-          />
-        )}
       </div>
 
       {/* Action button below scenery — cream pill on the twilight sky.
-          Active state owns the contrast (cream fill, ink-deep text) so
-          the call to action reads at first glance against the sunset
-          gradient; disabled state drops to a translucent variant of
-          the same pair so it still feels part of the same family. */}
+          The button visual stays consistent across states (cream bg,
+          twilight-deep ink) for legibility; what changes by state is
+          the boxShadow halo. This mirrors the cosmic TodaySky pattern
+          where `lit` swaps a cool lavender glow for a warm cream one
+          — here we go cool mist-lavender → warm sunset-gold + cloud-
+          pink inset, and the persistent halo IS the "you've checked
+          in today" signal (no separate one-shot flash). */}
       <div className="mt-8 flex justify-center sm:mt-10">
         <button
           type="button"
           onClick={handleStamp}
           disabled={buttonDisabled}
           aria-live="polite"
-          className={[
-            // `select-none` lives on the base class string so it covers
-            // both active and disabled branches (and the inner +/label
-            // <span>s inherit it) — clicks on the button never engage
-            // the browser's text-selection / caret path.
-            "group inline-flex select-none items-center gap-2 rounded-full px-6 py-2.5 text-sm font-medium tracking-wide transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cream/70 focus-visible:ring-offset-2 focus-visible:ring-offset-twilight-deep",
-            buttonDisabled
-              ? "cursor-not-allowed bg-cream/35 text-twilight-deep/55"
-              : "bg-cream text-twilight-deep shadow-[0_6px_18px_-8px_rgba(254,245,230,0.45)] hover:-translate-y-0.5 hover:bg-cream/95 hover:shadow-[0_10px_28px_-10px_rgba(254,245,230,0.7)]",
-          ].join(" ")}
+          className="group inline-flex select-none items-center gap-2 rounded-full bg-cream px-6 py-2.5 text-sm font-medium tracking-wide text-twilight-deep transition-all duration-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cream/70 focus-visible:ring-offset-2 focus-visible:ring-offset-twilight-deep disabled:cursor-default disabled:hover:-translate-y-0"
+          style={{
+            boxShadow: lit
+              ? "0 0 22px rgba(255,199,133,0.7), inset 0 0 12px rgba(255,212,184,0.35)"
+              : "0 0 12px rgba(200,184,232,0.45)",
+          }}
         >
-          {!buttonDisabled && (
+          {state === "not_today" && (
             <span
               aria-hidden
               className="text-base font-light text-twilight-deep/65 transition-transform duration-300 group-hover:rotate-90"
