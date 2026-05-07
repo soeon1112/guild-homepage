@@ -178,9 +178,19 @@ export function GuildMembersSection({
                 key={o.key}
                 type="button"
                 onClick={() => setSortKey(o.key)}
-                className={`rounded-full px-2.5 py-1 font-serif text-[10px] tracking-wider transition-all ${
-                  active ? "text-stardust" : "text-text-sub hover:text-stardust"
-                }`}
+                // dl2 mode drops `text-stardust` / `text-text-sub`
+                // tailwind classes — those are caught by the
+                // `.dl2-power [class*="text-stardust"]` !important
+                // CSS override and would clobber the inline color
+                // we set for the active cream-on-navy state. Inline
+                // styles alone keep the chip readable.
+                className={
+                  dl2
+                    ? "rounded-full px-2.5 py-1 font-serif text-[10px] tracking-wider transition-all"
+                    : `rounded-full px-2.5 py-1 font-serif text-[10px] tracking-wider transition-all ${
+                        active ? "text-stardust" : "text-text-sub hover:text-stardust"
+                      }`
+                }
                 style={
                   active
                     ? dl2
@@ -316,9 +326,9 @@ function GroupBlock({
         <div className="flex items-center gap-2.5">
           <span
             style={{
-              color: dl2 ? "#b85420" : undefined,
+              color: dl2 ? "#c4992f" : undefined,
               filter: dl2
-                ? "drop-shadow(0 0 4px rgba(184, 84, 32, 0.45))"
+                ? "drop-shadow(0 0 4px rgba(196, 153, 47, 0.5))"
                 : "drop-shadow(0 0 6px rgba(255, 181, 167, 0.65))",
             }}
             className={dl2 ? "" : "text-peach-accent"}
@@ -340,7 +350,7 @@ function GroupBlock({
             style={{ color: dl2 ? "#5a7090" : undefined }}
           >
             최고{" "}
-            <span style={{ color: dl2 ? "#b85420" : undefined }}>
+            <span style={{ color: dl2 ? "#8a6710" : undefined, fontWeight: dl2 ? 700 : undefined }}>
               {topPower.toLocaleString()}
             </span>
           </span>
@@ -429,12 +439,12 @@ function CharacterRow({
           className="flex h-7 w-7 items-center justify-center rounded-full"
           style={{
             background: dl2
-              ? "rgba(184, 84, 32, 0.12)"
+              ? "rgba(196, 153, 47, 0.15)"
               : "linear-gradient(135deg, rgba(107, 75, 168, 0.45), rgba(216, 150, 200, 0.25))",
             border: dl2
-              ? "1px solid rgba(184, 84, 32, 0.35)"
+              ? "1px solid rgba(196, 153, 47, 0.4)"
               : "1px solid rgba(216, 150, 200, 0.3)",
-            color: dl2 ? "#b85420" : "#ffe5c4",
+            color: dl2 ? "#8a6710" : "#ffe5c4",
           }}
         >
           <JobIcon job={char.job} size={14} />
@@ -547,10 +557,10 @@ function PowerNumber({
 }) {
   return (
     <span
-      className={`font-mono ${dl2 ? "font-semibold" : "font-medium"} tabular-nums ${small ? "text-[11px]" : "text-sm"}`}
+      className={`font-mono tabular-nums ${dl2 ? "" : "font-medium"} ${small ? "text-[11px]" : "text-sm"}`}
       style={
         dl2
-          ? { color: "#b85420" }
+          ? { color: "#8a6710", fontWeight: 700 }
           : {
               backgroundImage: "linear-gradient(135deg, #FFE5C4, #D896C8)",
               WebkitBackgroundClip: "text",
@@ -601,10 +611,10 @@ function AbyssInline({
           className="h-full rounded-full"
           style={{
             background: dl2
-              ? "linear-gradient(90deg, #ffc785 0%, #ff9a6c 50%, #b85420 100%)"
+              ? "linear-gradient(90deg, #e6c97a 0%, #c4992f 55%, #8a6710 100%)"
               : "linear-gradient(90deg, #6B4BA8 0%, #D896C8 70%, #FFB5A7 100%)",
             boxShadow: dl2
-              ? "0 0 6px rgba(184, 84, 32, 0.4)"
+              ? "0 0 6px rgba(196, 153, 47, 0.45)"
               : "0 0 6px rgba(216, 150, 200, 0.55)",
           }}
         />
@@ -643,27 +653,28 @@ function ChallengeDot({
       glyph: "✕",
     },
   };
-  // dl2 — coral / peach / grey trio in the dawnlight2 family.
+  // dl2 — sage / amber (hollow) / grey trio. amber renders as outlined
+  // △ glyph (stroke-only feel) since it's a low-priority hint.
   const dl2Map: Record<
     Challenge,
     { bg: string; border: string; fg: string; glyph: string }
   > = {
     있음: {
-      bg: "rgba(184, 84, 32, 0.16)",
-      border: "rgba(184, 84, 32, 0.55)",
-      fg: "#b85420",
+      bg: "rgba(107, 155, 90, 0.2)",
+      border: "rgba(107, 155, 90, 0.6)",
+      fg: "#4f7541",
       glyph: "✓",
     },
     "다소 있음": {
-      bg: "rgba(255, 154, 108, 0.18)",
-      border: "rgba(255, 154, 108, 0.55)",
-      fg: "#ff9a6c",
+      bg: "rgba(214, 138, 60, 0.2)",
+      border: "rgba(214, 138, 60, 0.6)",
+      fg: "#a8691f",
       glyph: "△",
     },
     없음: {
-      bg: "rgba(106, 106, 106, 0.16)",
+      bg: "rgba(106, 106, 106, 0.15)",
       border: "rgba(106, 106, 106, 0.55)",
-      fg: "#6a6a6a",
+      fg: "#5a5a5a",
       glyph: "✕",
     },
   };

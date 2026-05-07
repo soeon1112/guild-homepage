@@ -122,16 +122,17 @@ function MyCharacterCard({
 }) {
   const floor = parseAbyssFloor(char.hellStage);
   const progress = Math.min(floor / ABYSS_MAX, 1);
-  // dl2 challenge palette — coral / peach / grey replaces cosmic
-  // mint / yellow / pink so the chip reads in the dawnlight2 family.
+  // dl2 challenge palette — sage / amber (hollow) / grey trio replaces
+  // cosmic mint/yellow/pink for a calmer, more legible read.
   const challengeColor =
     char.challenge === "있음"
       ? dl2
         ? {
-            bg: "rgba(184, 84, 32, 0.14)",
-            border: "rgba(184, 84, 32, 0.5)",
-            fg: "#b85420",
+            bg: "rgba(107, 155, 90, 0.2)",
+            border: "rgba(107, 155, 90, 0.55)",
+            fg: "#4f7541",
             glyph: "✓",
+            glyphFill: "#4f7541",
             label: "있음",
           }
         : {
@@ -139,15 +140,17 @@ function MyCharacterCard({
             border: "rgba(168, 232, 192, 0.45)",
             fg: "#A8E8C0",
             glyph: "✓",
+            glyphFill: "#A8E8C0",
             label: "있음",
           }
       : char.challenge === "없음"
         ? dl2
           ? {
-              bg: "rgba(106, 106, 106, 0.14)",
+              bg: "rgba(106, 106, 106, 0.15)",
               border: "rgba(106, 106, 106, 0.5)",
-              fg: "#6a6a6a",
+              fg: "#5a5a5a",
               glyph: "✕",
+              glyphFill: "#6a6a6a",
               label: "없음",
             }
           : {
@@ -155,14 +158,16 @@ function MyCharacterCard({
               border: "rgba(232, 168, 184, 0.45)",
               fg: "#E8A8B8",
               glyph: "✕",
+              glyphFill: "#E8A8B8",
               label: "없음",
             }
         : dl2
           ? {
-              bg: "rgba(255, 154, 108, 0.16)",
-              border: "rgba(255, 154, 108, 0.5)",
-              fg: "#ff9a6c",
+              bg: "rgba(214, 138, 60, 0.2)",
+              border: "rgba(214, 138, 60, 0.55)",
+              fg: "#a8691f",
               glyph: "△",
+              glyphFill: "#a8691f",
               label: "다소 있음",
             }
           : {
@@ -170,6 +175,7 @@ function MyCharacterCard({
               border: "rgba(255, 229, 142, 0.45)",
               fg: "#FFE58E",
               glyph: "△",
+              glyphFill: "#FFE58E",
               label: "다소 있음",
             };
 
@@ -203,13 +209,13 @@ function MyCharacterCard({
             className="flex h-8 w-8 items-center justify-center rounded-full"
             style={{
               background: dl2
-                ? "rgba(184, 84, 32, 0.15)"
+                ? "rgba(196, 153, 47, 0.15)"
                 : "linear-gradient(135deg, rgba(107, 75, 168, 0.5), rgba(216, 150, 200, 0.3))",
               border: dl2
-                ? "1px solid rgba(184, 84, 32, 0.4)"
+                ? "1px solid rgba(196, 153, 47, 0.4)"
                 : "1px solid rgba(216, 150, 200, 0.35)",
               boxShadow: dl2 ? "none" : "inset 0 0 8px rgba(255, 229, 196, 0.1)",
-              color: dl2 ? "#b85420" : "#ffe5c4",
+              color: dl2 ? "#8a6710" : "#ffe5c4",
             }}
           >
             <JobIcon job={char.job} size={16} />
@@ -256,7 +262,7 @@ function MyCharacterCard({
           className="font-mono text-2xl font-bold tabular-nums sm:text-[28px]"
           style={
             dl2
-              ? { color: "#b85420" }
+              ? { color: "#8a6710", fontWeight: 700 }
               : {
                   backgroundImage: "linear-gradient(135deg, #FFE5C4, #D896C8)",
                   WebkitBackgroundClip: "text",
@@ -301,7 +307,7 @@ function MyCharacterCard({
             className="flex h-4 w-4 items-center justify-center rounded-full font-semibold"
             style={{
               background: `${challengeColor.fg}22`,
-              color: challengeColor.fg,
+              color: challengeColor.glyphFill,
             }}
           >
             {challengeColor.glyph}
@@ -367,13 +373,13 @@ function AbyssProgressBar({
         transition={{ duration: 1.1, delay: delay ?? 0, ease: "easeOut" }}
         className="relative h-full rounded-full"
         style={{
-          // dl2: golden → coral gradient (mirrors the page accent
-          // family). cosmic stays purple → peach.
+          // dl2: all-gold gauge — light gold → antique gold → deep gold.
+          // cosmic stays purple → peach.
           background: dl2
-            ? "linear-gradient(90deg, #ffc785 0%, #ff9a6c 50%, #b85420 100%)"
+            ? "linear-gradient(90deg, #e6c97a 0%, #c4992f 55%, #8a6710 100%)"
             : "linear-gradient(90deg, #6B4BA8 0%, #D896C8 60%, #FFB5A7 100%)",
           boxShadow: dl2
-            ? "0 0 8px rgba(184, 84, 32, 0.35)"
+            ? "0 0 8px rgba(196, 153, 47, 0.4)"
             : "0 0 10px rgba(216, 150, 200, 0.55)",
         }}
       >
@@ -382,9 +388,9 @@ function AbyssProgressBar({
             aria-hidden
             className="pointer-events-none absolute right-0 top-1/2 h-2.5 w-2.5 -translate-y-1/2 translate-x-1/2 rounded-full"
             style={{
-              background: dl2 ? "#b85420" : "#FFE5C4",
+              background: dl2 ? "#c4992f" : "#FFE5C4",
               boxShadow: dl2
-                ? "0 0 8px #b85420, 0 0 14px rgba(255, 154, 108, 0.65)"
+                ? "0 0 8px #c4992f, 0 0 14px rgba(196, 153, 47, 0.6)"
                 : "0 0 8px #FFE5C4, 0 0 14px rgba(255, 181, 167, 0.8)",
               animation: "twinkle 2s ease-in-out infinite",
             }}

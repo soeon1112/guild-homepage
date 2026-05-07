@@ -335,6 +335,7 @@ export function GrowthAnalysisSection({
             value={selectedId ?? ""}
             onChange={setSelectedId}
             options={characterOptions}
+            dl2={dl2}
           />
         )}
       </div>
@@ -364,12 +365,14 @@ export function GrowthAnalysisSection({
                 <TogglePill
                   active={rangeMode === "30d"}
                   onClick={() => setRangeMode("30d")}
+                  dl2={dl2}
                 >
                   최근 30일
                 </TogglePill>
                 <TogglePill
                   active={rangeMode === "all"}
                   onClick={() => setRangeMode("all")}
+                  dl2={dl2}
                 >
                   전체
                 </TogglePill>
@@ -496,14 +499,17 @@ export function GrowthAnalysisSection({
                 label="이번 주"
                 value={growth.hasData ? growth.week : null}
                 series={weekSeries}
+                dl2={dl2}
               />
               <GrowthRow
                 label="이번 달"
                 value={growth.hasData ? growth.month : null}
+                dl2={dl2}
               />
               <GrowthRow
                 label="전체"
                 value={growth.hasData ? growth.total : null}
+                dl2={dl2}
               />
             </div>
           </GlassCard>
@@ -526,7 +532,12 @@ export function GrowthAnalysisSection({
             ) : (
               <ol className="flex flex-col gap-2">
                 {topGrowers.map((g, i) => (
-                  <TopGrowthRow key={`${g.owner}-${g.name}-${i}`} rank={i + 1} entry={g} />
+                  <TopGrowthRow
+                    key={`${g.owner}-${g.name}-${i}`}
+                    rank={i + 1}
+                    entry={g}
+                    dl2={dl2}
+                  />
                 ))}
               </ol>
             )}
@@ -539,24 +550,48 @@ export function GrowthAnalysisSection({
             </h3>
             <div className="grid grid-cols-2 gap-3">
               <StatTile
-                icon={<Zap className="h-3.5 w-3.5 text-peach-accent" />}
+                icon={
+                  <Zap
+                    className={`h-3.5 w-3.5 ${dl2 ? "" : "text-peach-accent"}`}
+                    style={dl2 ? { color: "#8a6710" } : undefined}
+                  />
+                }
                 label="평균 투력"
                 value={stats.avgPower.toLocaleString()}
+                dl2={dl2}
               />
               <StatTile
-                icon={<Flame className="h-3.5 w-3.5 text-peach-accent" />}
+                icon={
+                  <Flame
+                    className={`h-3.5 w-3.5 ${dl2 ? "" : "text-peach-accent"}`}
+                    style={dl2 ? { color: "#8a6710" } : undefined}
+                  />
+                }
                 label="평균 지옥"
                 value={stats.avgAbyss === "-" ? "-" : `지옥 ${stats.avgAbyss}`}
+                dl2={dl2}
               />
               <StatTile
-                icon={<Users className="h-3.5 w-3.5 text-nebula-pink" />}
+                icon={
+                  <Users
+                    className={`h-3.5 w-3.5 ${dl2 ? "" : "text-nebula-pink"}`}
+                    style={dl2 ? { color: "#8a6710" } : undefined}
+                  />
+                }
                 label="길드원"
                 value={`${stats.totalMembers}명`}
+                dl2={dl2}
               />
               <StatTile
-                icon={<TrendingUp className="h-3.5 w-3.5 text-nebula-pink" />}
+                icon={
+                  <TrendingUp
+                    className={`h-3.5 w-3.5 ${dl2 ? "" : "text-nebula-pink"}`}
+                    style={dl2 ? { color: "#8a6710" } : undefined}
+                  />
+                }
                 label="캐릭터"
                 value={`${stats.totalCharacters}개`}
+                dl2={dl2}
               />
             </div>
           </GlassCard>
@@ -586,27 +621,46 @@ function TogglePill({
   active,
   onClick,
   children,
+  dl2 = false,
 }: {
   active: boolean;
   onClick: () => void;
   children: React.ReactNode;
+  dl2?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-full px-2.5 py-1 font-serif text-[10px] tracking-wider transition-all ${
-        active
-          ? "border border-peach-accent/60 text-stardust"
-          : "border border-transparent text-text-sub hover:text-stardust"
-      }`}
+      className={
+        dl2
+          ? "rounded-full px-2.5 py-1 font-serif text-[10px] tracking-wider transition-all"
+          : `rounded-full px-2.5 py-1 font-serif text-[10px] tracking-wider transition-all ${
+              active
+                ? "border border-peach-accent/60 text-stardust"
+                : "border border-transparent text-text-sub hover:text-stardust"
+            }`
+      }
       style={
-        active
-          ? {
-              background: "rgba(255, 181, 167, 0.1)",
-              boxShadow: "0 0 10px rgba(255, 181, 167, 0.25)",
-            }
-          : undefined
+        dl2
+          ? active
+            ? {
+                background: "#2a4570",
+                border: "1px solid #2a4570",
+                color: "#fef5e6",
+                boxShadow: "none",
+              }
+            : {
+                background: "transparent",
+                border: "1px solid #2a4570",
+                color: "#2a4570",
+              }
+          : active
+            ? {
+                background: "rgba(255, 181, 167, 0.1)",
+                boxShadow: "0 0 10px rgba(255, 181, 167, 0.25)",
+              }
+            : undefined
       }
     >
       {children}
@@ -618,10 +672,12 @@ function CharacterSelect({
   value,
   onChange,
   options,
+  dl2 = false,
 }: {
   value: string;
   onChange: (v: string) => void;
   options: { id: string; name: string; job: string }[];
+  dl2?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const current = options.find((o) => o.id === value) ?? options[0];
@@ -633,24 +689,44 @@ function CharacterSelect({
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="flex items-center gap-2 rounded-full border border-nebula-pink/30 bg-abyss-deep/50 px-3 py-1.5 font-serif text-xs tracking-wider text-stardust backdrop-blur-md transition-all hover:border-nebula-pink/60"
+        className={
+          dl2
+            ? "flex items-center gap-2 rounded-full px-3 py-1.5 font-serif text-xs tracking-wider transition-all"
+            : "flex items-center gap-2 rounded-full border border-nebula-pink/30 bg-abyss-deep/50 px-3 py-1.5 font-serif text-xs tracking-wider text-stardust backdrop-blur-md transition-all hover:border-nebula-pink/60"
+        }
+        style={
+          dl2
+            ? {
+                background: "rgba(255, 255, 255, 0.55)",
+                border: "1px solid rgba(92, 58, 31, 0.2)",
+                color: "#5c3a1f",
+              }
+            : undefined
+        }
       >
         <span
-          className="flex h-5 w-5 items-center justify-center rounded-full text-stardust"
+          className="flex h-5 w-5 items-center justify-center rounded-full"
           style={{
-            background:
-              "linear-gradient(135deg, rgba(107, 75, 168, 0.5), rgba(216, 150, 200, 0.3))",
-            border: "1px solid rgba(216, 150, 200, 0.35)",
+            background: dl2
+              ? "rgba(196, 153, 47, 0.18)"
+              : "linear-gradient(135deg, rgba(107, 75, 168, 0.5), rgba(216, 150, 200, 0.3))",
+            border: dl2
+              ? "1px solid rgba(196, 153, 47, 0.4)"
+              : "1px solid rgba(216, 150, 200, 0.35)",
+            color: dl2 ? "#8a6710" : "#ffe5c4",
           }}
         >
           <JobIcon job={current.job} size={11} />
         </span>
         {current.name}{" "}
-        <span className="text-text-sub">({current.job})</span>
+        <span style={{ color: dl2 ? "#8a6a4a" : undefined }} className={dl2 ? "" : "text-text-sub"}>
+          ({current.job})
+        </span>
         <ChevronDown
-          className={`h-3.5 w-3.5 text-nebula-pink transition-transform ${
+          className={`h-3.5 w-3.5 transition-transform ${
             open ? "rotate-180" : ""
-          }`}
+          } ${dl2 ? "" : "text-nebula-pink"}`}
+          style={dl2 ? { color: "#5c3a1f" } : undefined}
         />
       </button>
       {open && (
@@ -664,11 +740,23 @@ function CharacterSelect({
             initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
             role="listbox"
-            className="absolute right-0 top-full z-[50] mt-2 flex min-w-[180px] flex-col gap-0.5 rounded-xl border border-nebula-pink/25 bg-abyss-deep/95 p-1 backdrop-blur-xl"
-            style={{
-              boxShadow:
-                "0 8px 24px rgba(0, 0, 0, 0.4), 0 0 18px rgba(216, 150, 200, 0.2)",
-            }}
+            className={
+              dl2
+                ? "absolute right-0 top-full z-[50] mt-2 flex min-w-[180px] flex-col gap-0.5 rounded-xl p-1 backdrop-blur-xl"
+                : "absolute right-0 top-full z-[50] mt-2 flex min-w-[180px] flex-col gap-0.5 rounded-xl border border-nebula-pink/25 bg-abyss-deep/95 p-1 backdrop-blur-xl"
+            }
+            style={
+              dl2
+                ? {
+                    background: "rgba(255, 255, 255, 0.96)",
+                    border: "1px solid rgba(92, 58, 31, 0.18)",
+                    boxShadow: "0 8px 24px rgba(0, 0, 0, 0.18)",
+                  }
+                : {
+                    boxShadow:
+                      "0 8px 24px rgba(0, 0, 0, 0.4), 0 0 18px rgba(216, 150, 200, 0.2)",
+                  }
+            }
           >
             {options.map((o) => {
               const active = o.id === value;
@@ -682,17 +770,39 @@ function CharacterSelect({
                       onChange(o.id);
                       setOpen(false);
                     }}
-                    className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left font-serif text-xs tracking-wider transition-colors ${
-                      active
-                        ? "bg-nebula-pink/15 text-stardust"
-                        : "text-text-sub hover:bg-nebula-pink/10 hover:text-stardust"
-                    }`}
+                    className={
+                      dl2
+                        ? "flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left font-serif text-xs tracking-wider transition-colors"
+                        : `flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left font-serif text-xs tracking-wider transition-colors ${
+                            active
+                              ? "bg-nebula-pink/15 text-stardust"
+                              : "text-text-sub hover:bg-nebula-pink/10 hover:text-stardust"
+                          }`
+                    }
+                    style={
+                      dl2
+                        ? {
+                            background: active
+                              ? "rgba(196, 153, 47, 0.18)"
+                              : "transparent",
+                            color: active ? "#5c3a1f" : "#5c3a1f",
+                          }
+                        : undefined
+                    }
                   >
-                    <span className="flex h-4 w-4 items-center justify-center text-nebula-pink">
+                    <span
+                      className="flex h-4 w-4 items-center justify-center"
+                      style={{
+                        color: dl2 ? "#8a6710" : undefined,
+                      }}
+                    >
                       <JobIcon job={o.job} size={11} />
                     </span>
                     {o.name}
-                    <span className="ml-auto text-[10px] text-text-sub">
+                    <span
+                      className={dl2 ? "ml-auto text-[10px]" : "ml-auto text-[10px] text-text-sub"}
+                      style={{ color: dl2 ? "#8a6a4a" : undefined }}
+                    >
                       {o.job}
                     </span>
                   </button>
@@ -710,32 +820,74 @@ function GrowthRow({
   label,
   value,
   series,
+  dl2 = false,
 }: {
   label: string;
   value: number | null;
   series?: { power: number }[];
+  dl2?: boolean;
 }) {
   const up = (value ?? 0) >= 0;
+  const dl2UpColor = "#8a6710";
+  const dl2DownColor = "#a8691f";
   return (
     <div className="flex items-center justify-between gap-3 py-2.5">
-      <span className="font-serif text-[11px] tracking-wider text-text-sub">
+      <span
+        className={
+          dl2
+            ? "font-serif text-[11px] tracking-wider"
+            : "font-serif text-[11px] tracking-wider text-text-sub"
+        }
+        style={dl2 ? { color: "#5c3a1f" } : undefined}
+      >
         {label}
       </span>
       {value === null ? (
-        <span className="font-serif text-[11px] italic text-text-sub/70">
+        <span
+          className={
+            dl2
+              ? "font-serif text-[11px] italic"
+              : "font-serif text-[11px] italic text-text-sub/70"
+          }
+          style={dl2 ? { color: "#8a6a4a" } : undefined}
+        >
           기록 부족
         </span>
       ) : (
         <div className="flex items-center gap-2">
-          {series && series.length > 1 && <MiniSparkline series={series} />}
+          {series && series.length > 1 && <MiniSparkline series={series} dl2={dl2} />}
           <span
-            className="font-mono text-sm font-medium tabular-nums"
-            style={{ color: up ? "#A8E8C0" : "#E8A8B8" }}
+            className={
+              dl2
+                ? "font-mono text-sm tabular-nums"
+                : "font-mono text-sm font-medium tabular-nums"
+            }
+            style={{
+              color: dl2
+                ? up
+                  ? dl2UpColor
+                  : dl2DownColor
+                : up
+                  ? "#A8E8C0"
+                  : "#E8A8B8",
+              fontWeight: dl2 ? 700 : undefined,
+            }}
           >
             {up && value > 0 ? "+" : ""}
             {value.toLocaleString()}
           </span>
-          <span aria-hidden style={{ color: up ? "#A8E8C0" : "#E8A8B8" }}>
+          <span
+            aria-hidden
+            style={{
+              color: dl2
+                ? up
+                  ? dl2UpColor
+                  : dl2DownColor
+                : up
+                  ? "#A8E8C0"
+                  : "#E8A8B8",
+            }}
+          >
             <TrendingUp className={`h-3.5 w-3.5 ${up ? "" : "rotate-180"}`} />
           </span>
         </div>
@@ -744,7 +896,13 @@ function GrowthRow({
   );
 }
 
-function MiniSparkline({ series }: { series: { power: number }[] }) {
+function MiniSparkline({
+  series,
+  dl2 = false,
+}: {
+  series: { power: number }[];
+  dl2?: boolean;
+}) {
   const values = series.map((s) => s.power);
   const min = Math.min(...values);
   const max = Math.max(...values);
@@ -763,11 +921,15 @@ function MiniSparkline({ series }: { series: { power: number }[] }) {
       <polyline
         points={points}
         fill="none"
-        stroke="#A8E8C0"
+        stroke={dl2 ? "#8a6710" : "#A8E8C0"}
         strokeWidth="1.4"
         strokeLinecap="round"
         strokeLinejoin="round"
-        style={{ filter: "drop-shadow(0 0 4px rgba(168, 232, 192, 0.6))" }}
+        style={{
+          filter: dl2
+            ? "drop-shadow(0 0 3px rgba(138, 103, 16, 0.35))"
+            : "drop-shadow(0 0 4px rgba(168, 232, 192, 0.6))",
+        }}
       />
     </svg>
   );
@@ -776,9 +938,11 @@ function MiniSparkline({ series }: { series: { power: number }[] }) {
 function TopGrowthRow({
   rank,
   entry,
+  dl2 = false,
 }: {
   rank: number;
   entry: { name: string; job: string; delta: number };
+  dl2?: boolean;
 }) {
   const isGold = rank === 1;
   const medalColor =
@@ -789,6 +953,109 @@ function TopGrowthRow({
         : rank === 3
           ? "#E8B088"
           : "#9B8FB8";
+
+  if (dl2) {
+    const isTopTier = rank === 1;
+    const isMidTier = rank === 2 || rank === 3;
+    const nickColor = isMidTier ? "#5c3a1f" : "#8a6a4a";
+    const nickWeight = isTopTier || isMidTier ? 700 : 500;
+    const jobLabelColor = "#8a6a4a";
+    const scoreColor = "#8a6710";
+    const scoreWeight = isTopTier || isMidTier ? 700 : 500;
+    const scoreOpacity = isTopTier || isMidTier ? 1 : 0.75;
+
+    return (
+      <li
+        className="group flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 transition-colors"
+        style={{
+          background: isTopTier
+            ? "radial-gradient(circle at 30% 30%, rgba(196, 153, 47, 0.32) 0%, rgba(196, 153, 47, 0.18) 100%)"
+            : "#ffffff",
+          border: isTopTier
+            ? "1px solid rgba(196, 153, 47, 0.55)"
+            : "1px solid rgba(92, 58, 31, 0.12)",
+          boxShadow: isTopTier
+            ? "0 1px 8px rgba(196, 153, 47, 0.25)"
+            : "0 1px 2px rgba(92, 58, 31, 0.06)",
+        }}
+      >
+        <div className="flex items-center gap-2.5">
+          <span className="relative flex h-6 w-6 items-center justify-center">
+            {isGold && (
+              <Crown
+                className="absolute -top-1.5 h-3 w-3"
+                style={{
+                  color: "#c4992f",
+                  filter: "drop-shadow(0 0 5px rgba(196, 153, 47, 0.7))",
+                }}
+                aria-hidden
+              />
+            )}
+            <span
+              className="flex h-full w-full items-center justify-center rounded-full font-serif text-[10px]"
+              style={{
+                background: isTopTier
+                  ? "radial-gradient(circle, rgba(255, 229, 196, 0.6) 0%, rgba(196, 153, 47, 0.25) 100%)"
+                  : "rgba(255, 255, 255, 0.6)",
+                border: isTopTier
+                  ? "1px solid rgba(196, 153, 47, 0.6)"
+                  : "1px solid rgba(92, 58, 31, 0.18)",
+                color: isTopTier ? "#8a6710" : nickColor,
+                fontWeight: 700,
+                boxShadow: isTopTier
+                  ? "0 0 8px rgba(196, 153, 47, 0.4)"
+                  : "none",
+              }}
+            >
+              {rank}
+            </span>
+          </span>
+          <span
+            className="flex h-5 w-5 items-center justify-center"
+            style={{ color: "#8a6710" }}
+          >
+            <JobIcon job={entry.job} size={12} />
+          </span>
+          <div className="flex min-w-0 flex-col leading-tight">
+            <span
+              className="truncate font-serif text-[12px] tracking-wide"
+              style={{
+                color: isTopTier ? "#fef5e6" : nickColor,
+                fontWeight: nickWeight,
+                textShadow: isTopTier
+                  ? "0 1px 2px rgba(92, 58, 31, 0.3)"
+                  : "none",
+              }}
+            >
+              {entry.name}
+            </span>
+            <span
+              className="font-serif text-[9px] tracking-wider"
+              style={{
+                color: isTopTier ? "rgba(255, 245, 230, 0.8)" : jobLabelColor,
+              }}
+            >
+              {entry.job}
+            </span>
+          </div>
+        </div>
+        <span
+          className="font-mono text-sm tabular-nums"
+          style={{
+            color: isTopTier ? "#fef5e6" : scoreColor,
+            fontWeight: scoreWeight,
+            opacity: scoreOpacity,
+            textShadow: isTopTier
+              ? "0 1px 2px rgba(92, 58, 31, 0.3)"
+              : "none",
+          }}
+        >
+          +{entry.delta.toLocaleString()}
+        </span>
+      </li>
+    );
+  }
+
   return (
     <li className="group flex items-center justify-between gap-3 rounded-lg px-1.5 py-1 transition-colors hover:bg-nebula-pink/10">
       <div className="flex items-center gap-2.5">
@@ -840,31 +1107,60 @@ function StatTile({
   icon,
   label,
   value,
+  dl2 = false,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
+  dl2?: boolean;
 }) {
   return (
     <div
-      className="rounded-xl border border-nebula-pink/15 bg-abyss/50 p-3"
-      style={{ boxShadow: "inset 0 1px 0 rgba(255, 229, 196, 0.04)" }}
+      className={
+        dl2
+          ? "rounded-xl p-3"
+          : "rounded-xl border border-nebula-pink/15 bg-abyss/50 p-3"
+      }
+      style={
+        dl2
+          ? {
+              background: "rgba(255, 255, 255, 0.4)",
+              border: "1px solid rgba(92, 58, 31, 0.12)",
+              boxShadow: "0 1px 2px rgba(92, 58, 31, 0.04)",
+            }
+          : { boxShadow: "inset 0 1px 0 rgba(255, 229, 196, 0.04)" }
+      }
     >
       <div className="flex items-center gap-1.5">
         {icon}
-        <span className="font-serif text-[10px] tracking-wider text-text-sub">
+        <span
+          className={
+            dl2
+              ? "font-serif text-[10px] tracking-wider"
+              : "font-serif text-[10px] tracking-wider text-text-sub"
+          }
+          style={dl2 ? { color: "#5c3a1f" } : undefined}
+        >
           {label}
         </span>
       </div>
       <div
-        className="mt-1.5 font-mono text-lg font-medium tabular-nums"
-        style={{
-          backgroundImage: "linear-gradient(135deg, #FFE5C4, #D896C8)",
-          WebkitBackgroundClip: "text",
-          backgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-          color: "transparent",
-        }}
+        className={
+          dl2
+            ? "mt-1.5 font-mono text-lg tabular-nums"
+            : "mt-1.5 font-mono text-lg font-medium tabular-nums"
+        }
+        style={
+          dl2
+            ? { color: "#8a6710", fontWeight: 700 }
+            : {
+                backgroundImage: "linear-gradient(135deg, #FFE5C4, #D896C8)",
+                WebkitBackgroundClip: "text",
+                backgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                color: "transparent",
+              }
+        }
       >
         {value}
       </div>
