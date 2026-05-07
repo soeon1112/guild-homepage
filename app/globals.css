@@ -8331,6 +8331,18 @@ body.has-redesigned-header .bg-scene {
   animation: dl2-sunset-glow 1.8s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Quote text (sky-quote inside Today's Horizon) — keep Korean
+   eojeol whole on wrap, and balance the line widths when the verse
+   spans 2+ lines so the silhouette doesn't end with a single short
+   word. word-break: keep-all does the heavy lifting on browsers
+   without text-wrap: balance support (Chrome <114, Safari <17.4,
+   Firefox <121); they degrade to whole-word wrap without balance. */
+.dawnlight2 .dl2-quote-text {
+  text-wrap: balance;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .dawnlight2 .animate-drift-slow,
   .dawnlight2 .animate-drift-slower,

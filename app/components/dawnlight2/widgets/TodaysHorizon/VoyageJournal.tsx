@@ -193,7 +193,7 @@ export function VoyageJournal() {
         {showQuote && verse && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-6">
             <p
-              className="font-serif-kr animate-sky-quote-fade max-w-[80%] text-pretty text-center text-base font-light italic leading-relaxed text-cream sm:text-xl md:text-2xl"
+              className="dl2-quote-text font-serif-kr animate-sky-quote-fade max-w-[80%] text-center text-base font-light italic leading-relaxed text-cream sm:text-xl md:text-2xl"
               style={{
                 textShadow:
                   "0 0 18px rgba(255, 199, 133, 0.55), 0 0 36px rgba(255, 199, 133, 0.28), 0 1px 2px rgba(42, 31, 74, 0.45)",
