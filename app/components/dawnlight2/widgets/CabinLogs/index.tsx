@@ -216,8 +216,9 @@ function PhotoCard({
                 "0 4px 18px rgba(42,20,10,0.28), 0 1px 4px rgba(42,20,10,0.16)",
             }}
           >
-            {/* 4:3 photo area — object-contain so non-4:3 photos
-                aren't cropped; the cream MAT shows through any letterbox. */}
+            {/* 4:3 photo area — object-cover so the photo fills the full
+                width; non-4:3 photos crop on the long axis instead of
+                letterboxing. Matches the RN port. */}
             <div
               className="relative w-full overflow-hidden rounded-[1px]"
               style={{ aspectRatio: "4/3", background: MAT }}
@@ -228,7 +229,7 @@ function PhotoCard({
                   src={imageUrl}
                   alt={title}
                   className="absolute inset-0 h-full w-full"
-                  style={{ objectFit: "contain", background: MAT }}
+                  style={{ objectFit: "cover", background: MAT }}
                 />
               ) : (
                 <div
