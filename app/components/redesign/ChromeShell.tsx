@@ -6,6 +6,8 @@ import { CosmicBackground } from "./CosmicBackground";
 import { TopHeader } from "./TopHeader";
 import { BottomNav } from "./BottomNav";
 import { Breadcrumb } from "./Breadcrumb";
+import { useDawnlight2 } from "@/src/lib/featureFlags";
+import { Dawnlight2Topbar } from "@/app/components/dawnlight2/Topbar";
 
 /**
  * Legacy logo bar — kept for `/admin/*` routes so the admin UI remains
@@ -45,6 +47,12 @@ function LegacyFooter() {
 export function ChromeShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith("/admin") ?? false;
+  // Topbar reskin gate — only 언쏘 (DAWNLIGHT2_USERS) sees the
+  // dawnlight2 topbar. Everyone else keeps cosmic TopHeader byte-
+  // identical. Branch lives in ChromeShell because Topbar mounts
+  // globally for every non-admin page; running the gate here means
+  // every page picks up the reskin without per-page changes.
+  const isDawnlight2 = useDawnlight2();
 
   if (isAdmin) {
     return (
@@ -60,7 +68,7 @@ export function ChromeShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       <CosmicBackground />
-      <TopHeader />
+      {isDawnlight2 ? <Dawnlight2Topbar /> : <TopHeader />}
       <Breadcrumb />
       {/* Bottom padding clears BOTH the floating BottomNav AND the floating
           chat icon (FloatingChat lives at right-4 bottom-24 with a 56px

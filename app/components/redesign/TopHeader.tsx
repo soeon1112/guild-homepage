@@ -189,7 +189,7 @@ function LoginFormInline({
   );
 }
 
-function AuthModal({
+export function AuthModal({
   initialMode,
   onClose,
 }: {
@@ -420,7 +420,7 @@ function AuthModal({
   );
 }
 
-function ErrorToast({ message }: { message: string }) {
+export function ErrorToast({ message }: { message: string }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: -8 }}
@@ -455,7 +455,7 @@ function ErrorToast({ message }: { message: string }) {
   );
 }
 
-function AuthArea({
+export function AuthArea({
   ready,
   nickname,
   mySpaceId,
