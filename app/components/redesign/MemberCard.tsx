@@ -215,6 +215,7 @@ export function MemberCard({
                   nickname={nickname}
                   size={64}
                   ring
+                  dl2
                 />
               </div>
 
