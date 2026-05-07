@@ -9978,3 +9978,194 @@ body.has-redesigned-header .bg-scene {
 .dl2-album-upload .album-tag-remove:hover {
   color: #b85420;
 }
+
+/* ─────────────────────────────────────────────────────────────────
+   Step 4-I-1: Dawnlight 2 — combat (투력) page visual chrome
+   Scoped to `.dl2-power`. Compound `.dl2-power.combat-content`
+   carries the max-width cap so it only applies to the page root
+   (NOT the modal portal which also carries `dl2-power` for font /
+   surface cascade). Many cosmic surfaces use inline `style={...}`
+   gradients + tailwind atomic classes for backgrounds; `!important`
+   on the targeted overrides is the cleanest way to win cleanly.
+   Step 4-I-2 (next round) will add the golden→coral gradient lines/
+   gauges/highlights on top of this baseline.
+   ───────────────────────────────────────────────────────────────── */
+
+.dl2-power.combat-content {
+  max-width: 672px;
+}
+.dl2-power {
+  font-family: "Pretendard Variable", Pretendard, "Noto Sans KR",
+    -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+}
+.dl2-power * {
+  font-family: "Pretendard Variable", Pretendard, "Noto Sans KR",
+    -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+}
+
+.dl2-power .dl2-power-page-head {
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+.dl2-power .dl2-power-page-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #fef5e6;
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+}
+.dl2-power .dl2-power-page-sub {
+  margin: 4px 0 0;
+  font-size: 10px;
+  font-weight: 500;
+  color: #c8b8e8;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+}
+.dl2-power .dl2-power-page-quote {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: rgba(200, 184, 232, 0.85);
+  line-height: 1.6;
+  font-style: italic;
+}
+
+/* Section h2 — cosmic uses inline gradient text. Re-fill cream + flatten. */
+.dl2-power section h2 {
+  background: none !important;
+  background-image: none !important;
+  -webkit-background-clip: initial !important;
+  background-clip: initial !important;
+  -webkit-text-fill-color: #fef5e6 !important;
+  color: #fef5e6 !important;
+  filter: none !important;
+  font-size: 18px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.02em !important;
+  line-height: 1.3 !important;
+}
+.dl2-power section h2 + p {
+  color: #c8b8e8 !important;
+  font-size: 10px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+}
+
+/* Section / card surfaces. */
+.dl2-power [class*="bg-abyss-deep"],
+.dl2-power [class*="bg-abyss"] {
+  background-color: rgba(205, 216, 224, 0.65) !important;
+}
+.dl2-power [class*="border-nebula-pink"],
+.dl2-power [class*="border-peach-accent"] {
+  border-color: rgba(42, 69, 112, 0.18) !important;
+}
+.dl2-power [class*="border-nebula-pink"][class*="border-dashed"] {
+  border-color: rgba(42, 69, 112, 0.25) !important;
+}
+.dl2-power [class*="divide-nebula-pink"] > * + * {
+  border-color: rgba(42, 69, 112, 0.12) !important;
+}
+
+/* Text colors. */
+.dl2-power [class*="text-stardust"] {
+  color: #2a4570 !important;
+}
+.dl2-power [class*="text-text-primary"] {
+  color: #2a4570 !important;
+}
+.dl2-power [class*="text-text-sub"] {
+  color: #5a7090 !important;
+}
+.dl2-power [class*="text-peach-accent"],
+.dl2-power [class*="text-nebula-pink"] {
+  color: #2a4570 !important;
+}
+
+/* Add character button — cosmic peach pill → paper-plane navy pill. */
+.dl2-power button[class*="border-peach-accent"] {
+  background: #2a4570 !important;
+  color: #fef5e6 !important;
+  border-color: #2a4570 !important;
+  box-shadow: none !important;
+}
+.dl2-power button[class*="border-peach-accent"] svg {
+  color: #fef5e6 !important;
+}
+.dl2-power button[class*="border-peach-accent"]:hover {
+  background: #1f3457 !important;
+  border-color: #1f3457 !important;
+  transform: translateY(-1px);
+}
+
+/* Sort/filter chip pill row — keep flex layout, recolor surface. */
+.dl2-power [class*="bg-abyss-deep"][class*="rounded-full"][class*="border-nebula-pink"] {
+  background-color: rgba(205, 216, 224, 0.65) !important;
+}
+
+/* Empty / loading pill — keep shape, recolor + italic body text. */
+.dl2-power p[class*="rounded-2xl"][class*="border"] {
+  background-color: rgba(205, 216, 224, 0.55) !important;
+  border-color: rgba(42, 69, 112, 0.18) !important;
+  color: #5a7090 !important;
+}
+
+/* Group block — strip cosmic gradient header, slightly stronger sky
+   for the rep-nickname header so it stays distinguishable from body. */
+.dl2-power [data-nick] > button[style*="linear-gradient"] {
+  background: rgba(205, 216, 224, 0.85) !important;
+}
+.dl2-power [data-nick] {
+  background-color: rgba(205, 216, 224, 0.55) !important;
+}
+
+/* Search + job filter input. */
+.dl2-power input[class*="bg-abyss-deep"] {
+  background-color: rgba(255, 255, 255, 0.85) !important;
+  border-color: rgba(42, 69, 112, 0.3) !important;
+  color: #2a4570 !important;
+}
+.dl2-power input[class*="bg-abyss-deep"]::placeholder {
+  color: rgba(42, 69, 112, 0.5) !important;
+}
+
+/* Modal portal — `.dl2-power` is added to the modal-safe-frame
+   backdrop. dl2-power has no position rules so cosmic
+   `fixed inset-0 flex-center` carries through. Card + inputs +
+   primary CTA recolor here. */
+.dl2-power [class*="rounded-2xl"][class*="overflow-hidden"][class*="max-w-lg"] {
+  background-color: rgba(205, 216, 224, 0.96) !important;
+  border-color: rgba(42, 69, 112, 0.22) !important;
+}
+.dl2-power textarea,
+.dl2-power select {
+  background-color: rgba(255, 255, 255, 0.85) !important;
+  border-color: rgba(42, 69, 112, 0.3) !important;
+  color: #2a4570 !important;
+}
+.dl2-power textarea::placeholder {
+  color: rgba(42, 69, 112, 0.5) !important;
+}
+.dl2-power input[type="text"],
+.dl2-power input[type="number"] {
+  background-color: rgba(255, 255, 255, 0.85) !important;
+  border-color: rgba(42, 69, 112, 0.3) !important;
+  color: #2a4570 !important;
+}
+.dl2-power input::placeholder {
+  color: rgba(42, 69, 112, 0.5) !important;
+}
+
+/* Modal primary CTA (Save / 등록 / 수정) — peach gradient → navy fill. */
+.dl2-power button[class*="bg-gradient-to"],
+.dl2-power button[style*="linear-gradient(135deg, #FFE5C4"] {
+  background: #2a4570 !important;
+  background-image: none !important;
+  color: #fef5e6 !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+.dl2-power button[class*="bg-gradient-to"]:hover {
+  opacity: 0.9 !important;
+}

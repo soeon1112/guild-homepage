@@ -18,6 +18,7 @@ import {
 import { useAuth } from "@/app/components/AuthProvider";
 import { db } from "@/src/lib/firebase";
 import { logActivity } from "@/src/lib/activity";
+import { useDawnlight2 } from "@/src/lib/featureFlags";
 import {
   CharacterForm,
   type CharacterFormInitial,
@@ -54,6 +55,13 @@ type Character = {
 
 function CombatPageInner() {
   const { nickname: owner, ready } = useAuth();
+  // Step 4-I-1 dawnlight2 reskin gate. The page-root className adds
+  // `dl2-power combat-content dawnlight2` so the additive CSS block
+  // at the bottom of globals.css scopes onto the title, sections,
+  // cards, and modal automatically (compound `.dl2-power.combat-
+  // content { max-width: 672px }` is the one rule that needs the
+  // page-only marker to avoid clamping the modal portal).
+  const isDawnlight2 = useDawnlight2();
   const [characters, setCharacters] = useState<Character[]>([]);
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
@@ -263,39 +271,57 @@ function CombatPageInner() {
   return (
     <div
       ref={wrapperRef}
-      className="relative mx-auto max-w-4xl px-4 pt-3 pb-6 text-text-primary"
+      className={
+        "relative mx-auto px-4 pt-3 pb-6 text-text-primary " +
+        (isDawnlight2
+          ? "max-w-2xl combat-content dl2-power dawnlight2"
+          : "max-w-4xl")
+      }
       style={{
         opacity: scrollPending ? 0 : 1,
         transition: "opacity 150ms ease-out",
       }}
     >
-      {/* Page title */}
-      <section className="mb-10 text-center sm:text-left">
-        <h1
-          className="font-serif leading-[1.05]"
-          style={{
-            fontFamily: "'Noto Serif KR', serif",
-            fontSize: "clamp(34px, 7vw, 52px)",
-            fontWeight: 300,
-            letterSpacing: "0.04em",
-            backgroundImage:
-              "linear-gradient(135deg, #FFE5C4, #D896C8, #6B4BA8)",
-            WebkitBackgroundClip: "text",
-            backgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            color: "transparent",
-            filter: "drop-shadow(0 0 14px rgba(216, 150, 200, 0.35))",
-          }}
-        >
-          투력 및 지옥 현황
-        </h1>
-        <p className="mt-3 font-serif text-[11px] tracking-[0.35em] text-nebula-pink/80 uppercase">
-          Power &amp; Abyss
-        </p>
-        <p className="mt-4 break-keep font-serif text-sm italic text-text-sub text-balance">
-          저마다의 빛이 얼마나 자라났는지
-        </p>
-      </section>
+      {/* Page title — dl2 swaps the cosmic gradient h1 for a flat
+          cream + lavender header (left-aligned, matches the rest of
+          the dawnlight2 page rhythm). The Korean subtitle stays but
+          gets the dl2 lavender tone. */}
+      {isDawnlight2 ? (
+        <header className="dl2-power-page-head">
+          <h1 className="dl2-power-page-title">투력 및 지옥 현황</h1>
+          <p className="dl2-power-page-sub">POWER &amp; ABYSS</p>
+          <p className="dl2-power-page-quote">
+            저마다의 빛이 얼마나 자라났는지
+          </p>
+        </header>
+      ) : (
+        <section className="mb-10 text-center sm:text-left">
+          <h1
+            className="font-serif leading-[1.05]"
+            style={{
+              fontFamily: "'Noto Serif KR', serif",
+              fontSize: "clamp(34px, 7vw, 52px)",
+              fontWeight: 300,
+              letterSpacing: "0.04em",
+              backgroundImage:
+                "linear-gradient(135deg, #FFE5C4, #D896C8, #6B4BA8)",
+              WebkitBackgroundClip: "text",
+              backgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              color: "transparent",
+              filter: "drop-shadow(0 0 14px rgba(216, 150, 200, 0.35))",
+            }}
+          >
+            투력 및 지옥 현황
+          </h1>
+          <p className="mt-3 font-serif text-[11px] tracking-[0.35em] text-nebula-pink/80 uppercase">
+            Power &amp; Abyss
+          </p>
+          <p className="mt-4 break-keep font-serif text-sm italic text-text-sub text-balance">
+            저마다의 빛이 얼마나 자라났는지
+          </p>
+        </section>
+      )}
 
       <MyCharactersSection
         characters={myCharacters}
@@ -330,6 +356,7 @@ function CombatPageInner() {
         error={error}
         onSubmit={handleSubmit}
         onClose={handleClose}
+        dl2={isDawnlight2}
       />
     </div>
   );

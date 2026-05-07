@@ -112,6 +112,7 @@ export function CharacterForm({
   error,
   onSubmit,
   onClose,
+  dl2 = false,
 }: {
   open: boolean;
   initial: CharacterFormInitial;
@@ -119,6 +120,7 @@ export function CharacterForm({
   error: string | null;
   onSubmit: (values: CharacterValues) => void;
   onClose: () => void;
+  dl2?: boolean;
 }) {
   const [nickname, setNickname] = useState(initial.nickname);
   const [job, setJob] = useState(initial.job);
@@ -229,7 +231,10 @@ export function CharacterForm({
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
           onClick={submitting ? undefined : onClose}
-          className="modal-safe-frame fixed inset-0 z-[80] flex items-center justify-center"
+          className={
+            "modal-safe-frame fixed inset-0 z-[80] flex items-center justify-center" +
+            (dl2 ? " dl2-power" : "")
+          }
           style={{
             background: "rgba(11, 8, 33, 0.75)",
             backdropFilter: "blur(10px)",
