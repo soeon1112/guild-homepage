@@ -810,8 +810,13 @@ function MemberPickerModal({
             flex: 1,
             overflowY: "auto",
             margin: "8px 0",
-            border: "1px solid rgba(216,150,200,0.18)",
+            // dl2: 잉크 남색 옅은 테두리. cosmic: 보라 0.18.
+            border: dl2
+              ? "1px solid rgba(42,69,112,0.2)"
+              : "1px solid rgba(216,150,200,0.18)",
             borderRadius: 8,
+            // dl2: 흰색 패널. cosmic: 트랜스페런트 위 보라 행.
+            background: dl2 ? "#ffffff" : "transparent",
           }}
         >
           {filtered.length === 0 ? (
@@ -821,7 +826,8 @@ function MemberPickerModal({
                 textAlign: "center",
                 fontStyle: "italic",
                 fontSize: 12,
-                color: "rgba(200,168,233,0.7)",
+                // dl2: 잉크 남색 soft. cosmic: 보라 0.7.
+                color: dl2 ? "#5a7090" : "rgba(200,168,233,0.7)",
               }}
             >
               일치하는 닉네임이 없어요
@@ -840,15 +846,30 @@ function MemberPickerModal({
                     gap: 10,
                     width: "100%",
                     padding: "10px 12px",
-                    background: checked
-                      ? "rgba(255,181,167,0.12)"
-                      : "transparent",
+                    // dl2: 선택은 옅은 피치, 미선택은 투명(흰 패널 위).
+                    // cosmic: 선택 코랄 0.12, 미선택 투명.
+                    background: dl2
+                      ? checked
+                        ? "rgba(255,212,184,0.5)"
+                        : "transparent"
+                      : checked
+                        ? "rgba(255,181,167,0.12)"
+                        : "transparent",
                     border: "none",
-                    borderBottom: "1px solid rgba(216,150,200,0.08)",
+                    // dl2: 잉크 남색 옅은 구분선. cosmic: 보라.
+                    borderBottom: dl2
+                      ? "1px solid rgba(42,69,112,0.12)"
+                      : "1px solid rgba(216,150,200,0.08)",
                     cursor: "pointer",
-                    color: checked ? "#FFE5C4" : "rgba(200,168,233,0.85)",
+                    // dl2: 잉크 갈색 (선택은 진하게). cosmic: cream/보라.
+                    color: dl2
+                      ? "#5c3a1f"
+                      : checked
+                        ? "#FFE5C4"
+                        : "rgba(200,168,233,0.85)",
                     fontFamily: "inherit",
                     fontSize: 13,
+                    fontWeight: dl2 ? (checked ? 600 : 500) : 400,
                     textAlign: "left",
                   }}
                 >
