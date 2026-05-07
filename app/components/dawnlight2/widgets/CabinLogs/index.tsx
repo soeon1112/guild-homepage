@@ -105,14 +105,35 @@ function shuffledIndices(n: number, rand: () => number): number[] {
   }
   return a;
 }
-function pickIndex(poolSize: number, namespace: string, date = new Date()): number {
-  if (poolSize <= 0) return -1;
+// Two-stage daily pick: owner first, then a photo from that owner.
+// Stage 1 ensures every owner with photos is spotlighted exactly once
+// per owner-cycle (Fisher-Yates), so a member with many photos no
+// longer crowds out members with few photos. Stage 2 cycles through
+// that owner's photos with the same Fisher-Yates pattern.
+function pickFromGroups<T>(
+  groups: Map<string, T[]>,
+  namespace: string,
+  date = new Date(),
+): T | null {
+  const owners = Array.from(groups.keys()).sort();
+  const N = owners.length;
+  if (N === 0) return null;
   const day = kstDayNumber(date);
-  const cycle = Math.floor(day / poolSize);
-  const pos = ((day % poolSize) + poolSize) % poolSize;
-  const seed = fnv1a(`${namespace}:${cycle}`);
-  const order = shuffledIndices(poolSize, mulberry32(seed));
-  return order[pos];
+
+  const ownerCycle = Math.floor(day / N);
+  const ownerPos = ((day % N) + N) % N;
+  const ownerSeed = fnv1a(`${namespace}:owner:${ownerCycle}`);
+  const ownerOrder = shuffledIndices(N, mulberry32(ownerSeed));
+  const owner = owners[ownerOrder[ownerPos]];
+
+  const photos = groups.get(owner) ?? [];
+  const M = photos.length;
+  if (M === 0) return null;
+  const photoCycle = Math.floor(day / M);
+  const photoPos = ((day % M) + M) % M;
+  const photoSeed = fnv1a(`${namespace}:photo:${owner}:${photoCycle}`);
+  const photoOrder = shuffledIndices(M, mulberry32(photoSeed));
+  return photos[photoOrder[photoPos]];
 }
 
 // Image-only filter so videos / non-image fileTypes don't break the
@@ -211,7 +232,10 @@ function PhotoCard({
           >
             {/* 4:3 photo area — object-cover so the photo fills the full
                 width; non-4:3 photos crop on the long axis instead of
-                letterboxing. Matches the RN port. */}
+                letterboxing. Matches the RN port.
+                width/height/objectFit are inline (specificity 1,0,0,0)
+                to beat globals.css's unlayered `img { height: auto }`
+                rule — same pattern as commit 1ddba93. */}
             <div
               className="relative w-full overflow-hidden rounded-[1px]"
               style={{ aspectRatio: "4/3", background: MAT }}
@@ -221,8 +245,14 @@ function PhotoCard({
                 <img
                   src={imageUrl}
                   alt={title}
-                  className="absolute inset-0 h-full w-full"
-                  style={{ objectFit: "cover", background: MAT }}
+                  className="absolute inset-0"
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    display: "block",
+                    background: MAT,
+                  }}
                 />
               ) : (
                 <div
@@ -363,15 +393,42 @@ export function CabinLogs() {
     };
   }, []);
 
-  const todayScene = useMemo(() => {
-    if (scenePool.length === 0) return null;
-    return scenePool[pickIndex(scenePool.length, "cabin-logs:scenery")];
+  const sceneGroups = useMemo(() => {
+    const map = new Map<string, ScenePhoto[]>();
+    for (const p of scenePool) {
+      const arr = map.get(p.ownerId) ?? [];
+      arr.push(p);
+      map.set(p.ownerId, arr);
+    }
+    for (const arr of map.values()) {
+      arr.sort((a, b) => a.photoId.localeCompare(b.photoId));
+    }
+    return map;
   }, [scenePool]);
 
-  const todayVoyage = useMemo(() => {
-    if (albumPool.length === 0) return null;
-    return albumPool[pickIndex(albumPool.length, "cabin-logs:voyage")];
+  const voyageGroups = useMemo(() => {
+    const map = new Map<string, AlbumPhoto[]>();
+    for (const p of albumPool) {
+      const key = p.photographer || "";
+      const arr = map.get(key) ?? [];
+      arr.push(p);
+      map.set(key, arr);
+    }
+    for (const arr of map.values()) {
+      arr.sort((a, b) => a.id.localeCompare(b.id));
+    }
+    return map;
   }, [albumPool]);
+
+  const todayScene = useMemo(
+    () => pickFromGroups(sceneGroups, "cabin-logs:scenery"),
+    [sceneGroups],
+  );
+
+  const todayVoyage = useMemo(
+    () => pickFromGroups(voyageGroups, "cabin-logs:voyage"),
+    [voyageGroups],
+  );
 
   return (
     <>
