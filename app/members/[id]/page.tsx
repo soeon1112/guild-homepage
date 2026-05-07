@@ -48,6 +48,7 @@ import { ProfileSectionD2 } from "@/app/components/redesign/minihompi/ProfileSec
 import { IslandHeroD2 } from "@/app/components/redesign/minihompi/IslandHeroD2";
 import { BadgesSection } from "@/app/components/redesign/minihompi/BadgesSection";
 import { GuestbookSection as GuestbookSectionV2 } from "@/app/components/redesign/minihompi/GuestbookSection";
+import { GuestbookSectionD2 } from "@/app/components/redesign/minihompi/GuestbookSectionD2";
 import { AdventureLogSection } from "@/app/components/redesign/minihompi/AdventureLogSection";
 import { AdventureLogSectionD2 } from "@/app/components/redesign/minihompi/AdventureLogSectionD2";
 import { PhotosSection } from "@/app/components/redesign/minihompi/PhotosSection";
@@ -367,7 +368,7 @@ export default function MemberMiniHomePage({
             isOwner={isOwner}
             memberNickname={member?.nickname ?? null}
           />
-          <GuestbookSectionV2
+          <GuestbookSectionD2
             id={resolvedId}
             loginNick={loginNick}
             memberNickname={member?.nickname ?? null}
