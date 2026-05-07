@@ -13,7 +13,10 @@ export const DAWNLIGHT2_USERS: readonly string[] = ["언쏘"];
 
 export function isDawnlight2Enabled(nickname: string | null): boolean {
   if (!nickname) return false;
-  return DAWNLIGHT2_USERS.includes(nickname);
+  // 2026-05-08 — 전체 길드원 공개. DAWNLIGHT2_USERS 리스트는
+  // historical 참고용 (cosmic 분기와 함께 다음 라운드에서 폐기).
+  // nickname null (비로그인) 은 cosmic 유지 (로그인 페이지 등).
+  return true;
 }
 
 export function useDawnlight2(): boolean {
