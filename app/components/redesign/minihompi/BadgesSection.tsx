@@ -9,7 +9,12 @@ import { listEarnedBadges } from "@/src/lib/badgeCheck";
 import { formatSmart } from "@/src/lib/formatSmart";
 import { useModalBodyLock } from "@/src/lib/useModalBodyLock";
 import { useAuth } from "@/app/components/AuthProvider";
+import { useDawnlight2 } from "@/src/lib/featureFlags";
 import { CollapsibleSection } from "./CollapsibleSection";
+import {
+  CollapsibleSectionD2,
+  CollectionStarIcon,
+} from "./CollapsibleSectionD2";
 
 type EarnedMap = Record<string, Timestamp | null>;
 type Shape = "star" | "hex" | "circle";
@@ -27,6 +32,10 @@ function hashCode(str: string) {
 export function BadgesSection({ nickname }: { nickname: string }) {
   const { nickname: viewerNick } = useAuth();
   const isOwner = !!viewerNick && viewerNick === nickname;
+  // dawnlight2 분기 — 헤드/본 박스만 로즈 톤. 그리드/모달 cosmic 그대로.
+  // (Pretendard 폰트는 wrapper 의 .dl2-minihome universal selector 가
+  // 자동 적용)
+  const dawnlight2 = useDawnlight2();
   const [earned, setEarned] = useState<EarnedMap>({});
   const [detail, setDetail] = useState<BadgeMeta | null>(null);
   const [privacyOpen, setPrivacyOpen] = useState(false);
@@ -55,35 +64,50 @@ export function BadgesSection({ nickname }: { nickname: string }) {
     [earned],
   );
 
+  const grid = (
+    <div className="grid grid-cols-5 gap-3 sm:grid-cols-7 md:grid-cols-8">
+      {BADGES.map((b) => {
+        const isEarned = earned[b.id] !== undefined;
+        return (
+          <BadgeItem
+            key={b.id}
+            badge={b}
+            isEarned={isEarned}
+            canReveal={isOwner}
+            shape={SHAPES[hashCode(b.id) % 3]}
+            hue={hashCode(b.id + "h") % 360}
+            onOpen={() => {
+              if (isOwner) {
+                setDetail(b);
+              } else {
+                setPrivacyOpen(true);
+              }
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+
   return (
     <>
-      <CollapsibleSection
-        title={`배지 컬렉션 (${earnedCount}/${total})`}
-        defaultOpen={false}
-      >
-        <div className="grid grid-cols-5 gap-3 sm:grid-cols-7 md:grid-cols-8">
-          {BADGES.map((b) => {
-            const isEarned = earned[b.id] !== undefined;
-            return (
-              <BadgeItem
-                key={b.id}
-                badge={b}
-                isEarned={isEarned}
-                canReveal={isOwner}
-                shape={SHAPES[hashCode(b.id) % 3]}
-                hue={hashCode(b.id + "h") % 360}
-                onOpen={() => {
-                  if (isOwner) {
-                    setDetail(b);
-                  } else {
-                    setPrivacyOpen(true);
-                  }
-                }}
-              />
-            );
-          })}
-        </div>
-      </CollapsibleSection>
+      {dawnlight2 ? (
+        <CollapsibleSectionD2
+          title="배지 컬렉션"
+          count={`${earnedCount}/${total}`}
+          leftIcon={<CollectionStarIcon />}
+          defaultOpen={false}
+        >
+          {grid}
+        </CollapsibleSectionD2>
+      ) : (
+        <CollapsibleSection
+          title={`배지 컬렉션 (${earnedCount}/${total})`}
+          defaultOpen={false}
+        >
+          {grid}
+        </CollapsibleSection>
+      )}
 
       {detail && (
         <BadgeDetailModal
