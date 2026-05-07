@@ -273,9 +273,13 @@ function CombatPageInner() {
       ref={wrapperRef}
       className={
         "relative mx-auto px-4 pt-3 pb-6 text-text-primary " +
-        (isDawnlight2
-          ? "max-w-2xl combat-content dl2-power dawnlight2"
-          : "max-w-4xl")
+        // No `dawnlight2` className here — ChromeShell already wraps
+        // the entire dl2 tree in `.dawnlight2`, so duplicating the
+        // class would re-mount its `::before` twilight gradient + the
+        // `position: relative` reset at this level. Keep just the
+        // page-marker pair (`dl2-power combat-content`) for the CSS
+        // overrides at the bottom of globals.css.
+        (isDawnlight2 ? "max-w-2xl combat-content dl2-power" : "max-w-4xl")
       }
       style={{
         opacity: scrollPending ? 0 : 1,

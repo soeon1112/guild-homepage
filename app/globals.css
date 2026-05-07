@@ -10181,3 +10181,149 @@ body.has-redesigned-header .bg-scene {
 .dl2-power button[class*="bg-gradient-to"]:hover {
   opacity: 0.9 !important;
 }
+
+/* ─────────────────────────────────────────────────────────────────
+   Step 4-I 가독성 긴급 패치
+   The Step 4-I-1 baseline used 0.65 alpha boxes — fine on the
+   notice/album pages where the page sits over the lighter
+   sunset-warm bottom of the twilight gradient, but combat pages
+   sit over the deep #2a1f4a top so the boxes washed out. Bump to
+   0.85 (nicks) / 0.95 (rep-nick header). Also kill the cosmic
+   fluorescent mints / nebula lavenders / nebula-violets that the
+   atomic-class overrides above missed because they were applied
+   via INLINE style attributes.
+   ───────────────────────────────────────────────────────────────── */
+
+/* Box alpha bump — cards / sections / group bodies / list pills. */
+.dl2-power [class*="bg-abyss-deep"],
+.dl2-power [class*="bg-abyss"] {
+  background-color: rgba(205, 216, 224, 0.85) !important;
+}
+/* Empty / loading hint pill: same family but a hair lighter so it
+   reads as secondary content. */
+.dl2-power p[class*="rounded-2xl"][class*="border"] {
+  background-color: rgba(205, 216, 224, 0.7) !important;
+}
+/* Group body (the rep-nickname container's wrapper): lighter so the
+   header still pops a step above. */
+.dl2-power [data-nick] {
+  background-color: rgba(205, 216, 224, 0.7) !important;
+}
+/* Group header: ★ strong tier — visibly on top of body. */
+.dl2-power [data-nick] > button[style*="linear-gradient"] {
+  background: rgba(205, 216, 224, 0.95) !important;
+}
+
+/* Typography hierarchy — bump nicks to weight 700 + ink-deep navy. */
+.dl2-power [class*="text-stardust"],
+.dl2-power [class*="text-text-primary"] {
+  color: #2a4570 !important;
+}
+/* Card character nick (h3 inside cards): big + dark + bold. */
+.dl2-power article h3,
+.dl2-power [class*="rounded-2xl"] h3 {
+  color: #1a2540 !important;
+  font-weight: 700 !important;
+}
+/* Group rep nick — same dark + bold tier. */
+.dl2-power [data-nick] .nickname-link {
+  color: #1a2540 !important;
+  font-weight: 700 !important;
+}
+
+/* Big numeric values (combatPower 카드, 길드 통계, weekly TOP 점수)
+   — cosmic painted these with a peach/pink linear-gradient + text-
+   transparent. Re-fill solid coral and unbold the gradient mask so
+   the digit reads against the paper-plane card. */
+.dl2-power [style*="linear-gradient(135deg, #FFE5C4, #D896C8)"] {
+  background: none !important;
+  background-image: none !important;
+  -webkit-background-clip: initial !important;
+  background-clip: initial !important;
+  -webkit-text-fill-color: #b85420 !important;
+  color: #b85420 !important;
+  filter: none !important;
+  font-weight: 700 !important;
+}
+
+/* Challenge chip (있음 / 다소 있음 / 없음) — cosmic uses three
+   inline-styled pastel chips: mint #A8E8C0 / yellow #FFE58E /
+   pink #E8A8B8. Override all three to a coral tier so the chip
+   reads as part of the dawnlight2 family. The fg/bg are inline so
+   target via `[style*="rgba(168, 232, 192"]` etc. */
+.dl2-power span[style*="rgba(168, 232, 192"],
+.dl2-power span[style*="rgba(255, 229, 142"],
+.dl2-power span[style*="rgba(232, 168, 184"] {
+  background: rgba(184, 84, 32, 0.12) !important;
+  border-color: rgba(184, 84, 32, 0.45) !important;
+  color: #b85420 !important;
+}
+.dl2-power span[style*="rgba(168, 232, 192"] span,
+.dl2-power span[style*="rgba(255, 229, 142"] span,
+.dl2-power span[style*="rgba(232, 168, 184"] span {
+  background: rgba(184, 84, 32, 0.18) !important;
+  color: #b85420 !important;
+}
+
+/* Weekly TOP 5 — generic "+N" growth deltas painted in cosmic
+   mint/peach. The element class isn't predictable, so target by
+   inline color hex — covers #4ade80, #34d399, #10b981 family. */
+.dl2-power [style*="color: #4ade80"],
+.dl2-power [style*="color: #34d399"],
+.dl2-power [style*="color: #10b981"],
+.dl2-power [style*="color: rgb(74, 222, 128)"],
+.dl2-power [style*="color: rgb(52, 211, 153)"] {
+  color: #b85420 !important;
+}
+
+/* Cosmic ◆ diamond + nebula-pink/violet glyphs that mark the
+   group rep — paint coral. Targets text-peach-accent (already in
+   the atomic block) plus the inline drop-shadow filter wrapper. */
+.dl2-power [style*="drop-shadow(0 0 6px rgba(255, 181, 167"] {
+  color: #b85420 !important;
+  filter: drop-shadow(0 0 6px rgba(184, 84, 32, 0.5)) !important;
+}
+
+/* Sort-chip pill row + active state. Cosmic active chip uses
+   inline `background: rgba(255, 181, 167, 0.12)` peach + lavender
+   shadow. Recolor to coral fill + cream text. */
+.dl2-power button[style*="rgba(255, 181, 167, 0.12)"] {
+  background: #b85420 !important;
+  border-color: #b85420 !important;
+  color: #fef5e6 !important;
+  box-shadow: none !important;
+}
+.dl2-power button[style*="rgba(255, 181, 167, 0.12)"] span,
+.dl2-power button[style*="rgba(255, 181, 167, 0.12)"] {
+  color: #fef5e6 !important;
+}
+
+/* Status icons inside character row — cosmic uses inline coloured
+   ▲ ✕ ✓ glyphs. Map to coral/peach/grey. */
+.dl2-power [style*="color: #FFE58E"] {
+  color: #ff9a6c !important;
+}
+.dl2-power [style*="color: #A8E8C0"] {
+  color: #b85420 !important;
+}
+.dl2-power [style*="color: #E8A8B8"] {
+  color: #6a6a6a !important;
+}
+
+/* Card halo / radial-overlay effects (cosmic group-hover gradient
+   pseudo-rings) — strip so the card stays a clean paper-plane
+   surface without the lavender bloom. */
+.dl2-power [style*="radial-gradient(circle, rgba(216, 150, 200"] {
+  background: transparent !important;
+  display: none !important;
+}
+
+/* Inputs & selects — already covered up top, but the search input
+   has a `focus:ring-nebula-pink/20` halo. Recolor to navy. */
+.dl2-power input:focus,
+.dl2-power select:focus,
+.dl2-power textarea:focus {
+  --tw-ring-color: rgba(42, 69, 112, 0.2) !important;
+  border-color: #2a4570 !important;
+  outline: none !important;
+}
