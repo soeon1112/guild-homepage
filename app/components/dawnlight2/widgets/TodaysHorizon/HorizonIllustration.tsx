@@ -9,7 +9,7 @@
 // `transform="translate(0 290)"` directly on the swaying group, so
 // that translate was silently dropped and the envelope top sat at
 // y=-28 (above the viewBox), getting clipped. We split it: an outer
-// non-animated <g transform="translate(0 380)"> handles vertical
+// non-animated <g transform="translate(0 60)"> handles vertical
 // placement; an inner <g class="animate-sway"> handles the rotational
 // rocking only.
 export function HorizonIllustration() {
@@ -131,14 +131,15 @@ export function HorizonIllustration() {
 
         {/* Hot-air balloon — drifts across with a gentle sway. The
             outer animated <g> owns the horizontal drift; the static
-            inner <g transform="translate(0 380)"> owns vertical
-            placement (envelope top → y=352, basket bottom → y=446,
-            ~58–74% of viewBox); the innermost animate-sway <g> owns
-            the rocking. Splitting the translate from the sway is what
-            makes vertical position actually take effect — see the
-            cascade note in the file header. */}
+            inner <g transform="translate(0 60)"> owns vertical
+            placement (envelope top → y=32, basket bottom → y=126,
+            ~5–21% of viewBox — the empty top band above the centered
+            sky-quote/parchment overlay); the innermost animate-sway
+            <g> owns the rocking. Splitting the translate from the
+            sway is what makes vertical position actually take effect
+            — see the cascade note in the file header. */}
         <g className="animate-drift-across" style={{ animationDelay: "-12s" }}>
-          <g transform="translate(0 380)">
+          <g transform="translate(0 60)">
             <g className="animate-sway">
               <g transform="translate(60 0)">
                 <line x1="0" y1="42" x2="0" y2="60" stroke="#fef5e6" strokeWidth="0.8" opacity="0.7" />
