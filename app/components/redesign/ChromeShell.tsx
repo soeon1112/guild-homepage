@@ -2,11 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CosmicBackground } from "./CosmicBackground";
-import { TopHeader } from "./TopHeader";
-import { BottomNav } from "./BottomNav";
 import { Breadcrumb } from "./Breadcrumb";
-import { useDawnlight2 } from "@/src/lib/featureFlags";
 import { Dawnlight2Topbar } from "@/app/components/dawnlight2/Topbar";
 import { Dawnlight2BottomNav } from "@/app/components/dawnlight2/BottomNav";
 import { StarryBackground } from "@/app/components/dawnlight2/StarryBackground";
@@ -41,20 +37,17 @@ function LegacyFooter() {
 /**
  * Swaps between two layout chromes based on pathname:
  *  - `/admin/*`  → legacy bg-scene + header/footer (unchanged admin UX)
- *  - everything else → redesigned cosmic chrome (background, top header, bottom nav)
+ *  - everything else → dawnlight2 chrome (twilight gradient via .dawnlight2
+ *    CSS scope ::before, StarryBackground twinkle overlay, dl2 Topbar +
+ *    BottomNav).
  *
- * `FloatingChat`, `BadgeToast`, `AuthProvider`, and `ScrollRestorer` remain
- * in the root layout — they are global on every page regardless of chrome.
+ * 2026-05-08 dl2 전체 공개 후 cosmic 분기 (CosmicBackground / 옛 TopHeader /
+ * 옛 BottomNav) 는 dead code 라 제거됨. `FloatingChat`, `BadgeToast`,
+ * `AuthProvider`, `ScrollRestorer` 는 root layout 에 남아 있음.
  */
 export function ChromeShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith("/admin") ?? false;
-  // Topbar reskin gate — only 언쏘 (DAWNLIGHT2_USERS) sees the
-  // dawnlight2 topbar. Everyone else keeps cosmic TopHeader byte-
-  // identical. Branch lives in ChromeShell because Topbar mounts
-  // globally for every non-admin page; running the gate here means
-  // every page picks up the reskin without per-page changes.
-  const isDawnlight2 = useDawnlight2();
 
   if (isAdmin) {
     return (
@@ -67,48 +60,15 @@ export function ChromeShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Background: cosmic users keep CosmicBackground (animated star
-  // canvas). dl2 users get the .dawnlight2 CSS scope (which paints the
-  // fixed twilight gradient via ::before) plus the StarryBackground
-  // twinkle overlay. Wrapping the whole non-admin tree in `.dawnlight2`
-  // means every dl2 page (album/notice/board/...) picks up the gradient
-  // automatically — previously the wrapper lived only inside MainGate
-  // so only the home page got the bg. MainGate now skips its own
-  // wrapper to avoid double-mounting StarryBackground.
-  if (isDawnlight2) {
-    // Wrap the chrome+content in a single `.dawnlight2` div so the
-    // ::before twilight gradient (declared inside the .dawnlight2 CSS
-    // scope) paints behind every dl2 page. StarryBackground twinkle
-    // overlay sits between the gradient and the content. MainGate
-    // skips its own wrapper now (would double-mount the stars).
-    return (
-      <div className="dawnlight2">
-        <StarryBackground />
-        <Dawnlight2Topbar />
-        <Breadcrumb />
-        <main className="relative z-10 flex-1 pb-[calc(12rem+env(safe-area-inset-bottom))]">
-          {children}
-        </main>
-        <Dawnlight2BottomNav />
-      </div>
-    );
-  }
-
   return (
-    <>
-      <CosmicBackground />
-      <TopHeader />
+    <div className="dawnlight2">
+      <StarryBackground />
+      <Dawnlight2Topbar />
       <Breadcrumb />
-      {/* Bottom padding clears BOTH the floating BottomNav AND the floating
-          chat icon (FloatingChat lives at right-4 bottom-24 with a 56px
-          button → top edge sits 152px above screen bottom). 12rem (192px)
-          covers chat-icon top (152) + ~40px breathing room; env(safe-area-
-          inset-bottom) tacks on the iOS home indicator. Last page item
-          never gets clipped by either floating element. */}
       <main className="relative z-10 flex-1 pb-[calc(12rem+env(safe-area-inset-bottom))]">
         {children}
       </main>
-      <BottomNav />
-    </>
+      <Dawnlight2BottomNav />
+    </div>
   );
 }
