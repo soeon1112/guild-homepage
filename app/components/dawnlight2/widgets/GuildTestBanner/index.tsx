@@ -17,19 +17,28 @@ import { canSeeGuildTest } from "@/src/lib/guildTest";
 // (canSeeGuildTest is open to every signed-in member since the
 // 2026-05-03 full release). Click → /guild-test.
 //
-// Moon animation: moon body translateY 0 → -3 px and halo opacity
-// 0.7 → 1.0 over a 5 s mirrored cycle (ease-in-out sine), so the
-// moon visually breathes / lifts inside its glow. Mirrors the
-// Reanimated useSharedValue loop in the RN counterpart.
+// Moon animation: single keyframe drives BOTH transform: translateY
+// (0 → -3 px) and filter: drop-shadow (cream glow 0.55 → 0.95 alpha,
+// 8 → 12 px blur) on the SAME wrapper element — so the crescent and
+// its glow are mathematically inseparable, never desync. 5 s mirrored
+// cycle, ease-in-out sine. Mirrors the RN counterpart's single
+// Animated.View driven by one `useSharedValue` that animates both
+// translateY and shadowOpacity/shadowRadius together.
 
 const ANIM_KEYFRAMES = `
 @keyframes dl2-gtb-moon-breath {
-  0%, 100% { transform: translateY(0); }
-  50%     { transform: translateY(-3px); }
-}
-@keyframes dl2-gtb-halo-breath {
-  0%, 100% { opacity: 0.7; }
-  50%     { opacity: 1; }
+  0%, 100% {
+    transform: translateY(0);
+    filter:
+      drop-shadow(0 0 8px rgba(254, 245, 230, 0.55))
+      drop-shadow(0 0 16px rgba(254, 245, 230, 0.30));
+  }
+  50% {
+    transform: translateY(-3px);
+    filter:
+      drop-shadow(0 0 12px rgba(254, 245, 230, 0.95))
+      drop-shadow(0 0 24px rgba(254, 245, 230, 0.55));
+  }
 }
 `;
 
@@ -70,42 +79,36 @@ export function GuildTestBanner() {
           }}
         >
           <div className="flex items-center gap-4 px-5 py-4 sm:px-6 sm:py-5">
-            {/* Glowing breathing moon — three concentric cream halos +
-                a solid cream body. The body translates ±3 px and the
-                two outer halos pulse opacity 0.7→1.0 on the same 5 s
-                cycle, so the moon reads as gently breathing inside
-                its glow. */}
+            {/* Glowing breathing crescent — single wrapper with the
+                SVG moon inside. CSS `filter: drop-shadow(...)` projects
+                a cream halo that follows the crescent's actual
+                rendered shape (not the wrapper's bounding box), and
+                because both `transform` and `filter` animate on the
+                SAME keyframe of the SAME wrapper, the moon and its
+                glow are inseparable — they breathe as one. */}
             <span
-              className="relative flex h-14 w-14 flex-shrink-0 items-center justify-center"
+              className="flex h-14 w-14 flex-shrink-0 items-center justify-center"
               aria-hidden
+              style={{
+                animation: "dl2-gtb-moon-breath 5s ease-in-out infinite",
+                willChange: "transform, filter",
+              }}
             >
-              <span
-                className="absolute h-14 w-14 rounded-full"
-                style={{
-                  background: "rgba(254, 245, 230, 0.18)",
-                  animation: "dl2-gtb-halo-breath 5s ease-in-out infinite",
-                }}
-              />
-              <span
-                className="absolute h-10 w-10 rounded-full"
-                style={{
-                  background: "rgba(254, 245, 230, 0.28)",
-                  animation: "dl2-gtb-halo-breath 5s ease-in-out infinite",
-                }}
-              />
-              <span
-                className="absolute h-7 w-7 rounded-full"
-                style={{ background: "rgba(254, 245, 230, 0.5)" }}
-              />
-              <span
-                className="relative h-[22px] w-[22px] rounded-full"
-                style={{
-                  background:
-                    "radial-gradient(circle at 35% 35%, #fff8e0 0%, #fef0c8 55%, #f5d8a0 100%)",
-                  boxShadow: "inset 0 -1px 2px rgba(180, 130, 60, 0.25)",
-                  animation: "dl2-gtb-moon-breath 5s ease-in-out infinite",
-                }}
-              />
+              <svg viewBox="0 0 32 32" className="h-9 w-9">
+                <defs>
+                  <mask id="dl2-gtb-crescent-mask">
+                    <rect width="32" height="32" fill="white" />
+                    <circle cx="23" cy="16" r="10" fill="black" />
+                  </mask>
+                </defs>
+                <circle
+                  cx="18"
+                  cy="16"
+                  r="11"
+                  fill="#fef0c8"
+                  mask="url(#dl2-gtb-crescent-mask)"
+                />
+              </svg>
             </span>
 
             <span className="min-w-0 flex-1">
