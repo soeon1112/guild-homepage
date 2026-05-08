@@ -10,7 +10,11 @@ import {
 } from "react";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
-import { handleEvent, runRetroactiveScan } from "@/src/lib/badgeCheck";
+import {
+  handleEvent,
+  runAttendBackfill,
+  runRetroactiveScan,
+} from "@/src/lib/badgeCheck";
 
 type AuthResult = { ok: boolean; error?: string };
 
@@ -34,6 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (stored) {
       setNickname(stored);
       runRetroactiveScan(stored).catch(() => {});
+      runAttendBackfill(stored).catch(() => {});
       handleEvent({ type: "login", nickname: stored });
     }
     setReady(true);
@@ -53,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem(STORAGE_KEY, n);
         setNickname(n);
         runRetroactiveScan(n).catch(() => {});
+        runAttendBackfill(n).catch(() => {});
         handleEvent({ type: "login", nickname: n });
         return { ok: true };
       } catch (e) {
