@@ -900,43 +900,44 @@ function AlbumCommentItem({
       }
     >
       {dl2 ? (
-        <>
-          {/* 게시판 댓글 패턴 — header (좌:칭호+닉, 우:날짜+답글+삭제) + body */}
-          <div className="dl2-photo-comment-header">
-            <Dl2TitlePrefix nickname={comment.nickname} tone="cool" />
-            <NicknameLink
-              nickname={comment.nickname}
-              className="dl2-photo-comment-nick"
-              hideTitle
-            />
-            <div className="dl2-photo-comment-actions">
-              <span className="dl2-photo-comment-date">
-                {formatTime(comment.createdAt)}
-              </span>
-              {loginNick && (
-                <button
-                  type="button"
-                  className="dl2-photo-comment-action"
-                  onClick={onToggleReply}
-                >
-                  답글
-                </button>
-              )}
-              {loginNick === comment.nickname && (
-                <button
-                  type="button"
-                  className="dl2-photo-comment-action"
-                  onClick={handleDeleteComment}
-                >
-                  삭제
-                </button>
-              )}
-            </div>
+        <div className="dl2-comment-row">
+          <div className="dl2-comment-left">
+            <span className="dl2-comment-nick-line">
+              <Dl2TitlePrefix nickname={comment.nickname} tone="cool" />
+              <NicknameLink
+                nickname={comment.nickname}
+                className="dl2-photo-comment-nick"
+                hideTitle
+              />
+            </span>
+            {!!comment.content && (
+              <p className="dl2-photo-comment-body">{comment.content}</p>
+            )}
           </div>
-          {!!comment.content && (
-            <p className="dl2-photo-comment-body">{comment.content}</p>
-          )}
-        </>
+          <div className="dl2-comment-right">
+            <span className="dl2-photo-comment-date">
+              {formatTime(comment.createdAt)}
+            </span>
+            {loginNick && (
+              <button
+                type="button"
+                className="dl2-photo-comment-action"
+                onClick={onToggleReply}
+              >
+                답글
+              </button>
+            )}
+            {loginNick === comment.nickname && (
+              <button
+                type="button"
+                className="dl2-photo-comment-action"
+                onClick={handleDeleteComment}
+              >
+                삭제
+              </button>
+            )}
+          </div>
+        </div>
       ) : (
         <div className="minihome-photo-comment">
           <span
@@ -999,14 +1000,21 @@ function AlbumCommentItem({
                 <div className="dl2-reply-row">
                   <span className="dl2-reply-arrow">↳</span>
                   <div className="dl2-reply-content">
-                    <div className="dl2-photo-comment-header">
-                      <Dl2TitlePrefix nickname={r.nickname} tone="cool" />
-                      <NicknameLink
-                        nickname={r.nickname}
-                        className="dl2-photo-comment-nick"
-                        hideTitle
-                      />
-                      <div className="dl2-photo-comment-actions">
+                    <div className="dl2-comment-row">
+                      <div className="dl2-comment-left">
+                        <span className="dl2-comment-nick-line">
+                          <Dl2TitlePrefix nickname={r.nickname} tone="cool" />
+                          <NicknameLink
+                            nickname={r.nickname}
+                            className="dl2-photo-comment-nick"
+                            hideTitle
+                          />
+                        </span>
+                        {!!r.content && (
+                          <p className="dl2-photo-comment-body">{r.content}</p>
+                        )}
+                      </div>
+                      <div className="dl2-comment-right">
                         <span className="dl2-photo-comment-date">
                           {formatTime(r.createdAt)}
                         </span>
@@ -1021,9 +1029,6 @@ function AlbumCommentItem({
                         )}
                       </div>
                     </div>
-                    {!!r.content && (
-                      <p className="dl2-photo-comment-body">{r.content}</p>
-                    )}
                   </div>
                 </div>
               ) : (

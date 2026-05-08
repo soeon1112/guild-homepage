@@ -555,47 +555,90 @@ function BoardCommentItem({
 
   return (
     <div className="board-comment-item" data-comment-id={comment.id}>
-      <div className="board-comment-header">
-        {isDawnlight2 ? <Dl2TitlePrefix nickname={comment.nickname} tone="cool" /> : null}
-        <NicknameLink
-          nickname={comment.nickname}
-          className="board-comment-nick"
-          hideTitle={isDawnlight2}
-        />
-        <div
-          style={{
-            marginLeft: "auto",
-            display: "flex",
-            alignItems: "center",
-            gap: "0.6rem",
-            flexShrink: 0,
-          }}
-        >
-          <span className="board-comment-date">{formatDate(comment.createdAt)}</span>
-          {loginNick && (
-            <button
-              type="button"
-              className="board-reply-btn"
-              onClick={onToggleReply}
-              style={{ marginLeft: 0 }}
-            >
-              답글
-            </button>
-          )}
-          {loginNick === comment.nickname && (
-            <button
-              type="button"
-              className="board-reply-btn"
-              onClick={handleDeleteComment}
-              style={{ marginLeft: 0 }}
-            >
-              삭제
-            </button>
-          )}
+      {isDawnlight2 ? (
+        <div className="dl2-comment-row">
+          <div className="dl2-comment-left">
+            <span className="dl2-comment-nick-line">
+              <Dl2TitlePrefix nickname={comment.nickname} tone="cool" />
+              <NicknameLink
+                nickname={comment.nickname}
+                className="board-comment-nick"
+                hideTitle
+              />
+            </span>
+            <p className="board-comment-body">{comment.content}</p>
+            {comment.imageUrl && <CommentImageView url={comment.imageUrl} />}
+          </div>
+          <div className="dl2-comment-right">
+            <span className="board-comment-date">
+              {formatDate(comment.createdAt)}
+            </span>
+            {loginNick && (
+              <button
+                type="button"
+                className="board-reply-btn"
+                onClick={onToggleReply}
+                style={{ marginLeft: 0 }}
+              >
+                답글
+              </button>
+            )}
+            {loginNick === comment.nickname && (
+              <button
+                type="button"
+                className="board-reply-btn"
+                onClick={handleDeleteComment}
+                style={{ marginLeft: 0 }}
+              >
+                삭제
+              </button>
+            )}
+          </div>
         </div>
-      </div>
-      <p className="board-comment-body">{comment.content}</p>
-      {comment.imageUrl && <CommentImageView url={comment.imageUrl} />}
+      ) : (
+        <>
+          <div className="board-comment-header">
+            <NicknameLink
+              nickname={comment.nickname}
+              className="board-comment-nick"
+            />
+            <div
+              style={{
+                marginLeft: "auto",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.6rem",
+              }}
+            >
+              <span className="board-comment-date">
+                {formatDate(comment.createdAt)}
+              </span>
+              {loginNick && (
+                <button
+                  type="button"
+                  className="board-reply-btn"
+                  onClick={onToggleReply}
+                  style={{ marginLeft: 0 }}
+                >
+                  답글
+                </button>
+              )}
+              {loginNick === comment.nickname && (
+                <button
+                  type="button"
+                  className="board-reply-btn"
+                  onClick={handleDeleteComment}
+                  style={{ marginLeft: 0 }}
+                >
+                  삭제
+                </button>
+              )}
+            </div>
+          </div>
+          <p className="board-comment-body">{comment.content}</p>
+          {comment.imageUrl && <CommentImageView url={comment.imageUrl} />}
+        </>
+      )}
       {(replies.length > 0 || replyOpen) && (
         <div className="board-reply-list">
           {replies.map((r) => (
@@ -604,22 +647,20 @@ function BoardCommentItem({
                 <div className="dl2-reply-row">
                   <span className="dl2-reply-arrow">↳</span>
                   <div className="dl2-reply-content">
-                    <div className="board-comment-header">
-                      <Dl2TitlePrefix nickname={r.nickname} tone="cool" />
-                      <NicknameLink
-                        nickname={r.nickname}
-                        className="board-comment-nick"
-                        hideTitle
-                      />
-                      <div
-                        style={{
-                          marginLeft: "auto",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "0.6rem",
-                          flexShrink: 0,
-                        }}
-                      >
+                    <div className="dl2-comment-row">
+                      <div className="dl2-comment-left">
+                        <span className="dl2-comment-nick-line">
+                          <Dl2TitlePrefix nickname={r.nickname} tone="cool" />
+                          <NicknameLink
+                            nickname={r.nickname}
+                            className="board-comment-nick"
+                            hideTitle
+                          />
+                        </span>
+                        <p className="board-comment-body">{r.content}</p>
+                        {r.imageUrl && <CommentImageView url={r.imageUrl} />}
+                      </div>
+                      <div className="dl2-comment-right">
                         <span className="board-comment-date">
                           {formatDate(r.createdAt)}
                         </span>
@@ -635,8 +676,6 @@ function BoardCommentItem({
                         )}
                       </div>
                     </div>
-                    <p className="board-comment-body">{r.content}</p>
-                    {r.imageUrl && <CommentImageView url={r.imageUrl} />}
                   </div>
                 </div>
               ) : (

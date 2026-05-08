@@ -10714,6 +10714,43 @@ body.has-redesigned-header .bg-scene {
   min-width: 0;
 }
 
+/* 댓글 outer row + 좌측 column (nick + body) + 우측 column (actions).
+   본문이 우측 메타 영역 절대 침범 X. 한글 wrapping word-break: break-all
+   강제 (한글 한 줄이 메타 직전에서 정확히 끊기게). */
+.dl2-comment-row {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12px;
+}
+.dl2-comment-left {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.dl2-comment-right {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.6rem;
+}
+.dl2-comment-nick-line {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+  min-width: 0;
+}
+
+/* 본문 wrapping — 한글이 메타 영역 침범하지 않도록 break-all 강제. */
+.dl2-comment-left .board-comment-body,
+.dl2-comment-left .dl2-photo-comment-body,
+.dl2-comment-left .dl2-gb-body {
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+
 /* Big numeric values (combatPower 카드, 길드 통계, weekly TOP 점수)
    — cosmic painted these with a peach/pink linear-gradient + text-
    transparent. Re-fill solid coral and unbold the gradient mask so

@@ -528,21 +528,26 @@ function GuestbookItemD2({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
     >
-      {/* 게시판 댓글 패턴 — header (좌:칭호+닉, 우:날짜+답글+삭제) + body. */}
-      <div
-        className="flex items-baseline"
-        style={{ marginBottom: 6 }}
-      >
-        <Dl2TitlePrefix nickname={entry.nickname} tone="cool" />
-        <NicknameLink
-          nickname={entry.nickname}
-          className="dl2-gb-nick"
-          hideTitle
-        />
-        <div
-          className="flex flex-shrink-0 items-center"
-          style={{ marginLeft: "auto", gap: "0.6rem" }}
-        >
+      {/* outer row + 좌측 column (nick + body) + 우측 column (actions).
+          본문이 우측 메타 영역 침범 X. */}
+      <div className="dl2-comment-row">
+        <div className="dl2-comment-left">
+          <span className="dl2-comment-nick-line">
+            <Dl2TitlePrefix nickname={entry.nickname} tone="cool" />
+            <NicknameLink
+              nickname={entry.nickname}
+              className="dl2-gb-nick"
+              hideTitle
+            />
+          </span>
+          <p className="dl2-gb-body">{entry.message}</p>
+          {entry.imageUrl && (
+            <div className="mt-2">
+              <CommentImageView url={entry.imageUrl} />
+            </div>
+          )}
+        </div>
+        <div className="dl2-comment-right">
           <span className="dl2-gb-date">{formatTime(entry.createdAt)}</span>
           {loginNick && (
             <button
@@ -564,12 +569,6 @@ function GuestbookItemD2({
           )}
         </div>
       </div>
-      <p className="dl2-gb-body">{entry.message}</p>
-      {entry.imageUrl && (
-        <div className="mt-2">
-          <CommentImageView url={entry.imageUrl} />
-        </div>
-      )}
 
       {/* Replies — 부모 묶음 안. 좌측 borderLeft + 들여쓰기 (게시판
           board-reply-list 동일 패턴). 답글 사이는 idx>0 borderTop 옅게. */}
@@ -606,20 +605,24 @@ function GuestbookItemD2({
                 ↳
               </span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div
-                  className="flex items-baseline"
-                  style={{ marginBottom: 6 }}
-                >
-                  <Dl2TitlePrefix nickname={r.nickname} tone="cool" />
-                  <NicknameLink
-                    nickname={r.nickname}
-                    className="dl2-gb-nick"
-                    hideTitle
-                  />
-                  <div
-                    className="flex flex-shrink-0 items-center"
-                    style={{ marginLeft: "auto", gap: "0.6rem" }}
-                  >
+                <div className="dl2-comment-row">
+                  <div className="dl2-comment-left">
+                    <span className="dl2-comment-nick-line">
+                      <Dl2TitlePrefix nickname={r.nickname} tone="cool" />
+                      <NicknameLink
+                        nickname={r.nickname}
+                        className="dl2-gb-nick"
+                        hideTitle
+                      />
+                    </span>
+                    <p className="dl2-gb-body">{r.message}</p>
+                    {r.imageUrl && (
+                      <div className="mt-1">
+                        <CommentImageView url={r.imageUrl} />
+                      </div>
+                    )}
+                  </div>
+                  <div className="dl2-comment-right">
                     <span className="dl2-gb-date">
                       {formatTime(r.createdAt)}
                     </span>
@@ -634,12 +637,6 @@ function GuestbookItemD2({
                     )}
                   </div>
                 </div>
-                <p className="dl2-gb-body">{r.message}</p>
-                {r.imageUrl && (
-                  <div className="mt-1">
-                    <CommentImageView url={r.imageUrl} />
-                  </div>
-                )}
               </div>
             </div>
           ))}
