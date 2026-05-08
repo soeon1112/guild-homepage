@@ -42,6 +42,7 @@ import { handleEvent } from "@/src/lib/badgeCheck";
 import { josa, truncate } from "@/src/lib/text";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
 import { Dl2TitlePrefix } from "@/app/components/dawnlight2/widgets/WhispersFeed/Dl2TitlePrefix";
+import { MemberPickerModal } from "@/app/components/shared/MemberPickerModal";
 
 // `uploadBytes` and `getDownloadURL` are not used by the modal stack
 // itself — they're used by the album upload flow which lives in the
@@ -186,12 +187,15 @@ export function AlbumPhotoViewer({
   const [editCaption, setEditCaption] = useState(photo.caption);
   const [editPhotographer, setEditPhotographer] = useState(photo.photographer);
   const [editPeople, setEditPeople] = useState<string[]>(photo.people ?? []);
-  const [editPeopleInput, setEditPeopleInput] = useState("");
   const [editPhotoDate, setEditPhotoDate] = useState<string>(
     photo.photoDate || todayISO(),
   );
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  // 출연자 선택 모달 — 작성 UI(album/page.tsx)와 동일한 MemberPickerModal
+  // 을 재사용. 옛날 텍스트 input + Enter 패턴은 닉네임 오타가 들어가서
+  // 뱃지 매칭이 깨지는 문제 + 작성 UI 와 톤이 안 맞아 2026-05-08 통일.
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   // Owner check — edit/delete only available to the original uploader.
   // Admins can still delete via the Firebase console; the in-app
@@ -202,25 +206,12 @@ export function AlbumPhotoViewer({
     setEditCaption(photo.caption);
     setEditPhotographer(photo.photographer);
     setEditPeople(photo.people ?? []);
-    setEditPeopleInput("");
     setEditPhotoDate(photo.photoDate || todayISO());
     setEditMode(true);
   };
 
   const cancelEdit = () => {
     setEditMode(false);
-    setEditPeopleInput("");
-  };
-
-  const addEditPerson = () => {
-    const v = editPeopleInput.trim();
-    if (!v) return;
-    if (editPeople.includes(v)) {
-      setEditPeopleInput("");
-      return;
-    }
-    setEditPeople((p) => [...p, v]);
-    setEditPeopleInput("");
   };
 
   const removeEditPerson = (v: string) => {
@@ -320,9 +311,7 @@ export function AlbumPhotoViewer({
               editPhotographer={editPhotographer}
               setEditPhotographer={setEditPhotographer}
               editPeople={editPeople}
-              editPeopleInput={editPeopleInput}
-              setEditPeopleInput={setEditPeopleInput}
-              addEditPerson={addEditPerson}
+              onPickerOpen={() => setPickerOpen(true)}
               removeEditPerson={removeEditPerson}
               handleSave={handleSave}
               cancelEdit={cancelEdit}
@@ -344,9 +333,7 @@ export function AlbumPhotoViewer({
             editPhotographer={editPhotographer}
             setEditPhotographer={setEditPhotographer}
             editPeople={editPeople}
-            editPeopleInput={editPeopleInput}
-            setEditPeopleInput={setEditPeopleInput}
-            addEditPerson={addEditPerson}
+            onPickerOpen={() => setPickerOpen(true)}
             removeEditPerson={removeEditPerson}
             handleSave={handleSave}
             cancelEdit={cancelEdit}
@@ -368,6 +355,17 @@ export function AlbumPhotoViewer({
           imgLoaded={imgLoaded}
         />
       </div>
+      {pickerOpen && (
+        <MemberPickerModal
+          initial={editPeople}
+          dl2={dl2}
+          onClose={() => setPickerOpen(false)}
+          onDone={(sel) => {
+            setEditPeople(sel);
+            setPickerOpen(false);
+          }}
+        />
+      )}
     </div>,
     document.body,
   );
@@ -386,9 +384,7 @@ function AlbumViewerMetaInner({
   editPhotographer,
   setEditPhotographer,
   editPeople,
-  editPeopleInput,
-  setEditPeopleInput,
-  addEditPerson,
+  onPickerOpen,
   removeEditPerson,
   handleSave,
   cancelEdit,
@@ -407,9 +403,7 @@ function AlbumViewerMetaInner({
   editPhotographer: string;
   setEditPhotographer: (v: string) => void;
   editPeople: string[];
-  editPeopleInput: string;
-  setEditPeopleInput: (v: string) => void;
-  addEditPerson: () => void;
+  onPickerOpen: () => void;
   removeEditPerson: (v: string) => void;
   handleSave: () => void;
   cancelEdit: () => void;
@@ -465,19 +459,13 @@ function AlbumViewerMetaInner({
                 ))}
               </div>
             )}
-            <input
-              className="minihome-input"
-              placeholder="출연자 (엔터로 추가)"
-              value={editPeopleInput}
-              onChange={(e) => setEditPeopleInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.nativeEvent.isComposing) {
-                  e.preventDefault();
-                  addEditPerson();
-                }
-              }}
-              maxLength={30}
-            />
+            <button
+              type="button"
+              className="minihome-btn minihome-btn-cancel"
+              onClick={onPickerOpen}
+            >
+              + 출연자 추가
+            </button>
           </div>
           <div className="minihome-modal-actions">
             <button
