@@ -54,6 +54,7 @@ type UserCounters = {
   lastChatTimeMs?: number;
   recentChatTimesMs?: number[];
   badgesRetroactiveDone?: boolean;
+  attendBackfillDone?: boolean;
 };
 
 function dateKey(d: Date): string {
@@ -61,6 +62,96 @@ function dateKey(d: Date): string {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+function parseLocalKey(k: string): Date {
+  const [y, m, d] = k.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+// One-shot backfill — scans pointHistory for "출석" entries to recover
+// streak history that was missed when RN clients wrote lastAttendance
+// without going through handleEvent (no badgeCheck on mobile until now).
+// Awards attend_7/30/100 retroactively based on max past streak, then
+// rewrites lastAttendDate/consecutiveAttendDays so the normal handleEvent
+// path can pick up correctly. Today's entry is excluded so the caller's
+// own attend dispatch can still increment to today's streak. Idempotent
+// via attendBackfillDone — safe to call from multiple entry points.
+export async function runAttendBackfill(
+  nickname: string,
+  user?: UserCounters,
+  now: Date = new Date(),
+): Promise<void> {
+  const u = user ?? (await loadUser(nickname));
+  if (u.attendBackfillDone) return;
+
+  const snap = await getDocs(
+    query(
+      collection(db, "users", nickname, "pointHistory"),
+      where("type", "==", "출석"),
+    ),
+  );
+
+  const todayKey = dateKey(now);
+  const dateSet = new Set<string>();
+  snap.docs.forEach((d) => {
+    const ts = d.data().createdAt as Timestamp | undefined;
+    if (!ts || typeof ts.toDate !== "function") return;
+    const k = dateKey(ts.toDate());
+    if (k !== todayKey) dateSet.add(k);
+  });
+
+  const dates = [...dateSet].sort();
+  let maxStreak = 0;
+  if (dates.length > 0) {
+    maxStreak = 1;
+    let cur = 1;
+    for (let i = 1; i < dates.length; i++) {
+      const a = parseLocalKey(dates[i - 1]);
+      const b = parseLocalKey(dates[i]);
+      const diff = Math.round((b.getTime() - a.getTime()) / 86400000);
+      if (diff === 1) {
+        cur++;
+        if (cur > maxStreak) maxStreak = cur;
+      } else {
+        cur = 1;
+      }
+    }
+  }
+
+  if (maxStreak >= 7) await awardBadge(nickname, "attend_7");
+  if (maxStreak >= 30) await awardBadge(nickname, "attend_30");
+  if (maxStreak >= 100) await awardBadge(nickname, "attend_100");
+
+  // Live-streak reconstruction: if last attend (excluding today) was
+  // yesterday, count consecutive days back from there. handleEvent will
+  // then increment to today on the current dispatch.
+  const yd = new Date(now);
+  yd.setDate(yd.getDate() - 1);
+  const yesterdayKey = dateKey(yd);
+
+  let liveStreak = 0;
+  let lastDateKey: string | null = null;
+  if (dates.length > 0) {
+    lastDateKey = dates[dates.length - 1];
+    if (lastDateKey === yesterdayKey) {
+      liveStreak = 1;
+      for (let i = dates.length - 2; i >= 0; i--) {
+        const a = parseLocalKey(dates[i]);
+        const b = parseLocalKey(dates[i + 1]);
+        const diff = Math.round((b.getTime() - a.getTime()) / 86400000);
+        if (diff === 1) liveStreak++;
+        else break;
+      }
+    }
+  }
+
+  const patch: Record<string, unknown> = { attendBackfillDone: true };
+  if (lastDateKey) {
+    patch.lastAttendDate = lastDateKey;
+    patch.consecutiveAttendDays = liveStreak;
+  }
+  await updateUser(nickname, patch);
 }
 
 async function findMemberIdByNickname(nickname: string): Promise<string | null> {
@@ -284,13 +375,22 @@ async function dispatch(ev: BadgeEvent) {
       return;
     }
     case "attend": {
+      // Lazy one-time backfill from pointHistory. Repairs streak state
+      // for users whose RN-only attendance days bypassed handleEvent
+      // (mobile didn't have badgeCheck until 2026-05). After backfill
+      // sets lastAttendDate/consecutiveAttendDays to "as of yesterday",
+      // the normal flow below increments cleanly to today.
+      if (!user.attendBackfillDone) {
+        await runAttendBackfill(nickname, user, ev.when);
+      }
+      const u = user.attendBackfillDone ? user : await loadUser(nickname);
       const k = dateKey(ev.when);
-      if (user.lastAttendDate === k) return;
+      if (u.lastAttendDate === k) return;
       const y = new Date(ev.when);
       y.setDate(y.getDate() - 1);
       const yk = dateKey(y);
-      const prev = user.consecutiveAttendDays ?? 0;
-      const next = user.lastAttendDate === yk ? prev + 1 : 1;
+      const prev = u.consecutiveAttendDays ?? 0;
+      const next = u.lastAttendDate === yk ? prev + 1 : 1;
       await updateUser(nickname, {
         lastAttendDate: k,
         consecutiveAttendDays: next,
@@ -298,9 +398,9 @@ async function dispatch(ev: BadgeEvent) {
       if (next >= 7) await awardBadge(nickname, "attend_7");
       if (next >= 30) await awardBadge(nickname, "attend_30");
       if (next >= 100) await awardBadge(nickname, "attend_100");
-      await recordDailyActivity(nickname, ev.when, "attend", user);
+      await recordDailyActivity(nickname, ev.when, "attend", u);
       await evaluateTimeBadges(nickname, ev.when);
-      await trackNightActivity(nickname, ev.when, user);
+      await trackNightActivity(nickname, ev.when, u);
       return;
     }
     case "comment": {
