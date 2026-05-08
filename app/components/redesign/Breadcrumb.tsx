@@ -71,6 +71,15 @@ function resolveSegments(
       else if (parts[1]) segs.push({ label: "상세" });
       return segs;
     }
+    case "proposals": {
+      const segs: Segment[] = [
+        home,
+        { label: "제안 게시판", href: "/proposals" },
+      ];
+      if (parts[1] === "new") segs.push({ label: "작성" });
+      else if (parts[1]) segs.push({ label: "상세" });
+      return segs;
+    }
     case "mypage":
       return [home, { label: "MY" }];
     case "shop":
@@ -147,21 +156,21 @@ export function Breadcrumb() {
       aria-label="breadcrumb"
       className="relative z-10 mx-auto w-full max-w-md px-4 pt-3"
     >
-      <ol className="flex items-center gap-2 font-serif text-[11px] tracking-wider text-text-sub">
+      <ol className="flex items-center gap-2 text-[11px] tracking-wider text-mist-lavender">
         {displaySegments.map((seg, i) => (
           <li key={i} className="flex items-center gap-2">
             {seg.href ? (
               <Link
                 href={seg.href}
-                className="transition-colors hover:text-stardust"
+                className="transition-colors hover:text-cream"
               >
                 {seg.label}
               </Link>
             ) : (
-              <span className="text-peach-accent">{seg.label}</span>
+              <span className="text-sunset-gold">{seg.label}</span>
             )}
             {i < displaySegments.length - 1 && (
-              <span aria-hidden className="text-text-sub/50">
+              <span aria-hidden className="text-mist-lavender/50">
                 ›
               </span>
             )}
