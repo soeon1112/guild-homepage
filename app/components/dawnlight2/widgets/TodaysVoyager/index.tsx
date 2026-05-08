@@ -10,6 +10,9 @@ import {
 } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
 import { useAuth } from "@/app/components/AuthProvider";
+import { logActivity } from "@/src/lib/activity";
+import { addPoints } from "@/src/lib/points";
+import { josa, truncate } from "@/src/lib/text";
 
 // Today's Voyager — Dawnlight 2 daily-rotating spotlight.
 //
@@ -188,10 +191,12 @@ export function TodaysVoyager() {
         <div className="flex flex-col gap-3 md:gap-6">
           <KeywordCard
             voyagerNickname={today?.nickname ?? ""}
+            voyagerId={today?.id ?? ""}
             senderNickname={nickname}
           />
           <MinihomeGuestbookCard
             voyagerId={today?.id ?? ""}
+            voyagerNickname={today?.nickname ?? ""}
             senderNickname={nickname}
           />
         </div>
@@ -423,9 +428,11 @@ function Avatar({ src, nickname }: { src?: string; nickname: string }) {
 
 function KeywordCard({
   voyagerNickname,
+  voyagerId,
   senderNickname,
 }: {
   voyagerNickname: string;
+  voyagerId: string;
   senderNickname: string | null;
 }) {
   const [value, setValue] = useState("");
@@ -451,6 +458,12 @@ function KeywordCard({
         authorNickname: senderNickname,
         createdAt: serverTimestamp(),
       });
+      await logActivity(
+        "keyword",
+        voyagerNickname,
+        `${voyagerNickname}님의 키워드 '${truncate(text, 15)}'${josa(text, "이/가")} 추가되었어요`,
+        `/members/${voyagerId}`,
+      );
       setDone(true);
       setValue("");
       setTimeout(() => setDone(false), 2200);
@@ -515,9 +528,11 @@ function KeywordCard({
 
 function MinihomeGuestbookCard({
   voyagerId,
+  voyagerNickname,
   senderNickname,
 }: {
   voyagerId: string;
+  voyagerNickname: string;
   senderNickname: string | null;
 }) {
   const [value, setValue] = useState("");
@@ -531,11 +546,29 @@ function MinihomeGuestbookCard({
     if (!message) return;
     setBusy(true);
     try {
-      await addDoc(collection(db, "members", voyagerId, "guestbook"), {
-        nickname: senderNickname,
-        message,
-        createdAt: serverTimestamp(),
-      });
+      const entryRef = await addDoc(
+        collection(db, "members", voyagerId, "guestbook"),
+        {
+          nickname: senderNickname,
+          message,
+          createdAt: serverTimestamp(),
+        },
+      );
+      if (voyagerNickname) {
+        await logActivity(
+          "guestbook",
+          senderNickname,
+          `${voyagerNickname}님의 방명록에 '${truncate(message, 25)}'${josa(message, "이/가")} 달렸어요`,
+          `/members/${voyagerId}?guestbook=${entryRef.id}`,
+          `members/${voyagerId}/guestbook/${entryRef.id}`,
+        );
+      }
+      await addPoints(
+        senderNickname,
+        "방명록",
+        2,
+        `${voyagerNickname ?? "미니홈피"}님의 방명록에 글 남김`,
+      );
       setDone(true);
       setValue("");
       setTimeout(() => setDone(false), 2200);
