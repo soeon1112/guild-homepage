@@ -17,27 +17,31 @@ import { canSeeGuildTest } from "@/src/lib/guildTest";
 // (canSeeGuildTest is open to every signed-in member since the
 // 2026-05-03 full release). Click → /guild-test.
 //
-// Moon animation: single keyframe drives BOTH transform: translateY
-// (0 → -3 px) and filter: drop-shadow (cream glow 0.55 → 0.95 alpha,
-// 8 → 12 px blur) on the SAME wrapper element — so the crescent and
-// its glow are mathematically inseparable, never desync. 5 s mirrored
-// cycle, ease-in-out sine. Mirrors the RN counterpart's single
-// Animated.View driven by one `useSharedValue` that animates both
-// translateY and shadowOpacity/shadowRadius together.
+// Moon icon — reuses the existing /guild-test intro asset verbatim.
+// `.guildtest-intro-emoji` (defined in app/globals.css for the
+// guildtest intro card) bundles font-size + the pinkish-purple
+// `filter: drop-shadow(0 0 16px rgba(216, 150, 200, 0.6))` recipe;
+// we apply the class directly so any future tweak to that rule
+// flows through to both the banner and the /guild-test page.
+//
+// Animation: a single keyframe drives BOTH transform: translateY
+// (0 → -3 px) and filter: drop-shadow (rgba(216, 150, 200, *), same
+// pinkish-purple as the source class, alpha 0.6 → 1.0, blur 12 →
+// 18 px) on the SAME wrapper element — so the crescent and its glow
+// are mathematically inseparable. 5 s mirrored cycle, ease-in-out
+// sine. Mirrors the RN counterpart's single Animated.View driven
+// by one `useSharedValue` that animates translateY +
+// shadowOpacity + shadowRadius together with the same numeric ranges.
 
 const ANIM_KEYFRAMES = `
 @keyframes dl2-gtb-moon-breath {
   0%, 100% {
     transform: translateY(0);
-    filter:
-      drop-shadow(0 0 8px rgba(254, 245, 230, 0.55))
-      drop-shadow(0 0 16px rgba(254, 245, 230, 0.30));
+    filter: drop-shadow(0 0 12px rgba(216, 150, 200, 0.6));
   }
   50% {
     transform: translateY(-3px);
-    filter:
-      drop-shadow(0 0 12px rgba(254, 245, 230, 0.95))
-      drop-shadow(0 0 24px rgba(254, 245, 230, 0.55));
+    filter: drop-shadow(0 0 18px rgba(216, 150, 200, 1.0));
   }
 }
 `;
@@ -79,36 +83,24 @@ export function GuildTestBanner() {
           }}
         >
           <div className="flex items-center gap-4 px-5 py-4 sm:px-6 sm:py-5">
-            {/* Glowing breathing crescent — single wrapper with the
-                SVG moon inside. CSS `filter: drop-shadow(...)` projects
-                a cream halo that follows the crescent's actual
-                rendered shape (not the wrapper's bounding box), and
-                because both `transform` and `filter` animate on the
-                SAME keyframe of the SAME wrapper, the moon and its
-                glow are inseparable — they breathe as one. */}
+            {/* The /guild-test intro asset reused as-is: the
+                `.guildtest-intro-emoji` class (font-size + pinkish-
+                purple drop-shadow) wraps the same 🌙 emoji used on
+                the intro card. Inline overrides shrink it for the
+                banner row and zero out the intro-specific margin;
+                the keyframe owns `filter` for the breathing glow. */}
             <span
-              className="flex h-14 w-14 flex-shrink-0 items-center justify-center"
               aria-hidden
+              className="guildtest-intro-emoji flex h-14 w-14 flex-shrink-0 items-center justify-center"
               style={{
+                fontSize: "2.25rem",
+                lineHeight: 1,
+                margin: 0,
                 animation: "dl2-gtb-moon-breath 5s ease-in-out infinite",
                 willChange: "transform, filter",
               }}
             >
-              <svg viewBox="0 0 32 32" className="h-9 w-9">
-                <defs>
-                  <mask id="dl2-gtb-crescent-mask">
-                    <rect width="32" height="32" fill="white" />
-                    <circle cx="23" cy="16" r="10" fill="black" />
-                  </mask>
-                </defs>
-                <circle
-                  cx="18"
-                  cy="16"
-                  r="11"
-                  fill="#fef0c8"
-                  mask="url(#dl2-gtb-crescent-mask)"
-                />
-              </svg>
+              🌙
             </span>
 
             <span className="min-w-0 flex-1">
