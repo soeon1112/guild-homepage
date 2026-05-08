@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import {
   addDoc,
   collection,
@@ -367,9 +368,14 @@ function ComposeModal({
     setSending(false);
   };
 
-  return (
+  // Portal-mount to body so the modal escapes the parent .main-content
+  // z-10 stacking-context trap. Without this, even z-[1000] inside the
+  // main column would still render below sibling-of-main fixed FABs
+  // (FloatingChat z-[200], FloatingPet z-[200], BottomNav z-40).
+  if (typeof document === "undefined") return null;
+  return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center px-4 py-6"
+      className="fixed inset-0 z-[1000] flex items-center justify-center px-4 py-6"
       style={{ background: "rgba(11, 8, 33, 0.65)" }}
       onClick={onClose}
     >
@@ -467,7 +473,8 @@ function ComposeModal({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -504,9 +511,11 @@ function InboxModal({
     }
   };
 
-  return (
+  // Portal-mount to body — see ComposeModal for the same z-index trap.
+  if (typeof document === "undefined") return null;
+  return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center px-4 py-6"
+      className="fixed inset-0 z-[1000] flex items-center justify-center px-4 py-6"
       style={{ background: "rgba(11, 8, 33, 0.65)" }}
       onClick={onClose}
     >
@@ -638,6 +647,7 @@ function InboxModal({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
