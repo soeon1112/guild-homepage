@@ -43,6 +43,7 @@ import { handleEvent } from "@/src/lib/badgeCheck";
 import { BgmPlayer } from "./BgmPlayer";
 import Wardrobe from "./Wardrobe";
 import { KeywordsSection } from "./KeywordsSection";
+import ProfileCropModal from "@/app/components/shared/ProfileCropModal";
 
 export type MemberDoc = {
   nickname: string;
@@ -120,6 +121,10 @@ export function ProfileSection({
   const [uploading, setUploading] = useState(false);
   const [claiming, setClaiming] = useState(false);
   const [showWardrobe, setShowWardrobe] = useState(false);
+  // Picked file → crop modal staging. Set by the <input> onChange,
+  // cleared either by ProfileCropModal cancel/confirm. Holds the user's
+  // raw upload until they pick a 1:1 frame.
+  const [cropFile, setCropFile] = useState<File | null>(null);
 
   const nickname = member?.nickname ?? "";
 
@@ -332,7 +337,10 @@ export function ProfileSection({
     setSaving(false);
   };
 
-  const handleImageUpload = async (file: File) => {
+  // Accepts Blob too — ProfileCropModal hands us a JPEG Blob (canvas
+  // re-encode) instead of the raw File the user picked. uploadBytes
+  // takes either, so we just widen the type.
+  const handleImageUpload = async (file: Blob | File) => {
     if (!member) return;
     setUploading(true);
     try {
@@ -408,6 +416,7 @@ export function ProfileSection({
   const moodEmoji = getMoodEmoji(member.mood);
 
   return (
+    <>
     <section
       className="relative overflow-hidden rounded-2xl px-5 py-7 sm:px-6 sm:py-8"
       style={{
@@ -502,7 +511,10 @@ export function ProfileSection({
                 style={{ display: "none" }}
                 onChange={(e) => {
                   const f = e.target.files?.[0];
-                  if (f) handleImageUpload(f);
+                  if (f) setCropFile(f);
+                  // Reset value so picking the same file twice in a row
+                  // still fires onChange (otherwise the browser dedupes).
+                  e.target.value = "";
                 }}
               />
             </label>
@@ -765,6 +777,17 @@ export function ProfileSection({
         </motion.div>
       </div>
     </section>
+    {cropFile && (
+      <ProfileCropModal
+        file={cropFile}
+        onCancel={() => setCropFile(null)}
+        onConfirm={async (blob) => {
+          await handleImageUpload(blob);
+          setCropFile(null);
+        }}
+      />
+    )}
+    </>
   );
 }
 

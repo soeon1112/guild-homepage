@@ -28,6 +28,7 @@ import { handleEvent } from "@/src/lib/badgeCheck";
 import { BgmPlayerD2 } from "./BgmPlayerD2";
 import Wardrobe from "./Wardrobe";
 import { KeywordsSectionD2 } from "./KeywordsSectionD2";
+import ProfileCropModal from "@/app/components/shared/ProfileCropModal";
 import type { MemberDoc } from "./ProfileSection";
 
 // dawnlight2 미니홈피 1단계 — 프로필 영역.
@@ -106,6 +107,9 @@ export function ProfileSectionD2({
   const [uploading, setUploading] = useState(false);
   const [claiming, setClaiming] = useState(false);
   const [showWardrobe, setShowWardrobe] = useState(false);
+  // Picked file → crop modal staging (same pattern as cosmic ProfileSection).
+  // Cleared by ProfileCropModal cancel/confirm.
+  const [cropFile, setCropFile] = useState<File | null>(null);
 
   const startEdit = () => {
     setEditStatus(member?.statusMessage ?? "");
@@ -300,7 +304,9 @@ export function ProfileSectionD2({
     setSaving(false);
   };
 
-  const handleImageUpload = async (file: File) => {
+  // Accepts Blob too — ProfileCropModal hands us a JPEG Blob (canvas
+  // re-encode) instead of the raw File the user picked.
+  const handleImageUpload = async (file: Blob | File) => {
     if (!member) return;
     setUploading(true);
     try {
@@ -390,6 +396,7 @@ export function ProfileSectionD2({
   const currentMbti = avatarData?.mbti ?? "";
 
   return (
+    <>
     <section
       className="relative overflow-hidden rounded-2xl"
       style={{
@@ -483,7 +490,9 @@ export function ProfileSectionD2({
                   style={{ display: "none" }}
                   onChange={(e) => {
                     const f = e.target.files?.[0];
-                    if (f) handleImageUpload(f);
+                    if (f) setCropFile(f);
+                    // Reset value so picking the same file twice fires onChange.
+                    e.target.value = "";
                   }}
                 />
               </label>
@@ -780,6 +789,18 @@ export function ProfileSectionD2({
         </div>
       </div>
     </section>
+    {cropFile && (
+      <ProfileCropModal
+        file={cropFile}
+        dawnlight2
+        onCancel={() => setCropFile(null)}
+        onConfirm={async (blob) => {
+          await handleImageUpload(blob);
+          setCropFile(null);
+        }}
+      />
+    )}
+    </>
   );
 }
 
