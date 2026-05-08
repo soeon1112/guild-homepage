@@ -568,6 +568,7 @@ function BoardCommentItem({
             display: "flex",
             alignItems: "center",
             gap: "0.6rem",
+            flexShrink: 0,
           }}
         >
           <span className="board-comment-date">{formatDate(comment.createdAt)}</span>
@@ -616,6 +617,7 @@ function BoardCommentItem({
                           display: "flex",
                           alignItems: "center",
                           gap: "0.6rem",
+                          flexShrink: 0,
                         }}
                       >
                         <span className="board-comment-date">
@@ -651,6 +653,7 @@ function BoardCommentItem({
                         display: "flex",
                         alignItems: "center",
                         gap: "0.6rem",
+                        flexShrink: 0,
                       }}
                     >
                       <span className="board-comment-date">

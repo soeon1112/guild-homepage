@@ -9840,6 +9840,9 @@ body.has-redesigned-header .bg-scene {
   color: #5c3a1f;
   font-weight: 600;
   font-size: 12px;
+  flex: 1 1 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 /* Spacing — Dl2TitlePrefix has its own `mr-1` (4 px) right margin.
    The cosmic .board-comment-header sets `gap: 0.6rem` (10 px), which
@@ -10570,6 +10573,9 @@ body.has-redesigned-header .bg-scene {
   font-weight: 600 !important;
   font-size: 12px !important;
   font-family: 'Pretendard', system-ui, sans-serif;
+  flex: 1 1 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .dl2-minihome #minihome-guestbook .dl2-gb-date {
   color: #5a7090;
@@ -10621,6 +10627,9 @@ body.has-redesigned-header .bg-scene {
   font-weight: 600 !important;
   font-size: 12px !important;
   font-family: 'Pretendard', system-ui, sans-serif;
+  flex: 1 1 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .dl2-photo-comment-header .title-prefix {
   color: #8a6710 !important;
@@ -10632,6 +10641,7 @@ body.has-redesigned-header .bg-scene {
   display: flex;
   align-items: center;
   gap: 0.6rem;
+  flex-shrink: 0;
 }
 .dl2-photo-comment-date {
   color: #5a7090;
@@ -10675,6 +10685,18 @@ body.has-redesigned-header .bg-scene {
 /* 답글 hanging-indent: 좌측 ↳ 고정 + 우측 column (header + body wrap).
    본문이 두 번째 줄로 넘어가도 화살표 우측(칭호 시작점)에 정렬됨.
    유리병 쪽지 / 앨범 모달 / 사진첩 모달 / 게시판 답글 모두 reuse. */
+
+/* commentHeader 의 NicknameLink wrap 을 flex item 으로 — 닉네임이
+   길어도 우측 actions 영역 침범 X. min-width: 0 (flex item 의 default
+   min-width auto 가 줄바꿈 방해, 0 으로 풀어야 wrap 동작). */
+.dl2-minihome #minihome-guestbook .nickname-link-wrap,
+.dl2-photo-comment-header .nickname-link-wrap,
+.dl2-board .board-comment-header .nickname-link-wrap {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .dl2-reply-row {
   display: flex;
   align-items: flex-start;

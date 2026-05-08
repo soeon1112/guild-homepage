@@ -540,7 +540,7 @@ function GuestbookItemD2({
           hideTitle
         />
         <div
-          className="flex items-center"
+          className="flex flex-shrink-0 items-center"
           style={{ marginLeft: "auto", gap: "0.6rem" }}
         >
           <span className="dl2-gb-date">{formatTime(entry.createdAt)}</span>
@@ -617,7 +617,7 @@ function GuestbookItemD2({
                     hideTitle
                   />
                   <div
-                    className="flex items-center"
+                    className="flex flex-shrink-0 items-center"
                     style={{ marginLeft: "auto", gap: "0.6rem" }}
                   >
                     <span className="dl2-gb-date">
