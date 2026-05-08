@@ -7,24 +7,31 @@ import { canSeeGuildTest } from "@/src/lib/guildTest";
 
 // 마음 들여다보기 — entry banner for /guild-test self-check.
 //
-// Verbatim copy from the deleted cosmic GuildTestBanner ("나는 새벽빛에
-// 어울리는 별일까?", "솔직한 마음을 들려주세요 ✨", "마음 들여다보기 →").
-// Visible to every signed-in member (canSeeGuildTest open since the
+// V3 — escapes the "3-tier peach sandwich" between TodaysHorizon's
+// noctilucent sky and WhispersFeed's flat peach. The card now reads
+// as a quiet night-sky panel (lavender → deep navy-purple vertical
+// gradient) with a glowing breathing moon, and a warm peach CTA pill
+// snaps the click target back into the eye after the cool surface.
+//
+// Body copy + visibility gate verbatim from the cosmic original
+// (canSeeGuildTest is open to every signed-in member since the
 // 2026-05-03 full release). Click → /guild-test.
 //
-// V2 — distinct from WhispersFeed's flat peach card:
-//   • Surface: warm 노을 linear-gradient (peach → coral → deep rose), 135°.
-//     Same warm family as the other dl2 widgets so it doesn't look out
-//     of place, but the gradient direction + deeper rose endpoint make
-//     it read as a CTA banner rather than an activity card.
-//   • Icon: deep twilight disc (`#2a2748`) — "window into night sky" —
-//     with a cream SVG crescent (full circle masked by an offset black
-//     circle = bite) + 2 tiny cream sparkle dots. Replaces the cream-
-//     yellow disc that was reading as a banana.
-//   • CTA pill: dark ink bg + cream text — high contrast against the
-//     warm gradient so the click target stands out.
-//   • Soft warm-rose drop-shadow under the card to lift it above the
-//     noctilucent gradient without overpowering siblings.
+// Moon animation: moon body translateY 0 → -3 px and halo opacity
+// 0.7 → 1.0 over a 5 s mirrored cycle (ease-in-out sine), so the
+// moon visually breathes / lifts inside its glow. Mirrors the
+// Reanimated useSharedValue loop in the RN counterpart.
+
+const ANIM_KEYFRAMES = `
+@keyframes dl2-gtb-moon-breath {
+  0%, 100% { transform: translateY(0); }
+  50%     { transform: translateY(-3px); }
+}
+@keyframes dl2-gtb-halo-breath {
+  0%, 100% { opacity: 0.7; }
+  50%     { opacity: 1; }
+}
+`;
 
 export function GuildTestBanner() {
   const { nickname, ready } = useAuth();
@@ -32,103 +39,108 @@ export function GuildTestBanner() {
   if (!canSeeGuildTest(nickname)) return null;
 
   return (
-    <section
-      aria-labelledby="dl2-guildtest-banner"
-      className="mx-auto w-full max-w-2xl px-5 pb-12 pt-2 sm:px-6 sm:pb-16"
-    >
-      <header className="mb-3 px-1">
-        <h2
-          id="dl2-guildtest-banner"
-          className="text-lg font-semibold leading-tight text-cream sm:text-xl"
-        >
-          마음 들여다보기
-        </h2>
-        <p className="mt-1 text-[10px] uppercase tracking-[0.32em] text-mist-lavender">
-          Self Check
-        </p>
-      </header>
-
-      <Link
-        href="/guild-test"
-        aria-label="셀프 점검: 나는 새벽빛에 어울리는 별일까?"
-        className="group block overflow-hidden rounded-2xl transition-shadow hover:shadow-xl active:opacity-90"
-        style={{
-          background:
-            "linear-gradient(135deg, #ffc8a8 0%, #ed9b85 55%, #d27a78 100%)",
-          border: "1px solid rgba(120, 50, 50, 0.22)",
-          boxShadow:
-            "0 6px 22px -10px rgba(210, 122, 120, 0.55), 0 2px 6px -2px rgba(120, 50, 30, 0.18)",
-        }}
+    <>
+      <style dangerouslySetInnerHTML={{ __html: ANIM_KEYFRAMES }} />
+      <section
+        aria-labelledby="dl2-guildtest-banner"
+        className="mx-auto w-full max-w-2xl px-5 pb-12 pt-2 sm:px-6 sm:pb-16"
       >
-        <div className="flex items-center gap-4 px-5 py-4 sm:px-6 sm:py-5">
-          {/* Night-sky window with crescent moon. The mask-based
-              crescent (full cream circle masked by an offset black
-              circle = bite) renders identically on web SVG and
-              react-native-svg, so the RN port stays 1:1. */}
-          <span
-            className="relative flex h-12 w-12 flex-shrink-0 items-center justify-center sm:h-14 sm:w-14"
-            aria-hidden
+        <header className="mb-3 px-1">
+          <h2
+            id="dl2-guildtest-banner"
+            className="text-lg font-semibold leading-tight text-cream sm:text-xl"
           >
-            <svg viewBox="0 0 48 48" className="h-full w-full">
-              <defs>
-                <mask id="dl2-gtb-moon-bite">
-                  <rect width="48" height="48" fill="white" />
-                  <circle cx="28" cy="24" r="11" fill="black" />
-                </mask>
-              </defs>
-              <circle cx="24" cy="24" r="24" fill="#2a2748" />
-              <circle
-                cx="24"
-                cy="24"
-                r="23"
-                fill="none"
-                stroke="rgba(255,245,216,0.20)"
-                strokeWidth="0.8"
-              />
-              <circle
-                cx="24"
-                cy="24"
-                r="13"
-                fill="#fff5d8"
-                mask="url(#dl2-gtb-moon-bite)"
-              />
-              <circle cx="38" cy="13" r="1.3" fill="#fff5d8" opacity="0.9" />
-              <circle cx="40" cy="33" r="0.9" fill="#fff5d8" opacity="0.65" />
-            </svg>
-          </span>
+            마음 들여다보기
+          </h2>
+          <p className="mt-1 text-[10px] uppercase tracking-[0.32em] text-mist-lavender">
+            Self Check
+          </p>
+        </header>
 
-          <span className="min-w-0 flex-1">
+        <Link
+          href="/guild-test"
+          aria-label="셀프 점검: 나는 새벽빛에 어울리는 별일까?"
+          className="group block overflow-hidden rounded-2xl transition-[transform,box-shadow] duration-300 ease-out hover:-translate-y-0.5 hover:shadow-2xl active:translate-y-0 active:opacity-95"
+          style={{
+            background:
+              "linear-gradient(180deg, #6e5f9a 0%, #4a3f78 50%, #2e2c50 100%)",
+            border: "1px solid rgba(200, 184, 232, 0.28)",
+            boxShadow:
+              "0 10px 30px -12px rgba(140, 120, 200, 0.55), 0 2px 8px -2px rgba(40, 30, 80, 0.4)",
+          }}
+        >
+          <div className="flex items-center gap-4 px-5 py-4 sm:px-6 sm:py-5">
+            {/* Glowing breathing moon — three concentric cream halos +
+                a solid cream body. The body translates ±3 px and the
+                two outer halos pulse opacity 0.7→1.0 on the same 5 s
+                cycle, so the moon reads as gently breathing inside
+                its glow. */}
             <span
-              className="block font-serif-kr text-[15px] italic leading-snug sm:text-base"
-              style={{ color: "#3a1810" }}
+              className="relative flex h-14 w-14 flex-shrink-0 items-center justify-center"
+              aria-hidden
             >
-              나는 새벽빛에 어울리는 별일까?
+              <span
+                className="absolute h-14 w-14 rounded-full"
+                style={{
+                  background: "rgba(254, 245, 230, 0.18)",
+                  animation: "dl2-gtb-halo-breath 5s ease-in-out infinite",
+                }}
+              />
+              <span
+                className="absolute h-10 w-10 rounded-full"
+                style={{
+                  background: "rgba(254, 245, 230, 0.28)",
+                  animation: "dl2-gtb-halo-breath 5s ease-in-out infinite",
+                }}
+              />
+              <span
+                className="absolute h-7 w-7 rounded-full"
+                style={{ background: "rgba(254, 245, 230, 0.5)" }}
+              />
+              <span
+                className="relative h-[22px] w-[22px] rounded-full"
+                style={{
+                  background:
+                    "radial-gradient(circle at 35% 35%, #fff8e0 0%, #fef0c8 55%, #f5d8a0 100%)",
+                  boxShadow: "inset 0 -1px 2px rgba(180, 130, 60, 0.25)",
+                  animation: "dl2-gtb-moon-breath 5s ease-in-out infinite",
+                }}
+              />
             </span>
-            <span
-              className="mt-1 block text-[12px] leading-snug sm:text-[13px]"
-              style={{ color: "#7a3838" }}
-            >
-              솔직한 마음을 들려주세요 ✨
-            </span>
-          </span>
 
-          <span
-            className="hidden flex-shrink-0 items-center gap-1 rounded-full px-4 py-2 text-[11px] font-semibold transition-transform group-hover:translate-x-0.5 sm:inline-flex"
-            style={{
-              background: "#3a1810",
-              color: "#fff5d8",
-              boxShadow: "0 2px 8px -2px rgba(58, 24, 16, 0.5)",
-            }}
-          >
-            마음 들여다보기 →
-          </span>
-          <ChevronRight
-            className="h-5 w-5 flex-shrink-0 transition-transform group-hover:translate-x-0.5 sm:hidden"
-            style={{ color: "#3a1810" }}
-            aria-hidden
-          />
-        </div>
-      </Link>
-    </section>
+            <span className="min-w-0 flex-1">
+              <span
+                className="block font-serif-kr text-[15px] italic leading-snug sm:text-base"
+                style={{ color: "#fef5e6" }}
+              >
+                나는 새벽빛에 어울리는 별일까?
+              </span>
+              <span
+                className="mt-1 block text-[12px] leading-snug sm:text-[13px]"
+                style={{ color: "rgba(254, 245, 230, 0.72)" }}
+              >
+                솔직한 마음을 들려주세요 ✨
+              </span>
+            </span>
+
+            <span
+              className="hidden flex-shrink-0 items-center gap-1 rounded-full px-4 py-2 text-[11px] font-semibold transition-transform group-hover:translate-x-0.5 sm:inline-flex"
+              style={{
+                background: "#ffd4b8",
+                color: "#3a1810",
+                boxShadow: "0 2px 10px -2px rgba(120, 80, 60, 0.5)",
+              }}
+            >
+              마음 들여다보기 →
+            </span>
+            <ChevronRight
+              className="h-5 w-5 flex-shrink-0 transition-transform group-hover:translate-x-0.5 sm:hidden"
+              style={{ color: "#ffd4b8" }}
+              aria-hidden
+            />
+          </div>
+        </Link>
+      </section>
+    </>
   );
 }
