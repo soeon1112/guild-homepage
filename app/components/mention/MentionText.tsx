@@ -1,6 +1,6 @@
 "use client";
 
-import type { CSSProperties, ReactElement } from "react";
+import type { CSSProperties, JSX, ReactElement } from "react";
 import { parseMentions } from "@/src/lib/mentions";
 
 // Tailwind v4 layer cascade 함정 회피 — inline style 로만 강조.
