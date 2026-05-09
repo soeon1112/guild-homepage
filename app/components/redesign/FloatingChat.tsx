@@ -30,6 +30,11 @@ import {
 } from "@/src/lib/uiBus";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
 import { Dl2TitlePrefix } from "@/app/components/dawnlight2/widgets/WhispersFeed/Dl2TitlePrefix";
+import {
+  MentionPicker,
+  applyMentionInsert,
+} from "@/app/components/mention/MentionPicker";
+import { MentionText } from "@/app/components/mention/MentionText";
 
 type ChatFileType = "image" | "gif" | "video";
 
@@ -209,7 +214,7 @@ const MessageItem = memo(
                     }
             }
           >
-            {m.message}
+            <MentionText text={m.message} dl2={dl2} />
           </div>
         )}
         {m.imageUrl && (
@@ -272,6 +277,9 @@ export default function FloatingChat() {
   }, [open]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
+  // 멘션 자동완성용 — input 의 cursor 위치를 추적해 MentionPicker 가
+  // `@<query>` 꼬리 감지에 쓴다. null 이면 picker 가 항상 안 뜸.
+  const [mentionCursor, setMentionCursor] = useState<number | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [sending, setSending] = useState(false);
   // Whether the message input currently holds focus AND the device is
@@ -1002,6 +1010,34 @@ export default function FloatingChat() {
                   </div>
                 )}
 
+                {/* @-mention 자동완성 — input row 위 sibling. MentionPicker 가
+                    cursor==null 또는 멘션 꼬리 없을 때 null 을 돌려주므로
+                    conditional 없이 항상 mount. */}
+                <MentionPicker
+                  text={draft}
+                  cursor={mentionCursor}
+                  onSelect={(nickname, range) => {
+                    const result = applyMentionInsert(
+                      draft,
+                      range.start,
+                      range.end,
+                      nickname,
+                    );
+                    setDraft(result.text);
+                    setMentionCursor(result.cursor);
+                    requestAnimationFrame(() => {
+                      if (messageInputRef.current) {
+                        messageInputRef.current.focus();
+                        messageInputRef.current.setSelectionRange(
+                          result.cursor,
+                          result.cursor,
+                        );
+                      }
+                    });
+                  }}
+                  dl2={isDawnlight2}
+                />
+
                 {/* Input row */}
                 <div className="flex items-center gap-1.5">
                   <input
@@ -1047,7 +1083,19 @@ export default function FloatingChat() {
                   <input
                     ref={messageInputRef}
                     value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
+                    onChange={(e) => {
+                      setDraft(e.target.value);
+                      setMentionCursor(e.target.selectionStart);
+                    }}
+                    onSelect={(e) =>
+                      setMentionCursor(e.currentTarget.selectionStart)
+                    }
+                    onClick={(e) =>
+                      setMentionCursor(e.currentTarget.selectionStart)
+                    }
+                    onKeyUp={(e) =>
+                      setMentionCursor(e.currentTarget.selectionStart)
+                    }
                     onFocus={() => setInputFocused(true)}
                     onBlur={() => setInputFocused(false)}
                     onKeyDown={(e) => {
