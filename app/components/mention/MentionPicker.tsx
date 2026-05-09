@@ -64,16 +64,35 @@ export function MentionPicker({
   maxVisible = 6,
 }: Props) {
   const candidates = useMentionCandidates();
-  if (cursor == null) return null;
+  // TEMP DEBUG — 드롭다운 안 뜸 진단용. root cause 확정 후 제거.
+  if (cursor == null) {
+    console.log("[mention-picker] no cursor", { text });
+    return null;
+  }
   const tail = detectMentionTail(text, cursor);
-  if (!tail) return null;
+  if (!tail) {
+    console.log("[mention-picker] no tail", { text, cursor });
+    return null;
+  }
   const q = tail.query.toLowerCase();
   // maxVisible 은 시각 cap (maxHeight 계산) — 후보 자체는 전부 들어간다.
   // 빛나는 별이 6명을 넘으면 ul 안에서 세로 스크롤로 접근.
   const filtered = candidates.filter((c) =>
     q === "" ? true : c.nickname.toLowerCase().normalize("NFC").includes(q),
   );
-  if (filtered.length === 0) return null;
+  // TEMP DEBUG
+  console.log("[mention-picker] enter", {
+    text,
+    cursor,
+    tail,
+    candidatesLength: candidates.length,
+    filteredLength: filtered.length,
+  });
+  if (filtered.length === 0) {
+    console.log("[mention-picker] no candidates after filter");
+    return null;
+  }
+  console.log("[mention-picker] rendering", filtered.length, "items");
 
   const surface = dl2 ? "#fef5e6" : "rgba(26,15,61,0.96)";
   const labelColor = dl2 ? "#2a4570" : "#f4efff";

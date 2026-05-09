@@ -22,6 +22,7 @@ import { handleEvent } from "@/src/lib/badgeCheck";
 import {
   MentionPicker,
   applyMentionInsert,
+  detectMentionTail,
 } from "./mention/MentionPicker";
 import { MentionText } from "./mention/MentionText";
 
@@ -335,6 +336,19 @@ export default function GuildChat() {
                   cursor==null 또는 멘션 꼬리 없을 때 null 을 돌려주므로
                   conditional 없이 항상 mount. inline style 로 강조 —
                   Tailwind v4 layer cascade 함정 회피. */}
+              {/* TEMP DEBUG — 드롭다운 안 뜸 진단용. root cause 확정 후 제거. */}
+              {(() => {
+                const tail =
+                  mentionCursor != null
+                    ? detectMentionTail(draft, mentionCursor)
+                    : null;
+                console.log("[mention-debug:guild]", {
+                  draft,
+                  mentionCursor,
+                  tail,
+                });
+                return null;
+              })()}
               <MentionPicker
                 text={draft}
                 cursor={mentionCursor}

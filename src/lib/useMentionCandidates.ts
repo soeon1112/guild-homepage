@@ -37,12 +37,19 @@ export function useMentionCandidates(): MentionCandidate[] {
       return;
     }
     if (!inflight) {
+      // TEMP DEBUG — 드롭다운 안 뜸 진단용. root cause 확정 후 제거.
+      console.log("[candidates] fetch start");
       inflight = (async () => {
         try {
           const [membersSnap, usersSnap] = await Promise.all([
             getDocs(collection(db, "members")),
             getDocs(collection(db, "users")),
           ]);
+          // TEMP DEBUG
+          console.log("[candidates] firestore reads OK", {
+            members: membersSnap.size,
+            users: usersSnap.size,
+          });
           const memberByNickname = new Map<string, string>();
           membersSnap.forEach((d) => {
             const data = d.data() as { nickname?: string };
@@ -65,10 +72,14 @@ export function useMentionCandidates(): MentionCandidate[] {
             ...out,
           ];
           cached = final;
+          // TEMP DEBUG
+          console.log("[candidates] fetch success", final.length, "items", {
+            sample: final.slice(0, 3).map((c) => c.nickname),
+          });
           return final;
         } catch (e) {
           // 다음 mount 가 다시 시도하도록 inflight 만 reset. cached 는 안 박음.
-          console.warn("[mention] candidates fetch failed:", e);
+          console.warn("[candidates] fetch failed:", e);
           inflight = null;
           return FALLBACK_LIST;
         }
