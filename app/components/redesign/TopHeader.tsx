@@ -245,6 +245,20 @@ export function AuthModal({
     setPw2("");
   };
 
+  // dl2 reskin (2026-05-09) — same structure, dl2 tokens. Card surface
+  // mirrors Dawnlight2Topbar's dropdown (rgba(42,31,74,0.95) +
+  // mist-lavender 0.25α hairline). Title becomes solid cream, submit
+  // is a flat sunsetGold pill, decorative cosmic nebula glows are
+  // dropped. Inputs use a local class so cosmic AUTH_INPUT_CLASS
+  // (still consumed by LoginFormInline) stays untouched.
+  const dl2Input =
+    "w-full rounded-full px-4 py-2.5 text-sm font-serif transition-all backdrop-blur-sm focus:outline-none focus:ring-2";
+  const dl2InputStyle: React.CSSProperties = {
+    border: "1px solid rgba(200, 184, 232, 0.3)",
+    background: "rgba(11, 8, 33, 0.4)",
+    color: "#fef5e6",
+  };
+
   return (
     <motion.div
       className="modal-safe-frame fixed inset-0 z-[70] flex items-center justify-center"
@@ -266,51 +280,32 @@ export function AuthModal({
         onClick={(e) => e.stopPropagation()}
         className="relative w-full max-w-sm overflow-hidden rounded-2xl"
         style={{
-          background: "rgba(26,15,61,0.92)",
-          border: "1px solid rgba(216,150,200,0.3)",
+          background: "rgba(42, 31, 74, 0.95)",
+          border: "1px solid rgba(200, 184, 232, 0.25)",
           boxShadow:
-            "0 20px 60px rgba(0,0,0,0.6), 0 0 40px rgba(107,75,168,0.4)",
+            "0 18px 36px rgba(0, 0, 0, 0.4), 0 0 28px rgba(200, 184, 232, 0.3)",
         }}
         initial={{ scale: 0.95, y: 20, opacity: 0 }}
         animate={{ scale: 1, y: 0, opacity: 1 }}
         exit={{ scale: 0.95, y: 20, opacity: 0 }}
         transition={{ duration: 0.25, ease: "easeOut" }}
       >
-        {/* Decorative nebula glow */}
-        <span
-          aria-hidden
-          className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full"
-          style={{
-            background:
-              "radial-gradient(circle, rgba(216,150,200,0.3) 0%, transparent 65%)",
-            filter: "blur(28px)",
-          }}
-        />
-        <span
-          aria-hidden
-          className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full"
-          style={{
-            background:
-              "radial-gradient(circle, rgba(107,75,168,0.35) 0%, transparent 65%)",
-            filter: "blur(32px)",
-          }}
-        />
-
-        {/* Close */}
+        {/* Close — mirrors Dawnlight2Topbar hamburger */}
         <button
           type="button"
           onClick={onClose}
           aria-label="닫기"
-          className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full text-stardust transition-colors hover:bg-nebula-pink/20"
+          className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200 hover:scale-105"
           style={{
-            background: "rgba(11,8,33,0.6)",
-            border: "1px solid rgba(216,150,200,0.3)",
+            color: "#fef5e6",
+            background: "rgba(11, 8, 33, 0.45)",
+            border: "1px solid rgba(254, 245, 230, 0.4)",
           }}
         >
           <X className="h-4 w-4" />
         </button>
 
-        {/* Title */}
+        {/* Title — solid cream + cream halo (mirrors CreamLogo recolor) */}
         <div className="relative px-6 pb-3 pt-9 text-center">
           <h2
             className="leading-none"
@@ -319,18 +314,17 @@ export function AuthModal({
               fontSize: "28px",
               fontWeight: 300,
               letterSpacing: "0.06em",
-              backgroundImage:
-                "linear-gradient(135deg, #FFE5C4, #D896C8, #6B4BA8)",
-              WebkitBackgroundClip: "text",
-              backgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              color: "transparent",
-              filter: "drop-shadow(0 0 10px rgba(216,150,200,0.45))",
+              color: "#fef5e6",
+              filter:
+                "drop-shadow(0 0 10px rgba(254, 245, 230, 0.45)) drop-shadow(0 0 16px rgba(254, 245, 230, 0.18))",
             }}
           >
             {mode === "login" ? "로그인" : "가입"}
           </h2>
-          <p className="mt-2 font-serif text-[10px] tracking-[0.35em] text-nebula-pink/80 uppercase">
+          <p
+            className="mt-2 font-serif text-[10px] tracking-[0.35em] uppercase"
+            style={{ color: "rgba(200, 184, 232, 0.85)" }}
+          >
             {mode === "login" ? "Welcome Back" : "Join Dawnlight"}
           </p>
         </div>
@@ -349,7 +343,8 @@ export function AuthModal({
             aria-label="닉네임"
             autoComplete={mode === "login" ? "username" : "new-username"}
             autoFocus
-            className={`${AUTH_INPUT_CLASS} w-full px-4 py-2.5 text-sm`}
+            className={dl2Input}
+            style={dl2InputStyle}
           />
           <input
             type="password"
@@ -359,7 +354,8 @@ export function AuthModal({
             maxLength={40}
             aria-label="비밀번호"
             autoComplete={mode === "login" ? "current-password" : "new-password"}
-            className={`${AUTH_INPUT_CLASS} w-full px-4 py-2.5 text-sm`}
+            className={dl2Input}
+            style={dl2InputStyle}
           />
           {mode === "signup" && (
             <input
@@ -370,7 +366,8 @@ export function AuthModal({
               maxLength={40}
               aria-label="비밀번호 확인"
               autoComplete="new-password"
-              className={`${AUTH_INPUT_CLASS} w-full px-4 py-2.5 text-sm`}
+              className={dl2Input}
+              style={dl2InputStyle}
             />
           )}
 
@@ -383,13 +380,17 @@ export function AuthModal({
             </p>
           )}
 
+          {/* Submit — solid sunsetGold pill (dl2 primary CTA), mirrors
+              the Send button on the chat panel and "남기기" on
+              NoteToTheSky. Flat fill with a warm glow, no gradient. */}
           <button
             type="submit"
             disabled={busy}
-            className="mt-1 w-full rounded-full py-2.5 font-serif text-sm font-medium tracking-wider text-abyss-deep transition-all duration-200 hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-1 w-full rounded-full py-2.5 font-serif text-sm font-medium tracking-wider transition-all duration-200 hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-60"
             style={{
-              background: "linear-gradient(135deg, #FFE5C4, #FFB5A7)",
-              boxShadow: "0 0 14px rgba(255,181,167,0.5)",
+              background: "#ffc785",
+              color: "#2a1f4a",
+              boxShadow: "0 0 14px rgba(255, 199, 133, 0.45)",
             }}
           >
             {busy ? "처리 중..." : mode === "login" ? "로그인" : "가입하기"}
@@ -400,17 +401,21 @@ export function AuthModal({
               <button
                 type="button"
                 onClick={() => switchMode("signup")}
-                className="font-serif text-[11px] italic text-text-sub transition-colors hover:text-stardust"
+                className="font-serif text-[11px] italic transition-colors"
+                style={{ color: "rgba(200, 184, 232, 0.85)" }}
               >
-                처음 오셨나요? <span className="text-stardust">가입하기</span>
+                처음 오셨나요?{" "}
+                <span style={{ color: "#ffc785" }}>가입하기</span>
               </button>
             ) : (
               <button
                 type="button"
                 onClick={() => switchMode("login")}
-                className="font-serif text-[11px] italic text-text-sub transition-colors hover:text-stardust"
+                className="font-serif text-[11px] italic transition-colors"
+                style={{ color: "rgba(200, 184, 232, 0.85)" }}
               >
-                이미 계정이 있나요? <span className="text-stardust">로그인</span>
+                이미 계정이 있나요?{" "}
+                <span style={{ color: "#ffc785" }}>로그인</span>
               </button>
             )}
           </div>
