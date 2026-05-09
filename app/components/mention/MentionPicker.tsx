@@ -52,6 +52,10 @@ type Props = {
   maxVisible?: number;
 };
 
+// 한 행의 대략 height (padding 8×2 + line-height ~20). 스크롤 박스 높이
+// 계산용 — maxVisible 행만 보이고 나머지는 안에서 스크롤.
+const ROW_HEIGHT = 36;
+
 export function MentionPicker({
   text,
   cursor,
@@ -64,11 +68,11 @@ export function MentionPicker({
   const tail = detectMentionTail(text, cursor);
   if (!tail) return null;
   const q = tail.query.toLowerCase();
-  const filtered = candidates
-    .filter((c) =>
-      q === "" ? true : c.nickname.toLowerCase().normalize("NFC").includes(q),
-    )
-    .slice(0, maxVisible);
+  // maxVisible 은 시각 cap (maxHeight 계산) — 후보 자체는 전부 들어간다.
+  // 빛나는 별이 6명을 넘으면 ul 안에서 세로 스크롤로 접근.
+  const filtered = candidates.filter((c) =>
+    q === "" ? true : c.nickname.toLowerCase().normalize("NFC").includes(q),
+  );
   if (filtered.length === 0) return null;
 
   const surface = dl2 ? "#fef5e6" : "rgba(26,15,61,0.96)";
@@ -87,6 +91,8 @@ export function MentionPicker({
         border: `1px solid ${borderC}`,
         borderRadius: 12,
         boxShadow: "0 6px 20px rgba(0,0,0,0.08)",
+        maxHeight: ROW_HEIGHT * maxVisible,
+        overflowY: "auto",
       }}
     >
       {filtered.map((c) => (
