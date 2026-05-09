@@ -9,6 +9,17 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 
+// 알려진 type 키 (서버 activityNormalize MESSAGE_REWRITERS 와 동기화):
+//   notice, board, board_comment, schedule, album, album_comment,
+//   combat, title, status, mood, bgm, mbti, profile_image, guestbook,
+//   adventure, photo, minihome_photo_comment, photo_comment, keyword,
+//   badge, proposal, mention.
+//
+// "mention" 은 서버 트리거(functions/src/triggers/mention.ts) 가 admin SDK 로
+// 직접 add — 클라이언트는 logActivity("mention", ...) 호출 X. 이 클라 함수에
+// 멘션 type 으로 호출이 들어오면 보안 규칙(activity 쓰기 권한)을 통과해도
+// 서버측 직접 트리거가 똑같은 활동을 한 번 더 만들 수 있다.
+
 export async function logActivity(
   type: string,
   nickname: string,
