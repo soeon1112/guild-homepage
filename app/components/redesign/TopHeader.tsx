@@ -266,6 +266,14 @@ export function AuthModal({
         background: "rgba(11,8,33,0.8)",
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
+        // `.modal-safe-frame { align-items: flex-start }` (globals.css)
+        // overrides Tailwind's `items-center` because unlayered globals
+        // beat utility-layer (Tailwind v4 cascade quirk — memory note).
+        // Inline `safe center` wins via specificity AND falls back to
+        // start when content overflows the frame, preserving the
+        // single-scroll + scrollIntoView keyboard-avoidance behaviour
+        // that other shared modals depend on.
+        alignItems: "safe center",
       }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
