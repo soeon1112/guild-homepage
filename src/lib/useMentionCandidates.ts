@@ -20,6 +20,13 @@ const FALLBACK_LIST: MentionCandidate[] = [
   { nickname: ALL_MENTION_KEYWORD, isAll: true },
 ];
 
+// 닉네임 첫 글자가 한글 음절(가-힣) 인지. 영문/숫자/특수문자 그룹과 한글
+// 그룹을 분리 정렬할 때 사용 — 영문 우선이면 한글이 false 보다 뒤로 간다.
+function isHangulStart(s: string): boolean {
+  const c = (s ?? "").charCodeAt(0);
+  return c >= 0xac00 && c <= 0xd7a3;
+}
+
 let cached: MentionCandidate[] | null = null;
 let inflight: Promise<MentionCandidate[]> | null = null;
 
@@ -59,7 +66,14 @@ export function useMentionCandidates(): MentionCandidate[] {
             if (!memberId) return;
             out.push({ nickname, memberId });
           });
-          out.sort((a, b) => a.nickname.localeCompare(b.nickname, "ko"));
+          // 영문/숫자/특수문자 그룹이 먼저, 한글 그룹이 그 다음. members 페이지의
+          // nicknameCompare 와 같은 결. 각 그룹 내부는 자연 정렬.
+          out.sort((a, b) => {
+            const aKo = isHangulStart(a.nickname);
+            const bKo = isHangulStart(b.nickname);
+            if (aKo !== bKo) return aKo ? 1 : -1;
+            return a.nickname.localeCompare(b.nickname, aKo ? "ko" : "en");
+          });
           const final: MentionCandidate[] = [
             { nickname: ALL_MENTION_KEYWORD, isAll: true },
             ...out,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -17,6 +17,10 @@ import { logActivity } from "@/src/lib/activity";
 import { addPoints } from "@/src/lib/points";
 import { handleEvent } from "@/src/lib/badgeCheck";
 import { josa, truncate } from "@/src/lib/text";
+import {
+  MentionPicker,
+  applyMentionInsert,
+} from "@/app/components/mention/MentionPicker";
 
 type AttachmentType = "image" | "video" | "gif";
 
@@ -40,6 +44,11 @@ export default function BoardWritePage() {
   const isDawnlight2 = useDawnlight2();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  // 멘션 자동완성용 cursor 추적. content textarea 의 selectionStart.
+  const [contentMentionCursor, setContentMentionCursor] = useState<
+    number | null
+  >(null);
+  const contentRef = useRef<HTMLTextAreaElement | null>(null);
   const [pending, setPending] = useState<PendingFile[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
@@ -154,11 +163,49 @@ export default function BoardWritePage() {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
+        {/* @-mention 자동완성 — textarea 위 sibling. */}
+        <MentionPicker
+          text={content}
+          cursor={contentMentionCursor}
+          onSelect={(nickname, range) => {
+            const result = applyMentionInsert(
+              content,
+              range.start,
+              range.end,
+              nickname,
+            );
+            setContent(result.text);
+            setContentMentionCursor(result.cursor);
+            requestAnimationFrame(() => {
+              if (contentRef.current) {
+                contentRef.current.focus();
+                contentRef.current.setSelectionRange(
+                  result.cursor,
+                  result.cursor,
+                );
+              }
+            });
+          }}
+          dl2
+        />
         <textarea
+          ref={contentRef}
           className="board-input board-textarea"
           placeholder="내용을 입력하세요"
           value={content}
-          onChange={(e) => setContent(e.target.value)}
+          onChange={(e) => {
+            setContent(e.target.value);
+            setContentMentionCursor(e.target.selectionStart);
+          }}
+          onSelect={(e) =>
+            setContentMentionCursor(e.currentTarget.selectionStart)
+          }
+          onClick={(e) =>
+            setContentMentionCursor(e.currentTarget.selectionStart)
+          }
+          onKeyUp={(e) =>
+            setContentMentionCursor(e.currentTarget.selectionStart)
+          }
           rows={10}
         />
 

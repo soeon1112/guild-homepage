@@ -31,6 +31,11 @@ import { useDawnlight2 } from "@/src/lib/featureFlags";
 import { formatSmart } from "@/src/lib/formatSmart";
 import { handleEvent } from "@/src/lib/badgeCheck";
 import { josa, truncate } from "@/src/lib/text";
+import {
+  MentionPicker,
+  applyMentionInsert,
+} from "@/app/components/mention/MentionPicker";
+import { MentionText } from "@/app/components/mention/MentionText";
 
 function extractYouTubeId(url: string): string | null {
   let m = url.match(/youtu\.be\/([A-Za-z0-9_-]{11})/);
@@ -89,6 +94,11 @@ function BoardDetailPageInner({
   const [loading, setLoading] = useState(true);
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentContent, setCommentContent] = useState("");
+  // 멘션 자동완성용 cursor 추적.
+  const [commentMentionCursor, setCommentMentionCursor] = useState<
+    number | null
+  >(null);
+  const commentInputRef = useRef<HTMLInputElement | null>(null);
   const [commentImage, setCommentImage] = useState<File | null>(null);
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [openReplyId, setOpenReplyId] = useState<string | null>(null);
@@ -309,7 +319,10 @@ function BoardDetailPageInner({
         </div>
         <div className="board-detail-body">
           {post.content.split(/(https?:\/\/[^\s]+)/g).map((part, i) => {
-            if (!/^https?:\/\//.test(part)) return part;
+            if (!/^https?:\/\//.test(part)) {
+              // plain text 토큰 안에서 멘션 파싱. inline span 강조.
+              return <MentionText key={i} text={part} dl2 />;
+            }
             const ytId = extractYouTubeId(part);
             if (ytId) {
               return (
@@ -393,12 +406,51 @@ function BoardDetailPageInner({
         </div>
 
         {loginNick ? (
+          <>
+          {/* @-mention 자동완성 — comment input row 위 sibling. */}
+          <MentionPicker
+            text={commentContent}
+            cursor={commentMentionCursor}
+            onSelect={(nickname, range) => {
+              const result = applyMentionInsert(
+                commentContent,
+                range.start,
+                range.end,
+                nickname,
+              );
+              setCommentContent(result.text);
+              setCommentMentionCursor(result.cursor);
+              requestAnimationFrame(() => {
+                if (commentInputRef.current) {
+                  commentInputRef.current.focus();
+                  commentInputRef.current.setSelectionRange(
+                    result.cursor,
+                    result.cursor,
+                  );
+                }
+              });
+            }}
+            dl2
+          />
           <div className="board-comment-form cbar">
             <input
+              ref={commentInputRef}
               className="board-input board-comment-content-input"
               placeholder="댓글을 입력하세요"
               value={commentContent}
-              onChange={(e) => setCommentContent(e.target.value)}
+              onChange={(e) => {
+                setCommentContent(e.target.value);
+                setCommentMentionCursor(e.target.selectionStart);
+              }}
+              onSelect={(e) =>
+                setCommentMentionCursor(e.currentTarget.selectionStart)
+              }
+              onClick={(e) =>
+                setCommentMentionCursor(e.currentTarget.selectionStart)
+              }
+              onKeyUp={(e) =>
+                setCommentMentionCursor(e.currentTarget.selectionStart)
+              }
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.nativeEvent.isComposing) handleAddComment();
               }}
@@ -416,6 +468,7 @@ function BoardDetailPageInner({
               등록
             </button>
           </div>
+          </>
         ) : (
           <p className="login-required">로그인이 필요합니다.</p>
         )}
@@ -566,7 +619,7 @@ function BoardCommentItem({
                 hideTitle
               />
             </span>
-            <p className="board-comment-body">{comment.content}</p>
+            <MentionText as="p" className="board-comment-body" text={comment.content} dl2 />
             {comment.imageUrl && <CommentImageView url={comment.imageUrl} />}
           </div>
           <div className="dl2-comment-right">
@@ -635,7 +688,7 @@ function BoardCommentItem({
               )}
             </div>
           </div>
-          <p className="board-comment-body">{comment.content}</p>
+          <MentionText as="p" className="board-comment-body" text={comment.content} dl2 />
           {comment.imageUrl && <CommentImageView url={comment.imageUrl} />}
         </>
       )}
@@ -657,7 +710,7 @@ function BoardCommentItem({
                             hideTitle
                           />
                         </span>
-                        <p className="board-comment-body">{r.content}</p>
+                        <MentionText as="p" className="board-comment-body" text={r.content} dl2 />
                         {r.imageUrl && <CommentImageView url={r.imageUrl} />}
                       </div>
                       <div className="dl2-comment-right">
@@ -710,7 +763,7 @@ function BoardCommentItem({
                       )}
                     </div>
                   </div>
-                  <p className="board-comment-body">{r.content}</p>
+                  <MentionText as="p" className="board-comment-body" text={r.content} dl2 />
                   {r.imageUrl && <CommentImageView url={r.imageUrl} />}
                 </>
               )}
