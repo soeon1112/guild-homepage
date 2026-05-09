@@ -19,6 +19,11 @@ import NicknameLink from "./NicknameLink";
 import { CommentImageView } from "./CommentImage";
 import { formatSmart } from "@/src/lib/formatSmart";
 import { handleEvent } from "@/src/lib/badgeCheck";
+import {
+  MentionPicker,
+  applyMentionInsert,
+} from "./mention/MentionPicker";
+import { MentionText } from "./mention/MentionText";
 
 type ChatFileType = "image" | "gif" | "video";
 
@@ -60,7 +65,11 @@ const MessageItem = memo(
           <NicknameLink nickname={m.nickname} className="guild-chat-nick" />
           <span className="guild-chat-time">{formatTime(m.createdAt)}</span>
         </div>
-        {m.message && <div className="guild-chat-bubble">{m.message}</div>}
+        {m.message && (
+          <div className="guild-chat-bubble">
+            <MentionText text={m.message} dl2 />
+          </div>
+        )}
         {m.imageUrl &&
           (m.fileType === "video" ? (
             <video
@@ -90,6 +99,9 @@ export default function GuildChat() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
+  // 멘션 자동완성용 — input 의 cursor 위치를 추적해 MentionPicker 가
+  // `@<query>` 꼬리 감지에 쓴다. null 이면 picker 가 항상 안 뜸.
+  const [mentionCursor, setMentionCursor] = useState<number | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [sending, setSending] = useState(false);
   const [lastReadMs, setLastReadMs] = useState<number>(() => {
@@ -319,6 +331,34 @@ export default function GuildChat() {
                   </button>
                 </div>
               )}
+              {/* @-mention 자동완성 — form 위 sibling. MentionPicker 가
+                  cursor==null 또는 멘션 꼬리 없을 때 null 을 돌려주므로
+                  conditional 없이 항상 mount. inline style 로 강조 —
+                  Tailwind v4 layer cascade 함정 회피. */}
+              <MentionPicker
+                text={draft}
+                cursor={mentionCursor}
+                onSelect={(nickname, range) => {
+                  const result = applyMentionInsert(
+                    draft,
+                    range.start,
+                    range.end,
+                    nickname,
+                  );
+                  setDraft(result.text);
+                  setMentionCursor(result.cursor);
+                  requestAnimationFrame(() => {
+                    if (messageInputRef.current) {
+                      messageInputRef.current.focus();
+                      messageInputRef.current.setSelectionRange(
+                        result.cursor,
+                        result.cursor,
+                      );
+                    }
+                  });
+                }}
+                dl2
+              />
               <div className="guild-chat-form">
                 <input
                   ref={fileInputRef}
@@ -348,7 +388,19 @@ export default function GuildChat() {
                   className="guild-chat-input"
                   placeholder="메시지를 입력하세요"
                   value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
+                  onChange={(e) => {
+                    setDraft(e.target.value);
+                    setMentionCursor(e.target.selectionStart);
+                  }}
+                  onSelect={(e) =>
+                    setMentionCursor(e.currentTarget.selectionStart)
+                  }
+                  onClick={(e) =>
+                    setMentionCursor(e.currentTarget.selectionStart)
+                  }
+                  onKeyUp={(e) =>
+                    setMentionCursor(e.currentTarget.selectionStart)
+                  }
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.nativeEvent.isComposing) handleSend();
                   }}
