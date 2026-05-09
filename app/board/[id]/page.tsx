@@ -88,7 +88,7 @@ function BoardDetailPageInner({
   const [scrollPending, setScrollPending] = useState<boolean>(
     !!commentParam,
   );
-  const commentHandledRef = useRef<string | null>(null);
+  const commentLandedRef = useRef<string | null>(null);
   const { nickname: loginNick } = useAuth();
   const [post, setPost] = useState<PostData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -156,36 +156,48 @@ function BoardDetailPageInner({
     return unsub;
   }, [id]);
 
-  // Deep-link scroll-to-comment. Multi-retry covers the snapshot
-  // delay; brute-force scroll methods cover Mobile Safari quirks.
+  // Deep-link scroll-to-comment. Recursive retry with landed flag
+  // covers the snapshot + DOM-paint delay; brute-force scroll
+  // methods cover Mobile Safari quirks. landedRef set only after
+  // a real element is found + scrolled, so failed early attempts
+  // don't seal the handler. Retries cancel themselves once landed.
   useEffect(() => {
     if (loading) return;
     if (typeof window === "undefined") return;
     if (!commentParam) return;
-    if (commentHandledRef.current === commentParam) return;
-    commentHandledRef.current = commentParam;
+    if (commentLandedRef.current === commentParam) return;
     const target = commentParam;
 
-    const doScroll = () => {
+    let cancelled = false;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const tryScroll = (attempt: number) => {
+      if (cancelled) return;
+      if (commentLandedRef.current === target) return;
       const el = document.querySelector(
         `[data-comment-id="${CSS.escape(target)}"]`,
       ) as HTMLElement | null;
-      if (!el) return;
+      if (!el) {
+        if (attempt >= 8) return;
+        retryTimer = setTimeout(() => tryScroll(attempt + 1), 200);
+        return;
+      }
       const rect = el.getBoundingClientRect();
       const targetY = Math.max(0, Math.round(rect.top + window.scrollY - 80));
       window.scrollTo(0, targetY);
       document.documentElement.scrollTop = targetY;
       document.body.scrollTop = targetY;
+      commentLandedRef.current = target;
     };
 
-    const handles: ReturnType<typeof setTimeout>[] = [];
-    for (const ms of [100, 500, 1500, 3000]) {
-      handles.push(setTimeout(() => doScroll(), ms));
-    }
-    handles.push(setTimeout(() => setScrollPending(false), 700));
+    const t = setTimeout(() => tryScroll(1), 100);
+    const fadeT = setTimeout(() => setScrollPending(false), 700);
 
     return () => {
-      for (const h of handles) clearTimeout(h);
+      cancelled = true;
+      if (retryTimer) clearTimeout(retryTimer);
+      clearTimeout(t);
+      clearTimeout(fadeT);
     };
   }, [commentParam, loading, comments]);
 
