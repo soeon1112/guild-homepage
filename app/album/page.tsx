@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import {
+  MentionPicker,
+  applyMentionInsert,
+} from "@/app/components/mention/MentionPicker";
 import { createPortal } from "react-dom";
 import { useAuth } from "@/app/components/AuthProvider";
 import { db, storage } from "@/src/lib/firebase";
@@ -78,6 +82,11 @@ export default function AlbumPage() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [caption, setCaption] = useState("");
+  // 멘션 자동완성용 cursor 추적.
+  const [captionMentionCursor, setCaptionMentionCursor] = useState<
+    number | null
+  >(null);
+  const captionInputRef = useRef<HTMLInputElement | null>(null);
   const [people, setPeople] = useState<string[]>([]);
   const [photoDate, setPhotoDate] = useState<string>(todayISO());
   const [uploading, setUploading] = useState(false);
@@ -318,11 +327,49 @@ export default function AlbumPage() {
                 max={todayISO()}
               />
             </label>
+            {/* @-mention 자동완성 — 캡션 input 위 sibling. */}
+            <MentionPicker
+              text={caption}
+              cursor={captionMentionCursor}
+              onSelect={(nickname, range) => {
+                const result = applyMentionInsert(
+                  caption,
+                  range.start,
+                  range.end,
+                  nickname,
+                );
+                setCaption(result.text);
+                setCaptionMentionCursor(result.cursor);
+                requestAnimationFrame(() => {
+                  if (captionInputRef.current) {
+                    captionInputRef.current.focus();
+                    captionInputRef.current.setSelectionRange(
+                      result.cursor,
+                      result.cursor,
+                    );
+                  }
+                });
+              }}
+              dl2
+            />
             <input
+              ref={captionInputRef}
               className="minihome-input"
               placeholder="설명 (선택)"
               value={caption}
-              onChange={(e) => setCaption(e.target.value)}
+              onChange={(e) => {
+                setCaption(e.target.value);
+                setCaptionMentionCursor(e.target.selectionStart);
+              }}
+              onSelect={(e) =>
+                setCaptionMentionCursor(e.currentTarget.selectionStart)
+              }
+              onClick={(e) =>
+                setCaptionMentionCursor(e.currentTarget.selectionStart)
+              }
+              onKeyUp={(e) =>
+                setCaptionMentionCursor(e.currentTarget.selectionStart)
+              }
               maxLength={120}
             />
             <div className="album-people-input">

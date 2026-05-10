@@ -43,6 +43,10 @@ import { josa, truncate } from "@/src/lib/text";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
 import { Dl2TitlePrefix } from "@/app/components/dawnlight2/widgets/WhispersFeed/Dl2TitlePrefix";
 import { MentionText } from "@/app/components/mention/MentionText";
+import {
+  MentionPicker,
+  applyMentionInsert,
+} from "@/app/components/mention/MentionPicker";
 import { MemberPickerModal } from "@/app/components/shared/MemberPickerModal";
 
 // `uploadBytes` and `getDownloadURL` are not used by the modal stack
@@ -414,6 +418,11 @@ function AlbumViewerMetaInner({
   handleDelete: () => void;
   deleting: boolean;
 }) {
+  // 멘션 자동완성용 cursor 추적 (캡션 편집). AlbumViewerMetaInner 내부 state.
+  const [editCaptionMentionCursor, setEditCaptionMentionCursor] = useState<
+    number | null
+  >(null);
+  const editCaptionInputRef = useRef<HTMLInputElement | null>(null);
   return (
     <>
       {editMode ? (
@@ -428,11 +437,49 @@ function AlbumViewerMetaInner({
               max={todayISO()}
             />
           </label>
+          {/* @-mention 자동완성 — 캡션 편집 input 위 sibling. */}
+          <MentionPicker
+            text={editCaption}
+            cursor={editCaptionMentionCursor}
+            onSelect={(nickname, range) => {
+              const result = applyMentionInsert(
+                editCaption,
+                range.start,
+                range.end,
+                nickname,
+              );
+              setEditCaption(result.text);
+              setEditCaptionMentionCursor(result.cursor);
+              requestAnimationFrame(() => {
+                if (editCaptionInputRef.current) {
+                  editCaptionInputRef.current.focus();
+                  editCaptionInputRef.current.setSelectionRange(
+                    result.cursor,
+                    result.cursor,
+                  );
+                }
+              });
+            }}
+            dl2
+          />
           <input
+            ref={editCaptionInputRef}
             className="minihome-input"
             placeholder="설명"
             value={editCaption}
-            onChange={(e) => setEditCaption(e.target.value)}
+            onChange={(e) => {
+              setEditCaption(e.target.value);
+              setEditCaptionMentionCursor(e.target.selectionStart);
+            }}
+            onSelect={(e) =>
+              setEditCaptionMentionCursor(e.currentTarget.selectionStart)
+            }
+            onClick={(e) =>
+              setEditCaptionMentionCursor(e.currentTarget.selectionStart)
+            }
+            onKeyUp={(e) =>
+              setEditCaptionMentionCursor(e.currentTarget.selectionStart)
+            }
             maxLength={120}
           />
           <input
@@ -558,6 +605,11 @@ function AlbumCommentsSection({
 }) {
   const [comments, setComments] = useState<AlbumComment[]>([]);
   const [content, setContent] = useState("");
+  // 멘션 자동완성용 cursor 추적 (댓글 입력).
+  const [commentMentionCursor, setCommentMentionCursor] = useState<
+    number | null
+  >(null);
+  const commentInputRef = useRef<HTMLInputElement | null>(null);
   const [image, setImage] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [openReplyId, setOpenReplyId] = useState<string | null>(null);
@@ -738,12 +790,51 @@ function AlbumCommentsSection({
         )}
       </div>
       {loginNick ? (
+        <>
+        {/* @-mention 자동완성 — 댓글 cbar(row) 위 sibling. */}
+        <MentionPicker
+          text={content}
+          cursor={commentMentionCursor}
+          onSelect={(nickname, range) => {
+            const result = applyMentionInsert(
+              content,
+              range.start,
+              range.end,
+              nickname,
+            );
+            setContent(result.text);
+            setCommentMentionCursor(result.cursor);
+            requestAnimationFrame(() => {
+              if (commentInputRef.current) {
+                commentInputRef.current.focus();
+                commentInputRef.current.setSelectionRange(
+                  result.cursor,
+                  result.cursor,
+                );
+              }
+            });
+          }}
+          dl2
+        />
         <div className="minihome-form minihome-form-inline cbar">
           <input
+            ref={commentInputRef}
             className="minihome-input"
             placeholder="댓글을 입력하세요"
             value={content}
-            onChange={(e) => setContent(e.target.value)}
+            onChange={(e) => {
+              setContent(e.target.value);
+              setCommentMentionCursor(e.target.selectionStart);
+            }}
+            onSelect={(e) =>
+              setCommentMentionCursor(e.currentTarget.selectionStart)
+            }
+            onClick={(e) =>
+              setCommentMentionCursor(e.currentTarget.selectionStart)
+            }
+            onKeyUp={(e) =>
+              setCommentMentionCursor(e.currentTarget.selectionStart)
+            }
             maxLength={200}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.nativeEvent.isComposing) handleSubmit();
@@ -762,6 +853,7 @@ function AlbumCommentsSection({
             등록
           </button>
         </div>
+        </>
       ) : (
         <p className="login-required login-required-sm">로그인이 필요합니다.</p>
       )}
@@ -796,6 +888,11 @@ function AlbumCommentItem({
   const dl2 = useDawnlight2();
   const [replies, setReplies] = useState<AlbumComment[]>([]);
   const [msg, setMsg] = useState("");
+  // 멘션 자동완성용 cursor 추적 (per-item — AlbumCommentItem 안 별도 state).
+  const [replyMentionCursor, setReplyMentionCursor] = useState<number | null>(
+    null,
+  );
+  const replyInputRef = useRef<HTMLInputElement | null>(null);
   const [replyImage, setReplyImage] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -1063,12 +1160,51 @@ function AlbumCommentItem({
             </div>
           ))}
           {replyOpen && loginNick && (
+            <>
+            {/* @-mention 자동완성 — 답글 cbar(row) 위 sibling. */}
+            <MentionPicker
+              text={msg}
+              cursor={replyMentionCursor}
+              onSelect={(nickname, range) => {
+                const result = applyMentionInsert(
+                  msg,
+                  range.start,
+                  range.end,
+                  nickname,
+                );
+                setMsg(result.text);
+                setReplyMentionCursor(result.cursor);
+                requestAnimationFrame(() => {
+                  if (replyInputRef.current) {
+                    replyInputRef.current.focus();
+                    replyInputRef.current.setSelectionRange(
+                      result.cursor,
+                      result.cursor,
+                    );
+                  }
+                });
+              }}
+              dl2
+            />
             <div className="minihome-form minihome-form-inline cbar">
               <input
+                ref={replyInputRef}
                 className="minihome-input"
                 placeholder="대댓글"
                 value={msg}
-                onChange={(e) => setMsg(e.target.value)}
+                onChange={(e) => {
+                  setMsg(e.target.value);
+                  setReplyMentionCursor(e.target.selectionStart);
+                }}
+                onSelect={(e) =>
+                  setReplyMentionCursor(e.currentTarget.selectionStart)
+                }
+                onClick={(e) =>
+                  setReplyMentionCursor(e.currentTarget.selectionStart)
+                }
+                onKeyUp={(e) =>
+                  setReplyMentionCursor(e.currentTarget.selectionStart)
+                }
                 maxLength={200}
                 autoFocus
                 onKeyDown={(e) => {
@@ -1088,6 +1224,7 @@ function AlbumCommentItem({
                 등록
               </button>
             </div>
+            </>
           )}
         </div>
       )}
