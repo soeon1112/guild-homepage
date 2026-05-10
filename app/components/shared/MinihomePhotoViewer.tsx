@@ -48,6 +48,10 @@ import {
 } from "@/app/components/CommentImage";
 import NicknameLink from "@/app/components/NicknameLink";
 import { MentionText } from "@/app/components/mention/MentionText";
+import {
+  MentionPicker,
+  applyMentionInsert,
+} from "@/app/components/mention/MentionPicker";
 import { Dl2TitlePrefix } from "@/app/components/dawnlight2/widgets/WhispersFeed/Dl2TitlePrefix";
 import { formatSmart } from "@/src/lib/formatSmart";
 import { handleEvent } from "@/src/lib/badgeCheck";
@@ -113,6 +117,11 @@ export function PhotoViewerModal({
 }) {
   const [editMode, setEditMode] = useState(false);
   const [editCaption, setEditCaption] = useState(photo.caption);
+  // 멘션 자동완성용 cursor 추적 (캡션 편집).
+  const [editCaptionMentionCursor, setEditCaptionMentionCursor] = useState<
+    number | null
+  >(null);
+  const editCaptionInputRef = useRef<HTMLInputElement | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -315,10 +324,48 @@ export function PhotoViewerModal({
           >
             {editMode ? (
               <div className="flex w-full flex-col gap-2">
+                {/* @-mention 자동완성 — 캡션 편집 input 위 sibling. */}
+                <MentionPicker
+                  text={editCaption}
+                  cursor={editCaptionMentionCursor}
+                  onSelect={(nickname, range) => {
+                    const result = applyMentionInsert(
+                      editCaption,
+                      range.start,
+                      range.end,
+                      nickname,
+                    );
+                    setEditCaption(result.text);
+                    setEditCaptionMentionCursor(result.cursor);
+                    requestAnimationFrame(() => {
+                      if (editCaptionInputRef.current) {
+                        editCaptionInputRef.current.focus();
+                        editCaptionInputRef.current.setSelectionRange(
+                          result.cursor,
+                          result.cursor,
+                        );
+                      }
+                    });
+                  }}
+                  dl2
+                />
                 <input
+                  ref={editCaptionInputRef}
                   type="text"
                   value={editCaption}
-                  onChange={(e) => setEditCaption(e.target.value)}
+                  onChange={(e) => {
+                    setEditCaption(e.target.value);
+                    setEditCaptionMentionCursor(e.target.selectionStart);
+                  }}
+                  onSelect={(e) =>
+                    setEditCaptionMentionCursor(e.currentTarget.selectionStart)
+                  }
+                  onClick={(e) =>
+                    setEditCaptionMentionCursor(e.currentTarget.selectionStart)
+                  }
+                  onKeyUp={(e) =>
+                    setEditCaptionMentionCursor(e.currentTarget.selectionStart)
+                  }
                   placeholder="설명"
                   maxLength={120}
                   disabled={saving}
@@ -512,6 +559,11 @@ function PhotoComments({
 }) {
   const [comments, setComments] = useState<PhotoCommentDoc[]>([]);
   const [content, setContent] = useState("");
+  // 멘션 자동완성용 cursor 추적 (댓글 입력).
+  const [commentMentionCursor, setCommentMentionCursor] = useState<
+    number | null
+  >(null);
+  const commentInputRef = useRef<HTMLInputElement | null>(null);
   const [image, setImage] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [openReplyId, setOpenReplyId] = useState<string | null>(null);
@@ -732,6 +784,32 @@ function PhotoComments({
 
       {/* Input */}
       {loginNick ? (
+        <>
+        {/* @-mention 자동완성 — form(row) 위 sibling. */}
+        <MentionPicker
+          text={content}
+          cursor={commentMentionCursor}
+          onSelect={(nickname, range) => {
+            const result = applyMentionInsert(
+              content,
+              range.start,
+              range.end,
+              nickname,
+            );
+            setContent(result.text);
+            setCommentMentionCursor(result.cursor);
+            requestAnimationFrame(() => {
+              if (commentInputRef.current) {
+                commentInputRef.current.focus();
+                commentInputRef.current.setSelectionRange(
+                  result.cursor,
+                  result.cursor,
+                );
+              }
+            });
+          }}
+          dl2
+        />
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -751,9 +829,22 @@ function PhotoComments({
           }
         >
           <input
+            ref={commentInputRef}
             type="text"
             value={content}
-            onChange={(e) => setContent(e.target.value)}
+            onChange={(e) => {
+              setContent(e.target.value);
+              setCommentMentionCursor(e.target.selectionStart);
+            }}
+            onSelect={(e) =>
+              setCommentMentionCursor(e.currentTarget.selectionStart)
+            }
+            onClick={(e) =>
+              setCommentMentionCursor(e.currentTarget.selectionStart)
+            }
+            onKeyUp={(e) =>
+              setCommentMentionCursor(e.currentTarget.selectionStart)
+            }
             placeholder="댓글을 남겨주세요"
             maxLength={200}
             disabled={submitting}
@@ -787,6 +878,7 @@ function PhotoComments({
             {submitting ? "..." : "등록"}
           </button>
         </form>
+        </>
       ) : (
         <p
           className={
@@ -834,6 +926,11 @@ function PhotoCommentItem({
 }) {
   const [replies, setReplies] = useState<PhotoCommentDoc[]>([]);
   const [msg, setMsg] = useState("");
+  // 멘션 자동완성용 cursor 추적 (per-item — PhotoCommentItem wrapper 안).
+  const [replyMentionCursor, setReplyMentionCursor] = useState<
+    number | null
+  >(null);
+  const replyInputRef = useRef<HTMLInputElement | null>(null);
   const [replyImage, setReplyImage] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -1164,6 +1261,31 @@ function PhotoCommentItem({
                 transition={{ duration: 0.2 }}
                 style={{ overflow: "hidden" }}
               >
+                {/* @-mention 자동완성 — 답글 input row 위 sibling. */}
+                <MentionPicker
+                  text={msg}
+                  cursor={replyMentionCursor}
+                  onSelect={(nickname, range) => {
+                    const result = applyMentionInsert(
+                      msg,
+                      range.start,
+                      range.end,
+                      nickname,
+                    );
+                    setMsg(result.text);
+                    setReplyMentionCursor(result.cursor);
+                    requestAnimationFrame(() => {
+                      if (replyInputRef.current) {
+                        replyInputRef.current.focus();
+                        replyInputRef.current.setSelectionRange(
+                          result.cursor,
+                          result.cursor,
+                        );
+                      }
+                    });
+                  }}
+                  dl2
+                />
                 <div
                   className="mt-1 flex items-center gap-2 rounded-full px-2 py-1.5"
                   style={
@@ -1180,9 +1302,22 @@ function PhotoCommentItem({
                   }
                 >
                   <input
+                    ref={replyInputRef}
                     type="text"
                     value={msg}
-                    onChange={(e) => setMsg(e.target.value)}
+                    onChange={(e) => {
+                      setMsg(e.target.value);
+                      setReplyMentionCursor(e.target.selectionStart);
+                    }}
+                    onSelect={(e) =>
+                      setReplyMentionCursor(e.currentTarget.selectionStart)
+                    }
+                    onClick={(e) =>
+                      setReplyMentionCursor(e.currentTarget.selectionStart)
+                    }
+                    onKeyUp={(e) =>
+                      setReplyMentionCursor(e.currentTarget.selectionStart)
+                    }
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.nativeEvent.isComposing) {
                         e.preventDefault();

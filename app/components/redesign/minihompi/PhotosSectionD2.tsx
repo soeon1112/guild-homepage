@@ -24,6 +24,10 @@ import { addPoints } from "@/src/lib/points";
 import { handleEvent } from "@/src/lib/badgeCheck";
 import { useModalBodyLock } from "@/src/lib/useModalBodyLock";
 import {
+  MentionPicker,
+  applyMentionInsert,
+} from "@/app/components/mention/MentionPicker";
+import {
   PhotoViewerModal,
   resolveFileType,
   type MediaKind,
@@ -516,6 +520,11 @@ function UploadModalD2({
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [caption, setCaption] = useState("");
+  // 멘션 자동완성용 cursor 추적 (캡션 신규).
+  const [captionMentionCursor, setCaptionMentionCursor] = useState<
+    number | null
+  >(null);
+  const captionInputRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
   const filePreview = useMemo(
     () => (file ? URL.createObjectURL(file) : null),
@@ -659,10 +668,48 @@ function UploadModalD2({
           </label>
         )}
 
+        {/* @-mention 자동완성 — 캡션 input 위 sibling. */}
+        <MentionPicker
+          text={caption}
+          cursor={captionMentionCursor}
+          onSelect={(nickname, range) => {
+            const result = applyMentionInsert(
+              caption,
+              range.start,
+              range.end,
+              nickname,
+            );
+            setCaption(result.text);
+            setCaptionMentionCursor(result.cursor);
+            requestAnimationFrame(() => {
+              if (captionInputRef.current) {
+                captionInputRef.current.focus();
+                captionInputRef.current.setSelectionRange(
+                  result.cursor,
+                  result.cursor,
+                );
+              }
+            });
+          }}
+          dl2
+        />
         <input
+          ref={captionInputRef}
           type="text"
           value={caption}
-          onChange={(e) => setCaption(e.target.value)}
+          onChange={(e) => {
+            setCaption(e.target.value);
+            setCaptionMentionCursor(e.target.selectionStart);
+          }}
+          onSelect={(e) =>
+            setCaptionMentionCursor(e.currentTarget.selectionStart)
+          }
+          onClick={(e) =>
+            setCaptionMentionCursor(e.currentTarget.selectionStart)
+          }
+          onKeyUp={(e) =>
+            setCaptionMentionCursor(e.currentTarget.selectionStart)
+          }
           placeholder="설명 (선택)"
           maxLength={120}
           disabled={uploading}

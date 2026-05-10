@@ -23,6 +23,10 @@ import { addPoints } from "@/src/lib/points";
 import { uploadCommentImage } from "@/src/lib/commentImage";
 import { MentionText } from "@/app/components/mention/MentionText";
 import {
+  MentionPicker,
+  applyMentionInsert,
+} from "@/app/components/mention/MentionPicker";
+import {
   CommentImageAttach,
   CommentImageView,
 } from "@/app/components/CommentImage";
@@ -95,6 +99,11 @@ export function GuestbookSectionD2({
 }) {
   const [entries, setEntries] = useState<GuestbookEntry[]>([]);
   const [msg, setMsg] = useState("");
+  // 멘션 자동완성용 cursor 추적 (entry 입력).
+  const [entryMentionCursor, setEntryMentionCursor] = useState<
+    number | null
+  >(null);
+  const entryInputRef = useRef<HTMLInputElement | null>(null);
   const [image, setImage] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [page, setPage] = useState(0);
@@ -220,6 +229,32 @@ export function GuestbookSectionD2({
     <div className="px-4 pb-5 pt-4 sm:px-5 sm:pb-6">
       {/* Input — 가로 한 줄 */}
       {loginNick ? (
+        <>
+        {/* @-mention 자동완성 — form(row) 위 sibling. */}
+        <MentionPicker
+          text={msg}
+          cursor={entryMentionCursor}
+          onSelect={(nickname, range) => {
+            const result = applyMentionInsert(
+              msg,
+              range.start,
+              range.end,
+              nickname,
+            );
+            setMsg(result.text);
+            setEntryMentionCursor(result.cursor);
+            requestAnimationFrame(() => {
+              if (entryInputRef.current) {
+                entryInputRef.current.focus();
+                entryInputRef.current.setSelectionRange(
+                  result.cursor,
+                  result.cursor,
+                );
+              }
+            });
+          }}
+          dl2
+        />
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -228,9 +263,22 @@ export function GuestbookSectionD2({
           className="mb-4 flex items-center gap-2"
         >
           <input
+            ref={entryInputRef}
             type="text"
             value={msg}
-            onChange={(e) => setMsg(e.target.value)}
+            onChange={(e) => {
+              setMsg(e.target.value);
+              setEntryMentionCursor(e.target.selectionStart);
+            }}
+            onSelect={(e) =>
+              setEntryMentionCursor(e.currentTarget.selectionStart)
+            }
+            onClick={(e) =>
+              setEntryMentionCursor(e.currentTarget.selectionStart)
+            }
+            onKeyUp={(e) =>
+              setEntryMentionCursor(e.currentTarget.selectionStart)
+            }
             placeholder="유리병에 담아 띄울 한 줄..."
             aria-label="유리병 쪽지 내용"
             maxLength={200}
@@ -269,6 +317,7 @@ export function GuestbookSectionD2({
             {submitting ? "..." : "보내기"}
           </button>
         </form>
+        </>
       ) : (
         <p
           className="mb-4 text-center text-[12px] italic"
@@ -430,6 +479,11 @@ function GuestbookItemD2({
 }) {
   const [replies, setReplies] = useState<ReplyEntry[]>([]);
   const [msg, setMsg] = useState("");
+  // 멘션 자동완성용 cursor 추적 (per-item — GuestbookItemD2 wrapper 안).
+  const [replyMentionCursor, setReplyMentionCursor] = useState<
+    number | null
+  >(null);
+  const replyInputRef = useRef<HTMLInputElement | null>(null);
   const [replyImage, setReplyImage] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -651,11 +705,49 @@ function GuestbookItemD2({
                 transition={{ duration: 0.2 }}
                 style={{ overflow: "hidden" }}
               >
+                {/* @-mention 자동완성 — 답글 input row 위 sibling. */}
+                <MentionPicker
+                  text={msg}
+                  cursor={replyMentionCursor}
+                  onSelect={(nickname, range) => {
+                    const result = applyMentionInsert(
+                      msg,
+                      range.start,
+                      range.end,
+                      nickname,
+                    );
+                    setMsg(result.text);
+                    setReplyMentionCursor(result.cursor);
+                    requestAnimationFrame(() => {
+                      if (replyInputRef.current) {
+                        replyInputRef.current.focus();
+                        replyInputRef.current.setSelectionRange(
+                          result.cursor,
+                          result.cursor,
+                        );
+                      }
+                    });
+                  }}
+                  dl2
+                />
                 <div className="mt-1 flex items-center gap-2">
                   <input
+                    ref={replyInputRef}
                     type="text"
                     value={msg}
-                    onChange={(e) => setMsg(e.target.value)}
+                    onChange={(e) => {
+                      setMsg(e.target.value);
+                      setReplyMentionCursor(e.target.selectionStart);
+                    }}
+                    onSelect={(e) =>
+                      setReplyMentionCursor(e.currentTarget.selectionStart)
+                    }
+                    onClick={(e) =>
+                      setReplyMentionCursor(e.currentTarget.selectionStart)
+                    }
+                    onKeyUp={(e) =>
+                      setReplyMentionCursor(e.currentTarget.selectionStart)
+                    }
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.nativeEvent.isComposing) {
                         e.preventDefault();
