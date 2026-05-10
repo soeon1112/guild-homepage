@@ -52,6 +52,13 @@ const LIVE_THRESHOLD_MS = 5 * 60 * 1000;
 // Same regex as NebulaWhispers — pulls the first "${X}님" out of the
 // message because old activity docs store the wrong nickname field.
 const NICKNAME_RE = /^(.*?)([^\s'"]+?)님(.*)$/;
+// 멘션 활동 전용 — "X님이 Y님을 언급했습니다" / "X님이 우리길원들을 언급했습니다".
+// NICKNAME_RE 보다 먼저 시도해서 누구2/우리길원들도 강조한다. 다른 카테고리는
+// 모두 "...했어요" 끝맺음이라 false positive 0.
+const MENTION_RE = /^(.+?)님이 (.+?)(님을|을) 언급했습니다$/;
+// 멘션 활동 색상 — MentionText dl2 모드와 일치. 다른 row 영향 없게 별도 토큰.
+const MENTION_TARGET = "#2a4570"; // 개별 닉
+const MENTION_TARGET_ALL = "#b85420"; // 우리길원들
 
 export function WhispersFeed() {
   const router = useRouter();
@@ -146,7 +153,12 @@ export function WhispersFeed() {
               aria-label="최근 활동 목록"
             >
               {pageItems.map((a, index) => {
-                const nm = NICKNAME_RE.exec(a.message);
+                const mm = MENTION_RE.exec(a.message);
+                const mentionAuthor = mm?.[1] ?? null;
+                const mentionTarget = mm?.[2] ?? null;
+                const mentionTargetSuffix = mm?.[3] ?? "";
+                const isAllMention = mentionTarget === "우리길원들";
+                const nm = mm ? null : NICKNAME_RE.exec(a.message);
                 const matchedNick = nm?.[2] ?? null;
                 const nickPrefix = nm?.[1] ?? "";
                 const nickSuffix = nm?.[3] ?? "";
@@ -194,7 +206,31 @@ export function WhispersFeed() {
                         className="text-[13px] leading-snug sm:text-sm"
                         style={{ color: INK }}
                       >
-                        {matchedNick ? (
+                        {mentionAuthor && mentionTarget ? (
+                          <>
+                            <Dl2TitlePrefix nickname={mentionAuthor} />
+                            <span className="font-semibold" style={{ color: INK }}>
+                              {mentionAuthor}
+                            </span>
+                            <span style={{ color: INK_SOFT }}>님이 </span>
+                            {!isAllMention && (
+                              <Dl2TitlePrefix nickname={mentionTarget} />
+                            )}
+                            <span
+                              className="font-semibold"
+                              style={{
+                                color: isAllMention
+                                  ? MENTION_TARGET_ALL
+                                  : MENTION_TARGET,
+                              }}
+                            >
+                              {mentionTarget}
+                            </span>
+                            <span style={{ color: INK_SOFT }}>
+                              {mentionTargetSuffix} 언급했습니다
+                            </span>
+                          </>
+                        ) : matchedNick ? (
                           <>
                             {nickPrefix}
                             <Dl2TitlePrefix nickname={matchedNick} />
