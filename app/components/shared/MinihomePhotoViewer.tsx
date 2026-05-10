@@ -47,6 +47,7 @@ import {
   CommentImageView,
 } from "@/app/components/CommentImage";
 import NicknameLink from "@/app/components/NicknameLink";
+import { MentionText } from "@/app/components/mention/MentionText";
 import { Dl2TitlePrefix } from "@/app/components/dawnlight2/widgets/WhispersFeed/Dl2TitlePrefix";
 import { formatSmart } from "@/src/lib/formatSmart";
 import { handleEvent } from "@/src/lib/badgeCheck";
@@ -386,7 +387,9 @@ export function PhotoViewerModal({
                 }
                 style={dawnlight2 ? { color: "#fef5e6" } : undefined}
               >
-                {photo.caption || (
+                {photo.caption ? (
+                  <MentionText as="span" text={photo.caption} dl2={true} />
+                ) : (
                   <span
                     className={
                       dawnlight2
@@ -985,7 +988,7 @@ function PhotoCommentItem({
               />
             </span>
             {!!comment.content && (
-              <p className="dl2-photo-comment-body">{comment.content}</p>
+              <MentionText as="p" className="dl2-photo-comment-body" text={comment.content} dl2={true} />
             )}
           </div>
           <div className="dl2-comment-right">
@@ -1020,7 +1023,7 @@ function PhotoCommentItem({
               className="font-medium text-stardust"
             />
             <span className="text-text-sub"> : </span>
-            {comment.content}
+            <MentionText as="span" text={comment.content} dl2={true} />
           </p>
           <div className="flex shrink-0 items-center gap-2 font-serif text-[11px] tracking-wider">
             <span className="text-[10px] tracking-wider text-text-sub">
@@ -1083,7 +1086,7 @@ function PhotoCommentItem({
                           />
                         </span>
                         {!!r.content && (
-                          <p className="dl2-photo-comment-body">{r.content}</p>
+                          <MentionText as="p" className="dl2-photo-comment-body" text={r.content} dl2={true} />
                         )}
                         {r.imageUrl && (
                           <div className="mt-2">
@@ -1125,7 +1128,7 @@ function PhotoCommentItem({
                         className="font-medium text-stardust"
                       />
                       <span className="text-text-sub"> : </span>
-                      {r.content}
+                      <MentionText as="span" text={r.content} dl2={true} />
                     </p>
                     <div className="flex shrink-0 items-center gap-2 font-serif text-[11px] tracking-wider">
                       <span className="text-[10px] tracking-wider text-text-sub">

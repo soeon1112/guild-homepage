@@ -21,6 +21,7 @@ import {
 } from "@/src/lib/activity";
 import { addPoints } from "@/src/lib/points";
 import { uploadCommentImage } from "@/src/lib/commentImage";
+import { MentionText } from "@/app/components/mention/MentionText";
 import {
   CommentImageAttach,
   CommentImageView,
@@ -540,7 +541,7 @@ function GuestbookItemD2({
               hideTitle
             />
           </span>
-          <p className="dl2-gb-body">{entry.message}</p>
+          <MentionText as="p" className="dl2-gb-body" text={entry.message} dl2={true} />
           {entry.imageUrl && (
             <div className="mt-2">
               <CommentImageView url={entry.imageUrl} />
@@ -615,7 +616,7 @@ function GuestbookItemD2({
                         hideTitle
                       />
                     </span>
-                    <p className="dl2-gb-body">{r.message}</p>
+                    <MentionText as="p" className="dl2-gb-body" text={r.message} dl2={true} />
                     {r.imageUrl && (
                       <div className="mt-1">
                         <CommentImageView url={r.imageUrl} />
