@@ -42,6 +42,7 @@ import { handleEvent } from "@/src/lib/badgeCheck";
 import { josa, truncate } from "@/src/lib/text";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
 import { Dl2TitlePrefix } from "@/app/components/dawnlight2/widgets/WhispersFeed/Dl2TitlePrefix";
+import { MentionText } from "@/app/components/mention/MentionText";
 import { MemberPickerModal } from "@/app/components/shared/MemberPickerModal";
 
 // `uploadBytes` and `getDownloadURL` are not used by the modal stack
@@ -490,7 +491,12 @@ function AlbumViewerMetaInner({
             <p className="album-viewer-date">{formatPhotoDate(photo.photoDate)}</p>
           )}
           {photo.caption && (
-            <p className="minihome-photo-caption">{photo.caption}</p>
+            <MentionText
+              as="p"
+              className="minihome-photo-caption"
+              text={photo.caption}
+              dl2={true}
+            />
           )}
           {photo.photographer && (
             <p className="album-photographer">photo by {photo.photographer}</p>
@@ -899,7 +905,7 @@ function AlbumCommentItem({
               />
             </span>
             {!!comment.content && (
-              <p className="dl2-photo-comment-body">{comment.content}</p>
+              <MentionText as="p" className="dl2-photo-comment-body" text={comment.content} dl2={true} />
             )}
           </div>
           <div className="dl2-comment-right">
@@ -966,7 +972,7 @@ function AlbumCommentItem({
             nickname={comment.nickname}
             className="minihome-gb-nick"
           />
-          <span className="minihome-gb-msg">: {comment.content}</span>
+          <MentionText as="span" className="minihome-gb-msg" text={`: ${comment.content}`} dl2={true} />
         </div>
       )}
       {comment.imageUrl && <CommentImageView url={comment.imageUrl} />}
@@ -999,7 +1005,7 @@ function AlbumCommentItem({
                           />
                         </span>
                         {!!r.content && (
-                          <p className="dl2-photo-comment-body">{r.content}</p>
+                          <MentionText as="p" className="dl2-photo-comment-body" text={r.content} dl2={true} />
                         )}
                       </div>
                       <div className="dl2-comment-right">
@@ -1050,7 +1056,7 @@ function AlbumCommentItem({
                     className="minihome-gb-nick"
                     prefix="↳ "
                   />
-                  <span className="minihome-gb-msg">: {r.content}</span>
+                  <MentionText as="span" className="minihome-gb-msg" text={`: ${r.content}`} dl2={true} />
                 </div>
               )}
               {r.imageUrl && <CommentImageView url={r.imageUrl} />}
