@@ -12,8 +12,8 @@ import {
   orderBy,
   query,
   serverTimestamp,
-  setDoc,
   Timestamp,
+  updateDoc,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "@/src/lib/firebase";
@@ -439,12 +439,16 @@ export default function FloatingChat() {
     setLastReadMs((prev) =>
       prev === null ? optimistic : Math.max(prev, optimistic),
     );
-    setDoc(
-      doc(db, "users", nickname),
-      { lastChatRead: serverTimestamp() },
-      { merge: true },
-    ).catch(() => {
-      // Subscription will reconcile on the next snapshot.
+    // updateDoc 은 doc 이 없으면 실패한다 — setDoc(..., { merge: true }) 처럼
+    // 사라진 user doc 을 lastChatRead 만으로 재생성하지 않도록 가드.
+    // (mass-quit-2026-05-10 직후 떠난 사용자가 채팅창 열며 user doc 부활
+    //  → AuthProvider 자동 로그인 분기에서 다시 재해석되는 함정 방지)
+    updateDoc(doc(db, "users", nickname), {
+      lastChatRead: serverTimestamp(),
+    }).catch((e) => {
+      // 일반적으로 not-found (user 삭제됨) — subscription 이 다음 snapshot 으로
+      // 화해. 그 외 에러도 본인 unread 동기화 외에는 영향 없음.
+      console.warn("[FloatingChat] lastChatRead skipped", e);
     });
   };
 

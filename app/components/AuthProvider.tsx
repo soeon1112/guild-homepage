@@ -34,14 +34,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      setNickname(stored);
-      runRetroactiveScan(stored).catch(() => {});
-      runAttendBackfill(stored).catch(() => {});
-      handleEvent({ type: "login", nickname: stored });
-    }
-    setReady(true);
+    // 자동 로그인은 users/{stored} 가 실제 가입 회원 (password 필드 보유)일
+    // 때만 진행한다. 길탈 정리 (mass-quit-2026-05-10) 직후, 떠난 사용자
+    // 브라우저에 localStorage 닉네임이 남아 있으면 mount 시 runRetroactiveScan
+    // 이 자동 실행되며 보존된 orphan 글을 카운트해 배지·user doc 을 재생성하는
+    // 함정이 있다. password 없는 placeholder(예: '기타') 도 같은 이유로 자동
+    // 로그인 대상에서 제외한다.
+    (async () => {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        try {
+          const snap = await getDoc(doc(db, "users", stored));
+          if (!snap.exists() || !snap.data().password) {
+            localStorage.removeItem(STORAGE_KEY);
+            setReady(true);
+            return;
+          }
+          setNickname(stored);
+          runRetroactiveScan(stored).catch(() => {});
+          runAttendBackfill(stored).catch(() => {});
+          handleEvent({ type: "login", nickname: stored });
+        } catch (e) {
+          console.warn("[AuthProvider] auth check failed", e);
+        }
+      }
+      setReady(true);
+    })();
   }, []);
 
   const login = useCallback(
