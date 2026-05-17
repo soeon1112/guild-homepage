@@ -193,7 +193,8 @@ export default function ShopPage() {
   const shopPageClass = isDawnlight2
     ? "shop-page dl2-shop"
     : "shop-page";
-  const [mainTab, setMainTab] = useState<"title" | "avatar">("title");
+  // 칭호 시스템 제거 Phase 1 — 칭호 탭 진입 차단. 매장은 아바타만.
+  const [mainTab, setMainTab] = useState<"title" | "avatar">("avatar");
   const [avatarSubTab, setAvatarSubTab] = useState<AvatarSubTab>("eyes");
   const [hairSubTab, setHairSubTab] = useState<HairSubTab>("male");
   const [fashionSubTab, setFashionSubTab] =
@@ -235,9 +236,8 @@ export default function ShopPage() {
   const monthKey = currentMonthKey();
 
   useEffect(() => {
-    void ensureMonthlyReset();
-    void seedTitleWords();
-    void migrateRenamedTitles();
+    // 칭호 시스템 제거 Phase 1 — 시드/마이그/리셋 호출 차단.
+    // 코어 로직(src/lib/titles.ts)은 Phase 5에서 제거하므로 import는 일단 유지.
   }, []);
 
   useEffect(() => {
@@ -743,14 +743,8 @@ export default function ShopPage() {
           </header>
         )}
 
+        {/* 칭호 시스템 제거 Phase 1 — 칭호 탭 숨김. 아바타 탭만 노출. */}
         <div className="shop-tabs shop-main-tabs">
-          <button
-            type="button"
-            className={"shop-tab" + (mainTab === "title" ? " shop-tab-active" : "")}
-            onClick={() => setMainTab("title")}
-          >
-            칭호
-          </button>
           <button
             type="button"
             className={"shop-tab" + (mainTab === "avatar" ? " shop-tab-active" : "")}
