@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { collection, getDocs, limit, query, where } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
-import TitlePrefix from "./TitlePrefix";
 
 type Lookup = "idle" | "loading" | "found" | "missing";
 
@@ -97,7 +96,6 @@ export default function NicknameLink({
         }}
       >
         {prefix}
-        {!hideTitle && <TitlePrefix nickname={nickname} />}
         {nickname}
       </span>
       {open && (

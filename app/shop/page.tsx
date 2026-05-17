@@ -566,8 +566,6 @@ export default function ShopPage() {
     );
   }
 
-  const previewText = formatTitlePrefix(frontTitle, backTitle);
-
   const hasBody = isBodyType(avatarData?.avatarBody);
   const userHairGender: HairSubTab | null = isBodyType(avatarData?.avatarBody)
     ? avatarData!.avatarBody!.endsWith("female")
@@ -1302,28 +1300,7 @@ export default function ShopPage() {
               {points.toLocaleString()} 별빛
             </span>
           </div>
-          <div className="shop-status-row">
-            <span className="shop-status-label">현재 장착</span>
-            <span className="shop-status-preview">
-              {previewText ? (
-                <>
-                  <span className="title-prefix shop-preview-title">{previewText}</span>
-                  <span className="shop-preview-nick">{nickname}</span>
-                </>
-              ) : frontTitle || backTitle ? (
-                <span className="shop-status-partial">
-                  {frontTitle && `앞: ${frontTitle}`}
-                  {frontTitle && backTitle && " / "}
-                  {backTitle && `뒤: ${backTitle}`}
-                  <span className="shop-status-partial-note">
-                    · {frontTitle ? "뒤" : "앞"} 단어를 구매하면 칭호가 완성됩니다
-                  </span>
-                </span>
-              ) : (
-                <span className="shop-status-empty">아직 구매한 단어가 없습니다</span>
-              )}
-            </span>
-          </div>
+          {/* 칭호 매장 미리보기는 Phase 2에서 제거. dead branch. */}
           <p className="shop-status-reset">매월 1일 자정에 모든 칭호가 리셋됩니다 (환불 없음)</p>
         </section>
 

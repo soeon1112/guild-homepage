@@ -52,7 +52,6 @@ import {
   MentionPicker,
   applyMentionInsert,
 } from "@/app/components/mention/MentionPicker";
-import { Dl2TitlePrefix } from "@/app/components/dawnlight2/widgets/WhispersFeed/Dl2TitlePrefix";
 import { formatSmart } from "@/src/lib/formatSmart";
 import { handleEvent } from "@/src/lib/badgeCheck";
 import { josa, truncate } from "@/src/lib/text";
@@ -1077,7 +1076,6 @@ function PhotoCommentItem({
         <div className="dl2-comment-row">
           <div className="dl2-comment-left">
             <span className="dl2-comment-nick-line">
-              <Dl2TitlePrefix nickname={comment.nickname} tone="cool" />
               <NicknameLink
                 nickname={comment.nickname}
                 className="dl2-photo-comment-nick"
@@ -1175,7 +1173,6 @@ function PhotoCommentItem({
                     <div className="dl2-comment-row">
                       <div className="dl2-comment-left">
                         <span className="dl2-comment-nick-line">
-                          <Dl2TitlePrefix nickname={r.nickname} tone="cool" />
                           <NicknameLink
                             nickname={r.nickname}
                             className="dl2-photo-comment-nick"

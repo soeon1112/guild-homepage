@@ -15,7 +15,6 @@ import {
 } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
 import NicknameLink from "@/app/components/NicknameLink";
-import { Dl2TitlePrefix } from "@/app/components/dawnlight2/widgets/WhispersFeed/Dl2TitlePrefix";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
 import { formatSmart } from "@/src/lib/formatSmart";
 
@@ -151,9 +150,6 @@ export default function BoardPage() {
                     </Link>
                   </td>
                   <td className="col-author">
-                    {isDawnlight2 && (
-                      <Dl2TitlePrefix nickname={post.nickname} tone="cool" />
-                    )}
                     <NicknameLink
                       nickname={post.nickname}
                       hideTitle={isDawnlight2}

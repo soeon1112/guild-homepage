@@ -29,7 +29,6 @@ import {
   useChatInputFocused,
 } from "@/src/lib/uiBus";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
-import { Dl2TitlePrefix } from "@/app/components/dawnlight2/widgets/WhispersFeed/Dl2TitlePrefix";
 import {
   MentionPicker,
   applyMentionInsert,
@@ -150,13 +149,6 @@ const MessageItem = memo(
             style={{ color: "#5c3a1f", fontSize: 12 }}
           >
             <span className="inline-flex items-baseline">
-              <Dl2TitlePrefix nickname={m.nickname} />
-              {/* hideTitle skips cosmic TitlePrefix — Dl2TitlePrefix
-                  above replaces it. Wrapper color #5c3a1f (ink-brown)
-                  cascades onto NicknameLink so chat nicks read in the
-                  same ink tier as the dawnlight2 widgets and board /
-                  album / proposals speaker rows. Title prefix keeps
-                  its own coral inside Dl2TitlePrefix. */}
               <NicknameLink
                 nickname={m.nickname}
                 className="font-semibold"

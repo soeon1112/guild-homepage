@@ -31,7 +31,6 @@ import {
   CommentImageView,
 } from "@/app/components/CommentImage";
 import NicknameLink from "@/app/components/NicknameLink";
-import { Dl2TitlePrefix } from "@/app/components/dawnlight2/widgets/WhispersFeed/Dl2TitlePrefix";
 import { formatSmart } from "@/src/lib/formatSmart";
 import { handleEvent } from "@/src/lib/badgeCheck";
 import { josa, truncate } from "@/src/lib/text";
@@ -588,7 +587,6 @@ function GuestbookItemD2({
       <div className="dl2-comment-row">
         <div className="dl2-comment-left">
           <span className="dl2-comment-nick-line">
-            <Dl2TitlePrefix nickname={entry.nickname} tone="cool" />
             <NicknameLink
               nickname={entry.nickname}
               className="dl2-gb-nick"
@@ -663,7 +661,6 @@ function GuestbookItemD2({
                 <div className="dl2-comment-row">
                   <div className="dl2-comment-left">
                     <span className="dl2-comment-nick-line">
-                      <Dl2TitlePrefix nickname={r.nickname} tone="cool" />
                       <NicknameLink
                         nickname={r.nickname}
                         className="dl2-gb-nick"

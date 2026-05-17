@@ -13,7 +13,6 @@ import {
 import { db } from "@/src/lib/firebase";
 import { formatSmart } from "@/src/lib/formatSmart";
 import { useAuth } from "@/app/components/AuthProvider";
-import { Dl2TitlePrefix } from "../WhispersFeed/Dl2TitlePrefix";
 
 // Note to the Sky — port of v0/components/dawnlight/star-scroll.tsx,
 // retoned for production. Visual chrome (radial parchment gradient,
@@ -270,20 +269,12 @@ export function NoteToTheSky() {
                       >
                         {m.message}
                       </p>
-                      {/* Dl2TitlePrefix already adds its own 4 px right
-                          margin (`mr-1`), so the parent gap-x doubles
-                          the title↔nick spacing. Keep the parent gap
-                          for the —/title and nick/dateLabel pairs and
-                          rely on Dl2TitlePrefix's own margin between
-                          title and nick. Nick color #5c3a1f matches
-                          WhispersFeed / board / album / chat ink tier. */}
                       <p
                         className="mt-0.5 flex flex-wrap items-center gap-x-1 text-[11px] italic"
                         style={{ color: "#8a6040" }}
                       >
                         <span aria-hidden>—</span>
                         <span className="inline-flex items-baseline">
-                          <Dl2TitlePrefix nickname={m.nickname} />
                           <span style={{ color: "#5c3a1f", fontWeight: 600 }}>
                             {m.nickname}
                           </span>

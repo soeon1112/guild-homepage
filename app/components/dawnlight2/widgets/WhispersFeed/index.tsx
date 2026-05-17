@@ -12,7 +12,6 @@ import {
 } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
 import { formatSmart } from "@/src/lib/formatSmart";
-import { Dl2TitlePrefix } from "./Dl2TitlePrefix";
 
 // Ink-brown palette for the warm peach card. Pre-mixed with their
 // effective alpha so we can render every text node fully opaque (only
@@ -208,14 +207,10 @@ export function WhispersFeed() {
                       >
                         {mentionAuthor && mentionTarget ? (
                           <>
-                            <Dl2TitlePrefix nickname={mentionAuthor} />
                             <span className="font-semibold" style={{ color: INK }}>
                               {mentionAuthor}
                             </span>
                             <span style={{ color: INK_SOFT }}>님이 </span>
-                            {!isAllMention && (
-                              <Dl2TitlePrefix nickname={mentionTarget} />
-                            )}
                             <span
                               className="font-semibold"
                               style={{
@@ -233,7 +228,6 @@ export function WhispersFeed() {
                         ) : matchedNick ? (
                           <>
                             {nickPrefix}
-                            <Dl2TitlePrefix nickname={matchedNick} />
                             <span className="font-semibold" style={{ color: INK }}>
                               {matchedNick}
                             </span>
