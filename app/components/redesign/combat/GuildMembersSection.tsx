@@ -349,7 +349,6 @@ function GroupBlock({
           </span>
           <NicknameLink
             nickname={group.representative}
-            hideTitle
             className={
               dl2
                 ? "font-serif text-[16px] font-bold tracking-wide"

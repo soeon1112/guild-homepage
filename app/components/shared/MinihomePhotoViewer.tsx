@@ -726,8 +726,8 @@ function PhotoComments({
       style={
         dawnlight2
           ? {
-              // 옅은 양피지 #f0e4cc — cream 위 가독성 좋음. 칭호 골드,
-              // 닉네임 잉크 갈색, 본문 잉크 남색 등 텍스트 색이 또렷.
+              // 옅은 양피지 #f0e4cc — cream 위 가독성 좋음. 닉네임
+              // 잉크 갈색, 본문 잉크 남색 등 텍스트 색이 또렷.
               background: "rgba(240, 228, 204, 0.95)",
               border: "1px solid rgba(92, 58, 31, 0.25)",
             }
@@ -1079,7 +1079,6 @@ function PhotoCommentItem({
               <NicknameLink
                 nickname={comment.nickname}
                 className="dl2-photo-comment-nick"
-                hideTitle
               />
             </span>
             {!!comment.content && (
@@ -1176,7 +1175,6 @@ function PhotoCommentItem({
                           <NicknameLink
                             nickname={r.nickname}
                             className="dl2-photo-comment-nick"
-                            hideTitle
                           />
                         </span>
                         {!!r.content && (

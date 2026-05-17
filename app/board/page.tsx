@@ -152,7 +152,6 @@ export default function BoardPage() {
                   <td className="col-author">
                     <NicknameLink
                       nickname={post.nickname}
-                      hideTitle={isDawnlight2}
                       className={isDawnlight2 ? "dl2-board-nick" : undefined}
                     />
                   </td>

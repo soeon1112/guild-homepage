@@ -313,7 +313,6 @@ function BoardDetailPageInner({
           {isDawnlight2 ? (
             <NicknameLink
               nickname={post.nickname}
-              hideTitle
               className="dl2-board-nick"
             />
           ) : (
@@ -619,7 +618,6 @@ function BoardCommentItem({
               <NicknameLink
                 nickname={comment.nickname}
                 className="board-comment-nick"
-                hideTitle
               />
             </span>
             <MentionText as="p" className="board-comment-body" text={comment.content} dl2 />
@@ -709,7 +707,6 @@ function BoardCommentItem({
                           <NicknameLink
                             nickname={r.nickname}
                             className="board-comment-nick"
-                            hideTitle
                           />
                         </span>
                         <MentionText as="p" className="board-comment-body" text={r.content} dl2 />

@@ -879,11 +879,8 @@ function AlbumCommentItem({
   onReplyCountChange: (commentId: string, count: number) => void;
   setItemRef?: (el: HTMLDivElement | null) => void;
 }) {
-  // dl2 swap: render Dl2TitlePrefix beside the nick (`hideTitle` skips
-  // the cosmic TitlePrefix that NicknameLink renders by default), and
-  // tag the cosmic .minihome-gb-nick with the dl2 navy ink color via
-  // the parent .dl2-album-viewer scope. cosmic users see the original
-  // gold-stardust prefix-inside-nick layout.
+  // dl2 swap: tag the cosmic .minihome-gb-nick with the dl2 navy ink
+  // color via the parent .dl2-album-viewer scope.
   const dl2 = useDawnlight2();
   const [replies, setReplies] = useState<AlbumComment[]>([]);
   const [msg, setMsg] = useState("");
@@ -996,7 +993,6 @@ function AlbumCommentItem({
               <NicknameLink
                 nickname={comment.nickname}
                 className="dl2-photo-comment-nick"
-                hideTitle
               />
             </span>
             {!!comment.content && (
@@ -1095,7 +1091,6 @@ function AlbumCommentItem({
                           <NicknameLink
                             nickname={r.nickname}
                             className="dl2-photo-comment-nick"
-                            hideTitle
                           />
                         </span>
                         {!!r.content && (

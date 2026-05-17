@@ -5294,15 +5294,6 @@ object {
   margin-top: 0.4rem;
 }
 
-/* ── Title prefix ── */
-.title-prefix {
-  color: #d4af37;
-  font-size: 0.7em;
-  font-weight: 500;
-  margin-right: 0.15em;
-  white-space: nowrap;
-}
-
 /* ── Shop page ── */
 .shop-page {
   position: relative;
@@ -9707,9 +9698,8 @@ body.has-redesigned-header .bg-scene {
   text-shadow: none;
 }
 .dl2-board .comment-count {
-  /* 진한 골드 — same hue as the cool-tone Dl2TitlePrefix on the
-     paper-plane sky surface. coral was washing out against the
-     cream + navy ink palette of dl2 board cards. */
+  /* 진한 골드 — coral was washing out against the cream + navy ink
+     palette of dl2 board cards. */
   color: #8a6710;
 }
 
@@ -9844,20 +9834,16 @@ body.has-redesigned-header .bg-scene {
   min-width: 0;
   overflow-wrap: anywhere;
 }
-/* Spacing — Dl2TitlePrefix has its own `mr-1` (4 px) right margin.
-   The cosmic .board-comment-header sets `gap: 0.6rem` (10 px), which
-   stacks with mr-1 → 14 px between title and nick. Drop the parent
-   gap in dl2 so only the title's own margin controls title↔nick.
-   The actions div on the right side uses `margin-left: auto` so it
-   keeps right-aligning regardless of the gap drop. */
+/* dl2 board-comment-header — drop parent gap, baseline align nick.
+   The actions div on the right uses `margin-left: auto` so it keeps
+   right-aligning regardless of the gap drop. */
 .dl2-board .board-comment-header {
   gap: 0;
   align-items: baseline;
 }
 /* Detail-page author nick + board-list author nick — ink-brown semibold,
    matches the comment-nick + WhispersFeed pattern so every dl2 surface
-   uses the same speaker color. Title prefix stays coral as the warm
-   accent; nick is the steady ink line below it. */
+   uses the same speaker color. */
 .dl2-board .board-detail-meta .nickname-link {
   color: #5c3a1f !important;
   font-weight: 600;
@@ -10170,20 +10156,16 @@ body.has-redesigned-header .bg-scene {
   border-bottom-color: rgba(42, 69, 112, 0.12);
 }
 
-/* Comment author / message / time. dl2 nick is 12 px ink-brown semibold
-   — Dl2TitlePrefix stays coral as a warm accent; the nick is the
-   steady ink line below it. Same pattern as WhispersFeed / board /
-   chat so every dl2 speaker reads in the same ink tier. */
+/* Comment author / message / time. dl2 nick is 12 px ink-brown
+   semibold — same pattern as WhispersFeed / board / chat so every
+   dl2 speaker reads in the same ink tier. */
 .dl2-album-viewer .minihome-gb-nick {
   color: #5c3a1f;
   font-weight: 600;
 }
-/* Spacing — the cosmic `.minihome-photo-comment > .nickname-link-wrap`
-   sets `margin-left: -16px` to outdent the cosmic nick under the
-   16 px row indent. In dl2 we render Dl2TitlePrefix BEFORE the
-   NicknameLink, so the −16 px pulls the nick leftward over the title
-   = visible overlap. Zero it in dl2; the title's own `mr-1` (4 px)
-   then provides the only title↔nick separator. */
+/* dl2 nick outdent fix — cosmic `.minihome-photo-comment >
+   .nickname-link-wrap` sets `margin-left: -16px` which dl2 doesn't
+   need. Zero it in dl2. */
 .dl2-album-viewer .minihome-photo-comment > .nickname-link-wrap {
   margin-left: 0;
 }
@@ -10559,14 +10541,9 @@ body.has-redesigned-header .bg-scene {
   font-weight: 700 !important;
 }
 
-/* dl2 미니홈피 5단계 — 유리병 쪽지: cosmic .nickname-link/.title-prefix
-   specificity 가 inline color 를 이김. scope 룰로 강제 ink 톤 박기.
+/* dl2 미니홈피 5단계 — 유리병 쪽지: cosmic .nickname-link specificity
+   가 inline color 를 이김. scope 룰로 강제 ink 톤 박기.
    게시판 댓글 패턴 (.dl2-board .board-comment-* 시리즈) 와 일치. */
-.dl2-minihome #minihome-guestbook .title-prefix {
-  color: #8a6710 !important;
-  font-size: 9px !important;
-  font-weight: 700 !important;
-}
 .dl2-minihome #minihome-guestbook .nickname-link,
 .dl2-minihome #minihome-guestbook .dl2-gb-nick {
   color: #5c3a1f !important;
@@ -10606,8 +10583,8 @@ body.has-redesigned-header .bg-scene {
 }
 
 /* 사진 모달 (앨범 + 미니홈피 사진첩) dl2 댓글 — 게시판 댓글 패턴.
-   header (좌:칭호+닉 / 우:날짜+답글+삭제) + body 분리. 댓글 묶음
-   사이 1px solid sky-blue 구분선. 답글 묶음은 좌측 borderLeft 2 +
+   header (좌:닉 / 우:날짜+답글+삭제) + body 분리. 댓글 묶음 사이
+   1px solid sky-blue 구분선. 답글 묶음은 좌측 borderLeft 2 +
    paddingLeft 16 (게시판 .board-reply-list 동일). */
 .dl2-photo-comment-block {
   padding: 12px 0;
@@ -10630,11 +10607,6 @@ body.has-redesigned-header .bg-scene {
   flex: 1 1 0;
   min-width: 0;
   overflow-wrap: anywhere;
-}
-.dl2-photo-comment-header .title-prefix {
-  color: #8a6710 !important;
-  font-size: 9px !important;
-  font-weight: 700 !important;
 }
 .dl2-photo-comment-actions {
   margin-left: auto;
@@ -10683,7 +10655,7 @@ body.has-redesigned-header .bg-scene {
 }
 
 /* 답글 hanging-indent: 좌측 ↳ 고정 + 우측 column (header + body wrap).
-   본문이 두 번째 줄로 넘어가도 화살표 우측(칭호 시작점)에 정렬됨.
+   본문이 두 번째 줄로 넘어가도 화살표 우측(닉 시작점)에 정렬됨.
    유리병 쪽지 / 앨범 모달 / 사진첩 모달 / 게시판 답글 모두 reuse. */
 
 /* commentHeader 의 NicknameLink wrap 을 flex item 으로 — 닉네임이

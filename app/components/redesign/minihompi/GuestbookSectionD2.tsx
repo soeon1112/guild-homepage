@@ -590,7 +590,6 @@ function GuestbookItemD2({
             <NicknameLink
               nickname={entry.nickname}
               className="dl2-gb-nick"
-              hideTitle
             />
           </span>
           <MentionText as="p" className="dl2-gb-body" text={entry.message} dl2={true} />
@@ -664,7 +663,6 @@ function GuestbookItemD2({
                       <NicknameLink
                         nickname={r.nickname}
                         className="dl2-gb-nick"
-                        hideTitle
                       />
                     </span>
                     <MentionText as="p" className="dl2-gb-body" text={r.message} dl2={true} />

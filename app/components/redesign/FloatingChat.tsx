@@ -116,9 +116,9 @@ type MessageItemProps = {
   m: ChatMessage;
   mine: boolean;
   // Step 4-D: dawnlight2 reskin flag. When true, the meta row uses a
-  // 12 px ink-brown nick (was 9 px stardust) preceded by Dl2TitlePrefix,
-  // and the bubble swaps the cosmic peach/abyss surfaces for cream-tone
-  // surfaces that read against the cream panel bg.
+  // 12 px ink-brown nick (was 9 px stardust), and the bubble swaps the
+  // cosmic peach/abyss surfaces for cream-tone surfaces that read
+  // against the cream panel bg.
   dl2: boolean;
 };
 
@@ -129,21 +129,14 @@ const MessageItem = memo(
         className={`flex flex-col gap-1 py-1.5 ${mine ? "items-end" : "items-start"}`}
       >
         {dl2 ? (
-          // dl2 meta row — 12 px ink-brown nick + 9 px ink-soft time +
-          // Dl2TitlePrefix. The nick takes the dawnlight2 widgets'
-          // canonical 12 px semibold ink; the time stays small so it
-          // reads as a tag, same rhythm as WhispersFeed/PaperPlane.
-          //
-          // Title + nick are wrapped in a single inline-flex so the
-          // outer gap-2 only spaces the group ↔ time. Title sits
-          // tight against the nick (only Dl2TitlePrefix's own `mr-1`
-          // separates them), matching the cosmic pattern where the
-          // title is rendered inline as part of the nick text node.
+          // dl2 meta row — 12 px ink-brown nick + 9 px ink-soft time.
+          // The nick takes the dawnlight2 widgets' canonical 12 px
+          // semibold ink; the time stays small so it reads as a tag,
+          // same rhythm as WhispersFeed/PaperPlane.
           //
           // No `flex-row-reverse` for `mine` — the parent `items-end`
           // column already right-aligns the row, and we want both
-          // mine and other to read [title nick · time] left-to-right
-          // so the title always precedes the nick.
+          // mine and other to read [nick · time] left-to-right.
           <div
             className="flex items-baseline gap-2 px-1"
             style={{ color: "#5c3a1f", fontSize: 12 }}
@@ -152,7 +145,6 @@ const MessageItem = memo(
               <NicknameLink
                 nickname={m.nickname}
                 className="font-semibold"
-                hideTitle
               />
             </span>
             <span
