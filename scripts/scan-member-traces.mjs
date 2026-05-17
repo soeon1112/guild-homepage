@@ -11,7 +11,6 @@
 //       nickname is the writer (author/from)
 //   (3) "addressed" docs — letters/requests where this nickname is the
 //       recipient (to)
-//   (4) "owned title" — titleWords doc whose `owner` field matches.
 //
 // Uses collectionGroup queries to catch nested comments/replies.
 import { initializeApp, cert, applicationDefault } from "firebase-admin/app";
@@ -273,15 +272,6 @@ if (nested.length === 0) {
 console.log("\n── (3) addressed-to docs ──");
 await countWhere("letters", "to", NICK, "letters (received)");
 await countWhere("playgroundRequests", "to", NICK, "playgroundRequests (received)");
-
-// ── 4. TITLE OWNERSHIP ─────────────────────────────────────────
-console.log("\n── (4) titleWords ownership ──");
-const titles = await db.collection("titleWords").where("owner", "==", NICK).get();
-if (titles.size === 0) console.log("titleWords: (none)");
-titles.forEach((d) => {
-  const data = d.data();
-  console.log(`   titleWords/${d.id}: word='${data.word}' type=${data.type} month=${data.purchasedMonth}`);
-});
 
 console.log("\n========== scan complete ==========\n");
 process.exit(0);

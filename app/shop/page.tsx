@@ -32,28 +32,6 @@ import {
   isOwned,
   ownedKey,
 } from "@/src/lib/fashion";
-import { logActivity } from "@/src/lib/activity";
-import { josa } from "@/src/lib/text";
-import {
-  BACK_WORDS,
-  FRONT_WORDS,
-  TitleType,
-  TitleWord,
-  TitleWordDoc,
-  currentMonthKey,
-  ensureMonthlyReset,
-  formatTitlePrefix,
-  getWordByText,
-  migrateRenamedTitles,
-  purchaseTitle,
-  seedTitleWords,
-} from "@/src/lib/titles";
-
-type WordStatus = {
-  owner: string;
-  purchasedMonth: string;
-};
-
 type AvatarSubTab = "eyes" | "cheeks" | "mouth" | "hair" | "fashion";
 type HairSubTab = "male" | "female";
 
@@ -193,16 +171,11 @@ export default function ShopPage() {
   const shopPageClass = isDawnlight2
     ? "shop-page dl2-shop"
     : "shop-page";
-  // 칭호 시스템 제거 Phase 1 — 칭호 탭 진입 차단. 매장은 아바타만.
-  const [mainTab, setMainTab] = useState<"title" | "avatar">("avatar");
   const [avatarSubTab, setAvatarSubTab] = useState<AvatarSubTab>("eyes");
   const [hairSubTab, setHairSubTab] = useState<HairSubTab>("male");
   const [fashionSubTab, setFashionSubTab] =
     useState<FashionSubTab>("adult_male");
-  const [tab, setTab] = useState<TitleType>("front");
   const [points, setPoints] = useState(0);
-  const [frontTitle, setFrontTitle] = useState("");
-  const [backTitle, setBackTitle] = useState("");
   const [avatarMouth, setAvatarMouth] = useState("");
   const [avatarEyes, setAvatarEyes] = useState("");
   const [avatarCheeks, setAvatarCheeks] = useState("");
@@ -214,8 +187,6 @@ export default function ShopPage() {
   const [ownedFashion, setOwnedFashion] = useState<string[]>([]);
   const [fashionCatTab, setFashionCatTab] =
     useState<FashionCategoryKey>("tops");
-  const [statuses, setStatuses] = useState<Record<string, WordStatus>>({});
-  const [busyWordId, setBusyWordId] = useState<string | null>(null);
   const [busyMouthId, setBusyMouthId] = useState<string | null>(null);
   const [busyEyesId, setBusyEyesId] = useState<string | null>(null);
   const [busyCheeksId, setBusyCheeksId] = useState<string | null>(null);
@@ -233,20 +204,12 @@ export default function ShopPage() {
   );
   const [message, setMessage] = useState<string | null>(null);
   const avatarData = useAvatarData(nickname);
-  const monthKey = currentMonthKey();
-
-  useEffect(() => {
-    // 칭호 시스템 제거 Phase 1 — 시드/마이그/리셋 호출 차단.
-    // 코어 로직(src/lib/titles.ts)은 Phase 5에서 제거하므로 import는 일단 유지.
-  }, []);
 
   useEffect(() => {
     if (!nickname) return;
     const unsub = onSnapshot(doc(db, "users", nickname), (snap) => {
       const data = snap.data();
       setPoints(typeof data?.points === "number" ? data.points : 0);
-      setFrontTitle((data?.frontTitle as string | undefined) ?? "");
-      setBackTitle((data?.backTitle as string | undefined) ?? "");
       setAvatarMouth((data?.avatarMouth as string | undefined) ?? "");
       setAvatarEyes((data?.avatarEyes as string | undefined) ?? "");
       setAvatarCheeks((data?.avatarCheeks as string | undefined) ?? "");
@@ -266,101 +229,6 @@ export default function ShopPage() {
     });
     return () => unsub();
   }, [nickname]);
-
-  useEffect(() => {
-    const unsub = onSnapshot(collection(db, "titleWords"), (snap) => {
-      const next: Record<string, WordStatus> = {};
-      snap.forEach((d) => {
-        const data = d.data() as Partial<TitleWordDoc>;
-        next[d.id] = {
-          owner: data.owner ?? "",
-          purchasedMonth: data.purchasedMonth ?? "",
-        };
-      });
-      setStatuses(next);
-    });
-    return () => unsub();
-  }, []);
-
-  const words = tab === "front" ? FRONT_WORDS : BACK_WORDS;
-
-  const equippedFrontId = useMemo(() => {
-    if (!frontTitle) return "";
-    const w = getWordByText("front", frontTitle);
-    return w?.id ?? "";
-  }, [frontTitle]);
-
-  const equippedBackId = useMemo(() => {
-    if (!backTitle) return "";
-    const w = getWordByText("back", backTitle);
-    return w?.id ?? "";
-  }, [backTitle]);
-
-  const handleBuy = async (w: TitleWord) => {
-    if (!nickname) return;
-    const status = statuses[w.id];
-    const takenByOther =
-      !!status &&
-      !!status.owner &&
-      status.owner !== nickname &&
-      status.purchasedMonth === monthKey;
-    if (takenByOther) {
-      setMessage("이미 다른 사람이 사용 중인 단어입니다.");
-      return;
-    }
-    if (points < w.price) {
-      setMessage("별빛이 부족합니다.");
-      return;
-    }
-    const prevText = w.type === "front" ? frontTitle : backTitle;
-    if (prevText === w.word) {
-      setMessage("이미 장착 중인 단어입니다.");
-      return;
-    }
-    if (
-      !confirm(
-        `「${w.word}」 단어를 ${w.price} 별빛에 구매하시겠습니까?\n(기존 ${
-          w.type === "front" ? "앞" : "뒤"
-        } 단어는 해제됩니다.)`,
-      )
-    ) {
-      return;
-    }
-    setBusyWordId(w.id);
-    setMessage(null);
-    try {
-      const result = await purchaseTitle(nickname, w.id);
-      if (result.ok) {
-        const newFront = w.type === "front" ? w.word : frontTitle;
-        const newBack = w.type === "back" ? w.word : backTitle;
-        const combined = formatTitlePrefix(newFront, newBack);
-        if (combined) {
-          await logActivity(
-            "title",
-            nickname,
-            `${nickname}님이 새 칭호 '${combined}'${josa(combined, "을/를")} 장착했어요`,
-            // Shop doesn't carry the actor's member slot id in scope —
-            // members/[id] resolves nickname URLs via the NFC/NFD +
-            // nickname-field fallback path, so the nickname is fine
-            // here even when the actual doc id is a slot like "14".
-            `/members/${nickname}`,
-          );
-          setMessage(`「${w.word}」 구매 완료! 칭호 조합이 완성되었습니다.`);
-        } else {
-          const remaining = w.type === "front" ? "뒤 단어" : "앞 단어";
-          setMessage(`「${w.word}」 구매 완료! ${remaining}도 구매하면 칭호가 장착됩니다.`);
-        }
-      } else if (result.reason === "taken") {
-        setMessage("방금 다른 사람이 선점했습니다.");
-      } else if (result.reason === "no_points") {
-        setMessage("별빛이 부족합니다.");
-      } else {
-        setMessage("구매 실패. 잠시 후 다시 시도해주세요.");
-      }
-    } finally {
-      setBusyWordId(null);
-    }
-  };
 
   const handleBuyEyes = async (item: { id: string; price: number }) => {
     if (!nickname) return;
@@ -741,20 +609,7 @@ export default function ShopPage() {
           </header>
         )}
 
-        {/* 칭호 시스템 제거 Phase 1 — 칭호 탭 숨김. 아바타 탭만 노출. */}
-        <div className="shop-tabs shop-main-tabs">
-          <button
-            type="button"
-            className={"shop-tab" + (mainTab === "avatar" ? " shop-tab-active" : "")}
-            onClick={() => setMainTab("avatar")}
-          >
-            아바타
-          </button>
-        </div>
-
-        {mainTab === "avatar" ? (
-          <>
-            <section className="shop-avatar-preview">
+        <section className="shop-avatar-preview">
               {hasBody && previewAvatarData ? (
                 <Avatar
                   data={previewAvatarData}
@@ -1286,97 +1141,6 @@ export default function ShopPage() {
             ) : (
               <p className="avatar-shop-hint">준비 중입니다.</p>
             )}
-          </>
-        ) : (
-        <>
-        <p className="shop-subtitle">
-          앞 단어와 뒤 단어를 <strong>둘 다</strong> 구매해야 칭호가 완성되어 닉네임에 표시됩니다
-        </p>
-
-        <section className="shop-status">
-          <div className="shop-status-row">
-            <span className="shop-status-label">내 별빛</span>
-            <span className="shop-status-value shop-status-points">
-              {points.toLocaleString()} 별빛
-            </span>
-          </div>
-          {/* 칭호 매장 미리보기는 Phase 2에서 제거. dead branch. */}
-          <p className="shop-status-reset">매월 1일 자정에 모든 칭호가 리셋됩니다 (환불 없음)</p>
-        </section>
-
-        <div className="shop-tabs">
-          <button
-            type="button"
-            className={"shop-tab" + (tab === "front" ? " shop-tab-active" : "")}
-            onClick={() => setTab("front")}
-          >
-            앞 단어
-          </button>
-          <button
-            type="button"
-            className={"shop-tab" + (tab === "back" ? " shop-tab-active" : "")}
-            onClick={() => setTab("back")}
-          >
-            뒤 단어
-          </button>
-        </div>
-
-        {message && <p className="shop-message">{message}</p>}
-
-        <div className="shop-grid">
-          {words.map((w) => {
-            const status = statuses[w.id];
-            const owner = status?.owner ?? "";
-            const isCurrent = status?.purchasedMonth === monthKey && !!owner;
-            const mine = isCurrent && owner === nickname;
-            const takenByOther = isCurrent && !mine;
-            const equipped =
-              (w.type === "front" && equippedFrontId === w.id) ||
-              (w.type === "back" && equippedBackId === w.id);
-            const notEnoughPoints = points < w.price;
-            const disabled =
-              !!busyWordId ||
-              takenByOther ||
-              equipped ||
-              notEnoughPoints;
-
-            const cardClass = [
-              "shop-card",
-              mine && equipped ? "shop-card-equipped" : "",
-              takenByOther ? "shop-card-taken" : "",
-            ]
-              .filter(Boolean)
-              .join(" ");
-
-            let btnLabel = "구매";
-            if (busyWordId === w.id) btnLabel = "구매 중...";
-            else if (equipped) btnLabel = "장착 중";
-            else if (takenByOther) btnLabel = "사용 중";
-            else if (notEnoughPoints) btnLabel = "별빛 부족";
-
-            return (
-              <div key={w.id} className={cardClass}>
-                <div className="shop-card-word">{w.word}</div>
-                <div className="shop-card-price">{w.price} 별빛</div>
-                {takenByOther && (
-                  <div className="shop-card-taken-text">
-                    사용 중 ({owner})
-                  </div>
-                )}
-                <button
-                  type="button"
-                  className="minihome-btn shop-card-btn"
-                  onClick={() => handleBuy(w)}
-                  disabled={disabled}
-                >
-                  {btnLabel}
-                </button>
-              </div>
-            );
-          })}
-        </div>
-        </>
-        )}
       </div>
     </div>
   );
