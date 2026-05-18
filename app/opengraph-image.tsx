@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "새벽빛 · 마비노기 모바일 길드";
+export const alt = "하늘섬 · 연합 길드";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -37,8 +37,8 @@ const stars: Array<{ x: number; y: number; s: number; o: number }> = [
 ];
 
 export default async function Image() {
-  const title = "새벽빛";
-  const subtitle = "Dawnlight";
+  const title = "하늘섬";
+  const subtitle = "SKYISLE";
   const tagline = "함께 별자리를 이루는 이들";
   const footer = "마비노기 모바일 길드";
   const text = title + subtitle + tagline + footer;

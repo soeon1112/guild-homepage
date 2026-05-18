@@ -16,7 +16,7 @@ function LegacyHeader() {
     <header className="site-header">
       <div className="site-header-inner">
         <Link href="/" className="site-header-title">
-          새벽빛
+          하늘섬
         </Link>
         <span className="site-header-sub">마비노기 모바일 길드</span>
       </div>
@@ -28,7 +28,7 @@ function LegacyFooter() {
   return (
     <footer className="site-footer">
       <div className="site-footer-inner">
-        <p>&copy; 2026 새벽빛 길드. All rights reserved.</p>
+        <p>&copy; 2026 하늘섬. All rights reserved.</p>
       </div>
     </footer>
   );

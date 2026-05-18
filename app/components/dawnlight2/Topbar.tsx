@@ -252,10 +252,10 @@ export function Dawnlight2Topbar() {
                   "drop-shadow(0 0 8px rgba(254, 245, 230, 0.35)) drop-shadow(0 0 14px rgba(254, 245, 230, 0.18))",
               }}
             >
-              새벽빛
+              하늘섬
             </span>
             <span className="font-serif text-[10px] tracking-[0.3em] text-text-sub uppercase">
-              Dawnlight
+              SKYISLE
             </span>
           </Link>
 

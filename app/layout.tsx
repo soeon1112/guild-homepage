@@ -42,18 +42,18 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://dawnlight-guild.vercel.app"),
-  title: "새벽빛 - 마비노기 모바일 길드",
-  description: "마비노기 모바일 길드 새벽빛 홈페이지",
+  title: "하늘섬 - 연합 길드 홈페이지",
+  description: "하늘섬 — 연합 길드 홈페이지",
   openGraph: {
-    title: "새벽빛",
-    description: "마비노기 모바일 길드 새벽빛 홈페이지",
+    title: "하늘섬",
+    description: "하늘섬 — 연합 길드 홈페이지",
     type: "website",
     locale: "ko_KR",
   },
   twitter: {
     card: "summary_large_image",
-    title: "새벽빛",
-    description: "마비노기 모바일 길드 새벽빛 홈페이지",
+    title: "하늘섬",
+    description: "하늘섬 — 연합 길드 홈페이지",
   },
 };
 

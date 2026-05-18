@@ -727,10 +727,10 @@ export function TopHeader() {
                   "drop-shadow(0 0 8px rgba(216,150,200,0.45)) drop-shadow(0 0 14px rgba(107,75,168,0.25))",
               }}
             >
-              새벽빛
+              하늘섬
             </span>
             <span className="font-serif text-[10px] tracking-[0.3em] text-text-sub uppercase">
-              Dawnlight
+              SKYISLE
             </span>
           </Link>
 
