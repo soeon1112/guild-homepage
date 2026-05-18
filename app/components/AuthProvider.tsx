@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, setDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
 import {
   handleEvent,
@@ -28,6 +28,7 @@ type AuthState = {
     guildId?: string,
   ) => Promise<AuthResult>;
   logout: () => void;
+  changePassword: (current: string, next: string) => Promise<AuthResult>;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -132,8 +133,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setNickname(null);
   }, []);
 
+  const changePassword = useCallback(
+    async (current: string, next: string): Promise<AuthResult> => {
+      if (!nickname) return { ok: false, error: "로그인이 필요합니다." };
+      const c = current.trim();
+      const n = next.trim();
+      if (!c || !n) return { ok: false, error: "비밀번호를 입력해주세요." };
+      try {
+        const ref = doc(db, "users", nickname);
+        const snap = await getDoc(ref);
+        if (!snap.exists())
+          return { ok: false, error: "사용자를 찾을 수 없습니다." };
+        if (snap.data().password !== c) {
+          return { ok: false, error: "현재 비밀번호가 일치하지 않습니다." };
+        }
+        await updateDoc(ref, { password: n });
+        return { ok: true };
+      } catch (e) {
+        console.error(e);
+        return {
+          ok: false,
+          error: "비밀번호 변경 중 오류가 발생했습니다.",
+        };
+      }
+    },
+    [nickname],
+  );
+
   return (
-    <AuthContext.Provider value={{ nickname, ready, login, signup, logout }}>
+    <AuthContext.Provider
+      value={{ nickname, ready, login, signup, logout, changePassword }}
+    >
       {children}
     </AuthContext.Provider>
   );

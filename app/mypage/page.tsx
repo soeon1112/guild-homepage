@@ -30,10 +30,17 @@ function formatDate(ts: Timestamp | null): string {
 }
 
 export default function MyPage() {
-  const { nickname, ready } = useAuth();
+  const { nickname, ready, changePassword } = useAuth();
   const isDawnlight2 = useDawnlight2();
   const [points, setPoints] = useState(0);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+
+  const [pwOpen, setPwOpen] = useState(false);
+  const [curPw, setCurPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [pwError, setPwError] = useState("");
+  const [pwSubmitting, setPwSubmitting] = useState(false);
 
   const wrapperClass = isDawnlight2
     ? "mypage-content dl2-mypage"
@@ -63,6 +70,30 @@ export default function MyPage() {
     return () => unsub();
   }, [nickname]);
 
+  const handleChangePassword = async () => {
+    setPwError("");
+    if (!curPw.trim() || !newPw.trim() || !confirmPw.trim()) {
+      setPwError("모든 칸을 입력해주세요.");
+      return;
+    }
+    if (newPw !== confirmPw) {
+      setPwError("새 비밀번호가 일치하지 않습니다.");
+      return;
+    }
+    setPwSubmitting(true);
+    const r = await changePassword(curPw, newPw);
+    setPwSubmitting(false);
+    if (!r.ok) {
+      setPwError(r.error ?? "비밀번호 변경에 실패했습니다.");
+      return;
+    }
+    setCurPw("");
+    setNewPw("");
+    setConfirmPw("");
+    setPwOpen(false);
+    alert("비밀번호가 변경되었습니다.");
+  };
+
   if (!ready) {
     return (
       <div className={wrapperClass}>
@@ -87,16 +118,77 @@ export default function MyPage() {
           <p className="dl2-mypage-sub">MY PAGE</p>
         </header>
       )}
+
+      {/* Card 1: nickname + password change + nickname hint */}
       <section className="mypage-card">
         <h1 className="mypage-nick">{nickname}</h1>
+
+        <button
+          type="button"
+          className="mypage-password-toggle"
+          onClick={() => {
+            setPwOpen((v) => !v);
+            setPwError("");
+          }}
+        >
+          비밀번호 변경 {pwOpen ? "▲" : "▼"}
+        </button>
+
+        {pwOpen && (
+          <div className="mypage-password-form">
+            <input
+              type="password"
+              className="mypage-password-input"
+              placeholder="현재 비밀번호"
+              value={curPw}
+              onChange={(e) => setCurPw(e.target.value)}
+              autoComplete="current-password"
+            />
+            <input
+              type="password"
+              className="mypage-password-input"
+              placeholder="새 비밀번호"
+              value={newPw}
+              onChange={(e) => setNewPw(e.target.value)}
+              autoComplete="new-password"
+            />
+            <input
+              type="password"
+              className="mypage-password-input"
+              placeholder="새 비밀번호 확인"
+              value={confirmPw}
+              onChange={(e) => setConfirmPw(e.target.value)}
+              autoComplete="new-password"
+            />
+            {pwError && <p className="mypage-password-error">{pwError}</p>}
+            <button
+              type="button"
+              className="mypage-password-submit"
+              onClick={handleChangePassword}
+              disabled={pwSubmitting}
+            >
+              {pwSubmitting ? "변경 중..." : "변경하기"}
+            </button>
+          </div>
+        )}
+
+        <p className="mypage-nickname-hint">
+          닉네임 변경은 관리자(언쏘)에게 요청해주세요
+        </p>
+      </section>
+
+      {/* Card 2: notification settings — 앱만 (홈피는 푸시 미지원, 섹션 자체 없음) */}
+
+      {/* Card 3: total points + history (merged) */}
+      <section className="mypage-card">
         <div className="mypage-points-wrap">
           <span className="mypage-points-label">총 별빛</span>
           <span className="mypage-points">{points.toLocaleString()}</span>
           <span className="mypage-points-unit">별빛</span>
         </div>
-      </section>
 
-      <section className="mypage-card">
+        <div className="mypage-divider" />
+
         <h2 className="mypage-section-title">별빛 내역</h2>
         {history.length === 0 ? (
           <p className="mypage-hint">아직 내역이 없습니다.</p>

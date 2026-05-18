@@ -3230,6 +3230,80 @@ object {
   margin-top: 0.5rem;
 }
 
+.mypage-password-toggle {
+  display: block;
+  margin: 0 auto;
+  padding: 0.5rem 1rem;
+  background: rgba(74, 144, 217, 0.18);
+  border: 1px solid rgba(74, 144, 217, 0.45);
+  border-radius: 999px;
+  color: #4a90d9;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.mypage-password-toggle:hover {
+  background: rgba(74, 144, 217, 0.28);
+}
+
+.mypage-password-form {
+  margin-top: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.mypage-password-input {
+  padding: 0.6rem 0.8rem;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 0.9rem;
+}
+.mypage-password-input:focus {
+  outline: none;
+  border-color: rgba(74, 144, 217, 0.55);
+}
+.mypage-password-error {
+  margin: 0;
+  text-align: center;
+  color: #ff8c8c;
+  font-size: 0.8rem;
+}
+.mypage-password-submit {
+  align-self: center;
+  margin-top: 0.2rem;
+  padding: 0.5rem 1.2rem;
+  background: rgba(218, 165, 32, 0.18);
+  border: 1px solid rgba(218, 165, 32, 0.55);
+  border-radius: 999px;
+  color: #daa520;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.mypage-password-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.mypage-password-submit:hover:not(:disabled) {
+  background: rgba(218, 165, 32, 0.28);
+}
+
+.mypage-nickname-hint {
+  margin: 0.9rem 0 0;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.78rem;
+  font-style: italic;
+}
+
+.mypage-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 1.1rem 0;
+}
+
 .loginbar-actions {
   display: flex;
   gap: 0.5rem;
@@ -7754,6 +7828,44 @@ body.has-redesigned-header .bg-scene {
   letter-spacing: 0.32em;
   text-transform: uppercase;
   text-align: left;
+}
+
+/* dl2 분기 — 비밀번호 변경 폼 + 닉네임 안내. cream/lavender 톤. */
+.dl2-mypage .mypage-password-toggle {
+  background: rgba(254, 245, 230, 0.08);
+  border-color: rgba(254, 245, 230, 0.35);
+  color: #fef5e6;
+}
+.dl2-mypage .mypage-password-toggle:hover {
+  background: rgba(254, 245, 230, 0.16);
+}
+.dl2-mypage .mypage-password-input {
+  background: rgba(11, 8, 33, 0.5);
+  border-color: rgba(200, 184, 232, 0.3);
+  color: #fef5e6;
+}
+.dl2-mypage .mypage-password-input:focus {
+  border-color: rgba(255, 199, 133, 0.55);
+}
+.dl2-mypage .mypage-password-input::placeholder {
+  color: rgba(244, 239, 255, 0.4);
+}
+.dl2-mypage .mypage-password-error {
+  color: #ffb5a7;
+}
+.dl2-mypage .mypage-password-submit {
+  background: rgba(255, 181, 167, 0.18);
+  border-color: rgba(255, 229, 196, 0.5);
+  color: #ffe5c4;
+}
+.dl2-mypage .mypage-password-submit:hover:not(:disabled) {
+  background: rgba(255, 181, 167, 0.3);
+}
+.dl2-mypage .mypage-nickname-hint {
+  color: rgba(200, 184, 232, 0.6);
+}
+.dl2-mypage .mypage-divider {
+  background: rgba(216, 150, 200, 0.2);
 }
 
 /* Page head: cream title + lavender NOTICE BOARD subtitle.
