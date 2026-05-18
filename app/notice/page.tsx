@@ -30,6 +30,7 @@ import {
 import { createPortal } from "react-dom";
 import { useAuth } from "../components/AuthProvider";
 import { db } from "@/src/lib/firebase";
+import { useGuilds } from "@/src/lib/useGuilds";
 import {
   deleteActivitiesByTargetPath,
   logActivity,
@@ -45,11 +46,11 @@ import { useDawnlight2 } from "@/src/lib/featureFlags";
 // + 1초간 강조.
 
 const ADMIN_PASSWORD = "dawnlight2024";
-const PAGE_SIZE = 5;
 
 interface Notice {
   id: string;
   title: string;
+  category: string;
 }
 
 interface ScheduleItem {
@@ -92,57 +93,47 @@ function NoticePageInner() {
   // so the additive overrides at the bottom of globals.css apply.
   const isDawnlight2 = useDawnlight2();
   const [items, setItems] = useState<Notice[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [pageSnapshots, setPageSnapshots] = useState<
-    (QueryDocumentSnapshot<DocumentData> | null)[]
-  >([null]);
-
-  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  // 카테고리: 연합 (union) + 길드들. useGuilds 정렬 (union 우선 → 영문 → 한글).
+  const guilds = useGuilds({ includeUnion: true });
 
   useEffect(() => {
-    (async () => {
-      const col = collection(db, "notice");
-      const countSnap = await getCountFromServer(col);
-      setTotalCount(countSnap.data().count);
-    })();
+    const col = collection(db, "notice");
+    const q = query(col, orderBy("createdAt", "desc"));
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setItems(
+          snap.docs.map((d) => {
+            const data = d.data();
+            return {
+              id: d.id,
+              title: typeof data.title === "string" ? data.title : "",
+              category: typeof data.category === "string" ? data.category : "",
+            };
+          }),
+        );
+        setLoading(false);
+      },
+      (e) => {
+        console.error(e);
+        setLoading(false);
+      },
+    );
+    return () => unsub();
   }, []);
 
-  useEffect(() => {
-    (async () => {
-      setLoading(true);
-      const col = collection(db, "notice");
-      const cursor = pageSnapshots[currentPage - 1];
+  const grouped = useMemo(() => {
+    const m = new Map<string, Notice[]>();
+    for (const n of items) {
+      const cat = n.category || "_orphan";
+      if (!m.has(cat)) m.set(cat, []);
+      m.get(cat)!.push(n);
+    }
+    return m;
+  }, [items]);
 
-      let q;
-      if (cursor) {
-        q = query(col, orderBy("createdAt", "desc"), startAfter(cursor), limit(PAGE_SIZE));
-      } else {
-        q = query(col, orderBy("createdAt", "desc"), limit(PAGE_SIZE));
-      }
-
-      const snap = await getDocs(q);
-      setItems(
-        snap.docs.map((doc) => ({ id: doc.id, title: doc.data().title })),
-      );
-
-      if (snap.docs.length > 0) {
-        setPageSnapshots((prev) => {
-          const next = [...prev];
-          next[currentPage] = snap.docs[snap.docs.length - 1];
-          return next;
-        });
-      }
-
-      setLoading(false);
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage]);
-
-  const getRowNumber = (index: number) => {
-    return totalCount - (currentPage - 1) * PAGE_SIZE - index;
-  };
+  const visibleCategories = guilds.filter((g) => (grouped.get(g.id)?.length ?? 0) > 0);
 
   return (
     <div
@@ -170,49 +161,82 @@ function NoticePageInner() {
         </Link>
       </div>
 
-      <div className="board-table-wrap">
-        {loading ? (
-          <p className="board-loading">불러오는 중...</p>
-        ) : items.length === 0 ? (
-          <p className="board-loading">공지가 없습니다.</p>
-        ) : (
-          <table className="board-table">
-            <tbody>
-              {items.map((n, i) => (
-                <tr key={n.id}>
-                  <td className="col-no">{getRowNumber(i)}</td>
-                  <td className="col-title">
-                    <Link href={`/notice/${n.id}`} className="board-post-link">
-                      {n.title}
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {totalPages > 1 && (
-        <div className="board-pagination">
-          <button
-            className="board-page-btn"
-            disabled={currentPage <= 1}
-            onClick={() => setCurrentPage((p) => p - 1)}
-          >
-            이전
-          </button>
-          <span className="board-page-info">
-            {currentPage} / {totalPages}
-          </span>
-          <button
-            className="board-page-btn"
-            disabled={currentPage >= totalPages}
-            onClick={() => setCurrentPage((p) => p + 1)}
-          >
-            다음
-          </button>
-        </div>
+      {loading ? (
+        <p className="board-loading">불러오는 중...</p>
+      ) : visibleCategories.length === 0 ? (
+        <p className="board-loading">공지가 없습니다.</p>
+      ) : (
+        visibleCategories.map((guild) => {
+          const list = grouped.get(guild.id) ?? [];
+          return (
+            <section
+              key={guild.id}
+              className="notice-category-section"
+              style={{ marginBottom: "2rem" }}
+            >
+              <h3
+                className="notice-category-header"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.6rem",
+                  margin: "1.5rem 0 0.75rem",
+                  fontFamily: "'Noto Serif KR', serif",
+                  fontSize: "1rem",
+                  color: guild.isUnion ? "#c8b8e8" : "#ffc785",
+                }}
+              >
+                <span
+                  aria-hidden
+                  style={{
+                    display: "inline-block",
+                    width: 18,
+                    height: 2,
+                    background: guild.isUnion ? "#c8b8e8" : "#ffc785",
+                    opacity: 0.7,
+                  }}
+                />
+                {guild.name}
+                <span
+                  aria-hidden
+                  style={{
+                    flex: 1,
+                    height: 1,
+                    background: guild.isUnion
+                      ? "rgba(200, 184, 232, 0.25)"
+                      : "rgba(255, 199, 133, 0.25)",
+                  }}
+                />
+                <span
+                  style={{
+                    fontSize: "0.75rem",
+                    color: "rgba(255, 255, 255, 0.5)",
+                  }}
+                >
+                  {list.length}건
+                </span>
+              </h3>
+              <div className="board-table-wrap">
+                <table className="board-table">
+                  <tbody>
+                    {list.map((n) => (
+                      <tr key={n.id}>
+                        <td className="col-title">
+                          <Link
+                            href={`/notice/${n.id}`}
+                            className="board-post-link"
+                          >
+                            {n.title}
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          );
+        })
       )}
 
       {/* ── 일정 섹션 (통합 페이지) ─────────────────────────────────── */}
