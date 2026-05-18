@@ -736,14 +736,8 @@ export function ProfileSection({
             {(avatarData.ownedFashion?.length ?? 0) === 0 ? (
               <div className="text-center">
                 <p className="font-serif text-[12px] italic text-text-sub">
-                  아직 옷이 없습니다. 상점에서 구매해보세요!
+                  아직 옷이 없습니다.
                 </p>
-                <Link
-                  href="/shop"
-                  className="mt-2 inline-block font-serif text-[11px] tracking-wider text-peach-accent hover:text-stardust"
-                >
-                  상점으로 →
-                </Link>
               </div>
             ) : (
               <Wardrobe nickname={nickname} data={avatarData} />

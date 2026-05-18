@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import {
   addDoc,
@@ -751,15 +750,8 @@ export function ProfileSectionD2({
                   className="font-serif text-[12px] italic"
                   style={{ color: "rgba(90,58,26,0.7)" }}
                 >
-                  아직 옷이 없습니다. 상점에서 구매해보세요!
+                  아직 옷이 없습니다.
                 </p>
-                <Link
-                  href="/shop"
-                  className="mt-2 inline-block font-serif text-[11px] tracking-wider"
-                  style={{ color: "#c87838" }}
-                >
-                  상점으로 →
-                </Link>
               </div>
             ) : (
               <Wardrobe nickname={member.nickname} data={avatarData} />
