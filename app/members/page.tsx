@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
+import Link from "next/link";
+import { ChevronRight, TreePine } from "lucide-react";
 import { collection, getDocs, Timestamp } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
@@ -194,6 +196,39 @@ export default function MembersPage() {
             MEMBERS
           </p>
         </header>
+
+        {/* 하늘섬 가계도 진입 — sunset-gold accent card. */}
+        <Link
+          href="/guild-tree"
+          className="mb-6 flex items-center gap-3 rounded-xl border px-4 py-3 transition-all hover:scale-[1.01]"
+          style={{
+            background: "rgba(255, 199, 133, 0.12)",
+            borderColor: "rgba(255, 199, 133, 0.35)",
+          }}
+        >
+          <span
+            aria-hidden
+            className="flex h-9 w-9 items-center justify-center rounded-full"
+            style={{ background: "rgba(255, 199, 133, 0.2)" }}
+          >
+            <TreePine className="h-4 w-4" style={{ color: "#ffc785" }} />
+          </span>
+          <span className="flex-1">
+            <span
+              className="block text-sm font-semibold leading-tight text-cream"
+              style={{ letterSpacing: "0.02em" }}
+            >
+              하늘섬 가계도
+            </span>
+            <span
+              className="mt-0.5 block text-[10px] uppercase tracking-[0.28em]"
+              style={{ color: "rgba(200, 184, 232, 0.85)" }}
+            >
+              SKY ISLAND · 연합 길드 구성을 한눈에
+            </span>
+          </span>
+          <ChevronRight className="h-4 w-4" style={{ color: "#ffc785" }} />
+        </Link>
 
         {/* Search — cream-toned transparent box (cosmic 패턴 유지, 색만 매핑). */}
         <section className="mb-8">
