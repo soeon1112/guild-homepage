@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
 import {
   addDoc,
@@ -32,7 +31,7 @@ async function pickFreeSlotId(): Promise<string> {
 }
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { db, storage } from "@/src/lib/firebase";
-import Avatar, {
+import {
   BODY_TYPES,
   BodyType,
   isBodyType,
@@ -41,7 +40,6 @@ import Avatar, {
 import { logActivity } from "@/src/lib/activity";
 import { handleEvent } from "@/src/lib/badgeCheck";
 import { BgmPlayer } from "./BgmPlayer";
-import Wardrobe from "./Wardrobe";
 import { KeywordsSection } from "./KeywordsSection";
 import ProfileCropModal from "@/app/components/shared/ProfileCropModal";
 
@@ -120,7 +118,6 @@ export function ProfileSection({
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [claiming, setClaiming] = useState(false);
-  const [showWardrobe, setShowWardrobe] = useState(false);
   // Picked file → crop modal staging. Set by the <input> onChange,
   // cleared either by ProfileCropModal cancel/confirm. Holds the user's
   // raw upload until they pick a 1:1 frame.
@@ -711,64 +708,11 @@ export function ProfileSection({
               />
             </>
           ) : (
-            <>
-              {isOwner && (
-                <CosmicButton onClick={startEdit} label="프로필 수정" />
-              )}
-              {isOwner && (
-                <CosmicButton
-                  onClick={() => setShowWardrobe((v) => !v)}
-                  label="옷장"
-                />
-              )}
-            </>
+            isOwner && (
+              <CosmicButton onClick={startEdit} label="프로필 수정" />
+            )
           )}
         </div>
-
-        {isOwner && showWardrobe && !editMode && avatarData && (
-          <div
-            className="mt-5 w-full max-w-sm rounded-xl p-4"
-            style={{
-              background: "rgba(11,8,33,0.45)",
-              border: "1px solid rgba(216,150,200,0.2)",
-            }}
-          >
-            {(avatarData.ownedFashion?.length ?? 0) === 0 ? (
-              <div className="text-center">
-                <p className="font-serif text-[12px] italic text-text-sub">
-                  아직 옷이 없습니다.
-                </p>
-              </div>
-            ) : (
-              <Wardrobe nickname={nickname} data={avatarData} />
-            )}
-          </div>
-        )}
-
-        {/* Avatar system slot — 320×512 (5:8 ratio) */}
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.15 }}
-          className="mt-8 flex w-full items-center justify-center"
-        >
-          <AvatarSystemSlot>
-            {isBodyType(avatarData?.avatarBody) ? (
-              <Avatar data={avatarData} />
-            ) : isOwner ? (
-              <button
-                type="button"
-                onClick={startEdit}
-                className="flex flex-col items-center gap-2 font-serif text-[12px] italic text-text-sub hover:text-stardust"
-              >
-                <span className="text-3xl opacity-50">✦</span>
-                체형을 선택해주세요
-              </button>
-            ) : (
-              <AvatarSilhouette />
-            )}
-          </AvatarSystemSlot>
-        </motion.div>
       </div>
     </section>
     {cropFile && (
@@ -786,101 +730,6 @@ export function ProfileSection({
 }
 
 // ==== helper components ====
-
-function AvatarSystemSlot({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="relative" aria-label="아바타 시스템">
-      {/* Ambient glow */}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute -inset-5 rounded-[32px]"
-        style={{
-          background:
-            "radial-gradient(ellipse at center, rgba(107,75,168,0.3) 0%, rgba(216,150,200,0.1) 48%, transparent 78%)",
-          filter: "blur(14px)",
-        }}
-      />
-      <FloatingParticle className="-top-2 -left-3" size={4} color="#FFE5C4" delay={0} dur={3.4} />
-      <FloatingParticle className="top-12 -right-4" size={3} color="#D896C8" delay={1.1} dur={4.2} />
-      <FloatingParticle className="bottom-10 -left-4" size={5} color="#FFB5A7" delay={2} dur={3.8} />
-
-      <div
-        className="relative flex w-[350px] max-w-full flex-col overflow-hidden rounded-2xl md:w-[500px] md:border md:border-[rgba(200,168,233,0.22)] md:bg-[linear-gradient(180deg,rgba(26,15,61,0.45)_0%,rgba(61,46,107,0.28)_100%)] md:shadow-[0_8px_32px_rgba(11,8,33,0.4),inset_0_1px_0_rgba(255,229,196,0.05),inset_0_0_40px_rgba(107,75,168,0.18)] md:backdrop-blur-[18px]"
-      >
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-0 hidden md:block"
-          style={{
-            background:
-              "radial-gradient(ellipse at 50% 40%, rgba(216,150,200,0.14) 0%, transparent 58%), radial-gradient(ellipse at 30% 85%, rgba(107,75,168,0.2) 0%, transparent 62%)",
-          }}
-        />
-        <div className="relative flex w-full items-center justify-center">
-          {children}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function FloatingParticle({
-  className,
-  size,
-  color,
-  delay,
-  dur,
-}: {
-  className?: string;
-  size: number;
-  color: string;
-  delay: number;
-  dur: number;
-}) {
-  return (
-    <span
-      aria-hidden
-      className={`pointer-events-none absolute rounded-full ${className ?? ""}`}
-      style={{
-        width: size,
-        height: size,
-        background: color,
-        filter: `drop-shadow(0 0 ${size + 2}px ${color})`,
-        animation: `twinkle ${dur}s ease-in-out ${delay}s infinite`,
-      }}
-    />
-  );
-}
-
-function AvatarSilhouette() {
-  return (
-    <svg
-      width="180"
-      height="300"
-      viewBox="0 0 180 300"
-      fill="none"
-      aria-hidden
-      style={{ filter: "drop-shadow(0 0 10px rgba(216,150,200,0.25))" }}
-    >
-      <defs>
-        <linearGradient id="avatarSilhouetteGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#6B4BA8" />
-          <stop offset="50%" stopColor="#D896C8" />
-          <stop offset="100%" stopColor="#FFB5A7" />
-        </linearGradient>
-      </defs>
-      <circle cx="90" cy="55" r="26" stroke="url(#avatarSilhouetteGradient)" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M78 82 L78 96 C78 100, 60 106, 48 116 C40 122, 34 132, 32 146" stroke="url(#avatarSilhouetteGradient)" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M102 82 L102 96 C102 100, 120 106, 132 116 C140 122, 146 132, 148 146" stroke="url(#avatarSilhouetteGradient)" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M48 116 C54 140, 58 170, 60 200 L60 235" stroke="url(#avatarSilhouetteGradient)" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M132 116 C126 140, 122 170, 120 200 L120 235" stroke="url(#avatarSilhouetteGradient)" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M60 200 Q90 208, 120 200" stroke="url(#avatarSilhouetteGradient)" strokeWidth="1.2" strokeLinecap="round" opacity="0.7" />
-      <path d="M66 235 L62 288" stroke="url(#avatarSilhouetteGradient)" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M114 235 L118 288" stroke="url(#avatarSilhouetteGradient)" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M40 150 Q36 180, 40 210" stroke="url(#avatarSilhouetteGradient)" strokeWidth="1.2" strokeLinecap="round" opacity="0.65" />
-      <path d="M140 150 Q144 180, 140 210" stroke="url(#avatarSilhouetteGradient)" strokeWidth="1.2" strokeLinecap="round" opacity="0.65" />
-    </svg>
-  );
-}
 
 function CosmicButton({
   label,

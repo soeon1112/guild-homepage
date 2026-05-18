@@ -16,7 +16,7 @@ import {
 import { useRouter } from "next/navigation";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { db, storage } from "@/src/lib/firebase";
-import Avatar, {
+import {
   BODY_TYPES,
   BodyType,
   isBodyType,
@@ -25,7 +25,6 @@ import Avatar, {
 import { logActivity } from "@/src/lib/activity";
 import { handleEvent } from "@/src/lib/badgeCheck";
 import { BgmPlayerD2 } from "./BgmPlayerD2";
-import Wardrobe from "./Wardrobe";
 import { KeywordsSectionD2 } from "./KeywordsSectionD2";
 import ProfileCropModal from "@/app/components/shared/ProfileCropModal";
 import type { MemberDoc } from "./ProfileSection";
@@ -105,7 +104,6 @@ export function ProfileSectionD2({
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [claiming, setClaiming] = useState(false);
-  const [showWardrobe, setShowWardrobe] = useState(false);
   // Picked file → crop modal staging (same pattern as cosmic ProfileSection).
   // Cleared by ProfileCropModal cancel/confirm.
   const [cropFile, setCropFile] = useState<File | null>(null);
@@ -722,62 +720,10 @@ export function ProfileSectionD2({
               />
             </>
           ) : (
-            <>
-              {isOwner && (
-                <ParchmentButton onClick={startEdit} label="프로필 수정" />
-              )}
-              {isOwner && (
-                <ParchmentButton
-                  onClick={() => setShowWardrobe((v) => !v)}
-                  label="옷장"
-                />
-              )}
-            </>
+            isOwner && (
+              <ParchmentButton onClick={startEdit} label="프로필 수정" />
+            )
           )}
-        </div>
-
-        {isOwner && showWardrobe && !editMode && avatarData && (
-          <div
-            className="mt-2 w-full max-w-sm rounded-xl p-4"
-            style={{
-              background: "rgba(255,255,255,0.35)",
-              border: "1px solid rgba(140,100,60,0.28)",
-            }}
-          >
-            {(avatarData.ownedFashion?.length ?? 0) === 0 ? (
-              <div className="text-center">
-                <p
-                  className="font-serif text-[12px] italic"
-                  style={{ color: "rgba(90,58,26,0.7)" }}
-                >
-                  아직 옷이 없습니다.
-                </p>
-              </div>
-            ) : (
-              <Wardrobe nickname={member.nickname} data={avatarData} />
-            )}
-          </div>
-        )}
-
-        {/* Avatar system slot — cosmic Avatar 그대로 */}
-        <div className="mt-3 flex w-full items-center justify-center">
-          <div className="relative w-[350px] max-w-full overflow-hidden rounded-2xl">
-            <div className="relative flex w-full items-center justify-center">
-              {isBodyType(avatarData?.avatarBody) ? (
-                <Avatar data={avatarData} />
-              ) : isOwner ? (
-                <button
-                  type="button"
-                  onClick={startEdit}
-                  className="flex flex-col items-center gap-2 py-12 font-serif text-[12px] italic"
-                  style={{ color: "rgba(90,58,26,0.6)" }}
-                >
-                  <span className="text-3xl opacity-50">✦</span>
-                  체형을 선택해주세요
-                </button>
-              ) : null}
-            </div>
-          </div>
         </div>
       </div>
     </section>

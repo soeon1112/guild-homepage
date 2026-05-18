@@ -36,7 +36,7 @@ import {
 import NicknameLink from "@/app/components/NicknameLink";
 import { formatSmart } from "@/src/lib/formatSmart";
 import BadgeCollection from "@/app/components/BadgeCollection";
-import Avatar, {
+import {
   BODY_TYPES,
   BodyType,
   isBodyType,
@@ -424,7 +424,6 @@ function ProfileSection({
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [claiming, setClaiming] = useState(false);
-  const [showWardrobe, setShowWardrobe] = useState(false);
 
   const avatarData = useAvatarData(member?.nickname ?? null);
 
@@ -783,45 +782,12 @@ function ProfileSection({
             </button>
           </>
         ) : (
-          <>
-            {isOwner && (
-              <button className="minihome-btn" onClick={startEdit}>
-                프로필 수정
-              </button>
-            )}
-            {isOwner && (
-              <button
-                className="minihome-btn"
-                onClick={() => setShowWardrobe((v) => !v)}
-              >
-                옷장
-              </button>
-            )}
-          </>
+          isOwner && (
+            <button className="minihome-btn" onClick={startEdit}>
+              프로필 수정
+            </button>
+          )
         )}
-      </div>
-
-      {isOwner && showWardrobe && (
-        <div className="wardrobe-panel">
-          <h3 className="wardrobe-panel-title">옷장</h3>
-          <p className="wardrobe-panel-empty">
-            아직 옷이 없습니다. 상점에서 구매해보세요!
-          </p>
-        </div>
-      )}
-
-      <div className="profile-avatar-slot">
-        {isBodyType(avatarData?.avatarBody) ? (
-          <Avatar data={avatarData} className="profile-avatar" />
-        ) : isOwner ? (
-          <button
-            type="button"
-            className="profile-avatar profile-avatar-empty"
-            onClick={startEdit}
-          >
-            체형을 선택해주세요
-          </button>
-        ) : null}
       </div>
     </section>
   );
