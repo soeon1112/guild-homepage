@@ -39,3 +39,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local-only backups (one-shot purge / cleanup snapshots — kept locally for reference, not pushed)
+/backups/chat-wipe-2026-05-10-post.json
+/backups/chat-wipe-2026-05-10-pre.json
+/backups/chat-wipe-2026-05-10/
+/backups/mass-quit-2026-05-10/
+/backups/resurrection-cleanup-2026-05-16/
+/backups/trian-2026-05-06/
+
+# External v0.dev export (reference only, not part of this repo)
+/dawnlight2-v0/
