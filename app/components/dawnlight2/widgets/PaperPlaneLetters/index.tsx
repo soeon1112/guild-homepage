@@ -371,7 +371,7 @@ function ComposeModal({
   // Portal-mount to body so the modal escapes the parent .main-content
   // z-10 stacking-context trap. Without this, even z-[1000] inside the
   // main column would still render below sibling-of-main fixed FABs
-  // (FloatingChat z-[200], FloatingPet z-[200], BottomNav z-40).
+  // (FloatingChat z-[200], BottomNav z-40).
   if (typeof document === "undefined") return null;
   return createPortal(
     <div

@@ -1,7 +1,8 @@
 // Tiny pub/sub for cross-component "which floating panel is open"
-// state. Used by FloatingChat + FloatingPet so they can hide each
-// other's icon when either is open. Shared, mirrored verbatim in
-// dawnlight-app/src/lib/uiBus.ts.
+// state. Used by FloatingChat to track its open state. Shared,
+// mirrored verbatim in dawnlight-app/src/lib/uiBus.ts.
+// (Phase 2: 펫 hide 연계 정리. type "pet" 멤버는 Phase 3에서 FloatingPet
+//  삭제와 함께 제거 예정.)
 
 import { useEffect, useState } from "react";
 

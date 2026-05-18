@@ -8083,9 +8083,9 @@ function gradeLabel(g: FishGrade): string {
 //   bread:  O outline / H top highlight / B body / S underside shadow
 //   steak:  O outline / R meat / D dark meat / F fat trim / B bone / M grill mark
 // ── Pixel-art icons ──────────────────────────────────────────────
-// Replaces system emoji (🎣 🛒 🎒 💬 ❗) on the action button, the
-// inventory bag chip, and the FloatingPet "낚시하기" menu so the
-// game's pixel-art aesthetic isn't broken by an OS-rendered glyph.
+// Replaces system emoji (🎣 🛒 🎒 💬 ❗) on the action button and the
+// inventory bag chip so the game's pixel-art aesthetic isn't broken
+// by an OS-rendered glyph.
 // Same canvas / pixel-row pattern as the bread / steak food
 // sprites.
 //   .  transparent
