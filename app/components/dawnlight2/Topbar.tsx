@@ -6,7 +6,6 @@ import {
   LogIn,
   LogOut,
   Menu,
-  ShoppingBag,
   User,
   X,
 } from "lucide-react";
@@ -209,12 +208,6 @@ export function Dawnlight2Topbar() {
           } as NavItem,
         ]
       : []),
-    {
-      id: "shop",
-      label: "상점",
-      icon: <ShoppingBag className="h-3.5 w-3.5" />,
-      href: "/shop",
-    },
     {
       id: "my",
       label: "MY",

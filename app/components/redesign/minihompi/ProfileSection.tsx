@@ -31,7 +31,7 @@ async function pickFreeSlotId(): Promise<string> {
 }
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { db, storage } from "@/src/lib/firebase";
-import { useAvatarData } from "@/app/components/Avatar";
+import { useUserMbti } from "@/src/lib/userMbti";
 import { logActivity } from "@/src/lib/activity";
 import { handleEvent } from "@/src/lib/badgeCheck";
 import { BgmPlayer } from "./BgmPlayer";
@@ -101,7 +101,7 @@ export function ProfileSection({
   isOwner,
   onChange,
 }: Props) {
-  const avatarData = useAvatarData(member?.nickname ?? null);
+  const currentMbti = useUserMbti(member?.nickname ?? null);
   const router = useRouter();
 
   const [editMode, setEditMode] = useState(false);
@@ -134,7 +134,7 @@ export function ProfileSection({
     setEditStatus(member?.statusMessage ?? "");
     setEditBgmUrl(member?.bgmUrl ?? "");
     setEditMood(member?.mood ?? "");
-    setEditMbti(avatarData?.mbti ?? "");
+    setEditMbti(currentMbti);
     setEditMode(true);
   };
 
@@ -200,7 +200,6 @@ export function ProfileSection({
       };
       await updateDoc(doc(db, "members", id), updates);
       onChange({ ...member, ...updates });
-      const currentMbti = avatarData?.mbti ?? "";
       const mbtiChanged = editMbti !== currentMbti;
       if (mbtiChanged) {
         await setDoc(
@@ -583,7 +582,7 @@ export function ProfileSection({
               </p>
             )}
 
-            {avatarData?.mbti && (
+            {currentMbti && (
               <div
                 className="mt-3 inline-block rounded-full px-3 py-1 font-serif text-[12px] tracking-[0.3em]"
                 style={{
@@ -600,7 +599,7 @@ export function ProfileSection({
                   WebkitBackdropFilter: "blur(10px)",
                 }}
               >
-                {avatarData.mbti}
+                {currentMbti}
               </div>
             )}
 

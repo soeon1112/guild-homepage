@@ -36,7 +36,6 @@ import {
 import NicknameLink from "@/app/components/NicknameLink";
 import { formatSmart } from "@/src/lib/formatSmart";
 import BadgeCollection from "@/app/components/BadgeCollection";
-import { useAvatarData } from "@/app/components/Avatar";
 import { handleEvent } from "@/src/lib/badgeCheck";
 import { ProfileSection as ProfileSectionV2 } from "@/app/components/redesign/minihompi/ProfileSection";
 import { ProfileSectionD2 } from "@/app/components/redesign/minihompi/ProfileSectionD2";
@@ -237,9 +236,9 @@ export default function MemberMiniHomePage({
   //     and scrollIntoView the entry itself
   //
   // Naïve "scrollIntoView once at +50ms" lands at the WRONG y because
-  // ProfileSection's avatar SVG / Firestore snapshots arrive after the
-  // initial scroll, growing the page and pushing the target down. The
-  // user ends up where the section USED to be (e.g. avatar area).
+  // ProfileSection's Firestore snapshots arrive after the initial scroll,
+  // growing the page and pushing the target down. The user ends up where
+  // the section USED to be.
   // Mirror album/page.tsx's content-settle pattern: do an initial
   // instant scroll, then retry on every layout change (ResizeObserver
   // on the page wrapper) for ~1.5 s, comparing target y so we only
@@ -419,7 +418,6 @@ function ProfileSection({
   const [uploading, setUploading] = useState(false);
   const [claiming, setClaiming] = useState(false);
 
-  const avatarData = useAvatarData(member?.nickname ?? null);
 
   const startEdit = () => {
     setEditNick(member?.nickname ?? loginNick ?? "");

@@ -16,7 +16,7 @@ import {
 import { useRouter } from "next/navigation";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { db, storage } from "@/src/lib/firebase";
-import { useAvatarData } from "@/app/components/Avatar";
+import { useUserMbti } from "@/src/lib/userMbti";
 import { logActivity } from "@/src/lib/activity";
 import { handleEvent } from "@/src/lib/badgeCheck";
 import { BgmPlayerD2 } from "./BgmPlayerD2";
@@ -87,7 +87,7 @@ export function ProfileSectionD2({
   isOwner,
   onChange,
 }: Props) {
-  const avatarData = useAvatarData(member?.nickname ?? null);
+  const currentMbti = useUserMbti(member?.nickname ?? null);
   const router = useRouter();
 
   const [editMode, setEditMode] = useState(false);
@@ -106,7 +106,7 @@ export function ProfileSectionD2({
     setEditStatus(member?.statusMessage ?? "");
     setEditBgmUrl(member?.bgmUrl ?? "");
     setEditMood(member?.mood ?? "");
-    setEditMbti(avatarData?.mbti ?? "");
+    setEditMbti(currentMbti);
     setEditMode(true);
   };
 
@@ -167,7 +167,6 @@ export function ProfileSectionD2({
       };
       await updateDoc(doc(db, "members", id), updates);
       onChange({ ...member, ...updates });
-      const currentMbti = avatarData?.mbti ?? "";
       const mbtiChanged = editMbti !== currentMbti;
       if (mbtiChanged) {
         await setDoc(
@@ -343,7 +342,6 @@ export function ProfileSectionD2({
   }
 
   const moodEmoji = getMoodEmoji(member.mood);
-  const currentMbti = avatarData?.mbti ?? "";
 
   return (
     <>
