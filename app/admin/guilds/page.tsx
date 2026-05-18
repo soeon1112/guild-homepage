@@ -19,6 +19,20 @@ import { useGuilds, type Guild } from "@/src/lib/useGuilds";
 
 const ADMIN_PASSWORD = "dawnlight2024";
 
+// 옛 cosmic admin 톤은 어두운 배경 + 흰 글자라 .loginbar-input 의
+// 기본 input/select 글자도 흰색이 상속됨. 드롭다운 열렸을 때 option
+// 텍스트가 cream bg + 흰 글자로 안 보이는 문제 해결을 위해 select/
+// option 양쪽에 명시적 cream bg + ink 글자 강제.
+const SELECT_STYLE: React.CSSProperties = {
+  maxWidth: 180,
+  background: "#fef5e6",
+  color: "#2a1f4a",
+};
+const OPTION_STYLE: React.CSSProperties = {
+  background: "#fef5e6",
+  color: "#2a1f4a",
+};
+
 type UserRow = {
   nickname: string;
   guildId: string;
@@ -276,11 +290,11 @@ function GuildAdminCard({
             value={pickLeader}
             onChange={(e) => setPickLeader(e.target.value)}
             disabled={working}
-            style={{ maxWidth: 180 }}
+            style={SELECT_STYLE}
           >
-            <option value="">길마로 지정할 사람 선택</option>
+            <option value="" style={OPTION_STYLE}>길마로 지정할 사람 선택</option>
             {leaderCandidates.map((u) => (
-              <option key={u.nickname} value={u.nickname}>
+              <option key={u.nickname} value={u.nickname} style={OPTION_STYLE}>
                 {u.nickname}
               </option>
             ))}
@@ -356,11 +370,11 @@ function GuildAdminCard({
             value={pickVice}
             onChange={(e) => setPickVice(e.target.value)}
             disabled={working || viceCandidates.length === 0}
-            style={{ maxWidth: 180 }}
+            style={SELECT_STYLE}
           >
-            <option value="">부길마 추가</option>
+            <option value="" style={OPTION_STYLE}>부길마 추가</option>
             {viceCandidates.map((u) => (
-              <option key={u.nickname} value={u.nickname}>
+              <option key={u.nickname} value={u.nickname} style={OPTION_STYLE}>
                 {u.nickname}
               </option>
             ))}
@@ -455,11 +469,11 @@ function UserGuildMoveSection({
           value={pickUser}
           onChange={(e) => setPickUser(e.target.value)}
           disabled={working}
-          style={{ maxWidth: 180 }}
+          style={SELECT_STYLE}
         >
-          <option value="">사용자 선택</option>
+          <option value="" style={OPTION_STYLE}>사용자 선택</option>
           {users.map((u) => (
-            <option key={u.nickname} value={u.nickname}>
+            <option key={u.nickname} value={u.nickname} style={OPTION_STYLE}>
               {u.nickname}
               {u.guildId ? ` (${u.guildId})` : ""}
             </option>
@@ -471,11 +485,11 @@ function UserGuildMoveSection({
           value={pickGuild}
           onChange={(e) => setPickGuild(e.target.value)}
           disabled={working || !pickUser}
-          style={{ maxWidth: 180 }}
+          style={SELECT_STYLE}
         >
-          <option value="">이동할 길드</option>
+          <option value="" style={OPTION_STYLE}>이동할 길드</option>
           {guilds.map((g) => (
-            <option key={g.id} value={g.id}>
+            <option key={g.id} value={g.id} style={OPTION_STYLE}>
               {g.name}
             </option>
           ))}
