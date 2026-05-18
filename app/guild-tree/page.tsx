@@ -168,7 +168,7 @@ function GuildCard({
   };
   members: UserEntry[];
 }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
 
   const leader = guild.leader;
   const viceLeaders = guild.viceLeaders ?? [];
