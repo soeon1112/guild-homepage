@@ -37,26 +37,18 @@ import { db } from "./firebase";
 export const PET_ADMIN_NICKNAME: string | null = null;
 export const PET_DEBUG_ADMIN_NICKNAME = "언쏘";
 
-export function canSeePets(nickname: string | null | undefined): boolean {
-  if (!nickname) return false;
-  if (PET_ADMIN_NICKNAME === null) return true;
-  return nickname === PET_ADMIN_NICKNAME;
+export function canSeePets(_nickname: string | null | undefined): boolean {
+  return false; // Phase 1: 펫 시스템 진입 차단 (코드 제거 전 안전망)
 }
 
-export function canDebugPet(nickname: string | null | undefined): boolean {
-  if (!nickname) return false;
-  return nickname === PET_DEBUG_ADMIN_NICKNAME;
+export function canDebugPet(_nickname: string | null | undefined): boolean {
+  return false; // Phase 1: 펫 시스템 진입 차단
 }
 
-// Custom PNG room backgrounds — replaces the SVG-procedural room/scene
-// visuals with hand-drawn art. Soft-launched to a ['테스트', '언쏘']
-// allowlist; now rolled out to every signed-in member. The classic
-// SVG room rendering is preserved in PetRoom (gated behind
-// !customRoomBg) for easy rollback if needed.
 export function canSeeCustomPetRoom(
-  nickname: string | null | undefined,
+  _nickname: string | null | undefined,
 ): boolean {
-  return !!nickname;
+  return false; // Phase 1: 펫 시스템 진입 차단
 }
 
 // ── Pet types ─────────────────────────────────────────────────
