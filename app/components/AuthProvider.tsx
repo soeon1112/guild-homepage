@@ -22,7 +22,11 @@ type AuthState = {
   nickname: string | null;
   ready: boolean;
   login: (nickname: string, password: string) => Promise<AuthResult>;
-  signup: (nickname: string, password: string) => Promise<AuthResult>;
+  signup: (
+    nickname: string,
+    password: string,
+    guildId?: string,
+  ) => Promise<AuthResult>;
   logout: () => void;
 };
 
@@ -88,10 +92,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const signup = useCallback(
-    async (nick: string, password: string): Promise<AuthResult> => {
+    async (
+      nick: string,
+      password: string,
+      guildId?: string,
+    ): Promise<AuthResult> => {
       const n = nick.trim();
       const p = password.trim();
       if (!n || !p) return { ok: false, error: "닉네임과 비밀번호를 입력해주세요." };
+      if (!guildId) return { ok: false, error: "길드를 선택해주세요." };
       try {
         const snap = await getDoc(doc(db, "users", n));
         if (snap.exists()) return { ok: false, error: "이미 사용 중인 닉네임입니다." };
@@ -103,6 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await setDoc(doc(db, "users", n), {
           nickname: n,
           password: p,
+          guildId,
           createdAt: serverTimestamp(),
         });
         localStorage.setItem(STORAGE_KEY, n);

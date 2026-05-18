@@ -16,6 +16,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
 import { useAuth } from "@/app/components/AuthProvider";
+import { useGuilds } from "@/src/lib/useGuilds";
 
 type NavItem = {
   id: string;
@@ -196,10 +197,12 @@ export function AuthModal({
   onClose: () => void;
 }) {
   const { login, signup } = useAuth();
+  const guilds = useGuilds();
   const [mode, setMode] = useState<"login" | "signup">(initialMode);
   const [nick, setNick] = useState("");
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
+  const [guildId, setGuildId] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -228,7 +231,10 @@ export function AuthModal({
       return;
     }
     setBusy(true);
-    const r = mode === "login" ? await login(nick, pw) : await signup(nick, pw);
+    const r =
+      mode === "login"
+        ? await login(nick, pw)
+        : await signup(nick, pw, guildId);
     setBusy(false);
     if (r.ok) {
       onClose();
@@ -242,6 +248,7 @@ export function AuthModal({
     setErr(null);
     setPw("");
     setPw2("");
+    setGuildId("");
   };
 
   // dl2 reskin (2026-05-09) — same structure, dl2 tokens. Card surface
@@ -376,6 +383,24 @@ export function AuthModal({
               className={dl2Input}
               style={dl2InputStyle}
             />
+          )}
+          {mode === "signup" && (
+            <select
+              value={guildId}
+              onChange={(e) => setGuildId(e.target.value)}
+              aria-label="길드"
+              className={dl2Input}
+              style={dl2InputStyle}
+            >
+              <option value="" style={{ color: "#2a1f4a" }}>
+                길드 선택
+              </option>
+              {guilds.map((g) => (
+                <option key={g.id} value={g.id} style={{ color: "#2a1f4a" }}>
+                  {g.name}
+                </option>
+              ))}
+            </select>
           )}
 
           {err && (
