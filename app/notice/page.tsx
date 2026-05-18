@@ -168,72 +168,82 @@ function NoticePageInner() {
       ) : (
         visibleCategories.map((guild) => {
           const list = grouped.get(guild.id) ?? [];
+          // 카테고리별 톤 — 연합(union)은 mist-lavender, 길드는 sunset-gold.
+          // 다른 길드 추가 시 색상 매핑 확장.
+          const accent = guild.isUnion ? "200, 184, 232" : "255, 199, 133";
           return (
             <section
               key={guild.id}
               className="notice-category-section"
-              style={{ marginBottom: "2rem" }}
+              style={{
+                marginBottom: "1.5rem",
+                borderRadius: 12,
+                overflow: "hidden",
+                border: `1px solid rgba(${accent}, 0.18)`,
+                background: `rgba(${accent}, 0.04)`,
+              }}
             >
               <h3
                 className="notice-category-header"
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: "0.6rem",
-                  margin: "1.5rem 0 0.75rem",
-                  fontFamily: "'Noto Serif KR', serif",
-                  fontSize: "1rem",
+                  gap: "0.5rem",
+                  margin: 0,
+                  padding: "10px 16px",
+                  background: `rgba(${accent}, 0.12)`,
+                  fontFamily:
+                    "'Pretendard Variable', Pretendard, 'Noto Sans KR', sans-serif",
+                  fontSize: "12px",
+                  fontWeight: 500,
                   color: guild.isUnion ? "#c8b8e8" : "#ffc785",
+                  letterSpacing: "0.02em",
                 }}
               >
                 <span
                   aria-hidden
                   style={{
                     display: "inline-block",
-                    width: 18,
-                    height: 2,
+                    width: 3,
+                    height: 12,
                     background: guild.isUnion ? "#c8b8e8" : "#ffc785",
-                    opacity: 0.7,
+                    borderRadius: 2,
                   }}
                 />
                 {guild.name}
-                <span
-                  aria-hidden
-                  style={{
-                    flex: 1,
-                    height: 1,
-                    background: guild.isUnion
-                      ? "rgba(200, 184, 232, 0.25)"
-                      : "rgba(255, 199, 133, 0.25)",
-                  }}
-                />
-                <span
-                  style={{
-                    fontSize: "0.75rem",
-                    color: "rgba(255, 255, 255, 0.5)",
-                  }}
-                >
-                  {list.length}건
-                </span>
               </h3>
-              <div className="board-table-wrap">
-                <table className="board-table">
-                  <tbody>
-                    {list.map((n) => (
-                      <tr key={n.id}>
-                        <td className="col-title">
-                          <Link
-                            href={`/notice/${n.id}`}
-                            className="board-post-link"
-                          >
-                            {n.title}
-                          </Link>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <ul
+                style={{
+                  margin: 0,
+                  padding: 0,
+                  listStyle: "none",
+                }}
+              >
+                {list.map((n, i) => (
+                  <li
+                    key={n.id}
+                    style={{
+                      borderTop:
+                        i > 0
+                          ? "1px solid rgba(254, 245, 230, 0.08)"
+                          : "none",
+                    }}
+                  >
+                    <Link
+                      href={`/notice/${n.id}`}
+                      className="board-post-link"
+                      style={{
+                        display: "block",
+                        padding: "12px 16px",
+                        color: "#fef5e6",
+                        textDecoration: "none",
+                      }}
+                    >
+                      {n.title}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             </section>
           );
         })
