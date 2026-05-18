@@ -16,12 +16,7 @@ import {
 import { useRouter } from "next/navigation";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { db, storage } from "@/src/lib/firebase";
-import {
-  BODY_TYPES,
-  BodyType,
-  isBodyType,
-  useAvatarData,
-} from "@/app/components/Avatar";
+import { useAvatarData } from "@/app/components/Avatar";
 import { logActivity } from "@/src/lib/activity";
 import { handleEvent } from "@/src/lib/badgeCheck";
 import { BgmPlayerD2 } from "./BgmPlayerD2";
@@ -99,7 +94,6 @@ export function ProfileSectionD2({
   const [editStatus, setEditStatus] = useState(member?.statusMessage ?? "");
   const [editBgmUrl, setEditBgmUrl] = useState(member?.bgmUrl ?? "");
   const [editMood, setEditMood] = useState(member?.mood ?? "");
-  const [editBody, setEditBody] = useState<BodyType | "">("");
   const [editMbti, setEditMbti] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -112,9 +106,6 @@ export function ProfileSectionD2({
     setEditStatus(member?.statusMessage ?? "");
     setEditBgmUrl(member?.bgmUrl ?? "");
     setEditMood(member?.mood ?? "");
-    setEditBody(
-      isBodyType(avatarData?.avatarBody) ? avatarData.avatarBody : "",
-    );
     setEditMbti(avatarData?.mbti ?? "");
     setEditMode(true);
   };
@@ -158,23 +149,6 @@ export function ProfileSectionD2({
 
   const handleSave = async () => {
     if (!member) return;
-    const currentBody = isBodyType(avatarData?.avatarBody)
-      ? avatarData.avatarBody
-      : "";
-    const bodyChanged = editBody !== currentBody;
-    const bodyAlreadySelected = !!avatarData?.bodySelected;
-    const ownerPoints = avatarData?.points ?? 0;
-
-    if (bodyChanged && bodyAlreadySelected) {
-      if (ownerPoints < 100) {
-        alert("별빛이 부족합니다. (100 별빛 필요)");
-        return;
-      }
-      if (!confirm("환생하시겠습니까? 100 별빛이 차감됩니다.")) {
-        return;
-      }
-    }
-
     setSaving(true);
     try {
       const newStatus = editStatus.trim();
@@ -209,27 +183,6 @@ export function ProfileSectionD2({
               ? `${member.nickname}님이 MBTI를 변경했어요`
               : `${member.nickname}님이 MBTI를 설정했어요`,
             `/members/${id}`,
-          );
-        }
-      }
-      if (bodyChanged) {
-        const patch: Record<string, unknown> = { avatarBody: editBody };
-        if (editBody !== "" && !bodyAlreadySelected) {
-          patch.bodySelected = true;
-        }
-        if (bodyAlreadySelected) {
-          patch.points = increment(-100);
-        }
-        await setDoc(doc(db, "users", member.nickname), patch, { merge: true });
-        if (bodyAlreadySelected) {
-          await addDoc(
-            collection(db, "users", member.nickname, "pointHistory"),
-            {
-              type: "아바타",
-              points: -100,
-              description: "체형 환생",
-              createdAt: serverTimestamp(),
-            },
           );
         }
       }
@@ -586,46 +539,6 @@ export function ProfileSectionD2({
               </select>
             </div>
 
-            {/* Body */}
-            <div>
-              <label
-                htmlFor="avatar-body-select-d2"
-                className="mb-1.5 block font-serif text-[10px] tracking-[0.3em] uppercase"
-                style={{ color: "rgba(90,58,26,0.7)" }}
-              >
-                체형
-              </label>
-              <select
-                id="avatar-body-select-d2"
-                value={editBody}
-                onChange={(e) =>
-                  setEditBody(e.target.value as BodyType | "")
-                }
-                className="w-full rounded-full px-3 py-2 font-serif text-[12px] focus:outline-none"
-                style={{
-                  background: "rgba(255,255,255,0.45)",
-                  border: "1px solid rgba(140,100,60,0.32)",
-                  color: "#3a2a1a",
-                }}
-              >
-                {!avatarData?.bodySelected && (
-                  <option value="">선택 안 함</option>
-                )}
-                {BODY_TYPES.map((b) => (
-                  <option key={b.value} value={b.value}>
-                    {b.label}
-                  </option>
-                ))}
-              </select>
-              {avatarData?.bodySelected && (
-                <p
-                  className="mt-1.5 font-serif text-[10px] italic"
-                  style={{ color: "rgba(90,58,26,0.65)" }}
-                >
-                  변경 시 100 별빛 (현재 {avatarData?.points ?? 0} 별빛)
-                </p>
-              )}
-            </div>
           </div>
         ) : (
           <>

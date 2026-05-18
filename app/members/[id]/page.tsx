@@ -36,12 +36,7 @@ import {
 import NicknameLink from "@/app/components/NicknameLink";
 import { formatSmart } from "@/src/lib/formatSmart";
 import BadgeCollection from "@/app/components/BadgeCollection";
-import {
-  BODY_TYPES,
-  BodyType,
-  isBodyType,
-  useAvatarData,
-} from "@/app/components/Avatar";
+import { useAvatarData } from "@/app/components/Avatar";
 import { handleEvent } from "@/src/lib/badgeCheck";
 import { ProfileSection as ProfileSectionV2 } from "@/app/components/redesign/minihompi/ProfileSection";
 import { ProfileSectionD2 } from "@/app/components/redesign/minihompi/ProfileSectionD2";
@@ -420,7 +415,6 @@ function ProfileSection({
   const [editStatus, setEditStatus] = useState(member?.statusMessage ?? "");
   const [editBgmUrl, setEditBgmUrl] = useState(member?.bgmUrl ?? "");
   const [editMood, setEditMood] = useState(member?.mood ?? "");
-  const [editBody, setEditBody] = useState<BodyType | "">("");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [claiming, setClaiming] = useState(false);
@@ -432,7 +426,6 @@ function ProfileSection({
     setEditStatus(member?.statusMessage ?? "");
     setEditBgmUrl(member?.bgmUrl ?? "");
     setEditMood(member?.mood ?? "");
-    setEditBody(isBodyType(avatarData?.avatarBody) ? avatarData.avatarBody : "");
     setEditMode(true);
   };
 
@@ -464,23 +457,6 @@ function ProfileSection({
 
   const handleSave = async () => {
     if (!member) return;
-    const currentBody = isBodyType(avatarData?.avatarBody)
-      ? avatarData.avatarBody
-      : "";
-    const bodyChanged = editBody !== currentBody;
-    const bodyAlreadySelected = !!avatarData?.bodySelected;
-    const ownerPoints = avatarData?.points ?? 0;
-
-    if (bodyChanged && bodyAlreadySelected) {
-      if (ownerPoints < 100) {
-        alert("별빛이 부족합니다. (100 별빛 필요)");
-        return;
-      }
-      if (!confirm("환생하시겠습니까? 100 별빛이 차감됩니다.")) {
-        return;
-      }
-    }
-
     setSaving(true);
     try {
       const newStatus = editStatus.trim();
@@ -498,27 +474,6 @@ function ProfileSection({
       };
       await updateDoc(doc(db, "members", id), updates);
       onChange({ ...member, ...updates });
-      if (bodyChanged) {
-        const patch: Record<string, unknown> = { avatarBody: editBody };
-        if (editBody !== "" && !bodyAlreadySelected) {
-          patch.bodySelected = true;
-        }
-        if (bodyAlreadySelected) {
-          patch.points = increment(-100);
-        }
-        await setDoc(doc(db, "users", member.nickname), patch, { merge: true });
-        if (bodyAlreadySelected) {
-          await addDoc(
-            collection(db, "users", member.nickname, "pointHistory"),
-            {
-              type: "아바타",
-              points: -100,
-              description: "체형 환생",
-              createdAt: serverTimestamp(),
-            },
-          );
-        }
-      }
       if (statusChanged) {
         await logActivity(
           "status",
@@ -713,36 +668,6 @@ function ProfileSection({
                     </button>
                   ))}
                 </div>
-              </div>
-              <div className="minihome-body-edit">
-                <label
-                  htmlFor="avatar-body-select"
-                  className="minihome-body-edit-label"
-                >
-                  체형
-                </label>
-                <select
-                  id="avatar-body-select"
-                  className="minihome-body-select"
-                  value={editBody}
-                  onChange={(e) =>
-                    setEditBody(e.target.value as BodyType | "")
-                  }
-                >
-                  {!avatarData?.bodySelected && (
-                    <option value="">선택 안 함</option>
-                  )}
-                  {BODY_TYPES.map((b) => (
-                    <option key={b.value} value={b.value}>
-                      {b.label}
-                    </option>
-                  ))}
-                </select>
-                {avatarData?.bodySelected && (
-                  <span className="minihome-body-cost">
-                    변경 시 100 별빛 (현재 {avatarData?.points ?? 0} 별빛)
-                  </span>
-                )}
               </div>
             </>
           ) : (
