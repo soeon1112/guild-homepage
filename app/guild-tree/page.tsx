@@ -230,9 +230,9 @@ function GuildCard({
             style={{ overflow: "hidden" }}
           >
             <div className="px-5 pb-5">
-              {/* 길마 — 왕관 + 가운데 정렬 */}
-              <div className="mb-5 flex flex-col items-center">
-                <div className="mb-1 flex items-center gap-1.5">
+              {/* 길마 — 큰 프사 + 왕관 overlay + 가운데 단일 카드 */}
+              <div className="mb-6 flex flex-col items-center">
+                <div className="mb-2 flex items-center gap-1.5">
                   <Crown className="h-3.5 w-3.5" style={{ color: "#ffc785" }} />
                   <span
                     className="text-[10px] uppercase tracking-[0.3em]"
@@ -242,13 +242,7 @@ function GuildCard({
                   </span>
                 </div>
                 {leader ? (
-                  <Link
-                    href={`/members/${nicknameToRouteId(leader, members)}`}
-                    className="text-base font-semibold tracking-wide transition-colors hover:opacity-80"
-                    style={{ color: "#ffc785" }}
-                  >
-                    {leader}
-                  </Link>
+                  <LeaderCard nickname={leader} entry={findEntry(leader, members)} />
                 ) : (
                   <p className="text-xs italic" style={{ color: "rgba(254, 245, 230, 0.5)" }}>
                     아직 지정되지 않음
@@ -256,9 +250,9 @@ function GuildCard({
                 )}
               </div>
 
-              {/* 부길마 — 별 + 가로 나열 */}
-              <div className="mb-5 flex flex-col items-center">
-                <div className="mb-1 flex items-center gap-1.5">
+              {/* 부길마 — 중간 프사 + 별 overlay + 가로 wrap */}
+              <div className="mb-6 flex flex-col items-center">
+                <div className="mb-2 flex items-center gap-1.5">
                   <Star className="h-3.5 w-3.5" style={{ color: "#c8b8e8" }} />
                   <span
                     className="text-[10px] uppercase tracking-[0.3em]"
@@ -274,14 +268,7 @@ function GuildCard({
                 ) : (
                   <div className="flex flex-wrap justify-center gap-3">
                     {viceLeaders.map((v) => (
-                      <Link
-                        key={v}
-                        href={`/members/${nicknameToRouteId(v, members)}`}
-                        className="text-sm font-medium transition-colors hover:opacity-80"
-                        style={{ color: "#c8b8e8" }}
-                      >
-                        {v}
-                      </Link>
+                      <ViceCard key={v} nickname={v} entry={findEntry(v, members)} />
                     ))}
                   </div>
                 )}
@@ -364,4 +351,130 @@ function GuildCard({
 
 function nicknameToRouteId(nickname: string, members: UserEntry[]): string {
   return members.find((m) => m.nickname === nickname)?.routeId ?? nickname;
+}
+
+function findEntry(nickname: string, members: UserEntry[]): UserEntry | null {
+  return members.find((m) => m.nickname === nickname) ?? null;
+}
+
+function LeaderCard({
+  nickname,
+  entry,
+}: {
+  nickname: string;
+  entry: UserEntry | null;
+}) {
+  const routeId = entry?.routeId ?? nickname;
+  const profileImage = entry?.profileImage ?? "";
+  const registered = !!entry?.registered;
+  return (
+    <Link
+      href={`/members/${routeId}`}
+      className="flex flex-col items-center gap-2 rounded-2xl border px-5 py-4 transition-all hover:scale-[1.02]"
+      style={{
+        background: "rgba(255, 199, 133, 0.12)",
+        borderColor: "rgba(255, 199, 133, 0.45)",
+      }}
+    >
+      <span className="relative">
+        {profileImage ? (
+          <img
+            src={profileImage}
+            alt=""
+            className="h-24 w-24 rounded-full object-cover"
+            style={{ border: "2px solid rgba(255, 199, 133, 0.6)" }}
+          />
+        ) : (
+          <span
+            aria-hidden
+            className="flex h-24 w-24 items-center justify-center rounded-full text-2xl"
+            style={{
+              background: "rgba(255, 199, 133, 0.12)",
+              border: "2px solid rgba(255, 199, 133, 0.45)",
+              color: registered ? "#ffc785" : "rgba(254, 245, 230, 0.45)",
+            }}
+          >
+            ✦
+          </span>
+        )}
+        <span
+          aria-hidden
+          className="absolute -right-1 -top-1 flex h-7 w-7 items-center justify-center rounded-full"
+          style={{
+            background: "#ffc785",
+            boxShadow: "0 0 8px rgba(255, 199, 133, 0.6)",
+          }}
+        >
+          <Crown className="h-3.5 w-3.5" style={{ color: "#2a1f4a" }} />
+        </span>
+      </span>
+      <span
+        className="text-base font-semibold tracking-wide"
+        style={{ color: "#ffc785" }}
+      >
+        {nickname}
+      </span>
+    </Link>
+  );
+}
+
+function ViceCard({
+  nickname,
+  entry,
+}: {
+  nickname: string;
+  entry: UserEntry | null;
+}) {
+  const routeId = entry?.routeId ?? nickname;
+  const profileImage = entry?.profileImage ?? "";
+  const registered = !!entry?.registered;
+  return (
+    <Link
+      href={`/members/${routeId}`}
+      className="flex flex-col items-center gap-1.5 rounded-2xl border px-4 py-3 transition-all hover:scale-[1.02]"
+      style={{
+        background: "rgba(200, 184, 232, 0.1)",
+        borderColor: "rgba(200, 184, 232, 0.35)",
+      }}
+    >
+      <span className="relative">
+        {profileImage ? (
+          <img
+            src={profileImage}
+            alt=""
+            className="h-16 w-16 rounded-full object-cover"
+            style={{ border: "1.5px solid rgba(200, 184, 232, 0.5)" }}
+          />
+        ) : (
+          <span
+            aria-hidden
+            className="flex h-16 w-16 items-center justify-center rounded-full text-xl"
+            style={{
+              background: "rgba(200, 184, 232, 0.1)",
+              border: "1.5px solid rgba(200, 184, 232, 0.35)",
+              color: registered ? "#c8b8e8" : "rgba(254, 245, 230, 0.45)",
+            }}
+          >
+            ✦
+          </span>
+        )}
+        <span
+          aria-hidden
+          className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full"
+          style={{
+            background: "#c8b8e8",
+            boxShadow: "0 0 6px rgba(200, 184, 232, 0.6)",
+          }}
+        >
+          <Star className="h-2.5 w-2.5" style={{ color: "#2a1f4a" }} />
+        </span>
+      </span>
+      <span
+        className="text-sm font-medium"
+        style={{ color: "#c8b8e8" }}
+      >
+        {nickname}
+      </span>
+    </Link>
+  );
 }
