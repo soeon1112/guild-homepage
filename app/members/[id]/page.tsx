@@ -574,12 +574,14 @@ function ProfileSection({
           </div>
         </div>
         <div className="profile-actions">
-          {loginNick ? (
+          {!loginNick ? (
+            <p className="login-required">로그인 후 프로필을 등록할 수 있습니다.</p>
+          ) : loginNick === id ? (
             <button className="minihome-btn" onClick={handleClaim} disabled={claiming}>
               {claiming ? "등록 중..." : "내 프로필로 등록"}
             </button>
           ) : (
-            <p className="login-required">로그인 후 프로필을 등록할 수 있습니다.</p>
+            <p className="login-required">본인 카드에서만 등록할 수 있어요.</p>
           )}
         </div>
       </section>

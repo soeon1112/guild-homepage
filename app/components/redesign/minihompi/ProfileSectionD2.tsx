@@ -321,7 +321,14 @@ export function ProfileSectionD2({
             아직 이 슬롯에 빛이 머물기 전
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-2.5">
-            {loginNick ? (
+            {!loginNick ? (
+              <p
+                className="font-serif text-[12px] italic"
+                style={{ color: "rgba(90,58,26,0.65)" }}
+              >
+                로그인 후 프로필을 등록할 수 있습니다
+              </p>
+            ) : loginNick === id ? (
               <ParchmentButton
                 onClick={handleClaim}
                 disabled={claiming}
@@ -332,7 +339,7 @@ export function ProfileSectionD2({
                 className="font-serif text-[12px] italic"
                 style={{ color: "rgba(90,58,26,0.65)" }}
               >
-                로그인 후 프로필을 등록할 수 있습니다
+                본인 카드에서만 등록할 수 있어요
               </p>
             )}
           </div>
