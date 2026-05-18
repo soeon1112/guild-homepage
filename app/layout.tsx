@@ -3,7 +3,6 @@ import { Geist, Noto_Sans_KR, Noto_Serif_KR } from "next/font/google";
 import ScrollRestorer from "./components/ScrollRestorer";
 import { AuthProvider } from "./components/AuthProvider";
 import FloatingChat from "./components/redesign/FloatingChat";
-import FloatingPet from "./components/redesign/FloatingPet";
 import { ChromeShell } from "./components/redesign/ChromeShell";
 import BadgeToast from "./components/BadgeToast";
 import KeyboardScrollGuard from "./components/KeyboardScrollGuard";
@@ -75,7 +74,6 @@ export default function RootLayout({
           <VisualViewportSync />
           <ChromeShell>{children}</ChromeShell>
           <FloatingChat />
-          <FloatingPet />
           <BadgeToast />
         </AuthProvider>
       </body>
