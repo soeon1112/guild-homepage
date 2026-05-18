@@ -9,7 +9,7 @@ import type { Timestamp } from "firebase/firestore";
 // ── Visibility gate ──────────────────────────────────────────
 // Phase 2-B (메뉴 정식 추가) 시점에 전체 공개로 풀림 — null = 모든
 // 로그인 멤버 진입 가능. 다시 allowlist 로 막으려면 배열로 되돌리면 됨
-// (canSeePets / canSeeGuildTest 와 동일 escape hatch 패턴).
+// (canSeeGuildTest 와 동일 escape hatch 패턴).
 export const PROPOSALS_ADMIN_NICKNAMES: readonly string[] | null = null;
 
 export function canSeeProposals(

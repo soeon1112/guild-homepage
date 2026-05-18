@@ -6,8 +6,7 @@
 
 // Soft-launch gate — `null` opens fishing to every signed-in
 // member; setting this to a specific nickname re-restricts it to
-// that account (mirrors the PET_ADMIN_NICKNAME pattern in
-// pets.ts so the toggle is one constant per feature).
+// that account (one constant per feature toggle).
 export const FISHING_ADMIN_NICKNAME: string | null = null;
 
 export function canSeeFishing(nickname: string | null | undefined): boolean {
@@ -66,11 +65,10 @@ export function getNightIntensity(now: number = Date.now()): number {
 // unchanged — the spec only flips the top-level forage/fish split.
 export const CATCH_FORAGE_PROBABILITY_NIGHT = 0.35;
 
-// Per-admin debug toggle for the day/night view, mirroring
-// PET_DEBUG_ADMIN_NICKNAME in pets.ts. Lets the admin force a
-// phase from the game UI without waiting up to 30 min for the
-// real cycle to roll over. Toggle is local to that session only —
-// other clients still see the time-based phase.
+// Per-admin debug toggle for the day/night view. Lets the admin
+// force a phase from the game UI without waiting up to 30 min for
+// the real cycle to roll over. Toggle is local to that session
+// only — other clients still see the time-based phase.
 export const FISHING_DEBUG_ADMIN_NICKNAME = "언쏘";
 export function canDebugFishing(nickname: string | null | undefined): boolean {
   if (!nickname) return false;

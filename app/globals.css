@@ -3670,8 +3670,8 @@ object {
   left: 0;
   padding-top: var(--modal-top-offset);
   padding-bottom: var(--modal-bottom-offset);
-  /* Above FloatingChat (z-200) and FloatingPet — the lightbox is
-     opened from inside those panels and must cover them. */
+  /* Above FloatingChat (z-200) — the lightbox is opened from
+     inside that panel and must cover it. */
   z-index: 1000;
   background: rgba(0, 0, 0, 0.9);
   display: flex;
@@ -5594,8 +5594,8 @@ body.has-redesigned-header .bg-scene {
   100% { opacity: 0; transform: translate(-50%, -42px) scale(0.85); }
 }
 @keyframes pet-levelup {
-  /* Bounce-in burst, hold, then fade out — matches the 2.8s clear timer
-     scheduled in FloatingPet so the keyframe ends as the React state nulls. */
+  /* Bounce-in burst, hold, then fade out (dead — kept as CSS-only
+     reference, FloatingPet removed in pet/p3 cleanup). */
   0%   { opacity: 0; transform: scale(0.6); }
   10%  { opacity: 1; transform: scale(1.15); }
   18%  { transform: scale(0.96); }
