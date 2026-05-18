@@ -103,10 +103,15 @@ export default function NoticeWritePage() {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
+      const selectedGuildName =
+        guilds.find((g) => g.id === selectedCategory)?.name ?? "";
+      const actPrefix = selectedGuildName
+        ? `[공지·${selectedGuildName}]`
+        : "공지";
       await logActivity(
         "notice",
         loginNick ?? "관리자",
-        `공지 '${truncate(cleanTitle, 15)}'${josa(cleanTitle, "이/가")} 올라왔어요`,
+        `${actPrefix} '${truncate(cleanTitle, 15)}'${josa(cleanTitle, "이/가")} 올라왔어요`,
         `/notice/${newRef.id}`,
         `notice/${newRef.id}`,
       );
