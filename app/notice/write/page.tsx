@@ -14,8 +14,9 @@ import { db, storage } from "@/src/lib/firebase";
 import { logActivity } from "@/src/lib/activity";
 import { josa, truncate } from "@/src/lib/text";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
-
-const ADMIN_PASSWORD = "dawnlight2024";
+import { useAuth } from "@/app/components/AuthProvider";
+import { useGuilds } from "@/src/lib/useGuilds";
+import { writableCategories } from "@/src/lib/noticePermissions";
 
 type AttachmentType = "image" | "video" | "gif";
 
@@ -37,22 +38,15 @@ export default function NoticeWritePage() {
   const router = useRouter();
   const isDawnlight2 = useDawnlight2();
   const rootClass = "board-content" + (isDawnlight2 ? " dl2-notice" : "");
-  const [pw, setPw] = useState("");
-  const [verified, setVerified] = useState(false);
-  const [gateErr, setGateErr] = useState("");
+  const { nickname: loginNick } = useAuth();
+  const guilds = useGuilds({ includeUnion: true });
+  const writable = writableCategories(loginNick, guilds);
+
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [pending, setPending] = useState<PendingFile[]>([]);
   const [submitting, setSubmitting] = useState(false);
-
-  const handleVerify = () => {
-    if (pw !== ADMIN_PASSWORD) {
-      setGateErr("관리자 비밀번호가 일치하지 않습니다.");
-      return;
-    }
-    setGateErr("");
-    setVerified(true);
-  };
 
   const handleFilesSelected = (list: FileList | null) => {
     if (!list || list.length === 0) return;
@@ -74,6 +68,10 @@ export default function NoticeWritePage() {
   };
 
   const handleSubmit = async () => {
+    if (!selectedCategory) {
+      alert("카테고리를 먼저 선택해주세요.");
+      return;
+    }
     if (!title.trim() || !content.trim()) {
       alert("제목과 내용을 입력해주세요.");
       return;
@@ -100,13 +98,14 @@ export default function NoticeWritePage() {
       await setDoc(newRef, {
         title: cleanTitle,
         content: content.trim(),
+        category: selectedCategory,
         attachments,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
       await logActivity(
         "notice",
-        "관리자",
+        loginNick ?? "관리자",
         `공지 '${truncate(cleanTitle, 15)}'${josa(cleanTitle, "이/가")} 올라왔어요`,
         `/notice/${newRef.id}`,
         `notice/${newRef.id}`,
@@ -120,7 +119,8 @@ export default function NoticeWritePage() {
     }
   };
 
-  if (!verified) {
+  // 권한 가드 — 작성 가능한 카테고리 0개면 차단
+  if (!loginNick || writable.length === 0) {
     return (
       <div className={rootClass}>
         {isDawnlight2 ? (
@@ -131,26 +131,82 @@ export default function NoticeWritePage() {
         ) : (
           <h1 className="board-title">공지 작성</h1>
         )}
-        <div className="notice-gate">
-          <input
-            type="password"
-            className="board-input"
-            placeholder="관리자 비밀번호"
-            value={pw}
-            onChange={(e) => setPw(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleVerify();
-            }}
-            autoFocus
-          />
-          {gateErr && <p className="notice-gate-err">{gateErr}</p>}
-          <button className="board-btn" onClick={handleVerify}>
-            확인
-          </button>
+        <p style={{ padding: "2rem 0", color: "rgba(255,255,255,0.7)" }}>
+          작성 권한이 없습니다.
+        </p>
+        <Link href="/notice" className="board-btn board-btn-cancel">
+          돌아가기
+        </Link>
+      </div>
+    );
+  }
+
+  // 카테고리 선택 stage — 작성 가능한 카테고리가 여러 개거나 미선택
+  if (!selectedCategory) {
+    return (
+      <div className={rootClass}>
+        {isDawnlight2 ? (
+          <header className="dl2-notice-page-head">
+            <h1 className="dl2-notice-page-title">공지 작성</h1>
+            <p className="dl2-notice-page-sub">SELECT CATEGORY</p>
+          </header>
+        ) : (
+          <h1 className="board-title">공지 작성</h1>
+        )}
+        <p style={{ margin: "1rem 0", color: "rgba(255,255,255,0.7)" }}>
+          카테고리를 선택해주세요.
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+          {writable.map((g) => {
+            const accent = g.isUnion ? "200, 184, 232" : "255, 199, 133";
+            return (
+              <button
+                key={g.id}
+                type="button"
+                onClick={() => setSelectedCategory(g.id)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.6rem",
+                  padding: "12px 16px",
+                  background: `rgba(${accent}, 0.12)`,
+                  border: `1px solid rgba(${accent}, 0.35)`,
+                  borderRadius: 10,
+                  color: g.isUnion ? "#c8b8e8" : "#ffc785",
+                  fontFamily:
+                    "'Pretendard Variable', Pretendard, 'Noto Sans KR', sans-serif",
+                  fontSize: "14px",
+                  fontWeight: 500,
+                  cursor: "pointer",
+                  textAlign: "left",
+                }}
+              >
+                <span
+                  aria-hidden
+                  style={{
+                    display: "inline-block",
+                    width: 3,
+                    height: 14,
+                    background: g.isUnion ? "#c8b8e8" : "#ffc785",
+                    borderRadius: 2,
+                  }}
+                />
+                {g.name}
+              </button>
+            );
+          })}
+        </div>
+        <div style={{ marginTop: "1rem" }}>
+          <Link href="/notice" className="board-btn board-btn-cancel">
+            취소
+          </Link>
         </div>
       </div>
     );
   }
+
+  const selectedGuild = guilds.find((g) => g.id === selectedCategory);
+  const selectedAccent = selectedGuild?.isUnion ? "#c8b8e8" : "#ffc785";
 
   return (
     <div className={rootClass}>
@@ -162,6 +218,41 @@ export default function NoticeWritePage() {
       ) : (
         <h1 className="board-title">공지 작성</h1>
       )}
+
+      <p
+        style={{
+          margin: "0 0 1rem",
+          padding: "8px 12px",
+          background: "rgba(255,255,255,0.06)",
+          border: "1px solid rgba(255,255,255,0.12)",
+          borderRadius: 8,
+          color: "rgba(255,255,255,0.85)",
+          fontSize: "13px",
+        }}
+      >
+        카테고리:{" "}
+        <strong style={{ color: selectedAccent }}>
+          {selectedGuild?.name ?? selectedCategory}
+        </strong>
+        {writable.length > 1 && (
+          <button
+            type="button"
+            onClick={() => setSelectedCategory("")}
+            style={{
+              marginLeft: "0.8rem",
+              padding: "2px 10px",
+              background: "transparent",
+              border: "1px solid rgba(255,255,255,0.25)",
+              borderRadius: 999,
+              color: "rgba(255,255,255,0.7)",
+              fontSize: "11px",
+              cursor: "pointer",
+            }}
+          >
+            변경
+          </button>
+        )}
+      </p>
 
       <div className="board-form">
         <input

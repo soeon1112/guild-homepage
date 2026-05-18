@@ -12,8 +12,8 @@ import {
 } from "firebase/storage";
 import { db, storage } from "@/src/lib/firebase";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
-
-const ADMIN_PASSWORD = "dawnlight2024";
+import { useAuth } from "@/app/components/AuthProvider";
+import { canManageNotice } from "@/src/lib/noticePermissions";
 
 type AttachmentType = "image" | "video" | "gif";
 
@@ -45,9 +45,8 @@ export default function NoticeEditPage({
   const router = useRouter();
   const isDawnlight2 = useDawnlight2();
   const rootClass = "board-content" + (isDawnlight2 ? " dl2-notice" : "");
-  const [pw, setPw] = useState("");
-  const [verified, setVerified] = useState(false);
-  const [gateErr, setGateErr] = useState("");
+  const { nickname: loginNick } = useAuth();
+  const allowed = canManageNotice(loginNick);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [existing, setExisting] = useState<Attachment[]>([]);
@@ -71,15 +70,6 @@ export default function NoticeEditPage({
       setLoading(false);
     })();
   }, [id]);
-
-  const handleVerify = () => {
-    if (pw !== ADMIN_PASSWORD) {
-      setGateErr("관리자 비밀번호가 일치하지 않습니다.");
-      return;
-    }
-    setGateErr("");
-    setVerified(true);
-  };
 
   const handleFilesSelected = (list: FileList | null) => {
     if (!list || list.length === 0) return;
@@ -171,7 +161,7 @@ export default function NoticeEditPage({
     );
   }
 
-  if (!verified) {
+  if (!allowed) {
     return (
       <div className={rootClass}>
         {isDawnlight2 ? (
@@ -182,23 +172,12 @@ export default function NoticeEditPage({
         ) : (
           <h1 className="board-title">공지 수정</h1>
         )}
-        <div className="notice-gate">
-          <input
-            type="password"
-            className="board-input"
-            placeholder="관리자 비밀번호"
-            value={pw}
-            onChange={(e) => setPw(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleVerify();
-            }}
-            autoFocus
-          />
-          {gateErr && <p className="notice-gate-err">{gateErr}</p>}
-          <button className="board-btn" onClick={handleVerify}>
-            확인
-          </button>
-        </div>
+        <p style={{ padding: "2rem 0", color: "rgba(255,255,255,0.7)" }}>
+          수정 권한이 없습니다.
+        </p>
+        <Link href={`/notice/${id}`} className="board-btn board-btn-cancel">
+          돌아가기
+        </Link>
       </div>
     );
   }

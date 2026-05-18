@@ -10,8 +10,7 @@ import { deleteActivitiesByLink } from "@/src/lib/activity";
 import { useAuth } from "@/app/components/AuthProvider";
 import { handleEvent } from "@/src/lib/badgeCheck";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
-
-const ADMIN_PASSWORD = "dawnlight2024";
+import { canManageNotice } from "@/src/lib/noticePermissions";
 
 function extractYouTubeId(url: string): string | null {
   let m = url.match(/youtu\.be\/([A-Za-z0-9_-]{11})/);
@@ -79,12 +78,6 @@ export default function NoticeDetailPage({
   };
 
   const handleDelete = async () => {
-    const pw = prompt("관리자 비밀번호를 입력하세요.");
-    if (pw === null) return;
-    if (pw !== ADMIN_PASSWORD) {
-      alert("관리자 비밀번호가 일치하지 않습니다.");
-      return;
-    }
     if (!confirm("정말 삭제하시겠습니까?")) return;
     if (post?.attachments?.length) {
       await Promise.all(
@@ -177,12 +170,16 @@ export default function NoticeDetailPage({
         )}
 
         <div className="board-detail-actions">
-          <button className="board-btn" onClick={handleEdit}>
-            수정
-          </button>
-          <button className="board-btn board-btn-cancel" onClick={handleDelete}>
-            삭제
-          </button>
+          {canManageNotice(loginNick) && (
+            <>
+              <button className="board-btn" onClick={handleEdit}>
+                수정
+              </button>
+              <button className="board-btn board-btn-cancel" onClick={handleDelete}>
+                삭제
+              </button>
+            </>
+          )}
           <Link href="/notice" className="board-btn">
             목록으로
           </Link>

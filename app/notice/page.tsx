@@ -31,6 +31,7 @@ import { createPortal } from "react-dom";
 import { useAuth } from "../components/AuthProvider";
 import { db } from "@/src/lib/firebase";
 import { useGuilds } from "@/src/lib/useGuilds";
+import { writableCategories } from "@/src/lib/noticePermissions";
 import {
   deleteActivitiesByTargetPath,
   logActivity,
@@ -134,6 +135,7 @@ function NoticePageInner() {
   }, [items]);
 
   const visibleCategories = guilds.filter((g) => (grouped.get(g.id)?.length ?? 0) > 0);
+  const canWrite = writableCategories(nickname, guilds).length > 0;
 
   return (
     <div
@@ -156,9 +158,11 @@ function NoticePageInner() {
           warm gradient 스타일로 통일. */}
       <div className="notice-schedule-header">
         <h2 className="notice-schedule-title">공지</h2>
-        <Link href="/notice/write" className="notice-schedule-add-btn">
-          {isDawnlight2 ? "✦ 글쓰기" : "글쓰기"}
-        </Link>
+        {canWrite && (
+          <Link href="/notice/write" className="notice-schedule-add-btn">
+            {isDawnlight2 ? "✦ 글쓰기" : "글쓰기"}
+          </Link>
+        )}
       </div>
 
       {loading ? (
