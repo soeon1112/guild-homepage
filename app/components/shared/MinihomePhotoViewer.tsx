@@ -15,6 +15,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -47,6 +48,8 @@ import {
   CommentImageView,
 } from "@/app/components/CommentImage";
 import NicknameLink from "@/app/components/NicknameLink";
+import { MemberAvatar } from "@/app/components/redesign/MemberAvatar";
+import { useMemberAvatars } from "@/src/lib/useMemberAvatars";
 import { MentionText } from "@/app/components/mention/MentionText";
 import {
   MentionPicker,
@@ -933,6 +936,14 @@ function PhotoCommentItem({
   const [replyImage, setReplyImage] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // 댓글 작성자 + 대댓글 작성자 닉네임 모음 → 프사 fetch.
+  const avatarNicknames = useMemo(
+    () => [comment.nickname, ...replies.map((r) => r.nickname)],
+    [comment.nickname, replies],
+  );
+  const avatars = useMemberAvatars(avatarNicknames);
+  const commentAvatar = avatars.get(comment.nickname);
+
   useEffect(() => {
     const q = query(
       collection(
@@ -1074,6 +1085,12 @@ function PhotoCommentItem({
     >
       {dawnlight2 ? (
         <div className="dl2-comment-row">
+          <MemberAvatar
+            imageUrl={commentAvatar?.imageUrl}
+            nickname={comment.nickname}
+            size={36}
+            dl2
+          />
           <div className="dl2-comment-left">
             <span className="dl2-comment-nick-line">
               <NicknameLink
@@ -1110,37 +1127,45 @@ function PhotoCommentItem({
           </div>
         </div>
       ) : (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <p className="wrap-anywhere min-w-0 flex-1 font-serif text-[12px] leading-relaxed text-text-primary">
-            <NicknameLink
-              nickname={comment.nickname}
-              className="font-medium text-stardust"
-            />
-            <span className="text-text-sub"> : </span>
-            <MentionText as="span" text={comment.content} dl2={true} />
-          </p>
-          <div className="flex shrink-0 items-center gap-2 font-serif text-[11px] tracking-wider">
-            <span className="text-[10px] tracking-wider text-text-sub">
-              {formatTime(comment.createdAt)}
-            </span>
-            {loginNick && (
-              <button
-                type="button"
-                onClick={onToggleReply}
-                className="text-text-sub transition-colors hover:text-peach-accent"
-              >
-                {replyOpen ? "닫기" : "답글"}
-              </button>
-            )}
-            {loginNick === comment.nickname && (
-              <button
-                type="button"
-                onClick={handleDeleteComment}
-                className="text-text-sub transition-colors hover:text-peach-accent"
-              >
-                삭제
-              </button>
-            )}
+        <div className="flex min-w-0 items-start gap-3">
+          <MemberAvatar
+            imageUrl={commentAvatar?.imageUrl}
+            nickname={comment.nickname}
+            size={36}
+          />
+          <div className="min-w-0 flex-1">
+            <div className="mb-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <NicknameLink
+                nickname={comment.nickname}
+                className="font-medium text-stardust"
+              />
+              <div className="ml-auto flex shrink-0 items-center gap-2 font-serif text-[11px] tracking-wider">
+                <span className="text-[10px] tracking-wider text-text-sub">
+                  {formatTime(comment.createdAt)}
+                </span>
+                {loginNick && (
+                  <button
+                    type="button"
+                    onClick={onToggleReply}
+                    className="text-text-sub transition-colors hover:text-peach-accent"
+                  >
+                    {replyOpen ? "닫기" : "답글"}
+                  </button>
+                )}
+                {loginNick === comment.nickname && (
+                  <button
+                    type="button"
+                    onClick={handleDeleteComment}
+                    className="text-text-sub transition-colors hover:text-peach-accent"
+                  >
+                    삭제
+                  </button>
+                )}
+              </div>
+            </div>
+            <p className="wrap-anywhere font-serif text-[12px] leading-relaxed text-text-primary">
+              <MentionText as="span" text={comment.content} dl2={true} />
+            </p>
           </div>
         </div>
       )}
@@ -1158,71 +1183,68 @@ function PhotoCommentItem({
               : "mt-2 ml-5 flex flex-col gap-2"
           }
         >
-          {replies.map((r, idx) =>
-            dawnlight2 ? (
+          {replies.map((r, idx) => {
+            const replyAvatar = avatars.get(r.nickname);
+            return dawnlight2 ? (
               <div
                 key={r.id}
                 className={
                   "dl2-photo-comment-reply" + (idx > 0 ? " has-prev" : "")
                 }
               >
-                <div className="dl2-reply-row">
-                  <span className="dl2-reply-arrow">↳</span>
-                  <div className="dl2-reply-content">
-                    <div className="dl2-comment-row">
-                      <div className="dl2-comment-left">
-                        <span className="dl2-comment-nick-line">
-                          <NicknameLink
-                            nickname={r.nickname}
-                            className="dl2-photo-comment-nick"
-                          />
-                        </span>
-                        {!!r.content && (
-                          <MentionText as="p" className="dl2-photo-comment-body" text={r.content} dl2={true} />
-                        )}
-                        {r.imageUrl && (
-                          <div className="mt-2">
-                            <CommentImageView url={r.imageUrl} />
-                          </div>
-                        )}
+                <div className="dl2-comment-row">
+                  <MemberAvatar
+                    imageUrl={replyAvatar?.imageUrl}
+                    nickname={r.nickname}
+                    size={36}
+                    dl2
+                  />
+                  <div className="dl2-comment-left">
+                    <span className="dl2-comment-nick-line">
+                      <NicknameLink
+                        nickname={r.nickname}
+                        className="dl2-photo-comment-nick"
+                      />
+                    </span>
+                    {!!r.content && (
+                      <MentionText as="p" className="dl2-photo-comment-body" text={r.content} dl2={true} />
+                    )}
+                    {r.imageUrl && (
+                      <div className="mt-2">
+                        <CommentImageView url={r.imageUrl} />
                       </div>
-                      <div className="dl2-comment-right">
-                        <span className="dl2-photo-comment-date">
-                          {formatTime(r.createdAt)}
-                        </span>
-                        {loginNick === r.nickname && (
-                          <button
-                            type="button"
-                            className="dl2-photo-comment-action"
-                            onClick={() => handleDeleteReply(r.id)}
-                          >
-                            삭제
-                          </button>
-                        )}
-                      </div>
-                    </div>
+                    )}
+                  </div>
+                  <div className="dl2-comment-right">
+                    <span className="dl2-photo-comment-date">
+                      {formatTime(r.createdAt)}
+                    </span>
+                    {loginNick === r.nickname && (
+                      <button
+                        type="button"
+                        className="dl2-photo-comment-action"
+                        onClick={() => handleDeleteReply(r.id)}
+                      >
+                        삭제
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
             ) : (
-              <div key={r.id} className="flex items-start gap-2">
-                <span
-                  className="shrink-0 font-serif text-xs leading-relaxed text-text-sub/70"
-                  aria-hidden
-                >
-                  └
-                </span>
+              <div key={r.id} className="flex min-w-0 items-start gap-3">
+                <MemberAvatar
+                  imageUrl={replyAvatar?.imageUrl}
+                  nickname={r.nickname}
+                  size={36}
+                />
                 <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <p className="wrap-anywhere min-w-0 flex-1 font-serif text-[11.5px] leading-relaxed text-text-primary">
-                      <NicknameLink
-                        nickname={r.nickname}
-                        className="font-medium text-stardust"
-                      />
-                      <span className="text-text-sub"> : </span>
-                      <MentionText as="span" text={r.content} dl2={true} />
-                    </p>
-                    <div className="flex shrink-0 items-center gap-2 font-serif text-[11px] tracking-wider">
+                  <div className="mb-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                    <NicknameLink
+                      nickname={r.nickname}
+                      className="font-medium text-stardust"
+                    />
+                    <div className="ml-auto flex shrink-0 items-center gap-2 font-serif text-[11px] tracking-wider">
                       <span className="text-[10px] tracking-wider text-text-sub">
                         {formatTime(r.createdAt)}
                       </span>
@@ -1237,6 +1259,9 @@ function PhotoCommentItem({
                       )}
                     </div>
                   </div>
+                  <p className="wrap-anywhere font-serif text-[11.5px] leading-relaxed text-text-primary">
+                    <MentionText as="span" text={r.content} dl2={true} />
+                  </p>
                   {r.imageUrl && (
                     <div className="mt-2">
                       <CommentImageView url={r.imageUrl} />
@@ -1244,8 +1269,8 @@ function PhotoCommentItem({
                   )}
                 </div>
               </div>
-            ),
-          )}
+            );
+          })}
 
           <AnimatePresence>
             {replyOpen && loginNick && (
