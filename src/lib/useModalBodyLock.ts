@@ -7,7 +7,7 @@ import { useEffect } from "react";
 // Plain `body { overflow: hidden }` is NOT enough on iOS Safari — once the
 // modal's own `overflow-y: auto` reaches an edge, touch scrolling bubbles
 // up to body and the page rubber-bands. The reliable pattern (also used
-// by FloatingChat and FishingGame) is:
+// by FloatingChat) is:
 //
 //   1. Save the current scrollY.
 //   2. Pin <html>/<body> with overflow: hidden + overscroll-behavior: none
