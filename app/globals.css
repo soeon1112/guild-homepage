@@ -9668,10 +9668,6 @@ body.has-redesigned-header .bg-scene {
   border-top: 1px solid rgba(42, 69, 112, 0.12);
 }
 
-/* 답글 hanging-indent: 좌측 ↳ 고정 + 우측 column (header + body wrap).
-   본문이 두 번째 줄로 넘어가도 화살표 우측(닉 시작점)에 정렬됨.
-   유리병 쪽지 / 앨범 모달 / 사진첩 모달 / 게시판 답글 모두 reuse. */
-
 /* commentHeader 의 NicknameLink wrap 을 flex item 으로 — 닉네임이
    길어도 우측 actions 영역 침범 X. min-width: 0 (flex item 의 default
    min-width auto 가 줄바꿈 방해, 0 으로 풀어야 wrap 동작). */
@@ -9681,23 +9677,6 @@ body.has-redesigned-header .bg-scene {
   flex: 1 1 0;
   min-width: 0;
   overflow-wrap: anywhere;
-}
-
-.dl2-reply-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-}
-.dl2-reply-arrow {
-  flex-shrink: 0;
-  color: #5a7090;
-  font-size: 12px;
-  line-height: 1.6;
-  font-family: 'Pretendard', system-ui, sans-serif;
-}
-.dl2-reply-content {
-  flex: 1;
-  min-width: 0;
 }
 
 /* 댓글 outer row + 좌측 column (nick + body) + 우측 column (actions).
