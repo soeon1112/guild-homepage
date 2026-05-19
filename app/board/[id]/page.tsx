@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useRef, useState, use } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { useDeepLinkParam } from "@/src/lib/useDeepLinkParam";
 import Link from "next/link";
@@ -26,6 +26,8 @@ import {
   CommentImageView,
 } from "@/app/components/CommentImage";
 import NicknameLink from "@/app/components/NicknameLink";
+import { MemberAvatar } from "@/app/components/redesign/MemberAvatar";
+import { useMemberAvatars } from "@/src/lib/useMemberAvatars";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
 import { formatSmart } from "@/src/lib/formatSmart";
 import { handleEvent } from "@/src/lib/badgeCheck";
@@ -519,6 +521,14 @@ function BoardCommentItem({
   const [replyImage, setReplyImage] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // 댓글 작성자 + 대댓글 작성자 닉네임 모음 → 프사 fetch.
+  const avatarNicknames = useMemo(
+    () => [comment.nickname, ...replies.map((r) => r.nickname)],
+    [comment.nickname, replies],
+  );
+  const avatars = useMemberAvatars(avatarNicknames);
+  const commentAvatar = avatars.get(comment.nickname);
+
   useEffect(() => {
     const q = query(
       collection(db, "board", boardId, "comments", comment.id, "replies"),
@@ -613,6 +623,12 @@ function BoardCommentItem({
     <div className="board-comment-item" data-comment-id={comment.id}>
       {isDawnlight2 ? (
         <div className="dl2-comment-row">
+          <MemberAvatar
+            imageUrl={commentAvatar?.imageUrl}
+            nickname={comment.nickname}
+            size={36}
+            dl2
+          />
           <div className="dl2-comment-left">
             <span className="dl2-comment-nick-line">
               <NicknameLink
@@ -650,69 +666,118 @@ function BoardCommentItem({
           </div>
         </div>
       ) : (
-        <>
-          <div className="board-comment-header">
-            <NicknameLink
-              nickname={comment.nickname}
-              className="board-comment-nick"
-            />
-            <div
-              style={{
-                marginLeft: "auto",
-                display: "flex",
-                alignItems: "center",
-                gap: "0.6rem",
-              }}
-            >
-              <span className="board-comment-date">
-                {formatDate(comment.createdAt)}
-              </span>
-              {loginNick && (
-                <button
-                  type="button"
-                  className="board-reply-btn"
-                  onClick={onToggleReply}
-                  style={{ marginLeft: 0 }}
-                >
-                  답글
-                </button>
-              )}
-              {loginNick === comment.nickname && (
-                <button
-                  type="button"
-                  className="board-reply-btn"
-                  onClick={handleDeleteComment}
-                  style={{ marginLeft: 0 }}
-                >
-                  삭제
-                </button>
-              )}
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 12, minWidth: 0 }}>
+          <MemberAvatar
+            imageUrl={commentAvatar?.imageUrl}
+            nickname={comment.nickname}
+            size={36}
+          />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="board-comment-header">
+              <NicknameLink
+                nickname={comment.nickname}
+                className="board-comment-nick"
+              />
+              <div
+                style={{
+                  marginLeft: "auto",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.6rem",
+                }}
+              >
+                <span className="board-comment-date">
+                  {formatDate(comment.createdAt)}
+                </span>
+                {loginNick && (
+                  <button
+                    type="button"
+                    className="board-reply-btn"
+                    onClick={onToggleReply}
+                    style={{ marginLeft: 0 }}
+                  >
+                    답글
+                  </button>
+                )}
+                {loginNick === comment.nickname && (
+                  <button
+                    type="button"
+                    className="board-reply-btn"
+                    onClick={handleDeleteComment}
+                    style={{ marginLeft: 0 }}
+                  >
+                    삭제
+                  </button>
+                )}
+              </div>
             </div>
+            <MentionText as="p" className="board-comment-body" text={comment.content} dl2 />
+            {comment.imageUrl && <CommentImageView url={comment.imageUrl} />}
           </div>
-          <MentionText as="p" className="board-comment-body" text={comment.content} dl2 />
-          {comment.imageUrl && <CommentImageView url={comment.imageUrl} />}
-        </>
+        </div>
       )}
       {(replies.length > 0 || replyOpen) && (
         <div className="board-reply-list">
-          {replies.map((r) => (
+          {replies.map((r) => {
+            const replyAvatar = avatars.get(r.nickname);
+            return (
             <div key={r.id} className="board-reply-item">
               {isDawnlight2 ? (
-                <div className="dl2-reply-row">
-                  <span className="dl2-reply-arrow">↳</span>
-                  <div className="dl2-reply-content">
-                    <div className="dl2-comment-row">
-                      <div className="dl2-comment-left">
-                        <span className="dl2-comment-nick-line">
-                          <NicknameLink
-                            nickname={r.nickname}
-                            className="board-comment-nick"
-                          />
-                        </span>
-                        <MentionText as="p" className="board-comment-body" text={r.content} dl2 />
-                        {r.imageUrl && <CommentImageView url={r.imageUrl} />}
-                      </div>
-                      <div className="dl2-comment-right">
+                <div className="dl2-comment-row">
+                  <MemberAvatar
+                    imageUrl={replyAvatar?.imageUrl}
+                    nickname={r.nickname}
+                    size={36}
+                    dl2
+                  />
+                  <div className="dl2-comment-left">
+                    <span className="dl2-comment-nick-line">
+                      <NicknameLink
+                        nickname={r.nickname}
+                        className="board-comment-nick"
+                      />
+                    </span>
+                    <MentionText as="p" className="board-comment-body" text={r.content} dl2 />
+                    {r.imageUrl && <CommentImageView url={r.imageUrl} />}
+                  </div>
+                  <div className="dl2-comment-right">
+                    <span className="board-comment-date">
+                      {formatDate(r.createdAt)}
+                    </span>
+                    {loginNick === r.nickname && (
+                      <button
+                        type="button"
+                        className="board-reply-btn"
+                        onClick={() => handleDeleteReply(r.id)}
+                        style={{ marginLeft: 0 }}
+                      >
+                        삭제
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 12, minWidth: 0 }}>
+                  <MemberAvatar
+                    imageUrl={replyAvatar?.imageUrl}
+                    nickname={r.nickname}
+                    size={36}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="board-comment-header">
+                      <NicknameLink
+                        nickname={r.nickname}
+                        className="board-comment-nick"
+                      />
+                      <div
+                        style={{
+                          marginLeft: "auto",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.6rem",
+                          flexShrink: 0,
+                        }}
+                      >
                         <span className="board-comment-date">
                           {formatDate(r.createdAt)}
                         </span>
@@ -728,46 +793,14 @@ function BoardCommentItem({
                         )}
                       </div>
                     </div>
+                    <MentionText as="p" className="board-comment-body" text={r.content} dl2 />
+                    {r.imageUrl && <CommentImageView url={r.imageUrl} />}
                   </div>
                 </div>
-              ) : (
-                <>
-                  <div className="board-comment-header">
-                    <NicknameLink
-                      nickname={r.nickname}
-                      className="board-comment-nick"
-                      prefix="↳ "
-                    />
-                    <div
-                      style={{
-                        marginLeft: "auto",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "0.6rem",
-                        flexShrink: 0,
-                      }}
-                    >
-                      <span className="board-comment-date">
-                        {formatDate(r.createdAt)}
-                      </span>
-                      {loginNick === r.nickname && (
-                        <button
-                          type="button"
-                          className="board-reply-btn"
-                          onClick={() => handleDeleteReply(r.id)}
-                          style={{ marginLeft: 0 }}
-                        >
-                          삭제
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  <MentionText as="p" className="board-comment-body" text={r.content} dl2 />
-                  {r.imageUrl && <CommentImageView url={r.imageUrl} />}
-                </>
               )}
             </div>
-          ))}
+            );
+          })}
           {replyOpen && loginNick && (
             <div className="board-comment-form board-reply-form cbar">
               <input
