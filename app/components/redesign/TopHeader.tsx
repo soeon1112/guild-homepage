@@ -17,6 +17,7 @@ import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
 import { useAuth } from "@/app/components/AuthProvider";
 import { useGuilds } from "@/src/lib/useGuilds";
+import { useBackdropClose } from "@/src/lib/useBackdropClose";
 
 type NavItem = {
   id: string;
@@ -205,6 +206,7 @@ export function AuthModal({
   const [guildId, setGuildId] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const backdropHandlers = useBackdropClose(onClose);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -285,7 +287,7 @@ export function AuthModal({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
-      onClick={onClose}
+      {...backdropHandlers}
       role="dialog"
       aria-modal="true"
       aria-label={mode === "login" ? "로그인" : "회원가입"}

@@ -29,6 +29,7 @@ import { logActivity } from "@/src/lib/activity";
 import { addPoints } from "@/src/lib/points";
 import { handleEvent } from "@/src/lib/badgeCheck";
 import { useModalBodyLock } from "@/src/lib/useModalBodyLock";
+import { useBackdropClose } from "@/src/lib/useBackdropClose";
 import { CollapsibleSection } from "./CollapsibleSection";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
 import {
@@ -446,6 +447,7 @@ function UploadModal({
   const [file, setFile] = useState<File | null>(null);
   const [caption, setCaption] = useState("");
   const [uploading, setUploading] = useState(false);
+  const backdropHandlers = useBackdropClose(onClose, !uploading);
   const filePreview = useMemo(
     () => (file ? URL.createObjectURL(file) : null),
     [file],
@@ -523,7 +525,7 @@ function UploadModal({
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
       className="modal-safe-frame fixed inset-0 z-[80] flex items-center justify-center"
-      onClick={uploading ? undefined : onClose}
+      {...backdropHandlers}
       style={{
         background: "rgba(11,8,33,0.8)",
         backdropFilter: "blur(10px)",

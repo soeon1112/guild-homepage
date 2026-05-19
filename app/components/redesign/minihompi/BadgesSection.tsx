@@ -8,6 +8,7 @@ import { BADGES, type BadgeMeta } from "@/src/lib/badges";
 import { listEarnedBadges } from "@/src/lib/badgeCheck";
 import { formatSmart } from "@/src/lib/formatSmart";
 import { useModalBodyLock } from "@/src/lib/useModalBodyLock";
+import { useBackdropClose } from "@/src/lib/useBackdropClose";
 import { useAuth } from "@/app/components/AuthProvider";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
 import { CollapsibleSection } from "./CollapsibleSection";
@@ -418,6 +419,7 @@ function BadgeDetailModal({
   const emoji = revealed ? badge.emoji : "❓";
 
   useModalBodyLock(true);
+  const backdropHandlers = useBackdropClose(onClose);
 
   if (typeof document === "undefined") return null;
   return createPortal(
@@ -426,7 +428,7 @@ function BadgeDetailModal({
         "modal-safe-frame fixed inset-0 z-[100] flex items-center justify-center" +
         (dawnlight2 ? " dl2-minihome" : "")
       }
-      onClick={onClose}
+      {...backdropHandlers}
       style={{
         background: dawnlight2 ? "rgba(0,0,0,0.65)" : "rgba(11,8,33,0.7)",
         backdropFilter: "blur(4px)",
@@ -556,6 +558,7 @@ function PrivacyModal({
   dawnlight2: boolean;
 }) {
   useModalBodyLock(true);
+  const backdropHandlers = useBackdropClose(onClose);
   if (typeof document === "undefined") return null;
   return createPortal(
     <div
@@ -563,7 +566,7 @@ function PrivacyModal({
         "modal-safe-frame fixed inset-0 z-[100] flex items-center justify-center" +
         (dawnlight2 ? " dl2-minihome" : "")
       }
-      onClick={onClose}
+      {...backdropHandlers}
       style={{
         background: dawnlight2 ? "rgba(0,0,0,0.6)" : "rgba(11,8,33,0.6)",
         backdropFilter: "blur(6px)",

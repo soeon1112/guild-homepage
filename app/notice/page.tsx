@@ -40,6 +40,7 @@ import { canAddSchedule } from "@/src/lib/scheduleAdmin";
 import { formatScheduleDate, josa, truncate } from "@/src/lib/text";
 import { useDeepLinkParam } from "@/src/lib/useDeepLinkParam";
 import { useModalBodyLock } from "@/src/lib/useModalBodyLock";
+import { useBackdropClose } from "@/src/lib/useBackdropClose";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
 
 // Phase 2-A: 통합 페이지. /schedule (기존) 도 양쪽 공존 — 다음 단계에서 제거.
@@ -461,6 +462,7 @@ function ScheduleAdminGate({
 }) {
   const [pw, setPw] = useState("");
   const [err, setErr] = useState("");
+  const backdropHandlers = useBackdropClose(onCancel);
 
   const handleSubmit = () => {
     if (pw !== ADMIN_PASSWORD) {
@@ -485,7 +487,7 @@ function ScheduleAdminGate({
         "notice-schedule-modal-backdrop" +
         (isDawnlight2 ? " dl2-notice" : "")
       }
-      onClick={onCancel}
+      {...backdropHandlers}
     >
       <div
         className="notice-schedule-modal-card"
@@ -543,6 +545,7 @@ function ScheduleEditor({
   const [date, setDate] = useState(initial.date);
   const [description, setDescription] = useState(initial.description);
   const [saving, setSaving] = useState(false);
+  const backdropHandlers = useBackdropClose(onClose, !saving);
 
   const handleSave = async () => {
     if (!title.trim() || !date) {
@@ -602,7 +605,7 @@ function ScheduleEditor({
         "notice-schedule-modal-backdrop" +
         (isDawnlight2 ? " dl2-notice" : "")
       }
-      onClick={onClose}
+      {...backdropHandlers}
     >
       <div
         className="notice-schedule-modal-card"

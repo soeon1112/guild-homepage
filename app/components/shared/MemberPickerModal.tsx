@@ -11,6 +11,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
+import { useBackdropClose } from "@/src/lib/useBackdropClose";
 
 // "우리 길원들" / "기타" — pre-canned group tags so users can tag the
 // whole guild or "other" without picking individual members.
@@ -30,6 +31,7 @@ export function MemberPickerModal({
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set(initial));
   const [members, setMembers] = useState<string[]>([]);
+  const backdropHandlers = useBackdropClose(onClose);
 
   useEffect(() => {
     let cancelled = false;
@@ -83,7 +85,7 @@ export function MemberPickerModal({
   return createPortal(
     <div
       className={dl2 ? "minihome-modal dl2-album-upload" : "minihome-modal"}
-      onClick={onClose}
+      {...backdropHandlers}
     >
       <div
         className="minihome-modal-content"

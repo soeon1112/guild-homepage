@@ -23,6 +23,7 @@ import { logActivity } from "@/src/lib/activity";
 import { addPoints } from "@/src/lib/points";
 import { handleEvent } from "@/src/lib/badgeCheck";
 import { useModalBodyLock } from "@/src/lib/useModalBodyLock";
+import { useBackdropClose } from "@/src/lib/useBackdropClose";
 import {
   MentionPicker,
   applyMentionInsert,
@@ -526,6 +527,7 @@ function UploadModalD2({
   >(null);
   const captionInputRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
+  const backdropHandlers = useBackdropClose(onClose, !uploading);
   const filePreview = useMemo(
     () => (file ? URL.createObjectURL(file) : null),
     [file],
@@ -597,7 +599,7 @@ function UploadModalD2({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="dl2-minihome modal-safe-frame fixed inset-0 z-[80] flex items-center justify-center"
-      onClick={uploading ? undefined : onClose}
+      {...backdropHandlers}
       style={{
         background: "rgba(0,0,0,0.6)",
         backdropFilter: "blur(4px)",

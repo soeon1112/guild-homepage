@@ -13,6 +13,7 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore";
+import { useBackdropClose } from "@/src/lib/useBackdropClose";
 import { db } from "@/src/lib/firebase";
 import { useAuth } from "./AuthProvider";
 import { formatSmart } from "@/src/lib/formatSmart";
@@ -159,6 +160,7 @@ function ComposeModal({
   const [content, setContent] = useState("");
   const [sending, setSending] = useState(false);
   const [doneMsg, setDoneMsg] = useState<string | null>(null);
+  const backdropHandlers = useBackdropClose(onClose);
 
   useEffect(() => {
     (async () => {
@@ -206,7 +208,7 @@ function ComposeModal({
   };
 
   return (
-    <div className="letter-modal-backdrop" onClick={onClose}>
+    <div className="letter-modal-backdrop" {...backdropHandlers}>
       <div
         className="letter-modal letter-paper"
         onClick={(e) => e.stopPropagation()}
@@ -276,12 +278,13 @@ function InboxModal({
 }) {
   const [idx, setIdx] = useState(0);
   const [marking, setMarking] = useState(false);
+  const backdropHandlers = useBackdropClose(onClose);
 
   const safeIdx = Math.max(0, Math.min(idx, letters.length - 1));
 
   if (letters.length === 0) {
     return (
-      <div className="letter-modal-backdrop" onClick={onClose}>
+      <div className="letter-modal-backdrop" {...backdropHandlers}>
         <div
           className="letter-modal letter-paper"
           onClick={(e) => e.stopPropagation()}
@@ -321,7 +324,7 @@ function InboxModal({
   };
 
   return (
-    <div className="letter-modal-backdrop" onClick={onClose}>
+    <div className="letter-modal-backdrop" {...backdropHandlers}>
       <div
         className="letter-modal letter-paper"
         onClick={(e) => e.stopPropagation()}

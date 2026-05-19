@@ -39,6 +39,7 @@ import {
 import NicknameLink from "@/app/components/NicknameLink";
 import { MemberAvatar } from "@/app/components/redesign/MemberAvatar";
 import { useMemberAvatars } from "@/src/lib/useMemberAvatars";
+import { useBackdropClose } from "@/src/lib/useBackdropClose";
 import { formatSmart } from "@/src/lib/formatSmart";
 import { handleEvent } from "@/src/lib/badgeCheck";
 import { josa, truncate } from "@/src/lib/text";
@@ -198,6 +199,7 @@ export function AlbumPhotoViewer({
   );
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const backdropHandlers = useBackdropClose(onClose, !saving && !deleting);
   // 출연자 선택 모달 — 작성 UI(album/page.tsx)와 동일한 MemberPickerModal
   // 을 재사용. 옛날 텍스트 input + Enter 패턴은 닉네임 오타가 들어가서
   // 뱃지 매칭이 깨지는 문제 + 작성 UI 와 톤이 안 맞아 2026-05-08 통일.
@@ -269,7 +271,7 @@ export function AlbumPhotoViewer({
     <div
       ref={modalRef}
       className={dl2 ? "minihome-modal dl2-album-viewer" : "minihome-modal"}
-      onClick={onClose}
+      {...backdropHandlers}
     >
       <div
         ref={cardRef}

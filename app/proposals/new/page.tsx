@@ -12,6 +12,7 @@ import {
 import { useAuth } from "../../components/AuthProvider";
 import { db } from "@/src/lib/firebase";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
+import { useBackdropClose } from "@/src/lib/useBackdropClose";
 import {
   canSeeProposals,
   PROPOSAL_CATEGORIES,
@@ -284,13 +285,14 @@ function AnonymousWarningModal({
   onConfirm: () => void;
   onDismiss: () => void;
 }) {
+  const backdropHandlers = useBackdropClose(onDismiss);
   return (
     <div
       className="proposals-modal-backdrop"
       role="dialog"
       aria-modal="true"
       aria-labelledby="proposals-anon-title"
-      onClick={onDismiss}
+      {...backdropHandlers}
     >
       <div
         className="proposals-modal-card"

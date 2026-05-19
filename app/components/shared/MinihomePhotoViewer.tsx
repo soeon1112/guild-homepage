@@ -50,6 +50,7 @@ import {
 import NicknameLink from "@/app/components/NicknameLink";
 import { MemberAvatar } from "@/app/components/redesign/MemberAvatar";
 import { useMemberAvatars } from "@/src/lib/useMemberAvatars";
+import { useBackdropClose } from "@/src/lib/useBackdropClose";
 import { MentionText } from "@/app/components/mention/MentionText";
 import {
   MentionPicker,
@@ -126,6 +127,7 @@ export function PhotoViewerModal({
   const editCaptionInputRef = useRef<HTMLInputElement | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const backdropHandlers = useBackdropClose(onClose, !saving && !deleting);
 
   // Deep-link comment scroll plumbing — mirrors AlbumPhotoModal in
   // app/album/page.tsx. The outer .modal-safe-frame motion.div is the
@@ -230,7 +232,7 @@ export function PhotoViewerModal({
         "modal-safe-frame fixed inset-0 z-[80] flex items-center justify-center" +
         (dawnlight2 ? " dl2-minihome" : "")
       }
-      onClick={saving || deleting ? undefined : onClose}
+      {...backdropHandlers}
       style={{
         background: dawnlight2 ? "rgba(0,0,0,0.88)" : "rgba(11,8,33,0.85)",
         backdropFilter: "blur(10px)",

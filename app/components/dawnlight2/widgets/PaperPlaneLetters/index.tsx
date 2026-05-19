@@ -25,6 +25,7 @@ import { db } from "@/src/lib/firebase";
 import { formatSmart } from "@/src/lib/formatSmart";
 import { useAuth } from "@/app/components/AuthProvider";
 import { useModalBodyLock } from "@/src/lib/useModalBodyLock";
+import { useBackdropClose } from "@/src/lib/useBackdropClose";
 
 // Paper Plane Letters — Dawnlight 2 anonymous letter widget.
 //
@@ -301,6 +302,7 @@ function ComposeModal({
   const [err, setErr] = useState<string | null>(null);
 
   useModalBodyLock(true);
+  const backdropHandlers = useBackdropClose(onClose);
 
   // Recipient list — same source/filter the cosmic ComposeModal uses.
   useEffect(() => {
@@ -377,7 +379,7 @@ function ComposeModal({
     <div
       className="fixed inset-0 z-[1000] flex items-center justify-center px-4 py-6"
       style={{ background: "rgba(11, 8, 33, 0.65)" }}
-      onClick={onClose}
+      {...backdropHandlers}
     >
       <div
         className="relative flex w-full max-w-md flex-col overflow-hidden rounded-2xl shadow-2xl"
@@ -494,6 +496,7 @@ function InboxModal({
   );
 
   useModalBodyLock(true);
+  const backdropHandlers = useBackdropClose(onClose);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -517,7 +520,7 @@ function InboxModal({
     <div
       className="fixed inset-0 z-[1000] flex items-center justify-center px-4 py-6"
       style={{ background: "rgba(11, 8, 33, 0.65)" }}
-      onClick={onClose}
+      {...backdropHandlers}
     >
       <div
         className="relative flex h-[min(80vh,560px)] w-full max-w-md flex-col overflow-hidden rounded-2xl shadow-2xl"

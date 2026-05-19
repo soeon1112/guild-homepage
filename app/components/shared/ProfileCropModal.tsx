@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import Cropper, { Area } from "react-easy-crop";
+import { useBackdropClose } from "@/src/lib/useBackdropClose";
 
 type Props = {
   file: File;
@@ -29,6 +30,7 @@ export default function ProfileCropModal({
   const [zoom, setZoom] = useState(1);
   const [croppedPx, setCroppedPx] = useState<Area | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const backdropHandlers = useBackdropClose(onCancel, !submitting);
 
   // Object URL for the picked file. Revoked on unmount so we don't leak
   // a Blob handle when the user closes the modal without confirming.
@@ -80,7 +82,7 @@ export default function ProfileCropModal({
       role="dialog"
       aria-modal="true"
       aria-label="프로필 사진 자르기"
-      onClick={submitting ? undefined : onCancel}
+      {...backdropHandlers}
       style={{
         position: "fixed",
         inset: 0,

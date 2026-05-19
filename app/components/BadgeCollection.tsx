@@ -5,6 +5,7 @@ import { Timestamp } from "firebase/firestore";
 import { BADGES, BADGE_BY_ID, BadgeMeta } from "@/src/lib/badges";
 import { listEarnedBadges } from "@/src/lib/badgeCheck";
 import { formatSmart } from "@/src/lib/formatSmart";
+import { useBackdropClose } from "@/src/lib/useBackdropClose";
 import { useAuth } from "./AuthProvider";
 
 type EarnedMap = Record<string, Timestamp | null>;
@@ -116,8 +117,10 @@ function BadgeDetailModal({
   const desc = revealed ? badge.description : "???";
   const emoji = revealed ? badge.emoji : "❓";
 
+  const backdropHandlers = useBackdropClose(onClose);
+
   return (
-    <div className="badge-modal-backdrop" onClick={onClose}>
+    <div className="badge-modal-backdrop" {...backdropHandlers}>
       <div className="badge-modal" onClick={(e) => e.stopPropagation()}>
         <div className="badge-modal-header">
           <span className="badge-modal-emoji">{emoji}</span>

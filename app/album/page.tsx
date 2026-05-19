@@ -21,6 +21,7 @@ import { logActivity } from "@/src/lib/activity";
 import { addPoints } from "@/src/lib/points";
 import { handleEvent } from "@/src/lib/badgeCheck";
 import { useModalBodyLock } from "@/src/lib/useModalBodyLock";
+import { useBackdropClose } from "@/src/lib/useBackdropClose";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
 import {
   AlbumPhotoViewer,
@@ -90,6 +91,10 @@ export default function AlbumPage() {
   const [people, setPeople] = useState<string[]>([]);
   const [photoDate, setPhotoDate] = useState<string>(todayISO());
   const [uploading, setUploading] = useState(false);
+  const uploadBackdropHandlers = useBackdropClose(
+    () => setUploadOpen(false),
+    !uploading,
+  );
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
   const [page, setPage] = useState(0);
   const photoIdsKey = photos.map((p) => p.id).sort().join(",");
@@ -304,7 +309,7 @@ export default function AlbumPage() {
       {uploadOpen && typeof document !== "undefined" && createPortal(
         <div
           className={isDawnlight2 ? "minihome-modal dl2-album-upload" : "minihome-modal"}
-          onClick={() => setUploadOpen(false)}
+          {...uploadBackdropHandlers}
         >
           <div
             className="minihome-modal-content"

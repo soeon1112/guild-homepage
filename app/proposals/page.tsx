@@ -15,6 +15,7 @@ import {
 import { useAuth } from "../components/AuthProvider";
 import { db } from "@/src/lib/firebase";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
+import { useBackdropClose } from "@/src/lib/useBackdropClose";
 import {
   canCancelJoin,
   canJoin,
@@ -513,6 +514,7 @@ function PromoteConfirmModal({
   onCancel: () => void;
 }) {
   const [submitting, setSubmitting] = useState(false);
+  const backdropHandlers = useBackdropClose(onCancel, !submitting);
 
   const handleConfirm = async () => {
     setSubmitting(true);
@@ -529,7 +531,7 @@ function PromoteConfirmModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="proposals-promote-title"
-      onClick={onCancel}
+      {...backdropHandlers}
     >
       <div
         className="proposals-modal-card"
@@ -610,6 +612,7 @@ function ConfirmModal({
 }) {
   const [submitting, setSubmitting] = useState(false);
   const copy = transitionCopy(pending.target, pending.wasAnonymous);
+  const backdropHandlers = useBackdropClose(onCancel, !submitting);
 
   const handleConfirm = async () => {
     setSubmitting(true);
@@ -626,7 +629,7 @@ function ConfirmModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="proposals-confirm-title"
-      onClick={onCancel}
+      {...backdropHandlers}
     >
       <div
         className="proposals-modal-card"

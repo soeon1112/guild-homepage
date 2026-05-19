@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Trash2, X, Lock, Unlock } from "lucide-react";
 import { JobIcon } from "./JobIcon";
 import { useModalBodyLock } from "@/src/lib/useModalBodyLock";
+import { useBackdropClose } from "@/src/lib/useBackdropClose";
 
 export type Challenge = "있음" | "다소 있음" | "없음";
 
@@ -146,6 +147,7 @@ export function CharacterForm({
   // iOS-compatible body scroll lock — replaces the previous plain
   // overflow:hidden which let iOS rubber-band scroll the page behind.
   useModalBodyLock(open);
+  const backdropHandlers = useBackdropClose(onClose, !submitting);
 
   // Esc closes
   useEffect(() => {
@@ -230,7 +232,7 @@ export function CharacterForm({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          onClick={submitting ? undefined : onClose}
+          {...backdropHandlers}
           className={
             "modal-safe-frame fixed inset-0 z-[80] flex items-center justify-center" +
             (dl2 ? " dl2-power" : "")

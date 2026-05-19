@@ -48,6 +48,7 @@ import { AdventureLogSectionD2 } from "@/app/components/redesign/minihompi/Adven
 import { PhotosSection } from "@/app/components/redesign/minihompi/PhotosSection";
 import { PhotosSectionD2 } from "@/app/components/redesign/minihompi/PhotosSectionD2";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
+import { useBackdropClose } from "@/src/lib/useBackdropClose";
 
 // `decodeURIComponent` throws on malformed input ("%E"). Be defensive —
 // fall back to the raw value rather than crashing the page.
@@ -1278,6 +1279,10 @@ function PhotoSection({
   const [uploading, setUploading] = useState(false);
   const [viewer, setViewer] = useState<PhotoEntry | null>(null);
   const autoOpenedRef = useRef(false);
+  const uploadBackdropHandlers = useBackdropClose(
+    () => setUploadOpen(false),
+    !uploading,
+  );
 
   useEffect(() => {
     const q = query(
@@ -1504,7 +1509,7 @@ function PhotoSection({
       )}
 
       {uploadOpen && (
-        <div className="minihome-modal" onClick={() => setUploadOpen(false)}>
+        <div className="minihome-modal" {...uploadBackdropHandlers}>
           <div
             className="minihome-modal-content"
             onClick={(e) => e.stopPropagation()}
@@ -1576,6 +1581,7 @@ function MemberPhotoViewer({
   const [editCaption, setEditCaption] = useState(photo.caption);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const backdropHandlers = useBackdropClose(onClose, !saving && !deleting);
 
   const startEdit = () => {
     setEditCaption(photo.caption);
@@ -1616,7 +1622,7 @@ function MemberPhotoViewer({
   };
 
   return (
-    <div className="minihome-modal" onClick={onClose}>
+    <div className="minihome-modal" {...backdropHandlers}>
       <div
         className="minihome-photo-viewer"
         onClick={(e) => e.stopPropagation()}
