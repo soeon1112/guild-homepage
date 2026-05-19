@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   addDoc,
@@ -25,6 +25,8 @@ import {
   CommentImageView,
 } from "@/app/components/CommentImage";
 import NicknameLink from "@/app/components/NicknameLink";
+import { MemberAvatar } from "@/app/components/redesign/MemberAvatar";
+import { useMemberAvatars } from "@/src/lib/useMemberAvatars";
 import { formatSmart } from "@/src/lib/formatSmart";
 import { handleEvent } from "@/src/lib/badgeCheck";
 import { josa, truncate } from "@/src/lib/text";
@@ -326,6 +328,14 @@ function GuestbookItem({
   const [replyImage, setReplyImage] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // 댓글 작성자 + 대댓글 작성자 닉네임 모음 → 프사 fetch.
+  const avatarNicknames = useMemo(
+    () => [entry.nickname, ...replies.map((r) => r.nickname)],
+    [entry.nickname, replies],
+  );
+  const avatars = useMemberAvatars(avatarNicknames);
+  const entryAvatar = avatars.get(entry.nickname);
+
   useEffect(() => {
     const q = query(
       collection(
@@ -436,69 +446,72 @@ function GuestbookItem({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
     >
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <p className="wrap-anywhere min-w-0 flex-1 font-serif text-[13px] leading-relaxed text-text-primary">
+      <div className="flex min-w-0 items-start gap-3">
+        <MemberAvatar
+          imageUrl={entryAvatar?.imageUrl}
+          nickname={entry.nickname}
+          size={36}
+        />
+        <div className="min-w-0 flex-1">
+          <div className="mb-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <NicknameLink
               nickname={entry.nickname}
               className="font-medium text-stardust"
             />
-            <span className="text-text-sub"> : </span>
+            <div className="ml-auto flex shrink-0 items-center gap-2 font-serif text-[11px] tracking-wider">
+              <span className="text-[10px] tracking-wider text-text-sub">
+                {formatTime(entry.createdAt)}
+              </span>
+              {loginNick && (
+                <button
+                  type="button"
+                  onClick={onToggleReply}
+                  className="text-text-sub transition-colors hover:text-peach-accent"
+                >
+                  {replyOpen ? "닫기" : "답글"}
+                </button>
+              )}
+              {loginNick === entry.nickname && (
+                <button
+                  type="button"
+                  onClick={handleDeleteEntry}
+                  className="text-text-sub transition-colors hover:text-peach-accent"
+                >
+                  삭제
+                </button>
+              )}
+            </div>
+          </div>
+          <p className="wrap-anywhere font-serif text-[13px] leading-relaxed text-text-primary">
             {entry.message}
           </p>
-          <div className="flex shrink-0 items-center gap-2 font-serif text-[11px] tracking-wider">
-            <span className="text-[10px] tracking-wider text-text-sub">
-              {formatTime(entry.createdAt)}
-            </span>
-            {loginNick && (
-              <button
-                type="button"
-                onClick={onToggleReply}
-                className="text-text-sub transition-colors hover:text-peach-accent"
-              >
-                {replyOpen ? "닫기" : "답글"}
-              </button>
-            )}
-            {loginNick === entry.nickname && (
-              <button
-                type="button"
-                onClick={handleDeleteEntry}
-                className="text-text-sub transition-colors hover:text-peach-accent"
-              >
-                삭제
-              </button>
-            )}
-          </div>
+          {entry.imageUrl && (
+            <div className="mt-2">
+              <CommentImageView url={entry.imageUrl} />
+            </div>
+          )}
         </div>
-        {entry.imageUrl && (
-          <div className="mt-2">
-            <CommentImageView url={entry.imageUrl} />
-          </div>
-        )}
       </div>
 
       {/* Replies */}
       {(replies.length > 0 || replyOpen) && (
         <div className="mt-3 ml-3 flex flex-col gap-2 sm:ml-5">
-          {replies.map((r) => (
-            <div key={r.id} className="flex items-start gap-2">
-              <span
-                className="shrink-0 font-serif text-xs leading-relaxed text-text-sub/70"
-                aria-hidden
-              >
-                └
-              </span>
+          {replies.map((r) => {
+            const replyAvatar = avatars.get(r.nickname);
+            return (
+            <div key={r.id} className="flex min-w-0 items-start gap-3">
+              <MemberAvatar
+                imageUrl={replyAvatar?.imageUrl}
+                nickname={r.nickname}
+                size={36}
+              />
               <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <p className="wrap-anywhere min-w-0 flex-1 font-serif text-[12px] leading-relaxed text-text-primary">
-                    <NicknameLink
-                      nickname={r.nickname}
-                      className="font-medium text-stardust"
-                    />
-                    <span className="text-text-sub"> : </span>
-                    {r.message}
-                  </p>
-                  <div className="flex shrink-0 items-center gap-2 font-serif text-[11px] tracking-wider">
+                <div className="mb-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <NicknameLink
+                    nickname={r.nickname}
+                    className="font-medium text-stardust"
+                  />
+                  <div className="ml-auto flex shrink-0 items-center gap-2 font-serif text-[11px] tracking-wider">
                     <span className="text-[10px] tracking-wider text-text-sub">
                       {formatTime(r.createdAt)}
                     </span>
@@ -513,6 +526,9 @@ function GuestbookItem({
                     )}
                   </div>
                 </div>
+                <p className="wrap-anywhere font-serif text-[12px] leading-relaxed text-text-primary">
+                  {r.message}
+                </p>
                 {r.imageUrl && (
                   <div className="mt-2">
                     <CommentImageView url={r.imageUrl} />
@@ -520,7 +536,8 @@ function GuestbookItem({
                 )}
               </div>
             </div>
-          ))}
+            );
+          })}
 
           <AnimatePresence>
             {replyOpen && loginNick && (

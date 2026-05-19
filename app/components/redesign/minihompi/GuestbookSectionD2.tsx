@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import {
@@ -31,6 +31,8 @@ import {
   CommentImageView,
 } from "@/app/components/CommentImage";
 import NicknameLink from "@/app/components/NicknameLink";
+import { MemberAvatar } from "@/app/components/redesign/MemberAvatar";
+import { useMemberAvatars } from "@/src/lib/useMemberAvatars";
 import { formatSmart } from "@/src/lib/formatSmart";
 import { handleEvent } from "@/src/lib/badgeCheck";
 import { josa, truncate } from "@/src/lib/text";
@@ -486,6 +488,14 @@ function GuestbookItemD2({
   const [replyImage, setReplyImage] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // 댓글 작성자 + 대댓글 작성자 닉네임 모음 → 프사 fetch.
+  const avatarNicknames = useMemo(
+    () => [entry.nickname, ...replies.map((r) => r.nickname)],
+    [entry.nickname, replies],
+  );
+  const avatars = useMemberAvatars(avatarNicknames);
+  const entryAvatar = avatars.get(entry.nickname);
+
   useEffect(() => {
     const q = query(
       collection(db, "members", memberId, "guestbook", entry.id, "replies"),
@@ -582,9 +592,15 @@ function GuestbookItemD2({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
     >
-      {/* outer row + 좌측 column (nick + body) + 우측 column (actions).
+      {/* outer row + 프사 + 좌측 column (nick + body) + 우측 column (actions).
           본문이 우측 메타 영역 침범 X. */}
       <div className="dl2-comment-row">
+        <MemberAvatar
+          imageUrl={entryAvatar?.imageUrl}
+          nickname={entry.nickname}
+          size={36}
+          dl2
+        />
         <div className="dl2-comment-left">
           <span className="dl2-comment-nick-line">
             <NicknameLink
@@ -632,7 +648,9 @@ function GuestbookItemD2({
             borderLeft: "2px solid rgba(42, 69, 112, 0.18)",
           }}
         >
-          {replies.map((r, idx) => (
+          {replies.map((r, idx) => {
+            const replyAvatar = avatars.get(r.nickname);
+            return (
             <div
               key={r.id}
               style={{
@@ -640,56 +658,49 @@ function GuestbookItemD2({
                 paddingBottom: 8,
                 borderTop:
                   idx > 0 ? "1px solid rgba(42, 69, 112, 0.12)" : undefined,
-                display: "flex",
-                alignItems: "flex-start",
-                gap: 6,
               }}
             >
-              {/* 좌측 ↳ 고정 — 우측 column (header + body) 안에서 wrap */}
-              <span
-                style={{
-                  flexShrink: 0,
-                  color: "#5a7090",
-                  fontSize: 12,
-                  lineHeight: 1.6,
-                }}
-              >
-                ↳
-              </span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="dl2-comment-row">
-                  <div className="dl2-comment-left">
-                    <span className="dl2-comment-nick-line">
-                      <NicknameLink
-                        nickname={r.nickname}
-                        className="dl2-gb-nick"
-                      />
-                    </span>
-                    <MentionText as="p" className="dl2-gb-body" text={r.message} dl2={true} />
-                    {r.imageUrl && (
-                      <div className="mt-1">
-                        <CommentImageView url={r.imageUrl} />
-                      </div>
-                    )}
-                  </div>
-                  <div className="dl2-comment-right">
-                    <span className="dl2-gb-date">
-                      {formatTime(r.createdAt)}
-                    </span>
-                    {loginNick === r.nickname && (
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteReply(r.id)}
-                        className="dl2-gb-action"
-                      >
-                        삭제
-                      </button>
-                    )}
-                  </div>
+              {/* 댓글과 동일 패턴 — outer row + 프사 + left + right.
+                  들여쓰기는 외부 paddingLeft + borderLeft 가 담당. */}
+              <div className="dl2-comment-row">
+                <MemberAvatar
+                  imageUrl={replyAvatar?.imageUrl}
+                  nickname={r.nickname}
+                  size={36}
+                  dl2
+                />
+                <div className="dl2-comment-left">
+                  <span className="dl2-comment-nick-line">
+                    <NicknameLink
+                      nickname={r.nickname}
+                      className="dl2-gb-nick"
+                    />
+                  </span>
+                  <MentionText as="p" className="dl2-gb-body" text={r.message} dl2={true} />
+                  {r.imageUrl && (
+                    <div className="mt-1">
+                      <CommentImageView url={r.imageUrl} />
+                    </div>
+                  )}
+                </div>
+                <div className="dl2-comment-right">
+                  <span className="dl2-gb-date">
+                    {formatTime(r.createdAt)}
+                  </span>
+                  {loginNick === r.nickname && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteReply(r.id)}
+                      className="dl2-gb-action"
+                    >
+                      삭제
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
 
           <AnimatePresence>
             {replyOpen && loginNick && (
