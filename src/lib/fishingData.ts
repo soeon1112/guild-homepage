@@ -4,22 +4,13 @@
 // Asset paths use literal spaces and Korean filenames; encodeURI lets
 // the browser fetch them without manual %-escaping at every call site.
 
-// Soft-launch gate — `null` opens fishing to every signed-in
-// member; setting this to a specific nickname re-restricts it to
-// that account (one constant per feature toggle).
+// Phase 1: 낚시 시스템 진입 차단 (코드 제거 전 안전망).
+// 본 export는 호출처 0건이지만, 향후 다른 곳에서 import할 가능성을
+// 막기 위해 무조건 false 반환. Phase 3에서 통째 제거 예정.
 export const FISHING_ADMIN_NICKNAME: string | null = null;
 
-export function canSeeFishing(nickname: string | null | undefined): boolean {
-  if (!nickname) return false;
-  if (FISHING_ADMIN_NICKNAME === null) return true;
-  // Hangul NFC vs NFD encoding can differ between iOS-stored
-  // strings and source-literal strings — normalize both sides so
-  // the gate doesn't silently fail when the bytes look identical
-  // but the codepoints don't (same root cause as the members doc
-  // ID issue in feedback_member_doc_id_ascii memory).
-  return (
-    nickname.normalize("NFC") === FISHING_ADMIN_NICKNAME.normalize("NFC")
-  );
+export function canSeeFishing(_nickname: string | null | undefined): boolean {
+  return false;
 }
 
 // ── Day / night cycle ────────────────────────────────────────────
