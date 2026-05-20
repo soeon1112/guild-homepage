@@ -3,7 +3,7 @@
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, updateDoc, serverTimestamp, Timestamp } from "firebase/firestore";
 import {
   ref,
   uploadBytes,
@@ -13,6 +13,12 @@ import {
 import { db, storage } from "@/src/lib/firebase";
 import { useAuth } from "@/app/components/AuthProvider";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
+import {
+  PollEditor,
+  createInitialPollState,
+  validatePollForm,
+  type PollFormState,
+} from "@/app/components/board/PollEditor";
 
 type AttachmentType = "image" | "video" | "gif";
 
@@ -53,6 +59,13 @@ export default function BoardEditPage({
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
+  // poll/p4: 투표 게시글 수정 — isPoll 식별 + 폼 상태. 시작된 투표는
+  // 옵션 변경 불가 (lockOptions=true), 질문/마감일/익명/변경 가능만 수정.
+  const [isPoll, setIsPoll] = useState(false);
+  const [pollForm, setPollForm] = useState<PollFormState>(
+    createInitialPollState(),
+  );
+
   useEffect(() => {
     (async () => {
       const snap = await getDoc(doc(db, "board", id));
@@ -62,6 +75,32 @@ export default function BoardEditPage({
         setTitle(d.title);
         setContent(d.content);
         setExisting(Array.isArray(d.attachments) ? (d.attachments as Attachment[]) : []);
+        // poll/p4: 투표 게시글이면 poll 메타 → pollForm 으로 복원.
+        if (d.type === "poll" && d.poll) {
+          const p = d.poll as {
+            question?: string;
+            options?: Array<{ id: string; text: string }>;
+            deadline?: Timestamp;
+            anonymous?: boolean;
+            allowChange?: boolean;
+          };
+          let deadlineStr = "";
+          if (p.deadline && typeof p.deadline.toDate === "function") {
+            const dl = p.deadline.toDate();
+            const y = dl.getFullYear();
+            const m = String(dl.getMonth() + 1).padStart(2, "0");
+            const day = String(dl.getDate()).padStart(2, "0");
+            deadlineStr = `${y}-${m}-${day}`;
+          }
+          setIsPoll(true);
+          setPollForm({
+            question: p.question ?? "",
+            options: Array.isArray(p.options) ? p.options : [],
+            deadline: deadlineStr,
+            anonymous: !!p.anonymous,
+            allowChange: p.allowChange !== false,
+          });
+        }
       }
       setLoading(false);
     })();
@@ -99,6 +138,15 @@ export default function BoardEditPage({
       alert("제목과 내용을 입력해주세요.");
       return;
     }
+    // poll/p4: 투표 게시글이면 질문/마감일/익명/변경 가능 validate.
+    // 옵션은 lockOptions=true 라 변경 불가 — 기존 options 그대로 사용.
+    if (isPoll) {
+      const pollErr = validatePollForm(pollForm);
+      if (pollErr) {
+        alert(pollErr);
+        return;
+      }
+    }
 
     setSubmitting(true);
     try {
@@ -126,11 +174,33 @@ export default function BoardEditPage({
         }),
       );
 
+      // poll/p4: 투표 게시글이면 poll 메타 업데이트. 옵션은 기존 그대로
+      // 유지 (lockOptions). 질문/마감일/익명/변경 가능만 변경.
+      const pollPayload: Record<string, unknown> = {};
+      if (isPoll) {
+        const meta: Record<string, unknown> = {
+          question: pollForm.question.trim(),
+          options: pollForm.options, // 기존 그대로 보존
+          anonymous: pollForm.anonymous,
+          allowChange: pollForm.allowChange,
+        };
+        if (pollForm.deadline) {
+          const [yy, mm, dd] = pollForm.deadline.split("-").map(Number);
+          if (yy && mm && dd) {
+            meta.deadline = Timestamp.fromDate(
+              new Date(yy, mm - 1, dd, 23, 59, 59),
+            );
+          }
+        }
+        pollPayload["poll"] = meta;
+      }
+
       await updateDoc(doc(db, "board", id), {
         title: title.trim(),
         content: content.trim(),
         attachments: [...existing, ...uploaded],
         updatedAt: serverTimestamp(),
+        ...pollPayload,
       });
       pending.forEach((p) => URL.revokeObjectURL(p.previewUrl));
       router.push(`/board/${id}`);
@@ -195,6 +265,17 @@ export default function BoardEditPage({
           onChange={(e) => setContent(e.target.value)}
           rows={10}
         />
+
+        {/* poll/p4: 투표 게시글이면 PollEditor 표시 (lockOptions=true).
+            옵션 변경 불가, 질문/마감일/익명/변경 가능만 수정. */}
+        {isPoll && (
+          <PollEditor
+            value={pollForm}
+            onChange={setPollForm}
+            isDawnlight2={isDawnlight2}
+            lockOptions
+          />
+        )}
 
         <div className="board-attach">
           <label className="board-attach-label">

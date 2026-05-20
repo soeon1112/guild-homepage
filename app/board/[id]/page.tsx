@@ -7,6 +7,7 @@ import Link from "next/link";
 import {
   doc,
   getDoc,
+  getDocs,
   deleteDoc,
   collection,
   addDoc,
@@ -14,6 +15,7 @@ import {
   orderBy,
   onSnapshot,
   serverTimestamp,
+  writeBatch,
 } from "firebase/firestore";
 import { ref, deleteObject } from "firebase/storage";
 import { db, storage } from "@/src/lib/firebase";
@@ -255,6 +257,22 @@ function BoardDetailPageInner({
               }
             }),
           );
+        }
+        // poll/p4: 투표 게시글이면 votes 서브컬렉션 cascade delete.
+        // 11명 비공개 길드라 단일 batch 로 충분 (한 batch 500 write 한도 안).
+        if (post?.type === "poll") {
+          try {
+            const votesSnap = await getDocs(
+              collection(db, "board", id, "votes"),
+            );
+            if (!votesSnap.empty) {
+              const batch = writeBatch(db);
+              votesSnap.forEach((d) => batch.delete(d.ref));
+              await batch.commit();
+            }
+          } catch (e) {
+            console.warn("poll votes cascade delete failed", e);
+          }
         }
         await deleteDoc(doc(db, "board", id));
         await deleteActivitiesByLink(`/board/${id}`);

@@ -24,6 +24,9 @@ interface Post {
   nickname: string;
   createdAt: Date;
   commentCount: number;
+  // poll/p4: 투표 게시글 목록 배지용. ms 로 비교해 마감 임박/마감 분기.
+  isPoll?: boolean;
+  pollDeadlineMs?: number;
 }
 
 const PAGE_SIZE = 10;
@@ -80,12 +83,21 @@ export default function BoardPage() {
           );
           const total =
             commentsSnap.size + replyCounts.reduce((a, b) => a + b, 0);
+          // poll/p4: type/poll.deadline 매핑 — 목록 배지 표시용.
+          const isPoll = d.type === "poll";
+          const dl = (d.poll as { deadline?: { toMillis?: () => number } } | undefined)?.deadline;
+          const pollDeadlineMs =
+            isPoll && dl && typeof dl.toMillis === "function"
+              ? dl.toMillis()
+              : undefined;
           return {
             id: doc.id,
             title: d.title,
             nickname: d.nickname,
             createdAt: d.createdAt?.toDate?.() ?? new Date(),
             commentCount: total,
+            isPoll,
+            pollDeadlineMs,
           };
         })
       );
@@ -138,11 +150,49 @@ export default function BoardPage() {
         ) : (
           <table className="board-table">
             <tbody>
-              {posts.map((post, i) => (
+              {posts.map((post, i) => {
+                // poll/p4: 투표 게시글 배지 — 마감 상태별 색.
+                const now = Date.now();
+                const isClosed =
+                  post.pollDeadlineMs !== undefined &&
+                  post.pollDeadlineMs < now;
+                const isImminent =
+                  post.pollDeadlineMs !== undefined &&
+                  !isClosed &&
+                  post.pollDeadlineMs - now < 24 * 60 * 60 * 1000;
+                const badgeColor = isImminent
+                  ? "#c44545"
+                  : isClosed
+                    ? isDawnlight2
+                      ? "rgba(92,58,31,0.45)"
+                      : "rgba(244,239,255,0.45)"
+                    : isDawnlight2
+                      ? "#5c3a1f"
+                      : undefined;
+                return (
                 <tr key={post.id}>
                   <td className="col-no">{getRowNumber(i)}</td>
                   <td className="col-title">
                     <Link href={`/board/${post.id}`} className="board-post-link">
+                      {post.isPoll && (
+                        <span
+                          aria-label={
+                            isClosed
+                              ? "마감된 투표"
+                              : isImminent
+                                ? "마감 임박 투표"
+                                : "투표"
+                          }
+                          style={{
+                            display: "inline-block",
+                            marginRight: 6,
+                            color: badgeColor,
+                            fontWeight: isImminent ? 600 : undefined,
+                          }}
+                        >
+                          📊
+                        </span>
+                      )}
                       {post.title}
                       {post.commentCount > 0 && (
                         <span className="comment-count"> [{post.commentCount}]</span>
@@ -157,7 +207,8 @@ export default function BoardPage() {
                   </td>
                   <td className="col-date">{formatDate(post.createdAt)}</td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         )}
