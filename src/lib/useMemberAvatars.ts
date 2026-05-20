@@ -17,6 +17,10 @@ import { db } from "@/src/lib/firebase";
 export type MemberAvatarInfo = {
   imageUrl: string;
   registered: boolean;
+  // members slot doc id — registered=true 일 때만 채워짐. 미등록(잠든
+  // 별)이면 빈 문자열. 닉네임 클릭으로 미니홈피 라우팅할 때 사용
+  // (members doc id는 ASCII slot 번호이므로 nickname 직접 X).
+  docId: string;
 };
 
 export function useMemberAvatars(
@@ -56,6 +60,7 @@ export function useMemberAvatars(
                 imageUrl:
                   typeof data.profileImage === "string" ? data.profileImage : "",
                 registered: true,
+                docId: d.id,
               });
             }
           });
@@ -64,7 +69,7 @@ export function useMemberAvatars(
         // 미등록 닉네임은 registered: false 로 채움
         for (const nick of unique) {
           if (!newMap.has(nick)) {
-            newMap.set(nick, { imageUrl: "", registered: false });
+            newMap.set(nick, { imageUrl: "", registered: false, docId: "" });
           }
         }
 

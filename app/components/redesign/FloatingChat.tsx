@@ -34,6 +34,8 @@ import {
   applyMentionInsert,
 } from "@/app/components/mention/MentionPicker";
 import { MentionText } from "@/app/components/mention/MentionText";
+import { MemberAvatar } from "@/app/components/redesign/MemberAvatar";
+import { useMemberAvatars } from "@/src/lib/useMemberAvatars";
 
 type ChatFileType = "image" | "gif" | "video";
 
@@ -120,98 +122,84 @@ type MessageItemProps = {
   // cosmic peach/abyss surfaces for cream-tone surfaces that read
   // against the cream panel bg.
   dl2: boolean;
+  // Chat-p1 카톡 풍 연속 묶기 — 같은 분 안 같은 sender 의 2번째 이후
+  // 메시지는 프사/닉 숨김, 마지막 메시지에만 시간 표시. 부모 useMemo
+  // 에서 미리 계산.
+  showAvatar: boolean;
+  showNickname: boolean;
+  showTime: boolean;
+  avatar:
+    | { imageUrl: string; registered: boolean; docId: string }
+    | undefined;
 };
 
+const CHAT_AVATAR_SIZE = 36;
+
 const MessageItem = memo(
-  function MessageItem({ m, mine, dl2 }: MessageItemProps) {
-    return (
-      <div
-        className={`flex flex-col gap-1 py-1.5 ${mine ? "items-end" : "items-start"}`}
-      >
-        {dl2 ? (
-          // dl2 meta row — 12 px ink-brown nick + 9 px ink-soft time.
-          // The nick takes the dawnlight2 widgets' canonical 12 px
-          // semibold ink; the time stays small so it reads as a tag,
-          // same rhythm as WhispersFeed/PaperPlane.
-          //
-          // No `flex-row-reverse` for `mine` — the parent `items-end`
-          // column already right-aligns the row, and we want both
-          // mine and other to read [nick · time] left-to-right.
-          <div
-            className="flex items-baseline gap-2 px-1"
-            style={{ color: "#5c3a1f", fontSize: 12 }}
-          >
-            <span className="inline-flex items-baseline">
-              <NicknameLink
-                nickname={m.nickname}
-                className="font-semibold"
-              />
-            </span>
-            <span
-              className="font-serif tracking-wider"
-              style={{ color: "#8a6a4a", fontSize: 9 }}
-            >
-              {formatTime(m.createdAt)}
-            </span>
-          </div>
-        ) : (
-          <div
-            className={`flex items-center gap-2 px-1 font-serif text-[9px] tracking-wider ${
-              mine ? "flex-row-reverse" : ""
-            }`}
-          >
-            <NicknameLink nickname={m.nickname} className="text-stardust" />
-            <span className="text-text-sub">{formatTime(m.createdAt)}</span>
-          </div>
-        )}
+  function MessageItem({
+    m,
+    mine,
+    dl2,
+    showAvatar,
+    showNickname,
+    showTime,
+    avatar,
+  }: MessageItemProps) {
+    const bubbleStyle: React.CSSProperties = dl2
+      ? mine
+        ? {
+            background: "#ffd4b8",
+            border: "1px solid rgba(92,58,31,0.10)",
+            color: "#5c3a1f",
+          }
+        : {
+            background: "#f0e4cc",
+            border: "1px solid rgba(92,58,31,0.10)",
+            color: "#5c3a1f",
+          }
+      : mine
+        ? {
+            background:
+              "linear-gradient(135deg, rgba(255,229,196,0.22), rgba(255,181,167,0.18))",
+            border: "1px solid rgba(255,181,167,0.4)",
+            color: "#f4efff",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
+            backdropFilter: "blur(4px)",
+          }
+        : {
+            background: "rgba(26,15,61,0.7)",
+            border: "1px solid rgba(216,150,200,0.25)",
+            color: "#f4efff",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
+            backdropFilter: "blur(4px)",
+          };
+    const imageWrapStyle: React.CSSProperties = {
+      border: dl2
+        ? "1px solid rgba(92,58,31,0.10)"
+        : "1px solid rgba(216,150,200,0.25)",
+      boxShadow: dl2
+        ? "0 2px 8px rgba(92,58,31,0.10)"
+        : "0 2px 8px rgba(0,0,0,0.25)",
+    };
+    const timeStyle: React.CSSProperties = {
+      color: dl2 ? "#8a6a4a" : "rgb(155,143,184)",
+      fontSize: 9,
+    };
+
+    const contentColumn = (
+      <div className="flex flex-col items-start gap-1">
         {m.message && (
           <div
-            className="wrap-anywhere max-w-[82%] rounded-2xl px-3 py-2 font-serif text-[12px] leading-relaxed"
-            style={
-              dl2
-                ? mine
-                  ? {
-                      background: "#ffd4b8",
-                      border: "1px solid rgba(92,58,31,0.10)",
-                      color: "#5c3a1f",
-                    }
-                  : {
-                      background: "#f0e4cc",
-                      border: "1px solid rgba(92,58,31,0.10)",
-                      color: "#5c3a1f",
-                    }
-                : mine
-                  ? {
-                      background:
-                        "linear-gradient(135deg, rgba(255,229,196,0.22), rgba(255,181,167,0.18))",
-                      border: "1px solid rgba(255,181,167,0.4)",
-                      color: "#f4efff",
-                      boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
-                      backdropFilter: "blur(4px)",
-                    }
-                  : {
-                      background: "rgba(26,15,61,0.7)",
-                      border: "1px solid rgba(216,150,200,0.25)",
-                      color: "#f4efff",
-                      boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
-                      backdropFilter: "blur(4px)",
-                    }
-            }
+            className="wrap-anywhere max-w-full rounded-2xl px-3 py-2 font-serif text-[12px] leading-relaxed"
+            style={bubbleStyle}
           >
             <MentionText text={m.message} dl2={dl2} />
           </div>
         )}
         {m.imageUrl && (
           <div
-            className="max-w-[82%] overflow-hidden rounded-xl"
-            style={{
-              border: dl2
-                ? "1px solid rgba(92,58,31,0.10)"
-                : "1px solid rgba(216,150,200,0.25)",
-              boxShadow: dl2
-                ? "0 2px 8px rgba(92,58,31,0.10)"
-                : "0 2px 8px rgba(0,0,0,0.25)",
-            }}
+            className="max-w-full overflow-hidden rounded-xl"
+            style={imageWrapStyle}
           >
             {m.fileType === "video" ? (
               <video
@@ -227,10 +215,86 @@ const MessageItem = memo(
         )}
       </div>
     );
+
+    if (mine) {
+      // 본인 — 오른쪽 정렬. 프사/닉 없음. 시간 bubble 왼쪽 (showTime 만).
+      return (
+        <div className="flex justify-end py-1">
+          <div className="flex max-w-[82%] items-end gap-1.5">
+            {showTime && (
+              <span
+                className="whitespace-nowrap pb-1 font-serif tracking-wider"
+                style={timeStyle}
+              >
+                {formatTime(m.createdAt)}
+              </span>
+            )}
+            {contentColumn}
+          </div>
+        </div>
+      );
+    }
+
+    // 타인 — [프사 column] [body column = [nick][bubble + time]].
+    return (
+      <div className="flex items-start gap-2 py-1">
+        <div
+          className="shrink-0"
+          style={{ width: CHAT_AVATAR_SIZE, height: CHAT_AVATAR_SIZE }}
+        >
+          {showAvatar ? (
+            <MemberAvatar
+              imageUrl={avatar?.imageUrl}
+              nickname={m.nickname}
+              size={CHAT_AVATAR_SIZE}
+              dl2={dl2}
+            />
+          ) : null}
+        </div>
+        <div className="flex min-w-0 max-w-[82%] flex-col items-start gap-1">
+          {showNickname &&
+            (dl2 ? (
+              <div
+                className="px-1"
+                style={{ color: "#5c3a1f", fontSize: 12 }}
+              >
+                <NicknameLink
+                  nickname={m.nickname}
+                  className="font-semibold"
+                />
+              </div>
+            ) : (
+              <div className="px-1 font-serif text-[11px] tracking-wider">
+                <NicknameLink
+                  nickname={m.nickname}
+                  className="text-stardust"
+                />
+              </div>
+            ))}
+          <div className="flex max-w-full items-end gap-1.5">
+            {contentColumn}
+            {showTime && (
+              <span
+                className="whitespace-nowrap pb-1 font-serif tracking-wider"
+                style={timeStyle}
+              >
+                {formatTime(m.createdAt)}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    );
   },
   (prev, next) =>
     prev.mine === next.mine &&
     prev.dl2 === next.dl2 &&
+    prev.showAvatar === next.showAvatar &&
+    prev.showNickname === next.showNickname &&
+    prev.showTime === next.showTime &&
+    prev.avatar?.imageUrl === next.avatar?.imageUrl &&
+    prev.avatar?.registered === next.avatar?.registered &&
+    prev.avatar?.docId === next.avatar?.docId &&
     prev.m.id === next.m.id &&
     prev.m.message === next.m.message &&
     prev.m.imageUrl === next.m.imageUrl &&
@@ -403,6 +467,45 @@ export default function FloatingChat() {
     });
     return unsub;
   }, []);
+
+  // ── Chat-p1: 작성자 프사 + 카톡 연속 묶기 ──
+  // 메시지 50개치 unique 닉네임을 한 번 fetch (useMemberAvatars 가 in-query
+  // chunking + 미등록 닉 채움). 결과 Map 으로 MessageItem 에 프사 + slot
+  // doc id 를 내려준다. 닉 클릭은 기존 NicknameLink popup 유지 (홈피만,
+  // 앱은 바로 router.push).
+  const allNicknames = useMemo(
+    () => Array.from(new Set(messages.map((m) => m.nickname))),
+    [messages],
+  );
+  const avatars = useMemberAvatars(allNicknames);
+
+  // 같은 분(minute) 안 같은 sender 묶기 — group 첫 메시지에 프사+닉,
+  // group 마지막에 시간 표시. createdAt 이 null(pending serverTimestamp)
+  // 인 메시지는 group 시작 으로 취급(직전 비교 결과가 항상 다름).
+  const decoratedMessages = useMemo(() => {
+    const minuteOf = (t: Timestamp | null) =>
+      t && typeof t.toMillis === "function"
+        ? Math.floor(t.toMillis() / 60000)
+        : null;
+    const sameMinuteSameSender = (a: ChatMessage, b: ChatMessage) => {
+      if (a.nickname !== b.nickname) return false;
+      const ma = minuteOf(a.createdAt);
+      const mb = minuteOf(b.createdAt);
+      return ma !== null && ma === mb;
+    };
+    return messages.map((m, i) => {
+      const prev = messages[i - 1];
+      const next = messages[i + 1];
+      const startsGroup = !prev || !sameMinuteSameSender(prev, m);
+      const endsGroup = !next || !sameMinuteSameSender(m, next);
+      return {
+        m,
+        showAvatar: startsGroup,
+        showNickname: startsGroup,
+        showTime: endsGroup,
+      };
+    });
+  }, [messages]);
 
   const markRead = () => {
     if (!nickname) return;
@@ -909,14 +1012,20 @@ export default function FloatingChat() {
                     </p>
                   </div>
                 ) : (
-                  messages.map((m) => (
-                    <MessageItem
-                      key={m.id}
-                      m={m}
-                      mine={!!nickname && m.nickname === nickname}
-                      dl2={isDawnlight2}
-                    />
-                  ))
+                  decoratedMessages.map(
+                    ({ m, showAvatar, showNickname, showTime }) => (
+                      <MessageItem
+                        key={m.id}
+                        m={m}
+                        mine={!!nickname && m.nickname === nickname}
+                        dl2={isDawnlight2}
+                        showAvatar={showAvatar}
+                        showNickname={showNickname}
+                        showTime={showTime}
+                        avatar={avatars.get(m.nickname)}
+                      />
+                    ),
+                  )
                 )}
                 <div ref={endRef} aria-hidden />
               </div>
