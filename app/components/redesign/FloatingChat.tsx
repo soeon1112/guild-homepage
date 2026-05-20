@@ -152,12 +152,9 @@ type MessageItemProps = {
   avatar:
     | { imageUrl: string; registered: boolean; docId: string }
     | undefined;
-  // p3.3: 기존 ↩ 답글 버튼 → ⋯ 액션 메뉴 버튼. popover 표시는 부모
-  // state(actionMenuFor) 와 actionMenuOpen prop 으로 같이 처리.
+  // p3.3: 기존 ↩ 답글 버튼 → ⋯ 액션 메뉴 트리거. 이모지 패널 자체는
+  // p3.3-fix 에서 parent fixed inset-0 모달로 이동 (앱과 일관).
   onActionMenu: (m: ChatMessage) => void;
-  onSelectEmoji: (emoji: string) => void;
-  onSelectReplyFromMenu: () => void;
-  actionMenuOpen: boolean;
   // p2.5: row DOM 노드 등록 + 인용 박스 클릭 → 원본 점프 + 강조 토글.
   registerRef: (id: string, el: HTMLDivElement | null) => void;
   onJumpToOriginal: (messageId: string) => void;
@@ -181,9 +178,6 @@ const MessageItem = memo(
     showTime,
     avatar,
     onActionMenu,
-    onSelectEmoji,
-    onSelectReplyFromMenu,
-    actionMenuOpen,
     registerRef,
     onJumpToOriginal,
     highlighted,
@@ -374,90 +368,30 @@ const MessageItem = memo(
       </div>
     );
 
-    // p3.3: 메시지 옆 ⋯ 단일 액션 메뉴 버튼 + popover (이모지 6 + ↩).
-    // chat-action-trigger / chat-action-menu 클래스 — parent 의 outside
-    // click handler 가 이 두 클래스 안 클릭은 제외 (즉시 닫힘 방지).
-    const panelStyle: React.CSSProperties = dl2
-      ? {
-          background: "rgba(254,245,230,0.98)",
-          border: "1px solid rgba(92,58,31,0.2)",
-          boxShadow: "0 4px 12px rgba(92,58,31,0.18)",
-        }
-      : {
-          background: "rgba(26,15,61,0.97)",
-          border: "1px solid rgba(216,150,200,0.35)",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
-        };
+    // p3.3-fix: 메시지 옆 ⋯ 트리거 버튼만. 패널 자체는 parent fixed
+    // inset-0 가운데 모달 (앱과 일관). 메시지 옆 absolute popover 는 채팅
+    // 패널 overflow 에 잘리거나 메시지 위치별로 일관성 떨어지던 회귀.
+    // chat-action-trigger 클래스 — parent outside click handler 가 트리거
+    // 자신을 외부 탭으로 오인하지 않도록.
     const replyBtn = (
-      <div className="relative self-end">
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onActionMenu(m);
-          }}
-          aria-label="액션 메뉴"
-          className="chat-action-trigger opacity-40 transition-opacity hover:opacity-100"
-          style={{
-            padding: 4,
-            color: dl2 ? "#8a6a4a" : "rgb(155,143,184)",
-            lineHeight: 1,
-            fontSize: 16,
-            letterSpacing: 1,
-          }}
-        >
-          ⋯
-        </button>
-        {actionMenuOpen && (
-          <div
-            className={`chat-action-menu absolute z-10 mb-1 flex items-center gap-1 rounded-full px-2 py-1 ${
-              mine ? "right-0" : "left-0"
-            }`}
-            style={{ ...panelStyle, bottom: "100%" }}
-          >
-            {CHAT_REACTION_EMOJIS.map((emoji) => (
-              <button
-                key={emoji}
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelectEmoji(emoji);
-                }}
-                aria-label={`리액션 ${emoji}`}
-                className="flex h-8 w-8 items-center justify-center rounded-full transition-opacity hover:opacity-70"
-                style={{ fontSize: 20, lineHeight: 1 }}
-              >
-                {emoji}
-              </button>
-            ))}
-            <span
-              aria-hidden
-              className="mx-0.5 inline-block h-5 w-px"
-              style={{
-                background: dl2
-                  ? "rgba(92,58,31,0.18)"
-                  : "rgba(216,150,200,0.25)",
-              }}
-            />
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onSelectReplyFromMenu();
-              }}
-              aria-label="답글"
-              className="flex h-8 w-8 items-center justify-center rounded-full transition-opacity hover:opacity-70"
-              style={{
-                fontSize: 16,
-                color: dl2 ? "#5c3a1f" : "#FFE5C4",
-                lineHeight: 1,
-              }}
-            >
-              ↩
-            </button>
-          </div>
-        )}
-      </div>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onActionMenu(m);
+        }}
+        aria-label="액션 메뉴"
+        className="chat-action-trigger self-end opacity-40 transition-opacity hover:opacity-100"
+        style={{
+          padding: 4,
+          color: dl2 ? "#8a6a4a" : "rgb(155,143,184)",
+          lineHeight: 1,
+          fontSize: 16,
+          letterSpacing: 1,
+        }}
+      >
+        ⋯
+      </button>
     );
 
     // p1.5: 그룹 시작 row 는 그룹 사이 여백 크게, 그룹 내부는 촘촘.
@@ -594,11 +528,9 @@ const MessageItem = memo(
     // p3.2: reactions 비교 — Map 자체 매번 새 reference 라 byEmoji size /
     // 각 emoji 카운트 / myEmoji 만 얕게 비교. 배지 표시상 충분.
     reactionsEqual(prev.messageReactions, next.messageReactions) &&
-    // p3.3: popover open/close 상태 비교.
-    prev.actionMenuOpen === next.actionMenuOpen &&
+    // p3.3-fix: popover 가 parent 가운데 모달로 이동 — MessageItem 은
+    // 트리거 버튼만 들고 actionMenuOpen / onSelectEmoji 등 자체 비교 불요.
     prev.onActionMenu === next.onActionMenu &&
-    prev.onSelectEmoji === next.onSelectEmoji &&
-    prev.onSelectReplyFromMenu === next.onSelectReplyFromMenu &&
     prev.registerRef === next.registerRef &&
     prev.onJumpToOriginal === next.onJumpToOriginal,
 );
@@ -1538,9 +1470,6 @@ export default function FloatingChat() {
                         showTime={showTime}
                         avatar={avatars.get(m.nickname)}
                         onActionMenu={handleActionMenu}
-                        onSelectEmoji={handleSelectEmoji}
-                        onSelectReplyFromMenu={handleSelectReplyFromMenu}
-                        actionMenuOpen={actionMenuFor?.id === m.id}
                         registerRef={registerMessageRef}
                         onJumpToOriginal={handleJumpToOriginal}
                         highlighted={highlightedMessageId === m.id}
@@ -1850,6 +1779,85 @@ export default function FloatingChat() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* p3.3-fix: 이모지 액션 메뉴 — fixed inset-0 가운데 모달 (앱과
+          일관). 메시지 옆 absolute popover 가 채팅 패널 overflow 에
+          잘리거나 메시지 위치별로 일관성 떨어지던 회귀 해결. backdrop
+          onClick 으로 닫기 + Escape useEffect 도 그대로 동작. */}
+      {actionMenuFor && (
+        <div
+          className="chat-action-menu fixed inset-0 z-[80] flex items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.3)" }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setActionMenuFor(null);
+            }
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="메시지 액션 메뉴"
+        >
+          <div
+            className="flex items-center gap-1 rounded-full px-3 py-2"
+            style={
+              isDawnlight2
+                ? {
+                    background: "rgba(254,245,230,0.98)",
+                    border: "1px solid rgba(92,58,31,0.2)",
+                    boxShadow: "0 8px 24px rgba(92,58,31,0.22)",
+                  }
+                : {
+                    background: "rgba(26,15,61,0.97)",
+                    border: "1px solid rgba(216,150,200,0.35)",
+                    boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+                    backdropFilter: "blur(4px)",
+                  }
+            }
+            onClick={(e) => e.stopPropagation()}
+          >
+            {CHAT_REACTION_EMOJIS.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleSelectEmoji(emoji);
+                }}
+                aria-label={`리액션 ${emoji}`}
+                className="flex h-10 w-10 items-center justify-center rounded-full transition-opacity hover:opacity-70"
+                style={{ fontSize: 22, lineHeight: 1 }}
+              >
+                {emoji}
+              </button>
+            ))}
+            <span
+              aria-hidden
+              className="mx-1 inline-block h-6 w-px"
+              style={{
+                background: isDawnlight2
+                  ? "rgba(92,58,31,0.18)"
+                  : "rgba(216,150,200,0.25)",
+              }}
+            />
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSelectReplyFromMenu();
+              }}
+              aria-label="답글"
+              className="flex h-10 w-10 items-center justify-center rounded-full transition-opacity hover:opacity-70"
+              style={{
+                fontSize: 18,
+                color: isDawnlight2 ? "#5c3a1f" : "#FFE5C4",
+                lineHeight: 1,
+              }}
+            >
+              ↩
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
