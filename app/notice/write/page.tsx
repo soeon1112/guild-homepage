@@ -6,8 +6,11 @@ import Link from "next/link";
 import {
   collection,
   doc,
+  getDocs,
+  query,
   serverTimestamp,
   setDoc,
+  where,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "@/src/lib/firebase";
@@ -95,6 +98,30 @@ export default function NoticeWritePage() {
         attachments.push({ fileUrl: url, fileType: p.fileType });
       }
 
+      // notice/order: 카테고리 안 현재 최소 order - 1 로 맨 위 배치.
+      // 기존 공지에 order 없으면 fallback (-createdAt.toMillis()) 사용.
+      // 11명 비공개 길드라 카테고리당 fetch 비용 무관.
+      let minOrder = 0;
+      try {
+        const existing = await getDocs(
+          query(
+            collection(db, "notice"),
+            where("category", "==", selectedCategory),
+          ),
+        );
+        existing.forEach((d) => {
+          const data = d.data();
+          const ord =
+            typeof data.order === "number"
+              ? data.order
+              : -(data.createdAt?.toMillis?.() ?? 0);
+          if (ord < minOrder) minOrder = ord;
+        });
+      } catch (e) {
+        console.warn("[Notice order] min lookup failed", e);
+      }
+      const newOrder = minOrder - 1;
+
       await setDoc(newRef, {
         title: cleanTitle,
         content: content.trim(),
@@ -102,6 +129,7 @@ export default function NoticeWritePage() {
         attachments,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
+        order: newOrder,
       });
       const selectedGuildName =
         guilds.find((g) => g.id === selectedCategory)?.name ?? "";

@@ -31,7 +31,8 @@ import { createPortal } from "react-dom";
 import { useAuth } from "../components/AuthProvider";
 import { db } from "@/src/lib/firebase";
 import { useGuilds } from "@/src/lib/useGuilds";
-import { writableCategories } from "@/src/lib/noticePermissions";
+import { canManageNotice, writableCategories } from "@/src/lib/noticePermissions";
+import { writeBatch } from "firebase/firestore";
 import {
   deleteActivitiesByTargetPath,
   logActivity,
@@ -53,6 +54,10 @@ interface Notice {
   id: string;
   title: string;
   category: string;
+  // notice/order: 카테고리 안 순서. 없으면 fallback (-createdAtMs) 로
+  // 정렬. 새 공지는 카테고리 맨 위 (현재 min - 1) 로 자동 배치.
+  order?: number;
+  createdAtMs?: number;
 }
 
 interface ScheduleItem {
@@ -112,6 +117,10 @@ function NoticePageInner() {
               id: d.id,
               title: typeof data.title === "string" ? data.title : "",
               category: typeof data.category === "string" ? data.category : "",
+              order:
+                typeof data.order === "number" ? data.order : undefined,
+              createdAtMs:
+                (data.createdAt as Timestamp | undefined)?.toMillis?.() ?? 0,
             };
           }),
         );
@@ -125,6 +134,8 @@ function NoticePageInner() {
     return () => unsub();
   }, []);
 
+  // notice/order: 카테고리 안 정렬 — order ?? -createdAtMs 오름차순.
+  // 기존 공지 (order 없음) 는 createdAt 역순으로 자연 fallback.
   const grouped = useMemo(() => {
     const m = new Map<string, Notice[]>();
     for (const n of items) {
@@ -132,11 +143,32 @@ function NoticePageInner() {
       if (!m.has(cat)) m.set(cat, []);
       m.get(cat)!.push(n);
     }
+    const getOrd = (n: Notice) => n.order ?? -(n.createdAtMs ?? 0);
+    for (const list of m.values()) {
+      list.sort((a, b) => getOrd(a) - getOrd(b));
+    }
     return m;
   }, [items]);
 
   const visibleCategories = guilds.filter((g) => (grouped.get(g.id)?.length ?? 0) > 0);
   const canWrite = writableCategories(nickname, guilds).length > 0;
+  // 순서 변경 권한 — 언쏘만 (canManageNotice).
+  const canManage = canManageNotice(nickname);
+
+  // 인접 swap — writeBatch 로 두 doc 의 order 원자적 교환.
+  const swapOrder = async (a: Notice, b: Notice) => {
+    if (!canManage) return;
+    const aOrd = a.order ?? -(a.createdAtMs ?? 0);
+    const bOrd = b.order ?? -(b.createdAtMs ?? 0);
+    try {
+      const batch = writeBatch(db);
+      batch.update(doc(db, "notice", a.id), { order: bOrd });
+      batch.update(doc(db, "notice", b.id), { order: aOrd });
+      await batch.commit();
+    } catch (e) {
+      console.error("[Notice order] swap failed", e);
+    }
+  };
 
   return (
     <div
@@ -232,12 +264,15 @@ function NoticePageInner() {
                         i > 0
                           ? "1px solid rgba(254, 245, 230, 0.08)"
                           : "none",
+                      display: "flex",
+                      alignItems: "stretch",
                     }}
                   >
                     <Link
                       href={`/notice/${n.id}`}
                       className="board-post-link"
                       style={{
+                        flex: 1,
                         display: "block",
                         padding: "12px 16px",
                         color: "#fef5e6",
@@ -246,6 +281,66 @@ function NoticePageInner() {
                     >
                       {n.title}
                     </Link>
+                    {/* notice/order: 언쏘만 ▲▼ 노출. 첫/마지막 row 는
+                        해당 방향 disabled. */}
+                    {canManage && (
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 2,
+                          paddingRight: 8,
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => i > 0 && swapOrder(n, list[i - 1])}
+                          disabled={i === 0}
+                          aria-label="위로 이동"
+                          style={{
+                            width: 24,
+                            height: 24,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            background: "transparent",
+                            border: "none",
+                            color: isDawnlight2 ? "#5c3a1f" : "#fef5e6",
+                            opacity: i === 0 ? 0.3 : 0.7,
+                            cursor: i === 0 ? "default" : "pointer",
+                            fontSize: 14,
+                            lineHeight: 1,
+                          }}
+                        >
+                          ▲
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            i < list.length - 1 && swapOrder(n, list[i + 1])
+                          }
+                          disabled={i === list.length - 1}
+                          aria-label="아래로 이동"
+                          style={{
+                            width: 24,
+                            height: 24,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            background: "transparent",
+                            border: "none",
+                            color: isDawnlight2 ? "#5c3a1f" : "#fef5e6",
+                            opacity: i === list.length - 1 ? 0.3 : 0.7,
+                            cursor:
+                              i === list.length - 1 ? "default" : "pointer",
+                            fontSize: 14,
+                            lineHeight: 1,
+                          }}
+                        >
+                          ▼
+                        </button>
+                      </div>
+                    )}
                   </li>
                 ))}
               </ul>
