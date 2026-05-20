@@ -37,6 +37,9 @@ import {
   applyMentionInsert,
 } from "@/app/components/mention/MentionPicker";
 import { MentionText } from "@/app/components/mention/MentionText";
+import { PollCard } from "@/app/components/board/PollCard";
+import type { PollMeta, PollOption } from "@/src/lib/usePollVotes";
+import type { Timestamp } from "firebase/firestore";
 
 function extractYouTubeId(url: string): string | null {
   let m = url.match(/youtu\.be\/([A-Za-z0-9_-]{11})/);
@@ -64,6 +67,9 @@ interface PostData {
   attachments: Attachment[];
   createdAt: Date;
   updatedAt: Date;
+  // poll/p3: 투표 게시글일 때만 채워짐.
+  type?: "normal" | "poll";
+  poll?: PollMeta;
 }
 
 interface Comment {
@@ -120,6 +126,28 @@ function BoardDetailPageInner({
       const snap = await getDoc(doc(db, "board", id));
       if (snap.exists()) {
         const d = snap.data();
+        // poll/p3: type:"poll" + poll{...} 옵셔널. 유효한 poll meta 만 매핑.
+        const rawPoll = d.poll as Record<string, unknown> | undefined;
+        const isPollType = d.type === "poll";
+        const pollMeta: PollMeta | undefined =
+          isPollType &&
+          rawPoll &&
+          typeof rawPoll.question === "string" &&
+          Array.isArray(rawPoll.options)
+            ? {
+                question: rawPoll.question,
+                options: (rawPoll.options as PollOption[]).filter(
+                  (o) =>
+                    o &&
+                    typeof o.id === "string" &&
+                    typeof o.text === "string",
+                ),
+                deadline:
+                  rawPoll.deadline as Timestamp | undefined,
+                anonymous: !!rawPoll.anonymous,
+                allowChange: rawPoll.allowChange !== false,
+              }
+            : undefined;
         setPost({
           title: d.title,
           content: d.content,
@@ -127,6 +155,8 @@ function BoardDetailPageInner({
           attachments: Array.isArray(d.attachments) ? (d.attachments as Attachment[]) : [],
           createdAt: d.createdAt?.toDate?.() ?? new Date(),
           updatedAt: d.updatedAt?.toDate?.() ?? new Date(),
+          type: isPollType ? "poll" : "normal",
+          poll: pollMeta,
         });
       }
       setLoading(false);
@@ -322,6 +352,17 @@ function BoardDetailPageInner({
           )}
           <span>{formatDate(post.createdAt)}</span>
         </div>
+
+        {/* poll/p3: 투표 게시글이면 본문 위에 PollCard. 일반 게시글은 안 그림. */}
+        {post.type === "poll" && post.poll && (
+          <PollCard
+            boardId={id}
+            pollMeta={post.poll}
+            loginNick={loginNick ?? ""}
+            isDawnlight2={isDawnlight2}
+          />
+        )}
+
         <div className="board-detail-body">
           {post.content.split(/(https?:\/\/[^\s]+)/g).map((part, i) => {
             if (!/^https?:\/\//.test(part)) {
