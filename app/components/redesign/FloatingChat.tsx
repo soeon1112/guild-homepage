@@ -722,7 +722,13 @@ export default function FloatingChat() {
   // 사용자가 직접 끝까지 스크롤할 때까지 lock (카톡 표준). onScroll 에서
   // 끝 근처 (within 80px) 도달 시 unlock. 자기가 메시지 전송하면 즉시 unlock.
   // isJumping=true 동안: useEffect[open, messages] 의 pin 호출이 모두 skip.
+  //
+  // p2.5-fix2: handleListScroll 자기 발화 차단 — 점프 자체 scrollIntoView
+  // ({behavior:"smooth"}) 가 onScroll 다수 fire → distanceFromBottom 80 안
+  // (원본이 끝 근처) 이면 unlock 발동했음. listRef <div> 에 pointerdown
+  // 리스너 등록해 사용자가 직접 손을 댄 후의 스크롤만 unlock 후보로 인정.
   const isJumpingRef = useRef(false);
+  const userTouchedRef = useRef(false);
   const registerMessageRef = useCallback(
     (id: string, el: HTMLDivElement | null) => {
       if (el) messageRefsMap.current.set(id, el);
@@ -739,6 +745,9 @@ export default function FloatingChat() {
     }
     // 점프 lock 활성화 — 사용자가 끝까지 스크롤하거나 메시지 보낼 때까지.
     isJumpingRef.current = true;
+    // p2.5-fix2: 점프 자체 smooth scroll 이 발생시킨 onScroll 은 unlock
+    // 후보 아님. 사용자가 다음에 직접 손 대기 전까지 userTouched=false.
+    userTouchedRef.current = false;
     el.scrollIntoView({ behavior: "smooth", block: "center" });
     if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
     setHighlightedMessageId(messageId);
@@ -749,13 +758,29 @@ export default function FloatingChat() {
   }, []);
   const handleListScroll = useCallback(() => {
     if (!isJumpingRef.current) return;
+    // p2.5-fix2: 사용자가 직접 손을 댄(pointerdown) 후의 스크롤만 unlock
+    // 후보. 점프 smooth scroll 자기 발화 차단.
+    if (!userTouchedRef.current) return;
     const list = listRef.current;
     if (!list) return;
     const distanceFromBottom =
       list.scrollHeight - list.scrollTop - list.clientHeight;
     if (distanceFromBottom < 80) {
       isJumpingRef.current = false;
+      userTouchedRef.current = false;
     }
+  }, []);
+  // p2.5-fix2: 사용자 포인터가 list 에 닿는 순간 — 이후의 onScroll 은
+  // 사용자 직접 스크롤로 간주. 점프 직후 자기 발화 onScroll 과 구분.
+  // mouse/touch/pen 통합 pointer 이벤트로 데스크탑+모바일 호환.
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const handlePointerDown = () => {
+      userTouchedRef.current = true;
+    };
+    el.addEventListener("pointerdown", handlePointerDown);
+    return () => el.removeEventListener("pointerdown", handlePointerDown);
   }, []);
   useEffect(() => {
     return () => {
