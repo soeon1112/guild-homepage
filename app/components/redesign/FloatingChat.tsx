@@ -2,7 +2,14 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { Camera, Send, X } from "lucide-react";
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   addDoc,
   collection,
@@ -39,6 +46,15 @@ import { useMemberAvatars } from "@/src/lib/useMemberAvatars";
 
 type ChatFileType = "image" | "gif" | "video";
 
+// Chat-p2 답글 비정규화 — 원본 메시지 삭제돼도 인용 표시가 깨지지
+// 않도록 snippet + nickname + fileType 을 답글 작성 시점에 스냅샷.
+type ChatReplyTo = {
+  messageId: string;
+  nickname: string;
+  snippet: string;
+  fileType?: ChatFileType;
+};
+
 type ChatMessage = {
   id: string;
   nickname: string;
@@ -46,6 +62,7 @@ type ChatMessage = {
   imageUrl?: string;
   fileType?: ChatFileType;
   createdAt: Timestamp | null;
+  replyTo?: ChatReplyTo;
 };
 
 function formatTime(ts: Timestamp | null): string {
@@ -131,6 +148,8 @@ type MessageItemProps = {
   avatar:
     | { imageUrl: string; registered: boolean; docId: string }
     | undefined;
+  // p2: bubble 옆 작은 ↩ 버튼 클릭 → 답글 모드 진입.
+  onReply: (m: ChatMessage) => void;
 };
 
 const CHAT_AVATAR_SIZE = 36;
@@ -144,6 +163,7 @@ const MessageItem = memo(
     showNickname,
     showTime,
     avatar,
+    onReply,
   }: MessageItemProps) {
     const bubbleStyle: React.CSSProperties = dl2
       ? mine
@@ -186,8 +206,57 @@ const MessageItem = memo(
       fontSize: 9,
     };
 
+    // p2: 답글 인용 박스 — bubble 위. 새 토큰 X, 기존 dawnlight2/cosmic
+    // 팔레트 옅게 사용.
+    const replyQuoteStyle: React.CSSProperties = dl2
+      ? mine
+        ? {
+            background: "rgba(255,212,184,0.45)",
+            borderLeft: "3px solid #ffb88a",
+            color: "#5c3a1f",
+          }
+        : {
+            background: "rgba(254,245,230,0.55)",
+            borderLeft: "3px solid rgba(255,212,184,0.85)",
+            color: "#5c3a1f",
+          }
+      : {
+          background: "rgba(26,15,61,0.55)",
+          borderLeft: "3px solid rgba(216,150,200,0.7)",
+          color: "#FFE5C4",
+        };
+    const replyQuoteSnippetColor = dl2
+      ? "rgba(92,58,31,0.85)"
+      : "rgba(244,239,255,0.8)";
+
+    const replyQuote = m.replyTo ? (
+      <div
+        className="max-w-full rounded-md px-2 py-1.5 font-serif"
+        style={replyQuoteStyle}
+      >
+        <div
+          className="truncate text-[10px] font-semibold"
+          style={{ color: replyQuoteStyle.color as string | undefined }}
+        >
+          ↪ {m.replyTo.nickname}
+        </div>
+        <div
+          className="truncate text-[11px]"
+          style={{ color: replyQuoteSnippetColor, marginTop: 1 }}
+        >
+          {m.replyTo.snippet ||
+            (m.replyTo.fileType === "video"
+              ? "[영상]"
+              : m.replyTo.fileType === "gif" || m.replyTo.fileType === "image"
+                ? "[사진]"
+                : "")}
+        </div>
+      </div>
+    ) : null;
+
     const contentColumn = (
       <div className="flex flex-col items-start gap-1">
+        {replyQuote}
         {m.message && (
           <div
             className="wrap-anywhere max-w-full rounded-2xl px-3 py-2 font-serif text-[12px] leading-relaxed"
@@ -216,15 +285,35 @@ const MessageItem = memo(
       </div>
     );
 
+    // p2: 메시지 옆 작은 답글 ↩ 버튼 — opacity 0.4 (모바일 항상 보이게)
+    // → hover 시 진해짐. 새 토큰 X.
+    const replyBtn = (
+      <button
+        type="button"
+        onClick={() => onReply(m)}
+        aria-label="답글"
+        className="self-end opacity-40 transition-opacity hover:opacity-100"
+        style={{
+          padding: 4,
+          color: dl2 ? "#8a6a4a" : "rgb(155,143,184)",
+          lineHeight: 1,
+          fontSize: 14,
+        }}
+      >
+        ↩
+      </button>
+    );
+
     // p1.5: 그룹 시작 row 는 그룹 사이 여백 크게, 그룹 내부는 촘촘.
     const rowMarginTop = showAvatar ? 14 : 2;
 
     if (mine) {
       // 본인 — 오른쪽 정렬, 프사·닉 없음 (빈자리도 X). 시간 bubble 왼쪽
-      // (showTime 일 때만, gap 4).
+      // (showTime 일 때만, gap 4). 답글 버튼은 contentColumn 왼쪽 (= 더
+      // 안쪽), 시간 오른쪽엔 시각적 균형 위해 가장자리 가까이 배치.
       return (
         <div
-          className="flex w-full justify-end"
+          className="group flex w-full justify-end"
           style={{ marginTop: rowMarginTop }}
         >
           <div className="flex max-w-[82%] items-end gap-1">
@@ -236,6 +325,7 @@ const MessageItem = memo(
                 {formatTime(m.createdAt)}
               </span>
             )}
+            {replyBtn}
             {contentColumn}
           </div>
         </div>
@@ -309,6 +399,7 @@ const MessageItem = memo(
             ))}
           <div className="flex max-w-full items-end gap-1">
             {contentColumn}
+            {replyBtn}
             {showTime && (
               <span
                 className="whitespace-nowrap pb-1 font-serif tracking-wider"
@@ -336,7 +427,12 @@ const MessageItem = memo(
     prev.m.imageUrl === next.m.imageUrl &&
     prev.m.fileType === next.m.fileType &&
     prev.m.nickname === next.m.nickname &&
-    prev.m.createdAt?.toMillis() === next.m.createdAt?.toMillis(),
+    prev.m.createdAt?.toMillis() === next.m.createdAt?.toMillis() &&
+    prev.m.replyTo?.messageId === next.m.replyTo?.messageId &&
+    prev.m.replyTo?.nickname === next.m.replyTo?.nickname &&
+    prev.m.replyTo?.snippet === next.m.replyTo?.snippet &&
+    prev.m.replyTo?.fileType === next.m.replyTo?.fileType &&
+    prev.onReply === next.onReply,
 );
 
 export default function FloatingChat() {
@@ -489,6 +585,30 @@ export default function FloatingChat() {
     const unsub = onSnapshot(q, (snap) => {
       const list: ChatMessage[] = snap.docs.map((d) => {
         const data = d.data();
+        // p2: replyTo 가 doc 에 있을 때만 매핑 — 기존 메시지는 undefined.
+        const rt = data.replyTo as
+          | {
+              messageId?: unknown;
+              nickname?: unknown;
+              snippet?: unknown;
+              fileType?: unknown;
+            }
+          | undefined;
+        const replyTo: ChatReplyTo | undefined =
+          rt &&
+          typeof rt.messageId === "string" &&
+          typeof rt.nickname === "string" &&
+          typeof rt.snippet === "string"
+            ? {
+                messageId: rt.messageId,
+                nickname: rt.nickname,
+                snippet: rt.snippet,
+                fileType:
+                  typeof rt.fileType === "string"
+                    ? (rt.fileType as ChatFileType)
+                    : undefined,
+              }
+            : undefined;
         return {
           id: d.id,
           nickname: data.nickname,
@@ -496,6 +616,7 @@ export default function FloatingChat() {
           imageUrl: data.imageUrl || "",
           fileType: (data.fileType as ChatFileType | undefined) || undefined,
           createdAt: data.createdAt ?? null,
+          replyTo,
         };
       });
       list.reverse();
@@ -542,6 +663,15 @@ export default function FloatingChat() {
       };
     });
   }, [messages]);
+
+  // ── Chat-p2 답글 ──
+  // 메시지 옆 작은 ↩ 버튼 클릭 → 답글 모드 진입. replyingTo set 되면
+  // compose 위 인용 박스 표시 + 전송 시 addDoc 에 비정규화 snapshot 동봉.
+  // useCallback 으로 MessageItem memo comparator 안정 (onReply 식별자
+  // 매 렌더마다 새로 만들어지면 메모 깨져서 전체 리스트가 리렌더).
+  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
+  const handleReply = useCallback((m: ChatMessage) => setReplyingTo(m), []);
+  const handleClearReply = useCallback(() => setReplyingTo(null), []);
 
   const markRead = () => {
     if (!nickname) return;
@@ -702,8 +832,12 @@ export default function FloatingChat() {
     const pendingFile = file;
     if (!text && !pendingFile) return;
 
+    // p2: snapshot 답글 대상 — 전송 도중 사용자가 다른 답글을 시작/취소
+    // 해도 이 메시지의 replyTo 는 처음 상태 그대로 들어가야 함.
+    const replySnapshot = replyingTo;
     setDraft("");
     setFile(null);
+    setReplyingTo(null);
     setSending(true);
     // Re-focus inside the user-gesture frame so iOS keeps the soft keyboard
     // open. preventScroll avoids the document jumping on focus.
@@ -726,6 +860,20 @@ export default function FloatingChat() {
         imageUrl,
         fileType: fileType ?? "",
         createdAt: serverTimestamp(),
+        // p2: replyTo 는 답글 모드일 때만 페이로드에 포함 (기존 메시지
+        // 흐름 backward-compat — 답글 아닌 메시지에 빈 객체 안 들어감).
+        ...(replySnapshot
+          ? {
+              replyTo: {
+                messageId: replySnapshot.id,
+                nickname: replySnapshot.nickname,
+                snippet: (replySnapshot.message || "").slice(0, 50),
+                ...(replySnapshot.fileType
+                  ? { fileType: replySnapshot.fileType }
+                  : {}),
+              },
+            }
+          : {}),
       });
       handleEvent({
         type: "chat",
@@ -738,6 +886,8 @@ export default function FloatingChat() {
       alert("메시지 전송에 실패했습니다.");
       setDraft(text);
       setFile(pendingFile);
+      // 전송 실패 시 답글 모드 복구 (사용자 의도 보존).
+      setReplyingTo(replySnapshot);
     }
     setSending(false);
     messageInputRef.current?.focus({ preventScroll: true });
@@ -1059,6 +1209,7 @@ export default function FloatingChat() {
                         showNickname={showNickname}
                         showTime={showTime}
                         avatar={avatars.get(m.nickname)}
+                        onReply={handleReply}
                       />
                     ),
                   )
@@ -1089,6 +1240,64 @@ export default function FloatingChat() {
                     : "1px solid rgba(216,150,200,0.2)",
                 }}
               >
+                {/* p2: 답글 모드 인라인 박스 — compose 위, X 버튼으로 해제. */}
+                {replyingTo && (
+                  <div
+                    className="mb-2 flex items-center gap-2 rounded-lg px-3 py-2"
+                    style={
+                      isDawnlight2
+                        ? {
+                            background: "rgba(255,212,184,0.35)",
+                            borderLeft: "3px solid #ffb88a",
+                          }
+                        : {
+                            background: "rgba(26,15,61,0.55)",
+                            borderLeft: "3px solid rgba(216,150,200,0.7)",
+                          }
+                    }
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div
+                        className="truncate font-serif text-[11px] font-semibold"
+                        style={{
+                          color: isDawnlight2 ? "#5c3a1f" : "#FFE5C4",
+                        }}
+                      >
+                        ↪ {replyingTo.nickname}님에게 답글
+                      </div>
+                      <div
+                        className="truncate font-serif text-[11px]"
+                        style={{
+                          color: isDawnlight2
+                            ? "rgba(92,58,31,0.8)"
+                            : "rgba(244,239,255,0.8)",
+                          marginTop: 1,
+                        }}
+                      >
+                        {replyingTo.message ||
+                          (replyingTo.fileType === "video"
+                            ? "[영상]"
+                            : replyingTo.fileType === "gif" ||
+                                replyingTo.fileType === "image"
+                              ? "[사진]"
+                              : "")}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleClearReply}
+                      aria-label="답글 취소"
+                      className="shrink-0"
+                      style={{
+                        padding: 2,
+                        color: isDawnlight2 ? "#8a6a4a" : "#D896C8",
+                      }}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+
                 {/* File preview */}
                 {file && filePreview && (
                   <div
