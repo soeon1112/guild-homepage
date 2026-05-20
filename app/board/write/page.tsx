@@ -8,6 +8,7 @@ import {
   doc,
   serverTimestamp,
   setDoc,
+  Timestamp,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "@/src/lib/firebase";
@@ -21,6 +22,12 @@ import {
   MentionPicker,
   applyMentionInsert,
 } from "@/app/components/mention/MentionPicker";
+import {
+  PollEditor,
+  createInitialPollState,
+  validatePollForm,
+  type PollFormState,
+} from "@/app/components/board/PollEditor";
 
 type AttachmentType = "image" | "video" | "gif";
 
@@ -52,6 +59,14 @@ export default function BoardWritePage() {
   const [pending, setPending] = useState<PendingFile[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
+  // poll/p2: 투표 게시글 토글 + 폼 상태. isPoll=false 면 일반 게시글 흐름
+  // 그대로 (payload 변경 0). isPoll=true 면 submit 시 type:"poll" + poll
+  // 메타데이터 추가.
+  const [isPoll, setIsPoll] = useState(false);
+  const [pollForm, setPollForm] = useState<PollFormState>(
+    createInitialPollState(),
+  );
+
   const handleFilesSelected = (list: FileList | null) => {
     if (!list || list.length === 0) return;
     const added: PendingFile[] = Array.from(list).map((file) => ({
@@ -77,6 +92,14 @@ export default function BoardWritePage() {
       alert("제목과 내용을 입력해주세요.");
       return;
     }
+    // poll/p2: 투표 모드면 폼 validate.
+    if (isPoll) {
+      const pollErr = validatePollForm(pollForm);
+      if (pollErr) {
+        alert(pollErr);
+        return;
+      }
+    }
 
     setSubmitting(true);
     try {
@@ -97,6 +120,32 @@ export default function BoardWritePage() {
         attachments.push({ fileUrl: url, fileType: p.fileType });
       }
 
+      // poll/p2: isPoll=true 일 때만 type:"poll" + poll 메타데이터 추가.
+      // 일반 게시글 흐름은 payload 동일.
+      const pollPayload = isPoll
+        ? (() => {
+            const filledOptions = pollForm.options
+              .filter((o) => o.text.trim())
+              .map((o, i) => ({
+                id: String(i + 1),
+                text: o.text.trim(),
+              }));
+            const meta: Record<string, unknown> = {
+              question: pollForm.question.trim(),
+              options: filledOptions,
+              anonymous: pollForm.anonymous,
+              allowChange: pollForm.allowChange,
+            };
+            if (pollForm.deadline) {
+              // 마감일 = 해당 날짜 23:59:59 (해당 날짜 끝까지 유효).
+              meta.deadline = Timestamp.fromDate(
+                new Date(`${pollForm.deadline}T23:59:59`),
+              );
+            }
+            return { type: "poll" as const, poll: meta };
+          })()
+        : {};
+
       await setDoc(newRef, {
         title: cleanTitle,
         content: content.trim(),
@@ -104,6 +153,7 @@ export default function BoardWritePage() {
         attachments,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
+        ...pollPayload,
       });
       await logActivity(
         "board",
@@ -208,6 +258,33 @@ export default function BoardWritePage() {
           }
           rows={10}
         />
+
+        {/* poll/p2: 투표 토글 + 폼. 일반 게시글 흐름 영향 0. */}
+        <label
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            margin: "8px 0",
+            fontSize: 14,
+            color: isDawnlight2 ? "#5c3a1f" : "var(--text-primary)",
+            cursor: "pointer",
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={isPoll}
+            onChange={(e) => setIsPoll(e.target.checked)}
+          />
+          📊 투표로 만들기
+        </label>
+        {isPoll && (
+          <PollEditor
+            value={pollForm}
+            onChange={setPollForm}
+            isDawnlight2={isDawnlight2}
+          />
+        )}
 
         <div className="board-attach">
           <label className="board-attach-label">
