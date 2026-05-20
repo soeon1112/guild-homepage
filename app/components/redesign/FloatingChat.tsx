@@ -43,6 +43,10 @@ import {
 import { MentionText } from "@/app/components/mention/MentionText";
 import { MemberAvatar } from "@/app/components/redesign/MemberAvatar";
 import { useMemberAvatars } from "@/src/lib/useMemberAvatars";
+import {
+  useChatReactions,
+  type MessageReactions,
+} from "@/src/lib/useChatReactions";
 
 type ChatFileType = "image" | "gif" | "video";
 
@@ -154,6 +158,8 @@ type MessageItemProps = {
   registerRef: (id: string, el: HTMLDivElement | null) => void;
   onJumpToOriginal: (messageId: string) => void;
   highlighted: boolean;
+  // p3.2: 리액션 배지 표시 (토글은 p3.3) — undefined 면 row 자체 안 그림.
+  messageReactions: MessageReactions | undefined;
 };
 
 const CHAT_AVATAR_SIZE = 36;
@@ -171,6 +177,7 @@ const MessageItem = memo(
     registerRef,
     onJumpToOriginal,
     highlighted,
+    messageReactions,
   }: MessageItemProps) {
     // p2.5: row DOM 노드 등록 — mount/m.id 변동 시 register, unmount 시
     // unregister. callback ref 를 직접 ref={...} 에 박으면 매 렌더마다
@@ -309,6 +316,48 @@ const MessageItem = memo(
               />
             ) : (
               <CommentImageView url={m.imageUrl} />
+            )}
+          </div>
+        )}
+        {/* p3.2: 리액션 배지 row — bubble 아래, contentColumn 안. mine
+            정렬은 row 외부 (parent) 에서 처리하지만 contentColumn 의
+            items-start 라 자동으로 왼쪽. mine 인 경우 self-end. */}
+        {messageReactions && messageReactions.byEmoji.size > 0 && (
+          <div
+            className={`mt-0.5 flex flex-wrap items-center gap-1 ${
+              mine ? "self-end" : ""
+            }`}
+          >
+            {Array.from(messageReactions.byEmoji.entries()).map(
+              ([emoji, nicks]) => {
+                const isMine = messageReactions.myEmoji === emoji;
+                return (
+                  <span
+                    key={emoji}
+                    className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 font-serif"
+                    style={
+                      dl2
+                        ? {
+                            background: "rgba(254,245,230,0.85)",
+                            border: isMine
+                              ? "1px solid rgba(255,184,138,0.85)"
+                              : "1px solid rgba(92,58,31,0.2)",
+                            color: "#5c3a1f",
+                          }
+                        : {
+                            background: "rgba(26,15,61,0.75)",
+                            border: isMine
+                              ? "1px solid rgba(255,181,167,0.8)"
+                              : "1px solid rgba(216,150,200,0.3)",
+                            color: "#FFE5C4",
+                          }
+                    }
+                  >
+                    <span style={{ fontSize: 12 }}>{emoji}</span>
+                    <span style={{ fontSize: 11 }}>{nicks.length}</span>
+                  </span>
+                );
+              },
             )}
           </div>
         )}
@@ -465,10 +514,29 @@ const MessageItem = memo(
     prev.m.replyTo?.snippet === next.m.replyTo?.snippet &&
     prev.m.replyTo?.fileType === next.m.replyTo?.fileType &&
     prev.highlighted === next.highlighted &&
+    // p3.2: reactions 비교 — Map 자체 매번 새 reference 라 byEmoji size /
+    // 각 emoji 카운트 / myEmoji 만 얕게 비교. 배지 표시상 충분.
+    reactionsEqual(prev.messageReactions, next.messageReactions) &&
     prev.onReply === next.onReply &&
     prev.registerRef === next.registerRef &&
     prev.onJumpToOriginal === next.onJumpToOriginal,
 );
+
+// p3.2 helper — MessageReactions 두 객체 표시 동등성 비교.
+function reactionsEqual(
+  a: MessageReactions | undefined,
+  b: MessageReactions | undefined,
+): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  if (a.myEmoji !== b.myEmoji) return false;
+  if (a.byEmoji.size !== b.byEmoji.size) return false;
+  for (const [emoji, nicks] of a.byEmoji) {
+    const other = b.byEmoji.get(emoji);
+    if (!other || other.length !== nicks.length) return false;
+  }
+  return true;
+}
 
 export default function FloatingChat() {
   const { nickname, ready } = useAuth();
@@ -670,6 +738,17 @@ export default function FloatingChat() {
     [messages],
   );
   const avatars = useMemberAvatars(allNicknames);
+
+  // p3.2: 리액션 배지 표시 (토글은 p3.3) — 메시지 50개 각각 chat/{id}/
+  // reactions onSnapshot. 비용은 PhotosSectionD2 댓글 카운트와 동일 규모.
+  const allMessageIds = useMemo(
+    () => messages.map((m) => m.id),
+    [messages],
+  );
+  const { reactions: chatReactions } = useChatReactions(
+    allMessageIds,
+    nickname ?? "",
+  );
 
   // 같은 분(minute) 안 같은 sender 묶기 — group 첫 메시지에 프사+닉,
   // group 마지막에 시간 표시. createdAt 이 null(pending serverTimestamp)
@@ -1336,6 +1415,7 @@ export default function FloatingChat() {
                         registerRef={registerMessageRef}
                         onJumpToOriginal={handleJumpToOriginal}
                         highlighted={highlightedMessageId === m.id}
+                        messageReactions={chatReactions.get(m.id)}
                       />
                     ),
                   )
