@@ -216,11 +216,18 @@ const MessageItem = memo(
       </div>
     );
 
+    // p1.5: 그룹 시작 row 는 그룹 사이 여백 크게, 그룹 내부는 촘촘.
+    const rowMarginTop = showAvatar ? 14 : 2;
+
     if (mine) {
-      // 본인 — 오른쪽 정렬. 프사/닉 없음. 시간 bubble 왼쪽 (showTime 만).
+      // 본인 — 오른쪽 정렬, 프사·닉 없음 (빈자리도 X). 시간 bubble 왼쪽
+      // (showTime 일 때만, gap 4).
       return (
-        <div className="flex justify-end py-1">
-          <div className="flex max-w-[82%] items-end gap-1.5">
+        <div
+          className="flex w-full justify-end"
+          style={{ marginTop: rowMarginTop }}
+        >
+          <div className="flex max-w-[82%] items-end gap-1">
             {showTime && (
               <span
                 className="whitespace-nowrap pb-1 font-serif tracking-wider"
@@ -235,23 +242,52 @@ const MessageItem = memo(
       );
     }
 
-    // 타인 — [프사 column] [body column = [nick][bubble + time]].
+    // 타인 — [프사 column 36] [body column = [nick][bubble + time]].
     return (
-      <div className="flex items-start gap-2 py-1">
+      <div
+        className="flex w-full items-start gap-2"
+        style={{ marginTop: rowMarginTop }}
+      >
         <div
           className="shrink-0"
           style={{ width: CHAT_AVATAR_SIZE, height: CHAT_AVATAR_SIZE }}
         >
           {showAvatar ? (
-            <MemberAvatar
-              imageUrl={avatar?.imageUrl}
-              nickname={m.nickname}
-              size={CHAT_AVATAR_SIZE}
-              dl2={dl2}
-            />
+            avatar?.registered ? (
+              <MemberAvatar
+                imageUrl={avatar.imageUrl}
+                nickname={m.nickname}
+                size={CHAT_AVATAR_SIZE}
+                dl2={dl2}
+              />
+            ) : (
+              // 미등록 (잠든 별) — MemberAvatar dl2 transparent disc 가
+              // cream surface 위에서 안 보이는 문제. 잉크 / cosmic 별빛
+              // 톤 회색 원 + 닉 첫 글자 (신규 디자인 토큰 0).
+              <div
+                className="flex h-full w-full items-center justify-center rounded-full font-serif font-semibold"
+                style={
+                  dl2
+                    ? {
+                        background: "rgba(92,58,31,0.18)",
+                        border: "1px solid rgba(92,58,31,0.28)",
+                        color: "rgba(92,58,31,0.75)",
+                        fontSize: 14,
+                      }
+                    : {
+                        background: "rgba(26,15,61,0.6)",
+                        border: "1px solid rgba(216,150,200,0.35)",
+                        color: "#FFE5C4",
+                        fontSize: 14,
+                      }
+                }
+              >
+                {m.nickname.slice(0, 1)}
+              </div>
+            )
           ) : null}
         </div>
-        <div className="flex min-w-0 max-w-[82%] flex-col items-start gap-1">
+        <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
           {showNickname &&
             (dl2 ? (
               <div
@@ -271,7 +307,7 @@ const MessageItem = memo(
                 />
               </div>
             ))}
-          <div className="flex max-w-full items-end gap-1.5">
+          <div className="flex max-w-full items-end gap-1">
             {contentColumn}
             {showTime && (
               <span
