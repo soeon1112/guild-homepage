@@ -1776,88 +1776,89 @@ export default function FloatingChat() {
                 로그인이 필요합니다
               </div>
             )}
+
+            {/* p3.3-fix2: 이모지 액션 메뉴 — 채팅 패널 안 정중앙 (panel
+                motion.div 의 직속 자식, absolute inset-0). 다른 모달 패턴
+                과 일관 — viewport 전체가 아닌 panel 영역만 backdrop 어두워
+                지고 패널 정중앙에 floating row. panel 의 overflow:hidden
+                덕에 모달이 panel 밖으로 새지 않음. */}
+            {actionMenuFor && (
+              <div
+                className="chat-action-menu absolute inset-0 z-30 flex items-center justify-center"
+                style={{ background: "rgba(0,0,0,0.35)" }}
+                onClick={(e) => {
+                  if (e.target === e.currentTarget) {
+                    setActionMenuFor(null);
+                  }
+                }}
+                role="dialog"
+                aria-modal="true"
+                aria-label="메시지 액션 메뉴"
+              >
+                <div
+                  className="flex items-center gap-1 rounded-full px-3 py-2"
+                  style={
+                    isDawnlight2
+                      ? {
+                          background: "rgba(254,245,230,0.98)",
+                          border: "1px solid rgba(92,58,31,0.2)",
+                          boxShadow: "0 8px 24px rgba(92,58,31,0.22)",
+                        }
+                      : {
+                          background: "rgba(26,15,61,0.97)",
+                          border: "1px solid rgba(216,150,200,0.35)",
+                          boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+                          backdropFilter: "blur(4px)",
+                        }
+                  }
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {CHAT_REACTION_EMOJIS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelectEmoji(emoji);
+                      }}
+                      aria-label={`리액션 ${emoji}`}
+                      className="flex h-10 w-10 items-center justify-center rounded-full transition-opacity hover:opacity-70"
+                      style={{ fontSize: 22, lineHeight: 1 }}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                  <span
+                    aria-hidden
+                    className="mx-1 inline-block h-6 w-px"
+                    style={{
+                      background: isDawnlight2
+                        ? "rgba(92,58,31,0.18)"
+                        : "rgba(216,150,200,0.25)",
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSelectReplyFromMenu();
+                    }}
+                    aria-label="답글"
+                    className="flex h-10 w-10 items-center justify-center rounded-full transition-opacity hover:opacity-70"
+                    style={{
+                      fontSize: 18,
+                      color: isDawnlight2 ? "#5c3a1f" : "#FFE5C4",
+                      lineHeight: 1,
+                    }}
+                  >
+                    ↩
+                  </button>
+                </div>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* p3.3-fix: 이모지 액션 메뉴 — fixed inset-0 가운데 모달 (앱과
-          일관). 메시지 옆 absolute popover 가 채팅 패널 overflow 에
-          잘리거나 메시지 위치별로 일관성 떨어지던 회귀 해결. backdrop
-          onClick 으로 닫기 + Escape useEffect 도 그대로 동작. */}
-      {actionMenuFor && (
-        <div
-          className="chat-action-menu fixed inset-0 z-[80] flex items-center justify-center"
-          style={{ background: "rgba(0,0,0,0.3)" }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setActionMenuFor(null);
-            }
-          }}
-          role="dialog"
-          aria-modal="true"
-          aria-label="메시지 액션 메뉴"
-        >
-          <div
-            className="flex items-center gap-1 rounded-full px-3 py-2"
-            style={
-              isDawnlight2
-                ? {
-                    background: "rgba(254,245,230,0.98)",
-                    border: "1px solid rgba(92,58,31,0.2)",
-                    boxShadow: "0 8px 24px rgba(92,58,31,0.22)",
-                  }
-                : {
-                    background: "rgba(26,15,61,0.97)",
-                    border: "1px solid rgba(216,150,200,0.35)",
-                    boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
-                    backdropFilter: "blur(4px)",
-                  }
-            }
-            onClick={(e) => e.stopPropagation()}
-          >
-            {CHAT_REACTION_EMOJIS.map((emoji) => (
-              <button
-                key={emoji}
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleSelectEmoji(emoji);
-                }}
-                aria-label={`리액션 ${emoji}`}
-                className="flex h-10 w-10 items-center justify-center rounded-full transition-opacity hover:opacity-70"
-                style={{ fontSize: 22, lineHeight: 1 }}
-              >
-                {emoji}
-              </button>
-            ))}
-            <span
-              aria-hidden
-              className="mx-1 inline-block h-6 w-px"
-              style={{
-                background: isDawnlight2
-                  ? "rgba(92,58,31,0.18)"
-                  : "rgba(216,150,200,0.25)",
-              }}
-            />
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleSelectReplyFromMenu();
-              }}
-              aria-label="답글"
-              className="flex h-10 w-10 items-center justify-center rounded-full transition-opacity hover:opacity-70"
-              style={{
-                fontSize: 18,
-                color: isDawnlight2 ? "#5c3a1f" : "#FFE5C4",
-                lineHeight: 1,
-              }}
-            >
-              ↩
-            </button>
-          </div>
-        </div>
-      )}
     </>
   );
 }
