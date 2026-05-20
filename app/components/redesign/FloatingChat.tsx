@@ -1788,7 +1788,6 @@ export default function FloatingChat() {
             {actionMenuFor && (
               <div
                 className="chat-action-menu absolute inset-0 z-30 flex items-center justify-center"
-                style={{ background: "rgba(0,0,0,0.35)" }}
                 onClick={(e) => {
                   if (e.target === e.currentTarget) {
                     setActionMenuFor(null);
