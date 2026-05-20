@@ -718,6 +718,11 @@ export default function FloatingChat() {
     string | null
   >(null);
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // p2.5-fix: 점프 후 자동 scroll-to-bottom 복귀 방지. 옵션 C —
+  // 사용자가 직접 끝까지 스크롤할 때까지 lock (카톡 표준). onScroll 에서
+  // 끝 근처 (within 80px) 도달 시 unlock. 자기가 메시지 전송하면 즉시 unlock.
+  // isJumping=true 동안: useEffect[open, messages] 의 pin 호출이 모두 skip.
+  const isJumpingRef = useRef(false);
   const registerMessageRef = useCallback(
     (id: string, el: HTMLDivElement | null) => {
       if (el) messageRefsMap.current.set(id, el);
@@ -732,6 +737,8 @@ export default function FloatingChat() {
       alert("오래된 메시지라 찾을 수 없어요");
       return;
     }
+    // 점프 lock 활성화 — 사용자가 끝까지 스크롤하거나 메시지 보낼 때까지.
+    isJumpingRef.current = true;
     el.scrollIntoView({ behavior: "smooth", block: "center" });
     if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
     setHighlightedMessageId(messageId);
@@ -739,6 +746,16 @@ export default function FloatingChat() {
       setHighlightedMessageId(null);
       highlightTimerRef.current = null;
     }, 1500);
+  }, []);
+  const handleListScroll = useCallback(() => {
+    if (!isJumpingRef.current) return;
+    const list = listRef.current;
+    if (!list) return;
+    const distanceFromBottom =
+      list.scrollHeight - list.scrollTop - list.clientHeight;
+    if (distanceFromBottom < 80) {
+      isJumpingRef.current = false;
+    }
   }, []);
   useEffect(() => {
     return () => {
@@ -802,6 +819,9 @@ export default function FloatingChat() {
     if (!list) return;
 
     const pin = (label: string) => {
+      // p2.5-fix: 점프 lock 활성화 중에는 모든 pin skip — 사용자가 머문
+      // 위치 유지, 새 메시지 와도 아래로 안 끌려감.
+      if (isJumpingRef.current) return;
       const end = endRef.current;
       if (end) {
         end.scrollIntoView({ block: "end", behavior: "smooth" });
@@ -860,8 +880,10 @@ export default function FloatingChat() {
   // One extra pin after framer-motion's enter animation settles. On mobile
   // this is the first frame where the panel's scale/opacity are final, which
   // is the most reliable frame if earlier pins were fighting the animation.
+  // p2.5-fix: 점프 lock 중에는 enter 애니메이션 직후도 끝으로 안 끌어감.
   const handlePanelAnimationComplete = () => {
     if (!open) return;
+    if (isJumpingRef.current) return;
     endRef.current?.scrollIntoView({ block: "end", behavior: "auto" });
     debugLog("animation-complete");
     requestAnimationFrame(() => {
@@ -908,6 +930,8 @@ export default function FloatingChat() {
     // p2: snapshot 답글 대상 — 전송 도중 사용자가 다른 답글을 시작/취소
     // 해도 이 메시지의 replyTo 는 처음 상태 그대로 들어가야 함.
     const replySnapshot = replyingTo;
+    // p2.5-fix: 자기가 메시지를 보낸다 = 끝까지 따라가야 함 → 점프 lock 해제.
+    isJumpingRef.current = false;
     setDraft("");
     setFile(null);
     setReplyingTo(null);
@@ -1254,6 +1278,7 @@ export default function FloatingChat() {
             {/* Messages list — vertical scroll only, no horizontal */}
             <div
               ref={listRef}
+              onScroll={handleListScroll}
               className="nebula-scroll relative flex-1 overflow-y-auto overflow-x-hidden px-3 py-2"
             >
               <div ref={contentRef}>
