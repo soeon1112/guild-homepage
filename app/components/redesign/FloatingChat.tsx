@@ -152,8 +152,12 @@ type MessageItemProps = {
   avatar:
     | { imageUrl: string; registered: boolean; docId: string }
     | undefined;
-  // p2: bubble 옆 작은 ↩ 버튼 클릭 → 답글 모드 진입.
-  onReply: (m: ChatMessage) => void;
+  // p3.3: 기존 ↩ 답글 버튼 → ⋯ 액션 메뉴 버튼. popover 표시는 부모
+  // state(actionMenuFor) 와 actionMenuOpen prop 으로 같이 처리.
+  onActionMenu: (m: ChatMessage) => void;
+  onSelectEmoji: (emoji: string) => void;
+  onSelectReplyFromMenu: () => void;
+  actionMenuOpen: boolean;
   // p2.5: row DOM 노드 등록 + 인용 박스 클릭 → 원본 점프 + 강조 토글.
   registerRef: (id: string, el: HTMLDivElement | null) => void;
   onJumpToOriginal: (messageId: string) => void;
@@ -164,6 +168,9 @@ type MessageItemProps = {
 
 const CHAT_AVATAR_SIZE = 36;
 
+// p3.3: 액션 메뉴 이모지 — 카톡 표준 6개 (사용자 결정).
+const CHAT_REACTION_EMOJIS = ["❤️", "😂", "😢", "👍", "🎉", "😮"] as const;
+
 const MessageItem = memo(
   function MessageItem({
     m,
@@ -173,7 +180,10 @@ const MessageItem = memo(
     showNickname,
     showTime,
     avatar,
-    onReply,
+    onActionMenu,
+    onSelectEmoji,
+    onSelectReplyFromMenu,
+    actionMenuOpen,
     registerRef,
     onJumpToOriginal,
     highlighted,
@@ -364,23 +374,90 @@ const MessageItem = memo(
       </div>
     );
 
-    // p2: 메시지 옆 작은 답글 ↩ 버튼 — opacity 0.4 (모바일 항상 보이게)
-    // → hover 시 진해짐. 새 토큰 X.
+    // p3.3: 메시지 옆 ⋯ 단일 액션 메뉴 버튼 + popover (이모지 6 + ↩).
+    // chat-action-trigger / chat-action-menu 클래스 — parent 의 outside
+    // click handler 가 이 두 클래스 안 클릭은 제외 (즉시 닫힘 방지).
+    const panelStyle: React.CSSProperties = dl2
+      ? {
+          background: "rgba(254,245,230,0.98)",
+          border: "1px solid rgba(92,58,31,0.2)",
+          boxShadow: "0 4px 12px rgba(92,58,31,0.18)",
+        }
+      : {
+          background: "rgba(26,15,61,0.97)",
+          border: "1px solid rgba(216,150,200,0.35)",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
+        };
     const replyBtn = (
-      <button
-        type="button"
-        onClick={() => onReply(m)}
-        aria-label="답글"
-        className="self-end opacity-40 transition-opacity hover:opacity-100"
-        style={{
-          padding: 4,
-          color: dl2 ? "#8a6a4a" : "rgb(155,143,184)",
-          lineHeight: 1,
-          fontSize: 14,
-        }}
-      >
-        ↩
-      </button>
+      <div className="relative self-end">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onActionMenu(m);
+          }}
+          aria-label="액션 메뉴"
+          className="chat-action-trigger opacity-40 transition-opacity hover:opacity-100"
+          style={{
+            padding: 4,
+            color: dl2 ? "#8a6a4a" : "rgb(155,143,184)",
+            lineHeight: 1,
+            fontSize: 16,
+            letterSpacing: 1,
+          }}
+        >
+          ⋯
+        </button>
+        {actionMenuOpen && (
+          <div
+            className={`chat-action-menu absolute z-10 mb-1 flex items-center gap-1 rounded-full px-2 py-1 ${
+              mine ? "right-0" : "left-0"
+            }`}
+            style={{ ...panelStyle, bottom: "100%" }}
+          >
+            {CHAT_REACTION_EMOJIS.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelectEmoji(emoji);
+                }}
+                aria-label={`리액션 ${emoji}`}
+                className="flex h-8 w-8 items-center justify-center rounded-full transition-opacity hover:opacity-70"
+                style={{ fontSize: 20, lineHeight: 1 }}
+              >
+                {emoji}
+              </button>
+            ))}
+            <span
+              aria-hidden
+              className="mx-0.5 inline-block h-5 w-px"
+              style={{
+                background: dl2
+                  ? "rgba(92,58,31,0.18)"
+                  : "rgba(216,150,200,0.25)",
+              }}
+            />
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelectReplyFromMenu();
+              }}
+              aria-label="답글"
+              className="flex h-8 w-8 items-center justify-center rounded-full transition-opacity hover:opacity-70"
+              style={{
+                fontSize: 16,
+                color: dl2 ? "#5c3a1f" : "#FFE5C4",
+                lineHeight: 1,
+              }}
+            >
+              ↩
+            </button>
+          </div>
+        )}
+      </div>
     );
 
     // p1.5: 그룹 시작 row 는 그룹 사이 여백 크게, 그룹 내부는 촘촘.
@@ -517,7 +594,11 @@ const MessageItem = memo(
     // p3.2: reactions 비교 — Map 자체 매번 새 reference 라 byEmoji size /
     // 각 emoji 카운트 / myEmoji 만 얕게 비교. 배지 표시상 충분.
     reactionsEqual(prev.messageReactions, next.messageReactions) &&
-    prev.onReply === next.onReply &&
+    // p3.3: popover open/close 상태 비교.
+    prev.actionMenuOpen === next.actionMenuOpen &&
+    prev.onActionMenu === next.onActionMenu &&
+    prev.onSelectEmoji === next.onSelectEmoji &&
+    prev.onSelectReplyFromMenu === next.onSelectReplyFromMenu &&
     prev.registerRef === next.registerRef &&
     prev.onJumpToOriginal === next.onJumpToOriginal,
 );
@@ -745,7 +826,7 @@ export default function FloatingChat() {
     () => messages.map((m) => m.id),
     [messages],
   );
-  const { reactions: chatReactions } = useChatReactions(
+  const { reactions: chatReactions, toggleReaction } = useChatReactions(
     allMessageIds,
     nickname ?? "",
   );
@@ -779,13 +860,58 @@ export default function FloatingChat() {
   }, [messages]);
 
   // ── Chat-p2 답글 ──
-  // 메시지 옆 작은 ↩ 버튼 클릭 → 답글 모드 진입. replyingTo set 되면
-  // compose 위 인용 박스 표시 + 전송 시 addDoc 에 비정규화 snapshot 동봉.
-  // useCallback 으로 MessageItem memo comparator 안정 (onReply 식별자
-  // 매 렌더마다 새로 만들어지면 메모 깨져서 전체 리스트가 리렌더).
+  // p3.3: 진입 방식 변경 — 메시지 옆 ⋯ 버튼 → popover (이모지 6 + ↩ 답글).
+  // handleSelectReplyFromMenu 가 popover 내부 ↩ 클릭으로 분기. handleAction
+  // Menu 가 popover 자체 토글. 기존 handleReply (↩ 직접 버튼) 제거.
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
-  const handleReply = useCallback((m: ChatMessage) => setReplyingTo(m), []);
+  const [actionMenuFor, setActionMenuFor] = useState<ChatMessage | null>(null);
+  const handleActionMenu = useCallback(
+    (m: ChatMessage) => setActionMenuFor(m),
+    [],
+  );
   const handleClearReply = useCallback(() => setReplyingTo(null), []);
+  const handleSelectEmoji = useCallback(
+    async (emoji: string) => {
+      const target = actionMenuFor;
+      if (!target) return;
+      setActionMenuFor(null);
+      try {
+        await toggleReaction(target.id, emoji);
+      } catch (e) {
+        console.error("[Reaction] failed", e);
+      }
+    },
+    [actionMenuFor, toggleReaction],
+  );
+  const handleSelectReplyFromMenu = useCallback(() => {
+    const target = actionMenuFor;
+    if (!target) return;
+    setReplyingTo(target);
+    setActionMenuFor(null);
+  }, [actionMenuFor]);
+
+  // popover 외부 클릭 닫기 — 패널 자체 (.chat-action-menu) 클릭은 제외.
+  useEffect(() => {
+    if (!actionMenuFor) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Element | null;
+      if (target?.closest?.(".chat-action-menu")) return;
+      if (target?.closest?.(".chat-action-trigger")) return;
+      setActionMenuFor(null);
+    };
+    document.addEventListener("click", handler);
+    return () => document.removeEventListener("click", handler);
+  }, [actionMenuFor]);
+
+  // Escape 키로 닫기.
+  useEffect(() => {
+    if (!actionMenuFor) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setActionMenuFor(null);
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [actionMenuFor]);
 
   // ── Chat-p2.5 답글 점프 + 강조 ──
   // 각 MessageItem 의 row DOM 노드를 useEffect 로 등록. 인용 박스 클릭
@@ -1411,7 +1537,10 @@ export default function FloatingChat() {
                         showNickname={showNickname}
                         showTime={showTime}
                         avatar={avatars.get(m.nickname)}
-                        onReply={handleReply}
+                        onActionMenu={handleActionMenu}
+                        onSelectEmoji={handleSelectEmoji}
+                        onSelectReplyFromMenu={handleSelectReplyFromMenu}
+                        actionMenuOpen={actionMenuFor?.id === m.id}
                         registerRef={registerMessageRef}
                         onJumpToOriginal={handleJumpToOriginal}
                         highlighted={highlightedMessageId === m.id}
