@@ -295,8 +295,11 @@ const MessageItem = memo(
       </button>
     ) : null;
 
+    // p3.3-fix3: mine 시 자식 우측 정렬 — 답글 인용 박스가 column 폭을
+    // 결정해 bubble 이 왼쪽으로 밀리던 회귀. items-end 로 replyQuote /
+    // bubble / image 모두 우측 끝 anchor.
     const contentColumn = (
-      <div className="flex flex-col items-start gap-1">
+      <div className={`flex flex-col gap-1 ${mine ? "items-end" : "items-start"}`}>
         {replyQuote}
         {m.message && (
           <div
