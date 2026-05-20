@@ -150,6 +150,10 @@ type MessageItemProps = {
     | undefined;
   // p2: bubble 옆 작은 ↩ 버튼 클릭 → 답글 모드 진입.
   onReply: (m: ChatMessage) => void;
+  // p2.5: row DOM 노드 등록 + 인용 박스 클릭 → 원본 점프 + 강조 토글.
+  registerRef: (id: string, el: HTMLDivElement | null) => void;
+  onJumpToOriginal: (messageId: string) => void;
+  highlighted: boolean;
 };
 
 const CHAT_AVATAR_SIZE = 36;
@@ -164,7 +168,31 @@ const MessageItem = memo(
     showTime,
     avatar,
     onReply,
+    registerRef,
+    onJumpToOriginal,
+    highlighted,
   }: MessageItemProps) {
+    // p2.5: row DOM 노드 등록 — mount/m.id 변동 시 register, unmount 시
+    // unregister. callback ref 를 직접 ref={...} 에 박으면 매 렌더마다
+    // detach/attach 반복되어 memo 효과 깎임 — useEffect 패턴 안전.
+    const rowRef = useRef<HTMLDivElement | null>(null);
+    useEffect(() => {
+      registerRef(m.id, rowRef.current);
+      return () => registerRef(m.id, null);
+    }, [m.id, registerRef]);
+
+    // p2.5: 강조 wash — 1.5초 후 자동 해제. transition 으로 부드럽게.
+    const highlightStyle: React.CSSProperties = highlighted
+      ? {
+          background: dl2
+            ? "rgba(255,212,184,0.32)"
+            : "rgba(216,150,200,0.18)",
+          borderRadius: 10,
+          marginInline: -4,
+          paddingInline: 4,
+          paddingBlock: 2,
+        }
+      : {};
     const bubbleStyle: React.CSSProperties = dl2
       ? mine
         ? {
@@ -230,8 +258,10 @@ const MessageItem = memo(
       : "rgba(244,239,255,0.8)";
 
     const replyQuote = m.replyTo ? (
-      <div
-        className="max-w-full rounded-md px-2 py-1.5 font-serif"
+      <button
+        type="button"
+        onClick={() => onJumpToOriginal(m.replyTo!.messageId)}
+        className="block max-w-full rounded-md px-2 py-1.5 text-left font-serif transition-opacity hover:opacity-80"
         style={replyQuoteStyle}
       >
         <div
@@ -251,7 +281,7 @@ const MessageItem = memo(
                 ? "[사진]"
                 : "")}
         </div>
-      </div>
+      </button>
     ) : null;
 
     const contentColumn = (
@@ -313,8 +343,9 @@ const MessageItem = memo(
       // 안쪽), 시간 오른쪽엔 시각적 균형 위해 가장자리 가까이 배치.
       return (
         <div
-          className="group flex w-full justify-end"
-          style={{ marginTop: rowMarginTop }}
+          ref={rowRef}
+          className="group flex w-full justify-end transition-[background] duration-300"
+          style={{ marginTop: rowMarginTop, ...highlightStyle }}
         >
           <div className="flex max-w-[82%] items-end gap-1">
             {showTime && (
@@ -335,8 +366,9 @@ const MessageItem = memo(
     // 타인 — [프사 column 36] [body column = [nick][bubble + time]].
     return (
       <div
-        className="flex w-full items-start gap-2"
-        style={{ marginTop: rowMarginTop }}
+        ref={rowRef}
+        className="flex w-full items-start gap-2 transition-[background] duration-300"
+        style={{ marginTop: rowMarginTop, ...highlightStyle }}
       >
         <div
           className="shrink-0"
@@ -432,7 +464,10 @@ const MessageItem = memo(
     prev.m.replyTo?.nickname === next.m.replyTo?.nickname &&
     prev.m.replyTo?.snippet === next.m.replyTo?.snippet &&
     prev.m.replyTo?.fileType === next.m.replyTo?.fileType &&
-    prev.onReply === next.onReply,
+    prev.highlighted === next.highlighted &&
+    prev.onReply === next.onReply &&
+    prev.registerRef === next.registerRef &&
+    prev.onJumpToOriginal === next.onJumpToOriginal,
 );
 
 export default function FloatingChat() {
@@ -672,6 +707,44 @@ export default function FloatingChat() {
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const handleReply = useCallback((m: ChatMessage) => setReplyingTo(m), []);
   const handleClearReply = useCallback(() => setReplyingTo(null), []);
+
+  // ── Chat-p2.5 답글 점프 + 강조 ──
+  // 각 MessageItem 의 row DOM 노드를 useEffect 로 등록. 인용 박스 클릭
+  // 시 element.scrollIntoView({behavior:"smooth", block:"center"}) + 1.5초
+  // 강조. registerMessageRef 는 useCallback 으로 stable identity (memo
+  // comparator 안정).
+  const messageRefsMap = useRef<Map<string, HTMLDivElement>>(new Map());
+  const [highlightedMessageId, setHighlightedMessageId] = useState<
+    string | null
+  >(null);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const registerMessageRef = useCallback(
+    (id: string, el: HTMLDivElement | null) => {
+      if (el) messageRefsMap.current.set(id, el);
+      else messageRefsMap.current.delete(id);
+    },
+    [],
+  );
+  const handleJumpToOriginal = useCallback((messageId: string) => {
+    const el = messageRefsMap.current.get(messageId);
+    if (!el) {
+      // limit(50) 밖 옛 메시지 — DOM 에 없음.
+      alert("오래된 메시지라 찾을 수 없어요");
+      return;
+    }
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    setHighlightedMessageId(messageId);
+    highlightTimerRef.current = setTimeout(() => {
+      setHighlightedMessageId(null);
+      highlightTimerRef.current = null;
+    }, 1500);
+  }, []);
+  useEffect(() => {
+    return () => {
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    };
+  }, []);
 
   const markRead = () => {
     if (!nickname) return;
@@ -1210,6 +1283,9 @@ export default function FloatingChat() {
                         showTime={showTime}
                         avatar={avatars.get(m.nickname)}
                         onReply={handleReply}
+                        registerRef={registerMessageRef}
+                        onJumpToOriginal={handleJumpToOriginal}
+                        highlighted={highlightedMessageId === m.id}
                       />
                     ),
                   )
