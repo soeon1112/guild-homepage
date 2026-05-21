@@ -51,6 +51,10 @@ import NicknameLink from "@/app/components/NicknameLink";
 import { MemberAvatar } from "@/app/components/redesign/MemberAvatar";
 import { useMemberAvatars } from "@/src/lib/useMemberAvatars";
 import { useBackdropClose } from "@/src/lib/useBackdropClose";
+import {
+  useCommentActionSheet,
+  type CommentActionContext,
+} from "@/src/lib/useCommentActionSheet";
 import { MentionText } from "@/app/components/mention/MentionText";
 import {
   MentionPicker,
@@ -572,6 +576,8 @@ function PhotoComments({
   const [submitting, setSubmitting] = useState(false);
   const [openReplyId, setOpenReplyId] = useState<string | null>(null);
   const [replyCounts, setReplyCounts] = useState<Record<string, number>>({});
+  // [Phase 3] 댓글/대댓글 공용 ⋯ 액션시트 — section 당 한 번 렌더.
+  const { open: openActionSheet, sheet: actionSheet } = useCommentActionSheet();
 
   // Deep-link scroll target: each PhotoCommentItem registers its root
   // div via setItemRef into this map keyed by comment id. After the
@@ -781,6 +787,7 @@ function PhotoComments({
               registerRef={setItemRef(c.id)}
               dawnlight2={dawnlight2}
               isLast={idx === comments.length - 1}
+              openActionSheet={openActionSheet}
             />
           ))}
         </div>
@@ -895,6 +902,9 @@ function PhotoComments({
           로그인이 필요합니다
         </p>
       )}
+
+      {/* [Phase 3] 댓글/대댓글 공용 ⋯ 액션시트 — section 당 한 번 렌더. */}
+      {actionSheet}
     </div>
   );
 }
@@ -912,6 +922,7 @@ function PhotoCommentItem({
   registerRef,
   dawnlight2 = false,
   isLast = false,
+  openActionSheet,
 }: {
   memberId: string;
   photoId: string;
@@ -927,6 +938,7 @@ function PhotoCommentItem({
   registerRef?: (el: HTMLDivElement | null) => void;
   dawnlight2?: boolean;
   isLast?: boolean;
+  openActionSheet: (ctx: CommentActionContext) => void;
 }) {
   const [replies, setReplies] = useState<PhotoCommentDoc[]>([]);
   const [msg, setMsg] = useState("");
@@ -1027,8 +1039,8 @@ function PhotoCommentItem({
     setSubmitting(false);
   };
 
+  // [Phase 3] confirm 은 useCommentActionSheet 가 띄움 — 이중 confirm 회피.
   const handleDeleteComment = async () => {
-    if (!confirm("정말 삭제하시겠습니까?")) return;
     try {
       await deleteDoc(
         doc(
@@ -1051,7 +1063,6 @@ function PhotoCommentItem({
   };
 
   const handleDeleteReply = async (replyId: string) => {
-    if (!confirm("정말 삭제하시겠습니까?")) return;
     try {
       await deleteDoc(
         doc(
@@ -1085,6 +1096,7 @@ function PhotoCommentItem({
           : undefined
       }
     >
+      {/* [Phase 3] 새 레이아웃: [프사36] [닉 ⋯] / [시간] / [본문]. */}
       {dawnlight2 ? (
         <div className="dl2-comment-row">
           <MemberAvatar
@@ -1093,38 +1105,63 @@ function PhotoCommentItem({
             size={36}
             dl2
           />
-          <div className="dl2-comment-left">
-            <span className="dl2-comment-nick-line">
+          <div className="dl2-comment-left" style={{ minWidth: 0, flex: 1 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 8,
+              }}
+            >
               <NicknameLink
                 nickname={comment.nickname}
                 className="dl2-photo-comment-nick"
               />
+              {loginNick && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    openActionSheet({
+                      content: comment.content ?? "",
+                      isMine: loginNick === comment.nickname,
+                      onReply: onToggleReply,
+                      onDelete:
+                        loginNick === comment.nickname
+                          ? handleDeleteComment
+                          : undefined,
+                    })
+                  }
+                  aria-label="댓글 메뉴 열기"
+                  style={{
+                    flexShrink: 0,
+                    width: 24,
+                    height: 24,
+                    borderRadius: 12,
+                    background: "rgba(42, 69, 112, 0.06)",
+                    color: "#5a7090",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: 14,
+                    lineHeight: 1,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: 0,
+                  }}
+                >
+                  ⋯
+                </button>
+              )}
+            </div>
+            <span
+              className="dl2-photo-comment-date"
+              style={{ display: "block", marginTop: 2, marginBottom: 4 }}
+            >
+              {formatTime(comment.createdAt)}
             </span>
             {!!comment.content && (
               <MentionText as="p" className="dl2-photo-comment-body" text={comment.content} dl2={true} />
-            )}
-          </div>
-          <div className="dl2-comment-right">
-            <span className="dl2-photo-comment-date">
-              {formatTime(comment.createdAt)}
-            </span>
-            {loginNick && (
-              <button
-                type="button"
-                className="dl2-photo-comment-action"
-                onClick={onToggleReply}
-              >
-                {replyOpen ? "닫기" : "답글"}
-              </button>
-            )}
-            {loginNick === comment.nickname && (
-              <button
-                type="button"
-                className="dl2-photo-comment-action"
-                onClick={handleDeleteComment}
-              >
-                삭제
-              </button>
             )}
           </div>
         </div>
@@ -1136,35 +1173,41 @@ function PhotoCommentItem({
             size={36}
           />
           <div className="min-w-0 flex-1">
-            <div className="mb-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <div className="flex items-center justify-between gap-2">
               <NicknameLink
                 nickname={comment.nickname}
                 className="font-medium text-stardust"
               />
-              <div className="ml-auto flex shrink-0 items-center gap-2 font-serif text-[11px] tracking-wider">
-                <span className="text-[10px] tracking-wider text-text-sub">
-                  {formatTime(comment.createdAt)}
-                </span>
-                {loginNick && (
-                  <button
-                    type="button"
-                    onClick={onToggleReply}
-                    className="text-text-sub transition-colors hover:text-peach-accent"
-                  >
-                    {replyOpen ? "닫기" : "답글"}
-                  </button>
-                )}
-                {loginNick === comment.nickname && (
-                  <button
-                    type="button"
-                    onClick={handleDeleteComment}
-                    className="text-text-sub transition-colors hover:text-peach-accent"
-                  >
-                    삭제
-                  </button>
-                )}
-              </div>
+              {loginNick && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    openActionSheet({
+                      content: comment.content ?? "",
+                      isMine: loginNick === comment.nickname,
+                      onReply: onToggleReply,
+                      onDelete:
+                        loginNick === comment.nickname
+                          ? handleDeleteComment
+                          : undefined,
+                      theme: "cosmic",
+                    })
+                  }
+                  aria-label="댓글 메뉴 열기"
+                  className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-none text-[14px] leading-none text-text-sub transition-colors hover:text-peach-accent"
+                  style={{
+                    background: "rgba(216, 150, 200, 0.10)",
+                    padding: 0,
+                    cursor: "pointer",
+                  }}
+                >
+                  ⋯
+                </button>
+              )}
             </div>
+            <span className="mt-0.5 mb-1 block text-[10px] tracking-wider text-text-sub">
+              {formatTime(comment.createdAt)}
+            </span>
             <p className="wrap-anywhere font-serif text-[12px] leading-relaxed text-text-primary">
               <MentionText as="span" text={comment.content} dl2={true} />
             </p>
@@ -1187,6 +1230,7 @@ function PhotoCommentItem({
         >
           {replies.map((r, idx) => {
             const replyAvatar = avatars.get(r.nickname);
+            // [Phase 3] 대댓글 ⋯ 메뉴는 답글 없음 (시스템상 대대댓글 X).
             return dawnlight2 ? (
               <div
                 key={r.id}
@@ -1201,12 +1245,59 @@ function PhotoCommentItem({
                     size={36}
                     dl2
                   />
-                  <div className="dl2-comment-left">
-                    <span className="dl2-comment-nick-line">
+                  <div className="dl2-comment-left" style={{ minWidth: 0, flex: 1 }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 8,
+                      }}
+                    >
                       <NicknameLink
                         nickname={r.nickname}
                         className="dl2-photo-comment-nick"
                       />
+                      {loginNick && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            openActionSheet({
+                              content: r.content ?? "",
+                              isMine: loginNick === r.nickname,
+                              onDelete:
+                                loginNick === r.nickname
+                                  ? () => handleDeleteReply(r.id)
+                                  : undefined,
+                            })
+                          }
+                          aria-label="대댓글 메뉴 열기"
+                          style={{
+                            flexShrink: 0,
+                            width: 24,
+                            height: 24,
+                            borderRadius: 12,
+                            background: "rgba(42, 69, 112, 0.06)",
+                            color: "#5a7090",
+                            border: "none",
+                            cursor: "pointer",
+                            fontSize: 14,
+                            lineHeight: 1,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            padding: 0,
+                          }}
+                        >
+                          ⋯
+                        </button>
+                      )}
+                    </div>
+                    <span
+                      className="dl2-photo-comment-date"
+                      style={{ display: "block", marginTop: 2, marginBottom: 4 }}
+                    >
+                      {formatTime(r.createdAt)}
                     </span>
                     {!!r.content && (
                       <MentionText as="p" className="dl2-photo-comment-body" text={r.content} dl2={true} />
@@ -1215,20 +1306,6 @@ function PhotoCommentItem({
                       <div className="mt-2">
                         <CommentImageView url={r.imageUrl} />
                       </div>
-                    )}
-                  </div>
-                  <div className="dl2-comment-right">
-                    <span className="dl2-photo-comment-date">
-                      {formatTime(r.createdAt)}
-                    </span>
-                    {loginNick === r.nickname && (
-                      <button
-                        type="button"
-                        className="dl2-photo-comment-action"
-                        onClick={() => handleDeleteReply(r.id)}
-                      >
-                        삭제
-                      </button>
                     )}
                   </div>
                 </div>
@@ -1241,26 +1318,40 @@ function PhotoCommentItem({
                   size={36}
                 />
                 <div className="min-w-0 flex-1">
-                  <div className="mb-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <div className="flex items-center justify-between gap-2">
                     <NicknameLink
                       nickname={r.nickname}
                       className="font-medium text-stardust"
                     />
-                    <div className="ml-auto flex shrink-0 items-center gap-2 font-serif text-[11px] tracking-wider">
-                      <span className="text-[10px] tracking-wider text-text-sub">
-                        {formatTime(r.createdAt)}
-                      </span>
-                      {loginNick === r.nickname && (
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteReply(r.id)}
-                          className="text-text-sub transition-colors hover:text-peach-accent"
-                        >
-                          삭제
-                        </button>
-                      )}
-                    </div>
+                    {loginNick && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          openActionSheet({
+                            content: r.content ?? "",
+                            isMine: loginNick === r.nickname,
+                            onDelete:
+                              loginNick === r.nickname
+                                ? () => handleDeleteReply(r.id)
+                                : undefined,
+                            theme: "cosmic",
+                          })
+                        }
+                        aria-label="대댓글 메뉴 열기"
+                        className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-none text-[14px] leading-none text-text-sub transition-colors hover:text-peach-accent"
+                        style={{
+                          background: "rgba(216, 150, 200, 0.10)",
+                          padding: 0,
+                          cursor: "pointer",
+                        }}
+                      >
+                        ⋯
+                      </button>
+                    )}
                   </div>
+                  <span className="mt-0.5 mb-1 block text-[10px] tracking-wider text-text-sub">
+                    {formatTime(r.createdAt)}
+                  </span>
                   <p className="wrap-anywhere font-serif text-[11.5px] leading-relaxed text-text-primary">
                     <MentionText as="span" text={r.content} dl2={true} />
                   </p>
