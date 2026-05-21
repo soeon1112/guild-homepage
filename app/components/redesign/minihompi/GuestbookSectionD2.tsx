@@ -33,6 +33,10 @@ import {
 import NicknameLink from "@/app/components/NicknameLink";
 import { MemberAvatar } from "@/app/components/redesign/MemberAvatar";
 import { useMemberAvatars } from "@/src/lib/useMemberAvatars";
+import {
+  useCommentActionSheet,
+  type CommentActionContext,
+} from "@/src/lib/useCommentActionSheet";
 import { formatSmart } from "@/src/lib/formatSmart";
 import { handleEvent } from "@/src/lib/badgeCheck";
 import { josa, truncate } from "@/src/lib/text";
@@ -111,6 +115,8 @@ export function GuestbookSectionD2({
   const [openReplyId, setOpenReplyId] = useState<string | null>(null);
   const [open, setOpen] = useState(true);
   const [interactive, setInteractive] = useState(false);
+  // [Phase 2] 댓글/대댓글 공용 ⋯ 액션시트. 한 section 당 한 번 렌더.
+  const { open: openActionSheet, sheet: actionSheet } = useCommentActionSheet();
 
   useEffect(() => {
     const q = query(
@@ -360,6 +366,7 @@ export function GuestbookSectionD2({
                   setOpenReplyId((cur) => (cur === e.id ? null : e.id))
                 }
                 onCloseReply={() => setOpenReplyId(null)}
+                openActionSheet={openActionSheet}
               />
             </li>
           ))}
@@ -457,6 +464,9 @@ export function GuestbookSectionD2({
       ) : (
         open && body
       )}
+
+      {/* [Phase 2] 댓글/대댓글 공용 ⋯ 액션시트 — section 당 한 번 렌더. */}
+      {actionSheet}
     </section>
   );
 }
@@ -469,6 +479,7 @@ function GuestbookItemD2({
   replyOpen,
   onToggleReply,
   onCloseReply,
+  openActionSheet,
 }: {
   memberId: string;
   entry: GuestbookEntry;
@@ -477,6 +488,7 @@ function GuestbookItemD2({
   replyOpen: boolean;
   onToggleReply: () => void;
   onCloseReply: () => void;
+  openActionSheet: (ctx: CommentActionContext) => void;
 }) {
   const [replies, setReplies] = useState<ReplyEntry[]>([]);
   const [msg, setMsg] = useState("");
@@ -558,8 +570,9 @@ function GuestbookItemD2({
     setSubmitting(false);
   };
 
+  // [Phase 2] confirm 은 useCommentActionSheet 가 띄움 — 여기서 두 번 띄우면
+  // 사용자가 두 번 확인해야 함. caller(시트) 가 이미 동의를 받은 상태로 호출.
   const handleDeleteEntry = async () => {
-    if (!confirm("정말 삭제하시겠습니까?")) return;
     try {
       await deleteDoc(doc(db, "members", memberId, "guestbook", entry.id));
       await deleteActivitiesByTargetPath(
@@ -572,7 +585,6 @@ function GuestbookItemD2({
   };
 
   const handleDeleteReply = async (replyId: string) => {
-    if (!confirm("정말 삭제하시겠습니까?")) return;
     try {
       await deleteDoc(
         doc(db, "members", memberId, "guestbook", entry.id, "replies", replyId),
@@ -592,8 +604,8 @@ function GuestbookItemD2({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
     >
-      {/* outer row + 프사 + 좌측 column (nick + body) + 우측 column (actions).
-          본문이 우측 메타 영역 침범 X. */}
+      {/* [Phase 2] 새 레이아웃: [프사] [닉 ⋯] / [시간] / [본문]. 답글/삭제는
+          ⋯ 액션시트로 이동. */}
       <div className="dl2-comment-row">
         <MemberAvatar
           imageUrl={entryAvatar?.imageUrl}
@@ -601,39 +613,60 @@ function GuestbookItemD2({
           size={36}
           dl2
         />
-        <div className="dl2-comment-left">
-          <span className="dl2-comment-nick-line">
-            <NicknameLink
-              nickname={entry.nickname}
-              className="dl2-gb-nick"
-            />
-          </span>
+        <div className="dl2-comment-left" style={{ minWidth: 0, flex: 1 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 8,
+            }}
+          >
+            <NicknameLink nickname={entry.nickname} className="dl2-gb-nick" />
+            {loginNick && (
+              <button
+                type="button"
+                onClick={() =>
+                  openActionSheet({
+                    content: entry.message ?? "",
+                    isMine: loginNick === entry.nickname,
+                    onReply: onToggleReply,
+                    onDelete:
+                      loginNick === entry.nickname
+                        ? handleDeleteEntry
+                        : undefined,
+                  })
+                }
+                aria-label="댓글 메뉴 열기"
+                style={{
+                  flexShrink: 0,
+                  width: 24,
+                  height: 24,
+                  borderRadius: 12,
+                  background: "rgba(42, 69, 112, 0.06)",
+                  color: "#5a7090",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: 14,
+                  lineHeight: 1,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: 0,
+                }}
+              >
+                ⋯
+              </button>
+            )}
+          </div>
+          <div className="dl2-gb-date" style={{ marginTop: 2, marginBottom: 4 }}>
+            {formatTime(entry.createdAt)}
+          </div>
           <MentionText as="p" className="dl2-gb-body" text={entry.message} dl2={true} />
           {entry.imageUrl && (
             <div className="mt-2">
               <CommentImageView url={entry.imageUrl} />
             </div>
-          )}
-        </div>
-        <div className="dl2-comment-right">
-          <span className="dl2-gb-date">{formatTime(entry.createdAt)}</span>
-          {loginNick && (
-            <button
-              type="button"
-              onClick={onToggleReply}
-              className="dl2-gb-action"
-            >
-              {replyOpen ? "닫기" : "답글"}
-            </button>
-          )}
-          {loginNick === entry.nickname && (
-            <button
-              type="button"
-              onClick={handleDeleteEntry}
-              className="dl2-gb-action"
-            >
-              삭제
-            </button>
           )}
         </div>
       </div>
@@ -660,8 +693,8 @@ function GuestbookItemD2({
                   idx > 0 ? "1px solid rgba(42, 69, 112, 0.12)" : undefined,
               }}
             >
-              {/* 댓글과 동일 패턴 — outer row + 프사 + left + right.
-                  들여쓰기는 외부 paddingLeft + borderLeft 가 담당. */}
+              {/* [Phase 2] 새 레이아웃 — 대댓글 ⋯ 메뉴는 답글 없음 (복사/삭제만).
+                  시스템상 대대댓글이 없으므로. */}
               <div className="dl2-comment-row">
                 <MemberAvatar
                   imageUrl={replyAvatar?.imageUrl}
@@ -669,32 +702,64 @@ function GuestbookItemD2({
                   size={36}
                   dl2
                 />
-                <div className="dl2-comment-left">
-                  <span className="dl2-comment-nick-line">
-                    <NicknameLink
-                      nickname={r.nickname}
-                      className="dl2-gb-nick"
-                    />
-                  </span>
+                <div className="dl2-comment-left" style={{ minWidth: 0, flex: 1 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 8,
+                    }}
+                  >
+                    <NicknameLink nickname={r.nickname} className="dl2-gb-nick" />
+                    {loginNick && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          openActionSheet({
+                            content: r.message ?? "",
+                            // 대댓글은 답글 없음 — onReply 미제공이면 시트가
+                            // 답글 항목 자체를 안 그림.
+                            isMine: loginNick === r.nickname,
+                            onDelete:
+                              loginNick === r.nickname
+                                ? () => handleDeleteReply(r.id)
+                                : undefined,
+                          })
+                        }
+                        aria-label="대댓글 메뉴 열기"
+                        style={{
+                          flexShrink: 0,
+                          width: 24,
+                          height: 24,
+                          borderRadius: 12,
+                          background: "rgba(42, 69, 112, 0.06)",
+                          color: "#5a7090",
+                          border: "none",
+                          cursor: "pointer",
+                          fontSize: 14,
+                          lineHeight: 1,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          padding: 0,
+                        }}
+                      >
+                        ⋯
+                      </button>
+                    )}
+                  </div>
+                  <div
+                    className="dl2-gb-date"
+                    style={{ marginTop: 2, marginBottom: 4 }}
+                  >
+                    {formatTime(r.createdAt)}
+                  </div>
                   <MentionText as="p" className="dl2-gb-body" text={r.message} dl2={true} />
                   {r.imageUrl && (
                     <div className="mt-1">
                       <CommentImageView url={r.imageUrl} />
                     </div>
-                  )}
-                </div>
-                <div className="dl2-comment-right">
-                  <span className="dl2-gb-date">
-                    {formatTime(r.createdAt)}
-                  </span>
-                  {loginNick === r.nickname && (
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteReply(r.id)}
-                      className="dl2-gb-action"
-                    >
-                      삭제
-                    </button>
                   )}
                 </div>
               </div>

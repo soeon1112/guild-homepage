@@ -27,6 +27,10 @@ import {
 import NicknameLink from "@/app/components/NicknameLink";
 import { MemberAvatar } from "@/app/components/redesign/MemberAvatar";
 import { useMemberAvatars } from "@/src/lib/useMemberAvatars";
+import {
+  useCommentActionSheet,
+  type CommentActionContext,
+} from "@/src/lib/useCommentActionSheet";
 import { formatSmart } from "@/src/lib/formatSmart";
 import { handleEvent } from "@/src/lib/badgeCheck";
 import { josa, truncate } from "@/src/lib/text";
@@ -72,6 +76,8 @@ export function GuestbookSection({
   const [submitting, setSubmitting] = useState(false);
   const [page, setPage] = useState(0);
   const [openReplyId, setOpenReplyId] = useState<string | null>(null);
+  // [Phase 2] 댓글/대댓글 공용 ⋯ 액션시트. 한 section 당 한 번 렌더.
+  const { open: openActionSheet, sheet: actionSheet } = useCommentActionSheet();
 
   useEffect(() => {
     const q = query(
@@ -260,6 +266,7 @@ export function GuestbookSection({
                   setOpenReplyId((cur) => (cur === e.id ? null : e.id))
                 }
                 onCloseReply={() => setOpenReplyId(null)}
+                openActionSheet={openActionSheet}
               />
               {idx < visible.length - 1 && (
                 <div
@@ -302,6 +309,8 @@ export function GuestbookSection({
         </div>
       )}
     </CollapsibleSection>
+    {/* [Phase 2] 댓글/대댓글 공용 ⋯ 액션시트 — section 당 한 번 렌더. */}
+    {actionSheet}
     </div>
   );
 }
@@ -314,6 +323,7 @@ function GuestbookItem({
   replyOpen,
   onToggleReply,
   onCloseReply,
+  openActionSheet,
 }: {
   memberId: string;
   entry: GuestbookEntry;
@@ -322,6 +332,7 @@ function GuestbookItem({
   replyOpen: boolean;
   onToggleReply: () => void;
   onCloseReply: () => void;
+  openActionSheet: (ctx: CommentActionContext) => void;
 }) {
   const [replies, setReplies] = useState<ReplyEntry[]>([]);
   const [msg, setMsg] = useState("");
@@ -412,8 +423,9 @@ function GuestbookItem({
     setSubmitting(false);
   };
 
+  // [Phase 2] confirm 은 useCommentActionSheet 가 띄움 — 여기서 두 번 띄우면
+  // 사용자가 두 번 확인해야 함. caller(시트) 가 이미 동의를 받은 상태로 호출.
   const handleDeleteEntry = async () => {
-    if (!confirm("정말 삭제하시겠습니까?")) return;
     try {
       await deleteDoc(doc(db, "members", memberId, "guestbook", entry.id));
       await deleteActivitiesByTargetPath(
@@ -426,7 +438,6 @@ function GuestbookItem({
   };
 
   const handleDeleteReply = async (replyId: string) => {
-    if (!confirm("정말 삭제하시겠습니까?")) return;
     try {
       await deleteDoc(
         doc(db, "members", memberId, "guestbook", entry.id, "replies", replyId),
@@ -446,6 +457,7 @@ function GuestbookItem({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
     >
+      {/* [Phase 2] 새 레이아웃: [프사] [닉 ⋯] / [시간] / [본문]. */}
       <div className="flex min-w-0 items-start gap-3">
         <MemberAvatar
           imageUrl={entryAvatar?.imageUrl}
@@ -453,35 +465,41 @@ function GuestbookItem({
           size={36}
         />
         <div className="min-w-0 flex-1">
-          <div className="mb-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <div className="flex items-center justify-between gap-2">
             <NicknameLink
               nickname={entry.nickname}
               className="font-medium text-stardust"
             />
-            <div className="ml-auto flex shrink-0 items-center gap-2 font-serif text-[11px] tracking-wider">
-              <span className="text-[10px] tracking-wider text-text-sub">
-                {formatTime(entry.createdAt)}
-              </span>
-              {loginNick && (
-                <button
-                  type="button"
-                  onClick={onToggleReply}
-                  className="text-text-sub transition-colors hover:text-peach-accent"
-                >
-                  {replyOpen ? "닫기" : "답글"}
-                </button>
-              )}
-              {loginNick === entry.nickname && (
-                <button
-                  type="button"
-                  onClick={handleDeleteEntry}
-                  className="text-text-sub transition-colors hover:text-peach-accent"
-                >
-                  삭제
-                </button>
-              )}
-            </div>
+            {loginNick && (
+              <button
+                type="button"
+                onClick={() =>
+                  openActionSheet({
+                    content: entry.message ?? "",
+                    isMine: loginNick === entry.nickname,
+                    onReply: onToggleReply,
+                    onDelete:
+                      loginNick === entry.nickname
+                        ? handleDeleteEntry
+                        : undefined,
+                    theme: "cosmic",
+                  })
+                }
+                aria-label="댓글 메뉴 열기"
+                className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-none text-[14px] leading-none text-text-sub transition-colors hover:text-peach-accent"
+                style={{
+                  background: "rgba(216, 150, 200, 0.10)",
+                  padding: 0,
+                  cursor: "pointer",
+                }}
+              >
+                ⋯
+              </button>
+            )}
           </div>
+          <span className="mt-0.5 mb-1 block text-[10px] tracking-wider text-text-sub">
+            {formatTime(entry.createdAt)}
+          </span>
           <p className="wrap-anywhere font-serif text-[13px] leading-relaxed text-text-primary">
             {entry.message}
           </p>
@@ -506,26 +524,41 @@ function GuestbookItem({
                 size={36}
               />
               <div className="min-w-0 flex-1">
-                <div className="mb-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                {/* [Phase 2] 대댓글 ⋯ 메뉴 — 답글 없음, 복사/(본인이면) 삭제만. */}
+                <div className="flex items-center justify-between gap-2">
                   <NicknameLink
                     nickname={r.nickname}
                     className="font-medium text-stardust"
                   />
-                  <div className="ml-auto flex shrink-0 items-center gap-2 font-serif text-[11px] tracking-wider">
-                    <span className="text-[10px] tracking-wider text-text-sub">
-                      {formatTime(r.createdAt)}
-                    </span>
-                    {loginNick === r.nickname && (
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteReply(r.id)}
-                        className="text-text-sub transition-colors hover:text-peach-accent"
-                      >
-                        삭제
-                      </button>
-                    )}
-                  </div>
+                  {loginNick && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openActionSheet({
+                          content: r.message ?? "",
+                          isMine: loginNick === r.nickname,
+                          onDelete:
+                            loginNick === r.nickname
+                              ? () => handleDeleteReply(r.id)
+                              : undefined,
+                          theme: "cosmic",
+                        })
+                      }
+                      aria-label="대댓글 메뉴 열기"
+                      className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-none text-[14px] leading-none text-text-sub transition-colors hover:text-peach-accent"
+                      style={{
+                        background: "rgba(216, 150, 200, 0.10)",
+                        padding: 0,
+                        cursor: "pointer",
+                      }}
+                    >
+                      ⋯
+                    </button>
+                  )}
                 </div>
+                <span className="mt-0.5 mb-1 block text-[10px] tracking-wider text-text-sub">
+                  {formatTime(r.createdAt)}
+                </span>
                 <p className="wrap-anywhere font-serif text-[12px] leading-relaxed text-text-primary">
                   {r.message}
                 </p>

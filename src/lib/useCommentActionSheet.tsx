@@ -35,7 +35,9 @@ export type CommentActionTheme = "cream" | "cosmic";
 export type CommentActionContext = {
   content: string;
   isMine: boolean;
-  onReply: () => void;
+  // optional — 미제공 시 답글 항목 비노출. 대대댓글이 없는 시스템(방명록의
+  // 대댓글)에서 답글 항목을 숨기기 위함.
+  onReply?: () => void;
   onDelete?: () => void;
   theme?: CommentActionTheme;
 };
@@ -70,7 +72,7 @@ export function useCommentActionSheet(): {
   }, [ctx, close]);
 
   const handleReply = useCallback(() => {
-    if (!ctx) return;
+    if (!ctx?.onReply) return;
     const fn = ctx.onReply;
     setCtx(null);
     fn();
@@ -151,13 +153,17 @@ export function useCommentActionSheet(): {
                 boxShadow: "0 -8px 32px rgba(0, 0, 0, 0.18)",
               }}
             >
-              <SheetButton
-                label="답글"
-                color={textColor}
-                pressBg={pressBg}
-                onClick={handleReply}
-              />
-              <Divider color={dividerBg} />
+              {ctx.onReply && (
+                <>
+                  <SheetButton
+                    label="답글"
+                    color={textColor}
+                    pressBg={pressBg}
+                    onClick={handleReply}
+                  />
+                  <Divider color={dividerBg} />
+                </>
+              )}
               <SheetButton
                 label="복사"
                 color={textColor}
