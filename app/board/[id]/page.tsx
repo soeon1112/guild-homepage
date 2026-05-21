@@ -30,6 +30,10 @@ import {
 import NicknameLink from "@/app/components/NicknameLink";
 import { MemberAvatar } from "@/app/components/redesign/MemberAvatar";
 import { useMemberAvatars } from "@/src/lib/useMemberAvatars";
+import {
+  useCommentActionSheet,
+  type CommentActionContext,
+} from "@/src/lib/useCommentActionSheet";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
 import { formatSmart } from "@/src/lib/formatSmart";
 import { handleEvent } from "@/src/lib/badgeCheck";
@@ -99,6 +103,8 @@ function BoardDetailPageInner({
   );
   const commentLandedRef = useRef<string | null>(null);
   const { nickname: loginNick } = useAuth();
+  // [Phase 4] 댓글/대댓글 공용 ⋯ 액션시트 — page 당 한 번 렌더.
+  const { open: openActionSheet, sheet: actionSheet } = useCommentActionSheet();
   const [post, setPost] = useState<PostData | null>(null);
   const [loading, setLoading] = useState(true);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -465,6 +471,7 @@ function BoardDetailPageInner({
               }
               onCloseReply={() => setOpenReplyId(null)}
               onReplyCountChange={reportReplyCount}
+              openActionSheet={openActionSheet}
             />
           ))}
         </div>
@@ -537,6 +544,9 @@ function BoardDetailPageInner({
           <p className="login-required">로그인이 필요합니다.</p>
         )}
       </div>
+
+      {/* [Phase 4] 댓글/대댓글 공용 ⋯ 액션시트 — page 당 한 번 렌더. */}
+      {actionSheet}
     </div>
   );
 }
@@ -564,6 +574,7 @@ function BoardCommentItem({
   onToggleReply,
   onCloseReply,
   onReplyCountChange,
+  openActionSheet,
 }: {
   boardId: string;
   comment: Comment;
@@ -574,6 +585,7 @@ function BoardCommentItem({
   onToggleReply: () => void;
   onCloseReply: () => void;
   onReplyCountChange: (commentId: string, count: number) => void;
+  openActionSheet: (ctx: CommentActionContext) => void;
 }) {
   const [replies, setReplies] = useState<Comment[]>([]);
   const [msg, setMsg] = useState("");
@@ -652,8 +664,8 @@ function BoardCommentItem({
     setSubmitting(false);
   };
 
+  // [Phase 4] confirm 은 useCommentActionSheet 가 띄움 — 이중 confirm 회피.
   const handleDeleteComment = async () => {
-    if (!confirm("정말 삭제하시겠습니까?")) return;
     try {
       await deleteDoc(doc(db, "board", boardId, "comments", comment.id));
       await deleteActivitiesByTargetPath(
@@ -665,7 +677,6 @@ function BoardCommentItem({
   };
 
   const handleDeleteReply = async (replyId: string) => {
-    if (!confirm("정말 삭제하시겠습니까?")) return;
     try {
       await deleteDoc(
         doc(db, "board", boardId, "comments", comment.id, "replies", replyId),
@@ -680,6 +691,7 @@ function BoardCommentItem({
 
   return (
     <div className="board-comment-item" data-comment-id={comment.id}>
+      {/* [Phase 4] 새 레이아웃: [프사36] [닉 ⋯] / [시간] / [본문]. */}
       {isDawnlight2 ? (
         <div className="dl2-comment-row">
           <MemberAvatar
@@ -688,40 +700,63 @@ function BoardCommentItem({
             size={36}
             dl2
           />
-          <div className="dl2-comment-left">
-            <span className="dl2-comment-nick-line">
+          <div className="dl2-comment-left" style={{ minWidth: 0, flex: 1 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 8,
+              }}
+            >
               <NicknameLink
                 nickname={comment.nickname}
                 className="board-comment-nick"
               />
+              {loginNick && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    openActionSheet({
+                      content: comment.content ?? "",
+                      isMine: loginNick === comment.nickname,
+                      onReply: onToggleReply,
+                      onDelete:
+                        loginNick === comment.nickname
+                          ? handleDeleteComment
+                          : undefined,
+                    })
+                  }
+                  aria-label="댓글 메뉴 열기"
+                  style={{
+                    flexShrink: 0,
+                    width: 24,
+                    height: 24,
+                    borderRadius: 12,
+                    background: "rgba(42, 69, 112, 0.06)",
+                    color: "#5a7090",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: 14,
+                    lineHeight: 1,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: 0,
+                  }}
+                >
+                  ⋯
+                </button>
+              )}
+            </div>
+            <span
+              className="board-comment-date"
+              style={{ display: "block", marginTop: 2, marginBottom: 4 }}
+            >
+              {formatDate(comment.createdAt)}
             </span>
             <MentionText as="p" className="board-comment-body" text={comment.content} dl2 />
             {comment.imageUrl && <CommentImageView url={comment.imageUrl} />}
-          </div>
-          <div className="dl2-comment-right">
-            <span className="board-comment-date">
-              {formatDate(comment.createdAt)}
-            </span>
-            {loginNick && (
-              <button
-                type="button"
-                className="board-reply-btn"
-                onClick={onToggleReply}
-                style={{ marginLeft: 0 }}
-              >
-                답글
-              </button>
-            )}
-            {loginNick === comment.nickname && (
-              <button
-                type="button"
-                className="board-reply-btn"
-                onClick={handleDeleteComment}
-                style={{ marginLeft: 0 }}
-              >
-                삭제
-              </button>
-            )}
           </div>
         </div>
       ) : (
@@ -732,44 +767,61 @@ function BoardCommentItem({
             size={36}
           />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="board-comment-header">
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 8,
+              }}
+            >
               <NicknameLink
                 nickname={comment.nickname}
                 className="board-comment-nick"
               />
-              <div
-                style={{
-                  marginLeft: "auto",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.6rem",
-                }}
-              >
-                <span className="board-comment-date">
-                  {formatDate(comment.createdAt)}
-                </span>
-                {loginNick && (
-                  <button
-                    type="button"
-                    className="board-reply-btn"
-                    onClick={onToggleReply}
-                    style={{ marginLeft: 0 }}
-                  >
-                    답글
-                  </button>
-                )}
-                {loginNick === comment.nickname && (
-                  <button
-                    type="button"
-                    className="board-reply-btn"
-                    onClick={handleDeleteComment}
-                    style={{ marginLeft: 0 }}
-                  >
-                    삭제
-                  </button>
-                )}
-              </div>
+              {loginNick && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    openActionSheet({
+                      content: comment.content ?? "",
+                      isMine: loginNick === comment.nickname,
+                      onReply: onToggleReply,
+                      onDelete:
+                        loginNick === comment.nickname
+                          ? handleDeleteComment
+                          : undefined,
+                      theme: "cosmic",
+                    })
+                  }
+                  aria-label="댓글 메뉴 열기"
+                  style={{
+                    flexShrink: 0,
+                    width: 24,
+                    height: 24,
+                    borderRadius: 12,
+                    background: "rgba(216, 150, 200, 0.10)",
+                    color: "var(--text-sub, #9b8fb8)",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: 14,
+                    lineHeight: 1,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: 0,
+                  }}
+                >
+                  ⋯
+                </button>
+              )}
             </div>
+            <span
+              className="board-comment-date"
+              style={{ display: "block", marginTop: 2, marginBottom: 4 }}
+            >
+              {formatDate(comment.createdAt)}
+            </span>
             <MentionText as="p" className="board-comment-body" text={comment.content} dl2 />
             {comment.imageUrl && <CommentImageView url={comment.imageUrl} />}
           </div>
@@ -781,6 +833,7 @@ function BoardCommentItem({
             const replyAvatar = avatars.get(r.nickname);
             return (
             <div key={r.id} className="board-reply-item">
+              {/* [Phase 4] 대댓글 ⋯ 메뉴는 답글 없음 (시스템상 대대댓글 X). */}
               {isDawnlight2 ? (
                 <div className="dl2-comment-row">
                   <MemberAvatar
@@ -789,30 +842,62 @@ function BoardCommentItem({
                     size={36}
                     dl2
                   />
-                  <div className="dl2-comment-left">
-                    <span className="dl2-comment-nick-line">
+                  <div className="dl2-comment-left" style={{ minWidth: 0, flex: 1 }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 8,
+                      }}
+                    >
                       <NicknameLink
                         nickname={r.nickname}
                         className="board-comment-nick"
                       />
+                      {loginNick && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            openActionSheet({
+                              content: r.content ?? "",
+                              isMine: loginNick === r.nickname,
+                              onDelete:
+                                loginNick === r.nickname
+                                  ? () => handleDeleteReply(r.id)
+                                  : undefined,
+                            })
+                          }
+                          aria-label="대댓글 메뉴 열기"
+                          style={{
+                            flexShrink: 0,
+                            width: 24,
+                            height: 24,
+                            borderRadius: 12,
+                            background: "rgba(42, 69, 112, 0.06)",
+                            color: "#5a7090",
+                            border: "none",
+                            cursor: "pointer",
+                            fontSize: 14,
+                            lineHeight: 1,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            padding: 0,
+                          }}
+                        >
+                          ⋯
+                        </button>
+                      )}
+                    </div>
+                    <span
+                      className="board-comment-date"
+                      style={{ display: "block", marginTop: 2, marginBottom: 4 }}
+                    >
+                      {formatDate(r.createdAt)}
                     </span>
                     <MentionText as="p" className="board-comment-body" text={r.content} dl2 />
                     {r.imageUrl && <CommentImageView url={r.imageUrl} />}
-                  </div>
-                  <div className="dl2-comment-right">
-                    <span className="board-comment-date">
-                      {formatDate(r.createdAt)}
-                    </span>
-                    {loginNick === r.nickname && (
-                      <button
-                        type="button"
-                        className="board-reply-btn"
-                        onClick={() => handleDeleteReply(r.id)}
-                        style={{ marginLeft: 0 }}
-                      >
-                        삭제
-                      </button>
-                    )}
                   </div>
                 </div>
               ) : (
@@ -823,35 +908,60 @@ function BoardCommentItem({
                     size={36}
                   />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="board-comment-header">
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 8,
+                      }}
+                    >
                       <NicknameLink
                         nickname={r.nickname}
                         className="board-comment-nick"
                       />
-                      <div
-                        style={{
-                          marginLeft: "auto",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "0.6rem",
-                          flexShrink: 0,
-                        }}
-                      >
-                        <span className="board-comment-date">
-                          {formatDate(r.createdAt)}
-                        </span>
-                        {loginNick === r.nickname && (
-                          <button
-                            type="button"
-                            className="board-reply-btn"
-                            onClick={() => handleDeleteReply(r.id)}
-                            style={{ marginLeft: 0 }}
-                          >
-                            삭제
-                          </button>
-                        )}
-                      </div>
+                      {loginNick && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            openActionSheet({
+                              content: r.content ?? "",
+                              isMine: loginNick === r.nickname,
+                              onDelete:
+                                loginNick === r.nickname
+                                  ? () => handleDeleteReply(r.id)
+                                  : undefined,
+                              theme: "cosmic",
+                            })
+                          }
+                          aria-label="대댓글 메뉴 열기"
+                          style={{
+                            flexShrink: 0,
+                            width: 24,
+                            height: 24,
+                            borderRadius: 12,
+                            background: "rgba(216, 150, 200, 0.10)",
+                            color: "var(--text-sub, #9b8fb8)",
+                            border: "none",
+                            cursor: "pointer",
+                            fontSize: 14,
+                            lineHeight: 1,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            padding: 0,
+                          }}
+                        >
+                          ⋯
+                        </button>
+                      )}
                     </div>
+                    <span
+                      className="board-comment-date"
+                      style={{ display: "block", marginTop: 2, marginBottom: 4 }}
+                    >
+                      {formatDate(r.createdAt)}
+                    </span>
                     <MentionText as="p" className="board-comment-body" text={r.content} dl2 />
                     {r.imageUrl && <CommentImageView url={r.imageUrl} />}
                   </div>
