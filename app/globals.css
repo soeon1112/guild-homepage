@@ -2987,12 +2987,8 @@ object {
   border-bottom: none;
 }
 
-.board-comment-header {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  margin-bottom: 0.35rem;
-}
+/* [p5] .board-comment-header 제거 — Phase 4 에서 새 댓글 레이아웃으로 전환
+   되며 코드 사용처 0 (정의만 css 안에 남아 있던 dead). */
 
 .board-comment-nick {
   font-family: 'Noto Serif KR', serif;
@@ -3023,23 +3019,8 @@ object {
   flex-wrap: wrap;
 }
 
-.board-reply-btn {
-  background: transparent;
-  border: none;
-  color: rgba(200, 168, 233, 0.7);
-  font-size: 0.72rem;
-  font-family: 'Noto Serif KR', serif;
-  letter-spacing: 0.06em;
-  padding: 0 0.35rem;
-  cursor: pointer;
-  margin-left: auto;
-  white-space: nowrap;
-  transition: color 0.2s;
-}
-
-.board-reply-btn:hover {
-  color: #FFB5A7;
-}
+/* [p5] .board-reply-btn 제거 — Phase 4 에서 답글/삭제 인라인 버튼이 ⋯ 액션
+   시트로 통합되며 코드 사용처 0. dl2 variant 도 동시 제거 (below). */
 
 .board-reply-list {
   margin-top: 0.6rem;
@@ -8848,13 +8829,8 @@ body.has-redesigned-header .bg-scene {
   min-width: 0;
   overflow-wrap: anywhere;
 }
-/* dl2 board-comment-header — drop parent gap, baseline align nick.
-   The actions div on the right uses `margin-left: auto` so it keeps
-   right-aligning regardless of the gap drop. */
-.dl2-board .board-comment-header {
-  gap: 0;
-  align-items: baseline;
-}
+/* [p5] .dl2-board .board-comment-header 제거 — base .board-comment-header 와
+   함께 dead. */
 /* Detail-page author nick + board-list author nick — ink-brown semibold,
    matches the comment-nick + WhispersFeed pattern so every dl2 surface
    uses the same speaker color. */
@@ -8875,13 +8851,7 @@ body.has-redesigned-header .bg-scene {
   color: #2a4570;
   font-size: 13px;
 }
-.dl2-board .board-reply-btn {
-  color: #5a7090;
-  font-size: 11px;
-}
-.dl2-board .board-reply-btn:hover {
-  color: #2a4570;
-}
+/* [p5] .dl2-board .board-reply-btn 제거 — base .board-reply-btn 과 함께 dead. */
 .dl2-board .board-reply-list {
   border-left-color: rgba(42, 69, 112, 0.18);
 }
@@ -9574,18 +9544,8 @@ body.has-redesigned-header .bg-scene {
   letter-spacing: 0.05em;
   font-family: 'Pretendard', system-ui, sans-serif;
 }
-.dl2-minihome #minihome-guestbook .dl2-gb-action {
-  background: transparent;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  color: #5a7090;
-  font-size: 11px;
-  font-family: 'Pretendard', system-ui, sans-serif;
-}
-.dl2-minihome #minihome-guestbook .dl2-gb-action:hover {
-  color: #2a4570;
-}
+/* [p5] .dl2-gb-action 제거 — Phase 2 에서 방명록 댓글 ⋯ 액션시트로 통합되며
+   사용처 0. */
 .dl2-minihome #minihome-guestbook .dl2-gb-body {
   color: #2a4570;
   font-size: 13px;
@@ -9622,30 +9582,15 @@ body.has-redesigned-header .bg-scene {
   min-width: 0;
   overflow-wrap: anywhere;
 }
-.dl2-photo-comment-actions {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  flex-shrink: 0;
-}
+/* [p5] .dl2-photo-comment-actions / .dl2-photo-comment-action 제거 — Phase 3
+   에서 사진첩/앨범 모달 댓글 답글/삭제 인라인 버튼이 ⋯ 액션시트로 통합되며
+   사용처 0. .dl2-photo-comment-date 는 새 레이아웃에서도 시간 줄로 살아있어
+   보존. */
 .dl2-photo-comment-date {
   color: #5a7090;
   font-size: 10px;
   letter-spacing: 0.05em;
   font-family: 'Pretendard', system-ui, sans-serif;
-}
-.dl2-photo-comment-action {
-  background: transparent;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  color: #5a7090;
-  font-size: 11px;
-  font-family: 'Pretendard', system-ui, sans-serif;
-}
-.dl2-photo-comment-action:hover {
-  color: #2a4570;
 }
 .dl2-photo-comment-body {
   color: #2a4570;
@@ -9668,16 +9613,9 @@ body.has-redesigned-header .bg-scene {
   border-top: 1px solid rgba(42, 69, 112, 0.12);
 }
 
-/* commentHeader 의 NicknameLink wrap 을 flex item 으로 — 닉네임이
-   길어도 우측 actions 영역 침범 X. min-width: 0 (flex item 의 default
-   min-width auto 가 줄바꿈 방해, 0 으로 풀어야 wrap 동작). */
-.dl2-minihome #minihome-guestbook .nickname-link-wrap,
-.dl2-photo-comment-header .nickname-link-wrap,
-.dl2-board .board-comment-header .nickname-link-wrap {
-  flex: 1 1 0;
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
+/* [p5] commentHeader 의 NicknameLink wrap selector 제거 — Phase 2/3/4 에서
+   .board-comment-header / .dl2-photo-comment-header / #minihome-guestbook
+   안 inline-flex nickname wrap 모두 새 레이아웃으로 대체되어 dead. */
 
 /* 댓글 outer row + 좌측 column (nick + body) + 우측 column (actions).
    본문이 우측 메타 영역 절대 침범 X. 한글 wrapping word-break: break-all
@@ -9692,20 +9630,9 @@ body.has-redesigned-header .bg-scene {
   flex: 1 1 auto;
   min-width: 0;
 }
-.dl2-comment-right {
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 0.6rem;
-}
-.dl2-comment-nick-line {
-  display: inline-flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  margin-bottom: 6px;
-  min-width: 0;
-}
+/* [p5] .dl2-comment-right / .dl2-comment-nick-line 제거 — Phase 2/3/4 에서
+   새 레이아웃 ([닉 ⋯] / [시간] / [본문]) 으로 전환되며 우측 메타 컬럼 +
+   inline-flex nick wrap 모두 사용처 0. */
 
 /* 본문 wrapping — 한글이 메타 영역 침범하지 않도록 break-all 강제. */
 .dl2-comment-left .board-comment-body,
