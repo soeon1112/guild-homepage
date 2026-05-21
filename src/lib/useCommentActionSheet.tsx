@@ -126,9 +126,10 @@ export function useCommentActionSheet(): {
             transition={{ duration: 0.18 }}
             onClick={close}
             style={{
+              // [p5] 완전 투명 — div 자체는 tap/click 받음 (시트 외부 닫기).
               position: "fixed",
               inset: 0,
-              background: "rgba(0, 0, 0, 0.42)",
+              background: "transparent",
               display: "flex",
               alignItems: "flex-end",
               justifyContent: "center",
