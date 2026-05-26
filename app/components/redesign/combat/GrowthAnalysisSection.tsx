@@ -368,203 +368,214 @@ export function GrowthAnalysisSection({
           </p>
         </GlassCard>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {/* Top-left: power graph */}
-          <GlassCard>
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h3 className="font-serif text-sm tracking-wider text-stardust">
-                투력 변화
-              </h3>
-              <div className="flex items-center gap-1 rounded-full border border-nebula-pink/20 bg-abyss-deep/40 p-0.5">
-                <TogglePill
-                  active={rangeMode === "30d"}
-                  onClick={() => setRangeMode("30d")}
-                  dl2={dl2}
-                >
-                  최근 30일
-                </TogglePill>
-                <TogglePill
-                  active={rangeMode === "all"}
-                  onClick={() => setRangeMode("all")}
-                  dl2={dl2}
-                >
-                  전체
-                </TogglePill>
-              </div>
-            </div>
-
-            <div className="h-[180px] w-full">
-              {series.length < 2 ? (
-                <EmptyChartState />
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart
-                    data={series}
-                    margin={{ top: 10, right: 8, left: -20, bottom: 0 }}
+        <div className="flex flex-col gap-4">
+          {/* Row 1: 투력+성장폭 묶음 (2 cols) + 빛난 별 (1 col) */}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            {/* Merged: 투력 변화 + 성장폭 */}
+            <GlassCard className="md:col-span-2">
+              {/* 투력 변화 */}
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h3 className="font-serif text-sm tracking-wider text-stardust">
+                  투력 변화
+                </h3>
+                <div className="flex items-center gap-1 rounded-full border border-nebula-pink/20 bg-abyss-deep/40 p-0.5">
+                  <TogglePill
+                    active={rangeMode === "30d"}
+                    onClick={() => setRangeMode("30d")}
+                    dl2={dl2}
                   >
-                    <defs>
-                      <linearGradient
-                        id="powerLineGradient"
-                        x1="0"
-                        y1="0"
-                        x2="1"
-                        y2="0"
-                      >
-                        <stop offset="0%" stopColor={dl2 ? "#ffc785" : "#FFB5A7"} />
-                        <stop offset="100%" stopColor={dl2 ? "#b85420" : "#D896C8"} />
-                      </linearGradient>
-                      <linearGradient
-                        id="powerAreaGradient"
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                      >
-                        <stop offset="0%" stopColor={dl2 ? "#ff9a6c" : "#D896C8"} stopOpacity={dl2 ? 0.35 : 0.5} />
-                        <stop offset="100%" stopColor={dl2 ? "#b85420" : "#6B4BA8"} stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid
-                      stroke={dl2 ? "rgba(42,69,112,0.1)" : "rgba(216,150,200,0.08)"}
-                      vertical={false}
-                    />
-                    <XAxis
-                      dataKey="date"
-                      stroke={dl2 ? "#5a7090" : "rgba(155, 143, 184, 0.6)"}
-                      fontSize={10}
-                      tickLine={false}
-                      axisLine={{ stroke: dl2 ? "rgba(42,69,112,0.15)" : "rgba(216,150,200,0.15)" }}
-                      interval={Math.max(Math.floor(series.length / 6), 0)}
-                    />
-                    <YAxis
-                      stroke={dl2 ? "#5a7090" : "rgba(155, 143, 184, 0.6)"}
-                      fontSize={10}
-                      tickLine={false}
-                      axisLine={false}
-                      domain={["dataMin - 200", "dataMax + 200"]}
-                      tickFormatter={(v) =>
-                        typeof v === "number" && v >= 1000
-                          ? `${(v / 1000).toFixed(1)}k`
-                          : String(v)
-                      }
-                      width={48}
-                    />
-                    <Tooltip
-                      cursor={{
-                        stroke: dl2 ? "rgba(184,84,32,0.45)" : "rgba(216,150,200,0.35)",
-                        strokeDasharray: "3 3",
-                      }}
-                      contentStyle={{
-                        background: dl2 ? "rgba(205,216,224,0.98)" : "rgba(11,8,33,0.94)",
-                        border: dl2 ? "1px solid rgba(42,69,112,0.22)" : "1px solid rgba(216,150,200,0.3)",
-                        borderRadius: 8,
-                        fontSize: 11,
-                        fontFamily: dl2
-                          ? "'Pretendard Variable', Pretendard, 'Noto Sans KR', sans-serif"
-                          : "'Noto Serif KR', serif",
-                        backdropFilter: "blur(10px)",
-                        padding: "8px 10px",
-                      }}
-                      labelStyle={{ color: dl2 ? "#5a7090" : "#9B8FB8" }}
-                      itemStyle={{ color: dl2 ? "#b85420" : "#FFE5C4" }}
-                      formatter={(v) => [
-                        typeof v === "number" ? v.toLocaleString() : String(v),
-                        "투력",
-                      ]}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="power"
-                      stroke="url(#powerLineGradient)"
-                      strokeWidth={2.5}
-                      fill="url(#powerAreaGradient)"
-                      dot={{
-                        r: 2,
-                        fill: dl2 ? "#b85420" : "#FFE5C4",
-                        stroke: dl2 ? "#b85420" : "#D896C8",
-                        strokeWidth: 1,
-                      }}
-                      activeDot={{
-                        r: 4,
-                        fill: dl2 ? "#b85420" : "#FFE5C4",
-                        stroke: dl2 ? "#ff9a6c" : "#FFB5A7",
-                        strokeWidth: 2,
-                      }}
-                      animationDuration={900}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </GlassCard>
+                    최근 30일
+                  </TogglePill>
+                  <TogglePill
+                    active={rangeMode === "all"}
+                    onClick={() => setRangeMode("all")}
+                    dl2={dl2}
+                  >
+                    전체
+                  </TogglePill>
+                </div>
+              </div>
 
-          {/* Top-right: growth deltas */}
-          <GlassCard>
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h3 className="font-serif text-sm tracking-wider text-stardust">
-                성장폭
-              </h3>
-              {selectedChar && (
-                <span className="font-serif text-[9px] tracking-wider text-text-sub">
-                  {selectedChar.nickname} 기준
-                </span>
-              )}
-            </div>
-            <div className="flex flex-col divide-y divide-nebula-pink/10">
-              <GrowthRow
-                label="이번 주"
-                value={growth.hasData ? growth.week : null}
-                series={weekSeries}
-                dl2={dl2}
-              />
-              <GrowthRow
-                label="이번 달"
-                value={growth.hasData ? growth.month : null}
-                dl2={dl2}
-              />
-              <GrowthRow
-                label="전체"
-                value={growth.hasData ? growth.total : null}
-                dl2={dl2}
-              />
-            </div>
-          </GlassCard>
+              <div className="h-[180px] w-full">
+                {series.length < 2 ? (
+                  <EmptyChartState />
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart
+                      data={series}
+                      margin={{ top: 10, right: 8, left: -20, bottom: 0 }}
+                    >
+                      <defs>
+                        <linearGradient
+                          id="powerLineGradient"
+                          x1="0"
+                          y1="0"
+                          x2="1"
+                          y2="0"
+                        >
+                          <stop offset="0%" stopColor={dl2 ? "#ffc785" : "#FFB5A7"} />
+                          <stop offset="100%" stopColor={dl2 ? "#b85420" : "#D896C8"} />
+                        </linearGradient>
+                        <linearGradient
+                          id="powerAreaGradient"
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop offset="0%" stopColor={dl2 ? "#ff9a6c" : "#D896C8"} stopOpacity={dl2 ? 0.35 : 0.5} />
+                          <stop offset="100%" stopColor={dl2 ? "#b85420" : "#6B4BA8"} stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid
+                        stroke={dl2 ? "rgba(42,69,112,0.1)" : "rgba(216,150,200,0.08)"}
+                        vertical={false}
+                      />
+                      <XAxis
+                        dataKey="date"
+                        stroke={dl2 ? "#5a7090" : "rgba(155, 143, 184, 0.6)"}
+                        fontSize={10}
+                        tickLine={false}
+                        axisLine={{ stroke: dl2 ? "rgba(42,69,112,0.15)" : "rgba(216,150,200,0.15)" }}
+                        interval={Math.max(Math.floor(series.length / 6), 0)}
+                      />
+                      <YAxis
+                        stroke={dl2 ? "#5a7090" : "rgba(155, 143, 184, 0.6)"}
+                        fontSize={10}
+                        tickLine={false}
+                        axisLine={false}
+                        domain={["dataMin - 200", "dataMax + 200"]}
+                        tickFormatter={(v) =>
+                          typeof v === "number" && v >= 1000
+                            ? `${(v / 1000).toFixed(1)}k`
+                            : String(v)
+                        }
+                        width={48}
+                      />
+                      <Tooltip
+                        cursor={{
+                          stroke: dl2 ? "rgba(184,84,32,0.45)" : "rgba(216,150,200,0.35)",
+                          strokeDasharray: "3 3",
+                        }}
+                        contentStyle={{
+                          background: dl2 ? "rgba(205,216,224,0.98)" : "rgba(11,8,33,0.94)",
+                          border: dl2 ? "1px solid rgba(42,69,112,0.22)" : "1px solid rgba(216,150,200,0.3)",
+                          borderRadius: 8,
+                          fontSize: 11,
+                          fontFamily: dl2
+                            ? "'Pretendard Variable', Pretendard, 'Noto Sans KR', sans-serif"
+                            : "'Noto Serif KR', serif",
+                          backdropFilter: "blur(10px)",
+                          padding: "8px 10px",
+                        }}
+                        labelStyle={{ color: dl2 ? "#5a7090" : "#9B8FB8" }}
+                        itemStyle={{ color: dl2 ? "#b85420" : "#FFE5C4" }}
+                        formatter={(v) => [
+                          typeof v === "number" ? v.toLocaleString() : String(v),
+                          "투력",
+                        ]}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="power"
+                        stroke="url(#powerLineGradient)"
+                        strokeWidth={2.5}
+                        fill="url(#powerAreaGradient)"
+                        dot={{
+                          r: 2,
+                          fill: dl2 ? "#b85420" : "#FFE5C4",
+                          stroke: dl2 ? "#b85420" : "#D896C8",
+                          strokeWidth: 1,
+                        }}
+                        activeDot={{
+                          r: 4,
+                          fill: dl2 ? "#b85420" : "#FFE5C4",
+                          stroke: dl2 ? "#ff9a6c" : "#FFB5A7",
+                          strokeWidth: 2,
+                        }}
+                        animationDuration={900}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
 
-          {/* Bottom-left: top 5 */}
-          <GlassCard>
-            <div className="mb-4 flex items-center gap-2">
-              <Sparkles className="h-3.5 w-3.5 text-peach-accent" />
-              <h3 className="font-serif text-sm tracking-wider text-stardust">
-                가장 빛난 별들
-              </h3>
-              <span className="font-serif text-[9px] tracking-wider text-text-sub">
-                최근 7일
-              </span>
-            </div>
-            {topGrowers.length === 0 ? (
-              <p className="py-4 text-center font-serif text-[12px] italic text-text-sub/70">
-                최근 성장 기록이 없습니다
-              </p>
-            ) : (
-              <ol className="flex flex-col gap-2">
-                {topGrowers.map((g, i) => (
-                  <TopGrowthRow
-                    key={`${g.owner}-${g.name}-${i}`}
-                    rank={i + 1}
-                    entry={g}
+              {/* divider + 성장폭 */}
+              <div
+                className={
+                  dl2
+                    ? "mt-5 border-t pt-4"
+                    : "mt-5 border-t border-nebula-pink/15 pt-4"
+                }
+                style={dl2 ? { borderColor: "rgba(92,58,31,0.15)" } : undefined}
+              >
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <h3 className="font-serif text-sm tracking-wider text-stardust">
+                    성장폭
+                  </h3>
+                  {selectedChar && (
+                    <span className="font-serif text-[9px] tracking-wider text-text-sub">
+                      {selectedChar.nickname} 기준
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-col divide-y divide-nebula-pink/10">
+                  <GrowthRow
+                    label="이번 주"
+                    value={growth.hasData ? growth.week : null}
+                    series={weekSeries}
                     dl2={dl2}
                   />
-                ))}
-              </ol>
-            )}
-          </GlassCard>
+                  <GrowthRow
+                    label="이번 달"
+                    value={growth.hasData ? growth.month : null}
+                    dl2={dl2}
+                  />
+                  <GrowthRow
+                    label="전체"
+                    value={growth.hasData ? growth.total : null}
+                    dl2={dl2}
+                  />
+                </div>
+              </div>
+            </GlassCard>
 
-          {/* Bottom-right: guild stats */}
+            {/* 가장 빛난 별들 */}
+            <GlassCard>
+              <div className="mb-4 flex items-center gap-2">
+                <Sparkles className="h-3.5 w-3.5 text-peach-accent" />
+                <h3 className="font-serif text-sm tracking-wider text-stardust">
+                  가장 빛난 별들
+                </h3>
+                <span className="font-serif text-[9px] tracking-wider text-text-sub">
+                  최근 7일
+                </span>
+              </div>
+              {topGrowers.length === 0 ? (
+                <p className="py-4 text-center font-serif text-[12px] italic text-text-sub/70">
+                  최근 성장 기록이 없습니다
+                </p>
+              ) : (
+                <ol className="flex flex-col gap-2">
+                  {topGrowers.map((g, i) => (
+                    <TopGrowthRow
+                      key={`${g.owner}-${g.name}-${i}`}
+                      rank={i + 1}
+                      entry={g}
+                      dl2={dl2}
+                    />
+                  ))}
+                </ol>
+              )}
+            </GlassCard>
+          </div>
+
+          {/* Row 2: 길드 통계 전체 폭 */}
           <GlassCard>
             <h3 className="mb-4 font-serif text-sm tracking-wider text-stardust">
               길드 통계
             </h3>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
               <StatTile
                 icon={
                   <Zap
@@ -621,10 +632,21 @@ export function GrowthAnalysisSection({
 
 // ---------- Sub components ----------
 
-function GlassCard({ children }: { children: React.ReactNode }) {
+function GlassCard({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
     <div
-      className="relative overflow-hidden rounded-2xl border border-nebula-pink/20 bg-abyss-deep/40 p-4 backdrop-blur-xl sm:p-5"
+      className={[
+        "relative overflow-hidden rounded-2xl border border-nebula-pink/20 bg-abyss-deep/40 p-4 backdrop-blur-xl sm:p-5",
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ")}
       style={{
         boxShadow:
           "0 6px 24px rgba(11, 8, 33, 0.4), inset 0 1px 0 rgba(255, 229, 196, 0.04), inset 0 0 30px rgba(107, 75, 168, 0.08)",
@@ -1186,6 +1208,38 @@ function StatTile({
   );
 }
 
+// Job-specific colors — consistent across donut + legend, both themes.
+// Picked for visual recognition (e.g. 빙결=ice blue, 전격=lightning yellow).
+const JOB_COLORS: Record<string, string> = {
+  대검: "#6B7280",
+  검술: "#9CA3AF",
+  궁수: "#65A30D",
+  장궁: "#16A34A",
+  석궁: "#0D9488",
+  화법: "#DC2626",
+  빙결: "#3B82F6",
+  전격: "#FBBF24",
+  법사: "#A855F7",
+  힐러: "#22D3EE",
+  사제: "#F59E0B",
+  수도: "#92400E",
+  암흑: "#7C3AED",
+  음유: "#EC4899",
+  악사: "#F97316",
+  댄서: "#E11D48",
+  도적: "#525252",
+  듀블: "#1F2937",
+  격가: "#EF4444",
+  전사: "#B45309",
+  기사: "#CA8A04",
+};
+
+function jobColor(job: string, dl2: boolean): string {
+  return (
+    JOB_COLORS[job] ?? (dl2 ? "rgba(92,58,31,0.45)" : "rgba(155,143,184,0.5)")
+  );
+}
+
 function JobDistributionPanel({
   characters,
   dl2 = false,
@@ -1205,41 +1259,15 @@ function JobDistributionPanel({
       counts.set(job, (counts.get(job) ?? 0) + 1);
     }
     const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]);
-    const top = sorted.slice(0, 6);
-    const restCount = sorted.slice(6).reduce((s, [, n]) => s + n, 0);
-    const arr: { job: string; count: number }[] = top.map(([job, count]) => ({
+    const total = characters.length;
+    return sorted.map(([job, count]) => ({
       job,
       count,
-    }));
-    if (restCount > 0) arr.push({ job: "기타", count: restCount });
-    const total = characters.length;
-    return arr.map((it) => ({
-      ...it,
-      percent: total > 0 ? (it.count / total) * 100 : 0,
+      percent: total > 0 ? (count / total) * 100 : 0,
     }));
   }, [characters]);
 
   if (distribution.length === 0) return null;
-
-  const cosmicColors = [
-    "#D896C8",
-    "#FFB5A7",
-    "#FFE5C4",
-    "#9B8FB8",
-    "#A8E8C0",
-    "#6B4BA8",
-    "rgba(155,143,184,0.4)",
-  ];
-  const dl2Colors = [
-    "#c4992f",
-    "#2a4570",
-    "#8a6710",
-    "#ff9a6c",
-    "#e6c97a",
-    "#5a7090",
-    "rgba(92,58,31,0.28)",
-  ];
-  const palette = dl2 ? dl2Colors : cosmicColors;
 
   return (
     <div
@@ -1256,24 +1284,24 @@ function JobDistributionPanel({
       >
         직업 분포
       </h4>
-      <div className="flex flex-col items-center gap-4">
-        <div className="relative" style={{ width: 140, height: 140 }}>
-          <PieChart width={140} height={140}>
+      <div className="flex flex-col items-center gap-5 md:flex-row md:items-start md:justify-center md:gap-8">
+        <div className="relative flex-shrink-0" style={{ width: 180, height: 180 }}>
+          <PieChart width={180} height={180}>
             <Pie
               data={distribution}
               dataKey="count"
               nameKey="job"
               cx="50%"
               cy="50%"
-              innerRadius={38}
-              outerRadius={62}
-              stroke={dl2 ? "rgba(92,58,31,0.18)" : "rgba(11,8,33,0.6)"}
+              innerRadius={56}
+              outerRadius={82}
+              stroke={dl2 ? "rgba(92,58,31,0.18)" : "rgba(11,8,33,0.55)"}
               strokeWidth={1}
               isAnimationActive
               animationDuration={700}
             >
-              {distribution.map((_, i) => (
-                <Cell key={i} fill={palette[i % palette.length]} />
+              {distribution.map((entry) => (
+                <Cell key={entry.job} fill={jobColor(entry.job, dl2)} />
               ))}
             </Pie>
             <Tooltip
@@ -1302,7 +1330,7 @@ function JobDistributionPanel({
             aria-hidden
           >
             <span
-              className="font-mono text-base tabular-nums"
+              className="font-mono text-xl tabular-nums"
               style={{
                 color: dl2 ? "#8a6710" : "#FFE5C4",
                 fontWeight: 700,
@@ -1318,8 +1346,8 @@ function JobDistributionPanel({
             </span>
           </div>
         </div>
-        <ul className="flex w-full max-w-[280px] flex-col gap-1.5 px-4">
-          {distribution.map((item, i) => (
+        <ul className="grid w-full max-w-[520px] grid-cols-1 gap-1.5 px-4 sm:grid-cols-2 md:max-w-none md:flex-1 md:px-0">
+          {distribution.map((item) => (
             <li
               key={item.job}
               className="grid items-center gap-2 font-serif text-[11px]"
@@ -1331,7 +1359,7 @@ function JobDistributionPanel({
               <span
                 aria-hidden
                 className="h-2.5 w-2.5 rounded-full"
-                style={{ background: palette[i % palette.length] }}
+                style={{ background: jobColor(item.job, dl2) }}
               />
               <span className="truncate">{item.job}</span>
               <span
