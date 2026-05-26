@@ -1388,10 +1388,13 @@ function JobPowerStatsPanel({
   dl2?: boolean;
 }) {
   const stats = useMemo(() => computeJobPowerStats(characters), [characters]);
+  const [open, setOpen] = useState(false);
 
   if (stats.length === 0) return null;
 
-  const globalMax = Math.max(...stats.map((s) => s.avgPower), 1);
+  // 두 바를 같은 스케일로 비교하려면 max 기준 정규화.
+  const globalMaxOfMax = Math.max(...stats.map((s) => s.maxPower), 1);
+  const trackBg = dl2 ? "rgba(92,58,31,0.1)" : "rgba(155,143,184,0.15)";
 
   return (
     <div
@@ -1402,88 +1405,107 @@ function JobPowerStatsPanel({
       }
       style={dl2 ? { borderColor: "rgba(92,58,31,0.15)" } : undefined}
     >
-      <h4
-        className="mb-3 font-serif text-[11px] tracking-[0.18em]"
-        style={dl2 ? { color: "#5c3a1f" } : { color: "#9B8FB8" }}
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="mb-3 flex w-full items-center justify-between gap-3"
       >
-        직업별 투력
-      </h4>
-      <ul className="flex flex-col gap-2">
-        {stats.map((s) => {
-          const pct = Math.min((s.avgPower / globalMax) * 100, 100);
-          const color = jobColor(s.job, dl2);
-          return (
-            <li
-              key={s.job}
-              className="grid items-center gap-3 font-serif"
-              style={{
-                gridTemplateColumns: "16px 56px 1fr 88px 64px",
-              }}
-            >
-              <span
-                className="flex h-4 w-4 items-center justify-center"
-                style={{ color }}
-              >
-                <JobIcon job={s.job} size={12} />
-              </span>
-              <span
-                className="truncate text-[11px]"
-                style={{ color: dl2 ? "#5c3a1f" : "#FFE5C4" }}
-              >
-                {s.job}
-              </span>
-              <div
-                aria-hidden
-                className="h-2 w-full overflow-hidden rounded-full"
+        <h4
+          className="font-serif text-[11px] tracking-[0.18em]"
+          style={dl2 ? { color: "#5c3a1f" } : { color: "#9B8FB8" }}
+        >
+          직업별 투력
+        </h4>
+        <ChevronDown
+          className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`}
+          style={dl2 ? { color: "#5c3a1f" } : { color: "#9B8FB8" }}
+        />
+      </button>
+      {open && (
+        <ul className="flex flex-col gap-2">
+          {stats.map((s) => {
+            const avgPct = Math.min((s.avgPower / globalMaxOfMax) * 100, 100);
+            const maxPct = Math.min((s.maxPower / globalMaxOfMax) * 100, 100);
+            const color = jobColor(s.job, dl2);
+            return (
+              <li
+                key={s.job}
+                className="grid items-center gap-3 font-serif"
                 style={{
-                  background: dl2
-                    ? "rgba(92,58,31,0.1)"
-                    : "rgba(155,143,184,0.15)",
+                  gridTemplateColumns: "16px 56px 1fr 88px 64px",
                 }}
               >
+                <span
+                  className="flex h-4 w-4 items-center justify-center"
+                  style={{ color }}
+                >
+                  <JobIcon job={s.job} size={12} />
+                </span>
+                <span
+                  className="truncate text-[11px]"
+                  style={{ color: dl2 ? "#5c3a1f" : "#FFE5C4" }}
+                >
+                  {s.job}
+                </span>
                 <div
-                  className="h-full rounded-full"
-                  style={{
-                    width: `${pct}%`,
-                    background: color,
-                    transition: "width 700ms ease",
-                  }}
-                />
-              </div>
-              <div className="flex flex-col items-end leading-tight">
-                <span
-                  className="font-mono text-[11px] tabular-nums"
-                  style={{ color: dl2 ? "#8a6710" : "#FFE5C4" }}
+                  aria-hidden
+                  className="relative h-2 w-full overflow-hidden rounded-full"
+                  style={{ background: trackBg }}
                 >
-                  {s.avgPower.toLocaleString()}
-                </span>
-                <span
-                  className="font-mono text-[9px] tabular-nums opacity-65"
-                  style={{ color: dl2 ? "#8a6a4a" : "#9B8FB8" }}
-                >
-                  max {s.maxPower.toLocaleString()}
-                </span>
-              </div>
-              <div className="flex flex-col items-end leading-tight">
-                <span
-                  className="font-mono text-[10px] tabular-nums"
-                  style={{ color: dl2 ? "#5c3a1f" : "#D896C8" }}
-                >
-                  {s.count}명
-                </span>
-                <span
-                  className="font-mono text-[9px] tabular-nums opacity-65"
-                  style={{ color: dl2 ? "#8a6a4a" : "#9B8FB8" }}
-                >
-                  {s.avgHellLabel === "-"
-                    ? "지옥 -"
-                    : `지옥 ${s.avgHellLabel}`}
-                </span>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+                  <div
+                    className="absolute left-0 top-0 h-full rounded-full"
+                    style={{
+                      width: `${maxPct}%`,
+                      background: color,
+                      opacity: 0.35,
+                      transition: "width 700ms ease",
+                    }}
+                  />
+                  <div
+                    className="absolute left-0 top-0 h-full rounded-full"
+                    style={{
+                      width: `${avgPct}%`,
+                      background: color,
+                      transition: "width 700ms ease",
+                    }}
+                  />
+                </div>
+                <div className="flex flex-col items-end leading-tight">
+                  <span
+                    className="font-mono text-[11px] tabular-nums"
+                    style={{ color: dl2 ? "#8a6710" : "#FFE5C4" }}
+                  >
+                    {s.avgPower.toLocaleString()}
+                  </span>
+                  <span
+                    className="font-mono text-[9px] tabular-nums opacity-65"
+                    style={{ color: dl2 ? "#8a6a4a" : "#9B8FB8" }}
+                  >
+                    max {s.maxPower.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex flex-col items-end leading-tight">
+                  <span
+                    className="font-mono text-[10px] tabular-nums"
+                    style={{ color: dl2 ? "#5c3a1f" : "#D896C8" }}
+                  >
+                    {s.count}명
+                  </span>
+                  <span
+                    className="font-mono text-[9px] tabular-nums opacity-65"
+                    style={{ color: dl2 ? "#8a6a4a" : "#9B8FB8" }}
+                  >
+                    {s.avgHellLabel === "-"
+                      ? "지옥 -"
+                      : `지옥 ${s.avgHellLabel}`}
+                  </span>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }
@@ -1492,9 +1514,17 @@ function JobGrowthPanel({
   jobGrowth,
   dl2 = false,
 }: {
-  jobGrowth: { job: string; count: number; avg7d: number; avg30d: number }[];
+  jobGrowth: {
+    job: string;
+    count: number;
+    avg7d: number;
+    max7d: number;
+    avg30d: number;
+    max30d: number;
+  }[];
   dl2?: boolean;
 }) {
+  const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"7d" | "30d">("7d");
 
   if (jobGrowth.length === 0) return null;
@@ -1502,13 +1532,15 @@ function JobGrowthPanel({
   const sorted = [...jobGrowth].sort((a, b) =>
     mode === "7d" ? b.avg7d - a.avg7d : b.avg30d - a.avg30d,
   );
-  const globalMax = Math.max(
-    ...sorted.map((s) => (mode === "7d" ? s.avg7d : s.avg30d)),
+  // 평균과 최고를 같은 스케일로 — 선택 기간의 max 중 최대를 100%.
+  const globalMaxOfMax = Math.max(
+    ...sorted.map((s) => (mode === "7d" ? s.max7d : s.max30d)),
     1,
   );
 
   const positiveColor = dl2 ? "#8a6710" : "#A8E8C0";
   const negativeColor = dl2 ? "#a8691f" : "#E8A8B8";
+  const trackBg = dl2 ? "rgba(92,58,31,0.1)" : "rgba(155,143,184,0.15)";
 
   return (
     <div
@@ -1519,100 +1551,129 @@ function JobGrowthPanel({
       }
       style={dl2 ? { borderColor: "rgba(92,58,31,0.15)" } : undefined}
     >
-      <div className="mb-3 flex items-center justify-between gap-3">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="mb-3 flex w-full items-center justify-between gap-3"
+      >
         <h4
           className="font-serif text-[11px] tracking-[0.18em]"
           style={dl2 ? { color: "#5c3a1f" } : { color: "#9B8FB8" }}
         >
           직업별 성장
         </h4>
-        <div className="flex items-center gap-1 rounded-full border border-nebula-pink/20 bg-abyss-deep/40 p-0.5">
-          <TogglePill
-            active={mode === "7d"}
-            onClick={() => setMode("7d")}
-            dl2={dl2}
-          >
-            7일
-          </TogglePill>
-          <TogglePill
-            active={mode === "30d"}
-            onClick={() => setMode("30d")}
-            dl2={dl2}
-          >
-            30일
-          </TogglePill>
-        </div>
-      </div>
-      <ul className="flex flex-col gap-2">
-        {sorted.map((s) => {
-          const avg = mode === "7d" ? s.avg7d : s.avg30d;
-          const pct = Math.min(Math.max((avg / globalMax) * 100, 0), 100);
-          const color = jobColor(s.job, dl2);
-          const valueColor =
-            avg >= 0 ? (avg === 0 ? color : positiveColor) : negativeColor;
-          return (
-            <li
-              key={s.job}
-              className="grid items-center gap-3 font-serif"
-              style={{
-                gridTemplateColumns: "16px 56px 1fr 88px 48px",
-              }}
-            >
-              <span
-                className="flex h-4 w-4 items-center justify-center"
-                style={{ color }}
+        <ChevronDown
+          className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`}
+          style={dl2 ? { color: "#5c3a1f" } : { color: "#9B8FB8" }}
+        />
+      </button>
+      {open && (
+        <>
+          <div className="mb-3 flex items-center justify-end">
+            <div className="flex items-center gap-1 rounded-full border border-nebula-pink/20 bg-abyss-deep/40 p-0.5">
+              <TogglePill
+                active={mode === "7d"}
+                onClick={() => setMode("7d")}
+                dl2={dl2}
               >
-                <JobIcon job={s.job} size={12} />
-              </span>
-              <span
-                className="truncate text-[11px]"
-                style={{ color: dl2 ? "#5c3a1f" : "#FFE5C4" }}
+                7일
+              </TogglePill>
+              <TogglePill
+                active={mode === "30d"}
+                onClick={() => setMode("30d")}
+                dl2={dl2}
               >
-                {s.job}
-              </span>
-              <div
-                aria-hidden
-                className="h-2 w-full overflow-hidden rounded-full"
-                style={{
-                  background: dl2
-                    ? "rgba(92,58,31,0.1)"
-                    : "rgba(155,143,184,0.15)",
-                }}
-              >
-                <div
-                  className="h-full rounded-full"
+                30일
+              </TogglePill>
+            </div>
+          </div>
+          <ul className="flex flex-col gap-2">
+            {sorted.map((s) => {
+              const avg = mode === "7d" ? s.avg7d : s.avg30d;
+              const max = mode === "7d" ? s.max7d : s.max30d;
+              const avgPct = Math.min(
+                Math.max((avg / globalMaxOfMax) * 100, 0),
+                100,
+              );
+              const maxPct = Math.min(
+                Math.max((max / globalMaxOfMax) * 100, 0),
+                100,
+              );
+              const color = jobColor(s.job, dl2);
+              const valueColor =
+                avg > 0 ? positiveColor : avg < 0 ? negativeColor : color;
+              return (
+                <li
+                  key={s.job}
+                  className="grid items-center gap-3 font-serif"
                   style={{
-                    width: `${pct}%`,
-                    background: color,
-                    transition: "width 700ms ease",
+                    gridTemplateColumns: "16px 56px 1fr 88px 48px",
                   }}
-                />
-              </div>
-              <div className="flex flex-col items-end leading-tight">
-                <span
-                  className="font-mono text-[11px] tabular-nums"
-                  style={{ color: valueColor, fontWeight: 600 }}
                 >
-                  {avg >= 0 && avg > 0 ? "+" : ""}
-                  {avg.toLocaleString()}
-                </span>
-                <span
-                  className="font-mono text-[9px] tabular-nums opacity-60"
-                  style={{ color: dl2 ? "#8a6a4a" : "#9B8FB8" }}
-                >
-                  평균
-                </span>
-              </div>
-              <span
-                className="text-right font-mono text-[10px] tabular-nums"
-                style={{ color: dl2 ? "#5c3a1f" : "#D896C8" }}
-              >
-                {s.count}명
-              </span>
-            </li>
-          );
-        })}
-      </ul>
+                  <span
+                    className="flex h-4 w-4 items-center justify-center"
+                    style={{ color }}
+                  >
+                    <JobIcon job={s.job} size={12} />
+                  </span>
+                  <span
+                    className="truncate text-[11px]"
+                    style={{ color: dl2 ? "#5c3a1f" : "#FFE5C4" }}
+                  >
+                    {s.job}
+                  </span>
+                  <div
+                    aria-hidden
+                    className="relative h-2 w-full overflow-hidden rounded-full"
+                    style={{ background: trackBg }}
+                  >
+                    <div
+                      className="absolute left-0 top-0 h-full rounded-full"
+                      style={{
+                        width: `${maxPct}%`,
+                        background: color,
+                        opacity: 0.35,
+                        transition: "width 700ms ease",
+                      }}
+                    />
+                    <div
+                      className="absolute left-0 top-0 h-full rounded-full"
+                      style={{
+                        width: `${avgPct}%`,
+                        background: color,
+                        transition: "width 700ms ease",
+                      }}
+                    />
+                  </div>
+                  <div className="flex flex-col items-end leading-tight">
+                    <span
+                      className="font-mono text-[11px] tabular-nums"
+                      style={{ color: valueColor, fontWeight: 600 }}
+                    >
+                      {avg > 0 ? "+" : ""}
+                      {avg.toLocaleString()}
+                    </span>
+                    <span
+                      className="font-mono text-[9px] tabular-nums opacity-60"
+                      style={{ color: dl2 ? "#8a6a4a" : "#9B8FB8" }}
+                    >
+                      max {max > 0 ? "+" : ""}
+                      {max.toLocaleString()}
+                    </span>
+                  </div>
+                  <span
+                    className="text-right font-mono text-[10px] tabular-nums"
+                    style={{ color: dl2 ? "#5c3a1f" : "#D896C8" }}
+                  >
+                    {s.count}명
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      )}
     </div>
   );
 }

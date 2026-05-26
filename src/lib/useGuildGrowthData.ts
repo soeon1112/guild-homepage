@@ -31,7 +31,9 @@ export type JobGrowthStat = {
   job: string;
   count: number;
   avg7d: number;
+  max7d: number;
   avg30d: number;
+  max30d: number;
 };
 
 type HistoryEntry = { combatPower: number; recordedAt: Timestamp | null };
@@ -143,7 +145,16 @@ export function useGuildGrowthData(characters: GrowthCharLite[]): {
             d30s.length > 0
               ? Math.round(d30s.reduce((a, b) => a + b, 0) / d30s.length)
               : 0;
-          return { job, count: members.length, avg7d, avg30d };
+          const max7d = d7s.length > 0 ? Math.max(...d7s) : 0;
+          const max30d = d30s.length > 0 ? Math.max(...d30s) : 0;
+          return {
+            job,
+            count: members.length,
+            avg7d,
+            max7d,
+            avg30d,
+            max30d,
+          };
         },
       );
 
