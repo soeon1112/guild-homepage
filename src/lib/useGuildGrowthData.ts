@@ -18,6 +18,7 @@ export type GrowthCharLite = {
   nickname: string;
   job: string;
   combatPower: number;
+  hellStage: string;
 };
 
 export type TopGrower = {
@@ -34,9 +35,24 @@ export type JobGrowthStat = {
   max7d: number;
   avg30d: number;
   max30d: number;
+  avgHellLabel: string;
 };
 
 type HistoryEntry = { combatPower: number; recordedAt: Timestamp | null };
+
+const HELL_INDEX: Record<string, number> = (() => {
+  const map: Record<string, number> = { "매어 이하": 0 };
+  for (let i = 1; i <= 15; i++) map[`지옥${i}`] = i;
+  return map;
+})();
+
+function hellLabelFromAverage(avg: number): string {
+  if (!Number.isFinite(avg)) return "-";
+  const r = Math.round(avg);
+  if (r <= 0) return "0";
+  if (r >= 15) return "15";
+  return String(r);
+}
 
 export function useGuildGrowthData(characters: GrowthCharLite[]): {
   topGrowers: TopGrower[];
@@ -147,6 +163,13 @@ export function useGuildGrowthData(characters: GrowthCharLite[]): {
               : 0;
           const max7d = d7s.length > 0 ? Math.max(...d7s) : 0;
           const max30d = d30s.length > 0 ? Math.max(...d30s) : 0;
+          const hellIndices = members
+            .map((m) => HELL_INDEX[m.c.hellStage])
+            .filter((v): v is number => typeof v === "number");
+          const avgHellIndex =
+            hellIndices.length > 0
+              ? hellIndices.reduce((a, b) => a + b, 0) / hellIndices.length
+              : Number.NaN;
           return {
             job,
             count: members.length,
@@ -154,6 +177,7 @@ export function useGuildGrowthData(characters: GrowthCharLite[]): {
             max7d,
             avg30d,
             max30d,
+            avgHellLabel: hellLabelFromAverage(avgHellIndex),
           };
         },
       );

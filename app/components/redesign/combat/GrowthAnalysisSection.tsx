@@ -1302,13 +1302,19 @@ function JobDistributionPanel({
             </span>
           </div>
         </div>
-        <ul className="grid w-full max-w-[520px] grid-cols-1 gap-1.5 px-4 sm:grid-cols-2 md:max-w-none md:flex-1 md:px-0">
+        <ul
+          className="grid w-full max-w-[520px] grid-cols-2 gap-x-3 gap-y-1.5 px-2 md:max-w-none md:flex-1 md:px-0"
+          style={{
+            gridTemplateRows: `repeat(${Math.ceil(distribution.length / 2)}, auto)`,
+            gridAutoFlow: "column",
+          }}
+        >
           {distribution.map((item) => (
             <li
               key={item.job}
               className="grid items-center gap-2 font-serif text-[11px]"
               style={{
-                gridTemplateColumns: "12px 1fr 56px 56px",
+                gridTemplateColumns: "12px 1fr 48px 48px",
                 color: dl2 ? "#5c3a1f" : "#FFE5C4",
               }}
             >
@@ -1392,9 +1398,11 @@ function JobPowerStatsPanel({
 
   if (stats.length === 0) return null;
 
-  // 두 바를 같은 스케일로 비교하려면 max 기준 정규화.
+  // 두 바를 같은 스케일로 — max 기준 정규화.
   const globalMaxOfMax = Math.max(...stats.map((s) => s.maxPower), 1);
-  const trackBg = dl2 ? "rgba(92,58,31,0.1)" : "rgba(155,143,184,0.15)";
+  const gridCols = "80px 1fr 60px 60px 40px";
+  const subColor = dl2 ? "#8a6a4a" : "#9B8FB8";
+  const mainColor = dl2 ? "#5c3a1f" : "#FFE5C4";
 
   return (
     <div
@@ -1409,7 +1417,7 @@ function JobPowerStatsPanel({
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        className="mb-3 flex w-full items-center justify-between gap-3"
+        className="flex w-full items-center justify-between gap-3"
       >
         <h4
           className="font-serif text-[11px] tracking-[0.18em]"
@@ -1423,7 +1431,21 @@ function JobPowerStatsPanel({
         />
       </button>
       {open && (
-        <ul className="flex flex-col gap-2">
+        <ul className="mt-3 flex flex-col gap-2">
+          {/* 컬럼 헤더 */}
+          <li
+            className="grid items-center gap-3 font-serif text-[10px] tracking-wider opacity-55"
+            style={{
+              gridTemplateColumns: gridCols,
+              color: subColor,
+            }}
+          >
+            <span>직업</span>
+            <span aria-hidden />
+            <span className="text-right">평균</span>
+            <span className="text-right">최고</span>
+            <span className="text-right">인원</span>
+          </li>
           {stats.map((s) => {
             const avgPct = Math.min((s.avgPower / globalMaxOfMax) * 100, 100);
             const maxPct = Math.min((s.maxPower / globalMaxOfMax) * 100, 100);
@@ -1432,27 +1454,23 @@ function JobPowerStatsPanel({
               <li
                 key={s.job}
                 className="grid items-center gap-3 font-serif"
-                style={{
-                  gridTemplateColumns: "16px 56px 1fr 88px 64px",
-                }}
+                style={{ gridTemplateColumns: gridCols }}
               >
-                <span
-                  className="flex h-4 w-4 items-center justify-center"
-                  style={{ color }}
-                >
-                  <JobIcon job={s.job} size={12} />
-                </span>
-                <span
-                  className="truncate text-[11px]"
-                  style={{ color: dl2 ? "#5c3a1f" : "#FFE5C4" }}
-                >
-                  {s.job}
-                </span>
-                <div
-                  aria-hidden
-                  className="relative h-2 w-full overflow-hidden rounded-full"
-                  style={{ background: trackBg }}
-                >
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <span
+                    className="flex h-4 w-4 flex-shrink-0 items-center justify-center"
+                    style={{ color }}
+                  >
+                    <JobIcon job={s.job} size={12} />
+                  </span>
+                  <span
+                    className="truncate text-[12px]"
+                    style={{ color: mainColor }}
+                  >
+                    {s.job}
+                  </span>
+                </div>
+                <div aria-hidden className="relative h-2 w-full">
                   <div
                     className="absolute left-0 top-0 h-full rounded-full"
                     style={{
@@ -1471,36 +1489,24 @@ function JobPowerStatsPanel({
                     }}
                   />
                 </div>
-                <div className="flex flex-col items-end leading-tight">
-                  <span
-                    className="font-mono text-[11px] tabular-nums"
-                    style={{ color: dl2 ? "#8a6710" : "#FFE5C4" }}
-                  >
-                    {s.avgPower.toLocaleString()}
-                  </span>
-                  <span
-                    className="font-mono text-[9px] tabular-nums opacity-65"
-                    style={{ color: dl2 ? "#8a6a4a" : "#9B8FB8" }}
-                  >
-                    max {s.maxPower.toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex flex-col items-end leading-tight">
-                  <span
-                    className="font-mono text-[10px] tabular-nums"
-                    style={{ color: dl2 ? "#5c3a1f" : "#D896C8" }}
-                  >
-                    {s.count}명
-                  </span>
-                  <span
-                    className="font-mono text-[9px] tabular-nums opacity-65"
-                    style={{ color: dl2 ? "#8a6a4a" : "#9B8FB8" }}
-                  >
-                    {s.avgHellLabel === "-"
-                      ? "지옥 -"
-                      : `지옥 ${s.avgHellLabel}`}
-                  </span>
-                </div>
+                <span
+                  className="text-right font-mono text-[12px] tabular-nums"
+                  style={{ color: dl2 ? "#8a6710" : mainColor, fontWeight: 600 }}
+                >
+                  {s.avgPower.toLocaleString()}
+                </span>
+                <span
+                  className="text-right font-mono text-[11px] tabular-nums opacity-65"
+                  style={{ color: subColor }}
+                >
+                  {s.maxPower.toLocaleString()}
+                </span>
+                <span
+                  className="text-right font-mono text-[11px] tabular-nums"
+                  style={{ color: dl2 ? "#5c3a1f" : "#D896C8" }}
+                >
+                  {s.count}명
+                </span>
               </li>
             );
           })}
@@ -1521,6 +1527,7 @@ function JobGrowthPanel({
     max7d: number;
     avg30d: number;
     max30d: number;
+    avgHellLabel: string;
   }[];
   dl2?: boolean;
 }) {
@@ -1532,7 +1539,6 @@ function JobGrowthPanel({
   const sorted = [...jobGrowth].sort((a, b) =>
     mode === "7d" ? b.avg7d - a.avg7d : b.avg30d - a.avg30d,
   );
-  // 평균과 최고를 같은 스케일로 — 선택 기간의 max 중 최대를 100%.
   const globalMaxOfMax = Math.max(
     ...sorted.map((s) => (mode === "7d" ? s.max7d : s.max30d)),
     1,
@@ -1540,7 +1546,9 @@ function JobGrowthPanel({
 
   const positiveColor = dl2 ? "#8a6710" : "#A8E8C0";
   const negativeColor = dl2 ? "#a8691f" : "#E8A8B8";
-  const trackBg = dl2 ? "rgba(92,58,31,0.1)" : "rgba(155,143,184,0.15)";
+  const gridCols = "80px 1fr 70px 60px 40px";
+  const subColor = dl2 ? "#8a6a4a" : "#9B8FB8";
+  const mainColor = dl2 ? "#5c3a1f" : "#FFE5C4";
 
   return (
     <div
@@ -1555,7 +1563,7 @@ function JobGrowthPanel({
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        className="mb-3 flex w-full items-center justify-between gap-3"
+        className="flex w-full items-center justify-between gap-3"
       >
         <h4
           className="font-serif text-[11px] tracking-[0.18em]"
@@ -1570,7 +1578,7 @@ function JobGrowthPanel({
       </button>
       {open && (
         <>
-          <div className="mb-3 flex items-center justify-end">
+          <div className="mt-3 mb-2 flex items-center justify-end">
             <div className="flex items-center gap-1 rounded-full border border-nebula-pink/20 bg-abyss-deep/40 p-0.5">
               <TogglePill
                 active={mode === "7d"}
@@ -1589,6 +1597,20 @@ function JobGrowthPanel({
             </div>
           </div>
           <ul className="flex flex-col gap-2">
+            {/* 컬럼 헤더 */}
+            <li
+              className="grid items-center gap-3 font-serif text-[10px] tracking-wider opacity-55"
+              style={{
+                gridTemplateColumns: gridCols,
+                color: subColor,
+              }}
+            >
+              <span>직업</span>
+              <span aria-hidden />
+              <span className="text-right">성장</span>
+              <span className="text-right">평균지옥</span>
+              <span className="text-right">인원</span>
+            </li>
             {sorted.map((s) => {
               const avg = mode === "7d" ? s.avg7d : s.avg30d;
               const max = mode === "7d" ? s.max7d : s.max30d;
@@ -1607,27 +1629,23 @@ function JobGrowthPanel({
                 <li
                   key={s.job}
                   className="grid items-center gap-3 font-serif"
-                  style={{
-                    gridTemplateColumns: "16px 56px 1fr 88px 48px",
-                  }}
+                  style={{ gridTemplateColumns: gridCols }}
                 >
-                  <span
-                    className="flex h-4 w-4 items-center justify-center"
-                    style={{ color }}
-                  >
-                    <JobIcon job={s.job} size={12} />
-                  </span>
-                  <span
-                    className="truncate text-[11px]"
-                    style={{ color: dl2 ? "#5c3a1f" : "#FFE5C4" }}
-                  >
-                    {s.job}
-                  </span>
-                  <div
-                    aria-hidden
-                    className="relative h-2 w-full overflow-hidden rounded-full"
-                    style={{ background: trackBg }}
-                  >
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <span
+                      className="flex h-4 w-4 flex-shrink-0 items-center justify-center"
+                      style={{ color }}
+                    >
+                      <JobIcon job={s.job} size={12} />
+                    </span>
+                    <span
+                      className="truncate text-[12px]"
+                      style={{ color: mainColor }}
+                    >
+                      {s.job}
+                    </span>
+                  </div>
+                  <div aria-hidden className="relative h-2 w-full">
                     <div
                       className="absolute left-0 top-0 h-full rounded-full"
                       style={{
@@ -1646,24 +1664,24 @@ function JobGrowthPanel({
                       }}
                     />
                   </div>
-                  <div className="flex flex-col items-end leading-tight">
-                    <span
-                      className="font-mono text-[11px] tabular-nums"
-                      style={{ color: valueColor, fontWeight: 600 }}
-                    >
-                      {avg > 0 ? "+" : ""}
-                      {avg.toLocaleString()}
-                    </span>
-                    <span
-                      className="font-mono text-[9px] tabular-nums opacity-60"
-                      style={{ color: dl2 ? "#8a6a4a" : "#9B8FB8" }}
-                    >
-                      max {max > 0 ? "+" : ""}
-                      {max.toLocaleString()}
-                    </span>
-                  </div>
                   <span
-                    className="text-right font-mono text-[10px] tabular-nums"
+                    className="text-right font-mono text-[12px] tabular-nums"
+                    title={`max ${max > 0 ? "+" : ""}${max.toLocaleString()}`}
+                    style={{ color: valueColor, fontWeight: 600 }}
+                  >
+                    {avg > 0 ? "+" : ""}
+                    {avg.toLocaleString()}
+                  </span>
+                  <span
+                    className="text-right font-mono text-[11px] tabular-nums opacity-75"
+                    style={{ color: subColor }}
+                  >
+                    {s.avgHellLabel === "-"
+                      ? "지옥 -"
+                      : `지옥 ${s.avgHellLabel}`}
+                  </span>
+                  <span
+                    className="text-right font-mono text-[11px] tabular-nums"
                     style={{ color: dl2 ? "#5c3a1f" : "#D896C8" }}
                   >
                     {s.count}명
