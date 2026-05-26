@@ -313,7 +313,7 @@ export default function MembersPage() {
                 className="text-base font-semibold leading-tight text-cream sm:text-lg"
                 style={{ letterSpacing: "0.02em" }}
               >
-                하늘 위의 동료들
+                하늘 섬의 동료들
               </h2>
               <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.32em] text-mist-lavender">
                 SOARING COMPANIONS
