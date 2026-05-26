@@ -623,6 +623,7 @@ export function GrowthAnalysisSection({
             </div>
 
             <JobDistributionPanel characters={characters} dl2={dl2} />
+            <JobPowerStatsPanel characters={characters} dl2={dl2} />
           </GlassCard>
         </div>
       )}
@@ -1378,6 +1379,156 @@ function JobDistributionPanel({
           ))}
         </ul>
       </div>
+    </div>
+  );
+}
+
+type JobPowerStat = {
+  job: string;
+  count: number;
+  avgPower: number;
+  maxPower: number;
+  avgHellLabel: string;
+};
+
+function computeJobPowerStats(characters: GrowthCharacter[]): JobPowerStat[] {
+  if (characters.length === 0) return [];
+  const groups = new Map<string, GrowthCharacter[]>();
+  for (const c of characters) {
+    const job = c.job || "(미입력)";
+    const arr = groups.get(job);
+    if (arr) arr.push(c);
+    else groups.set(job, [c]);
+  }
+  const stats: JobPowerStat[] = [...groups.entries()].map(([job, chars]) => {
+    const powers = chars.map((c) => c.combatPower || 0);
+    const avgPower = Math.round(
+      powers.reduce((a, b) => a + b, 0) / chars.length,
+    );
+    const maxPower = powers.length > 0 ? Math.max(...powers) : 0;
+    const hellIndices = chars
+      .map((c) => HELL_INDEX[c.hellStage])
+      .filter((v): v is number => typeof v === "number");
+    const avgHellIndex =
+      hellIndices.length > 0
+        ? hellIndices.reduce((a, b) => a + b, 0) / hellIndices.length
+        : Number.NaN;
+    return {
+      job,
+      count: chars.length,
+      avgPower,
+      maxPower,
+      avgHellLabel: hellLabelFromAverage(avgHellIndex),
+    };
+  });
+  stats.sort((a, b) => b.avgPower - a.avgPower);
+  return stats;
+}
+
+function JobPowerStatsPanel({
+  characters,
+  dl2 = false,
+}: {
+  characters: GrowthCharacter[];
+  dl2?: boolean;
+}) {
+  const stats = useMemo(() => computeJobPowerStats(characters), [characters]);
+
+  if (stats.length === 0) return null;
+
+  const globalMax = Math.max(...stats.map((s) => s.avgPower), 1);
+
+  return (
+    <div
+      className={
+        dl2
+          ? "mt-5 border-t pt-4"
+          : "mt-5 border-t border-nebula-pink/15 pt-4"
+      }
+      style={dl2 ? { borderColor: "rgba(92,58,31,0.15)" } : undefined}
+    >
+      <h4
+        className="mb-3 font-serif text-[11px] tracking-[0.18em]"
+        style={dl2 ? { color: "#5c3a1f" } : { color: "#9B8FB8" }}
+      >
+        직업별 투력
+      </h4>
+      <ul className="flex flex-col gap-2">
+        {stats.map((s) => {
+          const pct = Math.min((s.avgPower / globalMax) * 100, 100);
+          const color = jobColor(s.job, dl2);
+          return (
+            <li
+              key={s.job}
+              className="grid items-center gap-3 font-serif"
+              style={{
+                gridTemplateColumns: "16px 56px 1fr 88px 64px",
+              }}
+            >
+              <span
+                className="flex h-4 w-4 items-center justify-center"
+                style={{ color }}
+              >
+                <JobIcon job={s.job} size={12} />
+              </span>
+              <span
+                className="truncate text-[11px]"
+                style={{ color: dl2 ? "#5c3a1f" : "#FFE5C4" }}
+              >
+                {s.job}
+              </span>
+              <div
+                aria-hidden
+                className="h-2 w-full overflow-hidden rounded-full"
+                style={{
+                  background: dl2
+                    ? "rgba(92,58,31,0.1)"
+                    : "rgba(155,143,184,0.15)",
+                }}
+              >
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${pct}%`,
+                    background: color,
+                    transition: "width 700ms ease",
+                  }}
+                />
+              </div>
+              <div className="flex flex-col items-end leading-tight">
+                <span
+                  className="font-mono text-[11px] tabular-nums"
+                  style={{ color: dl2 ? "#8a6710" : "#FFE5C4" }}
+                >
+                  {s.avgPower.toLocaleString()}
+                </span>
+                <span
+                  className="font-mono text-[9px] tabular-nums opacity-65"
+                  style={{ color: dl2 ? "#8a6a4a" : "#9B8FB8" }}
+                >
+                  max {s.maxPower.toLocaleString()}
+                </span>
+              </div>
+              <div className="flex flex-col items-end leading-tight">
+                <span
+                  className="font-mono text-[10px] tabular-nums"
+                  style={{ color: dl2 ? "#5c3a1f" : "#D896C8" }}
+                >
+                  {s.count}명
+                </span>
+                <span
+                  className="font-mono text-[9px] tabular-nums opacity-65"
+                  style={{ color: dl2 ? "#8a6a4a" : "#9B8FB8" }}
+                >
+                  {s.avgHellLabel === "-"
+                    ? "지옥 -"
+                    : `지옥 ${s.avgHellLabel}`}
+                </span>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }
