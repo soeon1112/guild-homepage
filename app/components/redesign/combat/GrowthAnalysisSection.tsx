@@ -369,10 +369,10 @@ export function GrowthAnalysisSection({
         </GlassCard>
       ) : (
         <div className="flex flex-col gap-4">
-          {/* Row 1: 투력+성장폭 묶음 (2 cols) + 빛난 별 (1 col) */}
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          {/* Row 1: 투력+성장폭 묶음 + 빛난 별 (1:1) */}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {/* Merged: 투력 변화 + 성장폭 */}
-            <GlassCard className="md:col-span-2">
+            <GlassCard>
               {/* 투력 변화 */}
               <div className="mb-3 flex items-center justify-between gap-3">
                 <h3 className="font-serif text-sm tracking-wider text-stardust">
