@@ -1382,7 +1382,8 @@ function computeJobPowerStats(characters: GrowthCharacter[]): JobPowerStat[] {
       avgHellLabel: hellLabelFromAverage(avgHellIndex),
     };
   });
-  stats.sort((a, b) => b.avgPower - a.avgPower);
+  // 1차: 인원 desc / 2차: 평균 투력 desc
+  stats.sort((a, b) => b.count - a.count || b.avgPower - a.avgPower);
   return stats;
 }
 
@@ -1434,10 +1435,11 @@ function JobPowerStatsPanel({
         <ul className="mt-3 flex flex-col gap-2">
           {/* 컬럼 헤더 */}
           <li
-            className="grid items-center gap-3 font-serif text-[10px] tracking-wider opacity-55"
+            className="grid items-center gap-3 font-serif text-[11px] tracking-wider"
             style={{
               gridTemplateColumns: gridCols,
-              color: subColor,
+              color: mainColor,
+              fontWeight: 600,
             }}
           >
             <span>직업</span>
@@ -1536,8 +1538,11 @@ function JobGrowthPanel({
 
   if (jobGrowth.length === 0) return null;
 
-  const sorted = [...jobGrowth].sort((a, b) =>
-    mode === "7d" ? b.avg7d - a.avg7d : b.avg30d - a.avg30d,
+  // 1차: 인원 desc / 2차: 선택 기간 평균 desc
+  const sorted = [...jobGrowth].sort(
+    (a, b) =>
+      b.count - a.count ||
+      (mode === "7d" ? b.avg7d - a.avg7d : b.avg30d - a.avg30d),
   );
   const globalMaxOfMax = Math.max(
     ...sorted.map((s) => (mode === "7d" ? s.max7d : s.max30d)),
