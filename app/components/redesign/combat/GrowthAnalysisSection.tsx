@@ -25,13 +25,13 @@ import {
 } from "lucide-react";
 import {
   collection,
-  getDocs,
   onSnapshot,
   orderBy,
   query,
   Timestamp,
 } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
+import { useGuildGrowthData } from "@/src/lib/useGuildGrowthData";
 import { JobIcon } from "./JobIcon";
 
 type Challenge = "있음" | "다소 있음" | "없음";
@@ -108,8 +108,10 @@ export function GrowthAnalysisSection({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [rangeMode, setRangeMode] = useState<"30d" | "all">("30d");
-  const [topGrowers, setTopGrowers] = useState<Grower[]>([]);
   const [nowMs, setNowMs] = useState<number | null>(null);
+
+  // Shared history fetch for 빛난 별 (top 7d) + 직업별 성장 (avg 7d/30d).
+  const { topGrowers, jobGrowth } = useGuildGrowthData(characters);
 
   useEffect(() => {
     setNowMs(Date.now());
@@ -141,54 +143,6 @@ export function GrowthAnalysisSection({
     });
     return () => unsub();
   }, [selectedId]);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      if (characters.length === 0) {
-        if (!cancelled) setTopGrowers([]);
-        return;
-      }
-      const sevenDaysAgoMs = Date.now() - 7 * 24 * 60 * 60 * 1000;
-      const results = await Promise.all(
-        characters.map(async (c) => {
-          try {
-            const snap = await getDocs(
-              query(
-                collection(db, "characters", c.id, "history"),
-                orderBy("recordedAt", "asc"),
-              ),
-            );
-            const entries = snap.docs.map((d) => d.data() as HistoryEntry);
-            const firstRecent = entries.find((e) => {
-              const ms = e.recordedAt?.toMillis();
-              return typeof ms === "number" && ms >= sevenDaysAgoMs;
-            });
-            if (!firstRecent) return null;
-            const delta = c.combatPower - firstRecent.combatPower;
-            if (delta <= 0) return null;
-            return {
-              owner: c.owner,
-              name: c.nickname,
-              job: c.job,
-              delta,
-            } as Grower;
-          } catch (e) {
-            console.error(e);
-            return null;
-          }
-        }),
-      );
-      if (cancelled) return;
-      const filtered = results.filter((r): r is Grower => r !== null);
-      filtered.sort((a, b) => b.delta - a.delta);
-      setTopGrowers(filtered.slice(0, 5));
-    }
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [characters]);
 
   const selectedChar = useMemo(
     () => characters.find((c) => c.id === selectedId) ?? null,
@@ -624,6 +578,7 @@ export function GrowthAnalysisSection({
 
             <JobDistributionPanel characters={characters} dl2={dl2} />
             <JobPowerStatsPanel characters={characters} dl2={dl2} />
+            <JobGrowthPanel jobGrowth={jobGrowth} dl2={dl2} />
           </GlassCard>
         </div>
       )}
@@ -1525,6 +1480,135 @@ function JobPowerStatsPanel({
                     : `지옥 ${s.avgHellLabel}`}
                 </span>
               </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function JobGrowthPanel({
+  jobGrowth,
+  dl2 = false,
+}: {
+  jobGrowth: { job: string; count: number; avg7d: number; avg30d: number }[];
+  dl2?: boolean;
+}) {
+  const [mode, setMode] = useState<"7d" | "30d">("7d");
+
+  if (jobGrowth.length === 0) return null;
+
+  const sorted = [...jobGrowth].sort((a, b) =>
+    mode === "7d" ? b.avg7d - a.avg7d : b.avg30d - a.avg30d,
+  );
+  const globalMax = Math.max(
+    ...sorted.map((s) => (mode === "7d" ? s.avg7d : s.avg30d)),
+    1,
+  );
+
+  const positiveColor = dl2 ? "#8a6710" : "#A8E8C0";
+  const negativeColor = dl2 ? "#a8691f" : "#E8A8B8";
+
+  return (
+    <div
+      className={
+        dl2
+          ? "mt-5 border-t pt-4"
+          : "mt-5 border-t border-nebula-pink/15 pt-4"
+      }
+      style={dl2 ? { borderColor: "rgba(92,58,31,0.15)" } : undefined}
+    >
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h4
+          className="font-serif text-[11px] tracking-[0.18em]"
+          style={dl2 ? { color: "#5c3a1f" } : { color: "#9B8FB8" }}
+        >
+          직업별 성장
+        </h4>
+        <div className="flex items-center gap-1 rounded-full border border-nebula-pink/20 bg-abyss-deep/40 p-0.5">
+          <TogglePill
+            active={mode === "7d"}
+            onClick={() => setMode("7d")}
+            dl2={dl2}
+          >
+            7일
+          </TogglePill>
+          <TogglePill
+            active={mode === "30d"}
+            onClick={() => setMode("30d")}
+            dl2={dl2}
+          >
+            30일
+          </TogglePill>
+        </div>
+      </div>
+      <ul className="flex flex-col gap-2">
+        {sorted.map((s) => {
+          const avg = mode === "7d" ? s.avg7d : s.avg30d;
+          const pct = Math.min(Math.max((avg / globalMax) * 100, 0), 100);
+          const color = jobColor(s.job, dl2);
+          const valueColor =
+            avg >= 0 ? (avg === 0 ? color : positiveColor) : negativeColor;
+          return (
+            <li
+              key={s.job}
+              className="grid items-center gap-3 font-serif"
+              style={{
+                gridTemplateColumns: "16px 56px 1fr 88px 48px",
+              }}
+            >
+              <span
+                className="flex h-4 w-4 items-center justify-center"
+                style={{ color }}
+              >
+                <JobIcon job={s.job} size={12} />
+              </span>
+              <span
+                className="truncate text-[11px]"
+                style={{ color: dl2 ? "#5c3a1f" : "#FFE5C4" }}
+              >
+                {s.job}
+              </span>
+              <div
+                aria-hidden
+                className="h-2 w-full overflow-hidden rounded-full"
+                style={{
+                  background: dl2
+                    ? "rgba(92,58,31,0.1)"
+                    : "rgba(155,143,184,0.15)",
+                }}
+              >
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${pct}%`,
+                    background: color,
+                    transition: "width 700ms ease",
+                  }}
+                />
+              </div>
+              <div className="flex flex-col items-end leading-tight">
+                <span
+                  className="font-mono text-[11px] tabular-nums"
+                  style={{ color: valueColor, fontWeight: 600 }}
+                >
+                  {avg >= 0 && avg > 0 ? "+" : ""}
+                  {avg.toLocaleString()}
+                </span>
+                <span
+                  className="font-mono text-[9px] tabular-nums opacity-60"
+                  style={{ color: dl2 ? "#8a6a4a" : "#9B8FB8" }}
+                >
+                  평균
+                </span>
+              </div>
+              <span
+                className="text-right font-mono text-[10px] tabular-nums"
+                style={{ color: dl2 ? "#5c3a1f" : "#D896C8" }}
+              >
+                {s.count}명
+              </span>
             </li>
           );
         })}
