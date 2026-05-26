@@ -6,6 +6,9 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -607,6 +610,8 @@ export function GrowthAnalysisSection({
                 dl2={dl2}
               />
             </div>
+
+            <JobDistributionPanel characters={characters} dl2={dl2} />
           </GlassCard>
         </div>
       )}
@@ -1176,6 +1181,171 @@ function StatTile({
         }
       >
         {value}
+      </div>
+    </div>
+  );
+}
+
+function JobDistributionPanel({
+  characters,
+  dl2 = false,
+}: {
+  characters: GrowthCharacter[];
+  dl2?: boolean;
+}) {
+  const distribution = useMemo(() => {
+    if (characters.length === 0) return [] as {
+      job: string;
+      count: number;
+      percent: number;
+    }[];
+    const counts = new Map<string, number>();
+    for (const c of characters) {
+      const job = c.job || "(미입력)";
+      counts.set(job, (counts.get(job) ?? 0) + 1);
+    }
+    const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+    const top = sorted.slice(0, 6);
+    const restCount = sorted.slice(6).reduce((s, [, n]) => s + n, 0);
+    const arr: { job: string; count: number }[] = top.map(([job, count]) => ({
+      job,
+      count,
+    }));
+    if (restCount > 0) arr.push({ job: "기타", count: restCount });
+    const total = characters.length;
+    return arr.map((it) => ({
+      ...it,
+      percent: total > 0 ? (it.count / total) * 100 : 0,
+    }));
+  }, [characters]);
+
+  if (distribution.length === 0) return null;
+
+  const cosmicColors = [
+    "#D896C8",
+    "#FFB5A7",
+    "#FFE5C4",
+    "#9B8FB8",
+    "#A8E8C0",
+    "#6B4BA8",
+    "rgba(155,143,184,0.4)",
+  ];
+  const dl2Colors = [
+    "#c4992f",
+    "#2a4570",
+    "#8a6710",
+    "#ff9a6c",
+    "#e6c97a",
+    "#5a7090",
+    "rgba(92,58,31,0.28)",
+  ];
+  const palette = dl2 ? dl2Colors : cosmicColors;
+
+  return (
+    <div
+      className={
+        dl2
+          ? "mt-5 border-t pt-4"
+          : "mt-5 border-t border-nebula-pink/15 pt-4"
+      }
+      style={dl2 ? { borderColor: "rgba(92,58,31,0.15)" } : undefined}
+    >
+      <h4
+        className="mb-3 font-serif text-[11px] tracking-[0.18em]"
+        style={dl2 ? { color: "#5c3a1f" } : { color: "#9B8FB8" }}
+      >
+        직업 분포
+      </h4>
+      <div className="flex items-center gap-4 flex-wrap">
+        <div className="relative" style={{ width: 140, height: 140 }}>
+          <PieChart width={140} height={140}>
+            <Pie
+              data={distribution}
+              dataKey="count"
+              nameKey="job"
+              cx="50%"
+              cy="50%"
+              innerRadius={38}
+              outerRadius={62}
+              stroke={dl2 ? "rgba(92,58,31,0.18)" : "rgba(11,8,33,0.6)"}
+              strokeWidth={1}
+              isAnimationActive
+              animationDuration={700}
+            >
+              {distribution.map((_, i) => (
+                <Cell key={i} fill={palette[i % palette.length]} />
+              ))}
+            </Pie>
+            <Tooltip
+              contentStyle={{
+                background: dl2 ? "rgba(255,245,230,0.98)" : "rgba(11,8,33,0.94)",
+                border: dl2
+                  ? "1px solid rgba(92,58,31,0.2)"
+                  : "1px solid rgba(216,150,200,0.3)",
+                borderRadius: 8,
+                fontSize: 11,
+                fontFamily: dl2
+                  ? "'Pretendard Variable', Pretendard, 'Noto Sans KR', sans-serif"
+                  : "'Noto Serif KR', serif",
+                padding: "6px 10px",
+              }}
+              labelStyle={{ color: dl2 ? "#5a7090" : "#9B8FB8" }}
+              itemStyle={{ color: dl2 ? "#5c3a1f" : "#FFE5C4" }}
+              formatter={(v) => [
+                typeof v === "number" ? `${v}명` : String(v),
+                "캐릭터",
+              ]}
+            />
+          </PieChart>
+          <div
+            className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center"
+            aria-hidden
+          >
+            <span
+              className="font-mono text-base tabular-nums"
+              style={{
+                color: dl2 ? "#8a6710" : "#FFE5C4",
+                fontWeight: 700,
+              }}
+            >
+              {characters.length}
+            </span>
+            <span
+              className="font-serif text-[9px] tracking-[0.18em]"
+              style={{ color: dl2 ? "#8a6a4a" : "#9B8FB8" }}
+            >
+              CHARS
+            </span>
+          </div>
+        </div>
+        <ul className="flex min-w-[150px] flex-1 flex-col gap-1.5">
+          {distribution.map((item, i) => (
+            <li
+              key={item.job}
+              className="flex items-center gap-2 font-serif text-[11px]"
+              style={{ color: dl2 ? "#5c3a1f" : "#FFE5C4" }}
+            >
+              <span
+                aria-hidden
+                className="h-2.5 w-2.5 rounded-full flex-shrink-0"
+                style={{ background: palette[i % palette.length] }}
+              />
+              <span className="flex-1 truncate">{item.job}</span>
+              <span
+                className="font-mono tabular-nums"
+                style={{ color: dl2 ? "#8a6710" : "#D896C8" }}
+              >
+                {item.count}
+              </span>
+              <span
+                className="font-mono text-[10px] tabular-nums opacity-70"
+                style={{ color: dl2 ? "#8a6a4a" : "#9B8FB8" }}
+              >
+                {item.percent.toFixed(1)}%
+              </span>
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );
