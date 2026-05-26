@@ -11,6 +11,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useImageZoom } from "../useImageZoom";
 import {
   collection,
   addDoc,
@@ -141,6 +142,7 @@ export function AlbumPhotoViewer({
   // text, cream chips, navy pill buttons). Cosmic users keep
   // isDawnlight2=false → byte-identical markup + cosmic CSS.
   const dl2 = useDawnlight2();
+  const { open: openZoom, viewer: zoomViewer } = useImageZoom();
   // Scroll container = .minihome-modal (position:fixed, overflow-y:auto).
   // The card .minihome-photo-viewer has no overflow of its own — entire
   // card scrolls together. Comments compute their absolute y relative
@@ -272,6 +274,7 @@ export function AlbumPhotoViewer({
   // z-10 context and TopHeader/BottomNav (z-40) bleed through.
   if (typeof document === "undefined") return null;
   return createPortal(
+    <>
     <div
       ref={modalRef}
       className={dl2 ? "minihome-modal dl2-album-viewer" : "minihome-modal"}
@@ -305,6 +308,8 @@ export function AlbumPhotoViewer({
             src={photo.imageUrl}
             alt={photo.caption || "photo"}
             onLoad={() => setImgLoaded(true)}
+            onClick={() => openZoom(photo.imageUrl)}
+            style={{ cursor: "zoom-in" }}
           />
         )}
         {/* Meta block — wrapped in `.dl2-album-meta-card` when dl2 so
@@ -378,7 +383,9 @@ export function AlbumPhotoViewer({
           }}
         />
       )}
-    </div>,
+    </div>
+    {zoomViewer}
+    </>,
     document.body,
   );
 }

@@ -20,6 +20,7 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
+import { useImageZoom } from "../useImageZoom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import {
@@ -122,6 +123,7 @@ export function PhotoViewerModal({
   // 라운드에서 작업).
   dawnlight2?: boolean;
 }) {
+  const { open: openZoom, viewer: zoomViewer } = useImageZoom();
   const [editMode, setEditMode] = useState(false);
   const [editCaption, setEditCaption] = useState(photo.caption);
   // 멘션 자동완성용 cursor 추적 (캡션 편집).
@@ -226,6 +228,7 @@ export function PhotoViewerModal({
   // Portal-mount — see UploadModal above. Same stacking-context trap.
   if (typeof document === "undefined") return null;
   return createPortal(
+    <>
     <motion.div
       ref={modalRef}
       initial={{ opacity: 0 }}
@@ -314,7 +317,8 @@ export function PhotoViewerModal({
               alt={photo.caption || "photo"}
               onLoad={() => setImgLoaded(true)}
               className="block max-h-[60vh] w-full object-contain"
-              style={dawnlight2 ? { background: "transparent" } : undefined}
+              onClick={() => openZoom(photo.imageUrl)}
+              style={dawnlight2 ? { background: "transparent", cursor: "zoom-in" } : { cursor: "zoom-in" }}
             />
           )}
         </div>
@@ -534,7 +538,9 @@ export function PhotoViewerModal({
           />
         </div>
       </motion.div>
-    </motion.div>,
+    </motion.div>
+    {zoomViewer}
+    </>,
     document.body,
   );
 }
