@@ -1256,7 +1256,7 @@ function JobDistributionPanel({
       >
         직업 분포
       </h4>
-      <div className="flex items-center gap-4 flex-wrap">
+      <div className="flex flex-col items-center gap-4">
         <div className="relative" style={{ width: 140, height: 140 }}>
           <PieChart width={140} height={140}>
             <Pie
@@ -1318,27 +1318,30 @@ function JobDistributionPanel({
             </span>
           </div>
         </div>
-        <ul className="flex min-w-[150px] flex-1 flex-col gap-1.5">
+        <ul className="flex w-full max-w-[280px] flex-col gap-1.5 px-4">
           {distribution.map((item, i) => (
             <li
               key={item.job}
-              className="flex items-center gap-2 font-serif text-[11px]"
-              style={{ color: dl2 ? "#5c3a1f" : "#FFE5C4" }}
+              className="grid items-center gap-2 font-serif text-[11px]"
+              style={{
+                gridTemplateColumns: "12px 1fr 56px 56px",
+                color: dl2 ? "#5c3a1f" : "#FFE5C4",
+              }}
             >
               <span
                 aria-hidden
-                className="h-2.5 w-2.5 rounded-full flex-shrink-0"
+                className="h-2.5 w-2.5 rounded-full"
                 style={{ background: palette[i % palette.length] }}
               />
-              <span className="flex-1 truncate">{item.job}</span>
+              <span className="truncate">{item.job}</span>
               <span
-                className="font-mono tabular-nums"
+                className="text-right font-mono tabular-nums"
                 style={{ color: dl2 ? "#8a6710" : "#D896C8" }}
               >
-                {item.count}
+                {item.count}명
               </span>
               <span
-                className="font-mono text-[10px] tabular-nums opacity-70"
+                className="text-right font-mono text-[10px] tabular-nums opacity-70"
                 style={{ color: dl2 ? "#8a6a4a" : "#9B8FB8" }}
               >
                 {item.percent.toFixed(1)}%
