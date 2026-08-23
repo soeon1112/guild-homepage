@@ -49,6 +49,7 @@ type Character = {
   hellStage: string;
   challenge: Challenge;
   runeBuilds?: RuneBuild[];
+  magicResist?: number;
   createdAt: Timestamp | null;
   updatedAt: Timestamp | null;
 };
@@ -164,6 +165,7 @@ function CombatPageInner() {
       job: c.job,
       combatPower: c.combatPower ? String(c.combatPower) : "",
       hellStage: c.hellStage || "매어 이하",
+      magicResist: c.magicResist != null ? String(c.magicResist) : "",
       challenge: (c.challenge as Challenge) || "있음",
       runeBuilds: (c.runeBuilds ?? []).map((b) => ({
         name: b.name ?? "",
@@ -212,6 +214,7 @@ function CombatPageInner() {
             hellStage: values.hellStage,
             challenge: values.challenge,
             runeBuilds: values.runeBuilds,
+            magicResist: values.magicResist,
             dps: deleteField(),
             updatedAt: serverTimestamp(),
           });
@@ -232,6 +235,7 @@ function CombatPageInner() {
             hellStage: values.hellStage,
             challenge: values.challenge,
             runeBuilds: values.runeBuilds,
+            magicResist: values.magicResist,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
           });

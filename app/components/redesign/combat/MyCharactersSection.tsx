@@ -21,6 +21,7 @@ export type MyCharacter = {
   hellStage: string;
   challenge: Challenge;
   runeBuilds?: RuneBuild[];
+  magicResist?: number;
 };
 
 export function MyCharactersSection({
@@ -301,6 +302,14 @@ function MyCharacterCard({
         <span className="text-text-sub">지옥 단계</span>
         <span className={dl2 ? "text-[#2a4570]" : "text-stardust"}>
           {floor > 0 ? `지옥 ${floor}` : "미도전"}
+        </span>
+      </div>
+
+      {/* 마도 저항 */}
+      <div className="mt-1.5 flex items-center justify-between font-serif text-[10px] tracking-wider">
+        <span className="text-text-sub">마도 저항</span>
+        <span className={dl2 ? "text-[#2a4570]" : "text-stardust"}>
+          {char.magicResist != null ? char.magicResist.toLocaleString() : "-"}
         </span>
       </div>
 

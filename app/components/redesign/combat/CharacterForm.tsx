@@ -23,6 +23,7 @@ export type CharacterValues = {
   hellStage: string;
   challenge: Challenge;
   runeBuilds: RuneBuild[];
+  magicResist: number;
 };
 
 export type CharacterFormInitial = {
@@ -33,6 +34,7 @@ export type CharacterFormInitial = {
   hellStage: string;
   challenge: Challenge;
   runeBuilds: Array<{ name: string; dps: string; isPublic: boolean }>;
+  magicResist: string;
 };
 
 type RuneBuildDraft = {
@@ -90,6 +92,7 @@ export function emptyCharacterForm(): CharacterFormInitial {
     hellStage: HELL_STAGES[0],
     challenge: "있음",
     runeBuilds: [],
+    magicResist: "",
   };
 }
 
@@ -115,6 +118,7 @@ export function CharacterForm({
   const [combatPower, setCombatPower] = useState(initial.combatPower);
   const [hellStage, setHellStage] = useState(initial.hellStage);
   const [challenge, setChallenge] = useState<Challenge>(initial.challenge);
+  const [magicResist, setMagicResist] = useState(initial.magicResist);
   const [builds, setBuilds] = useState<RuneBuildDraft[]>(
     initial.runeBuilds.map((b) => ({ key: makeKey(), ...b })),
   );
@@ -127,6 +131,7 @@ export function CharacterForm({
     setCombatPower(initial.combatPower);
     setHellStage(initial.hellStage);
     setChallenge(initial.challenge);
+    setMagicResist(initial.magicResist);
     setBuilds(initial.runeBuilds.map((b) => ({ key: makeKey(), ...b })));
     setLocalError(null);
   }, [initial]);
@@ -195,6 +200,7 @@ export function CharacterForm({
     }
 
     setLocalError(null);
+    const mr = magicResist.trim() ? parseFloat(magicResist.replace(/,/g, "")) : 0;
     onSubmit({
       nickname: nick,
       job,
@@ -202,6 +208,7 @@ export function CharacterForm({
       hellStage,
       challenge,
       runeBuilds,
+      magicResist: isNaN(mr) || mr < 0 ? 0 : mr,
     });
   };
 
@@ -360,6 +367,20 @@ export function CharacterForm({
                     onChange={(e) => setCombatPower(e.target.value)}
                     disabled={submitting}
                     placeholder="예: 6500"
+                    className="w-full rounded-full border border-nebula-pink/30 bg-abyss-deep/60 px-3.5 py-2 font-mono text-[13px] tabular-nums text-text-primary placeholder:text-text-sub/60 focus:border-peach-accent/60 focus:outline-none focus:ring-2 focus:ring-peach-accent/30 disabled:opacity-60"
+                  />
+                </Field>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="마도 저항">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={magicResist}
+                    onChange={(e) => setMagicResist(e.target.value)}
+                    disabled={submitting}
+                    placeholder="예: 4200"
                     className="w-full rounded-full border border-nebula-pink/30 bg-abyss-deep/60 px-3.5 py-2 font-mono text-[13px] tabular-nums text-text-primary placeholder:text-text-sub/60 focus:border-peach-accent/60 focus:outline-none focus:ring-2 focus:ring-peach-accent/30 disabled:opacity-60"
                   />
                 </Field>

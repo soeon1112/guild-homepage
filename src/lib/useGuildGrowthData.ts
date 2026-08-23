@@ -19,6 +19,7 @@ export type GrowthCharLite = {
   job: string;
   combatPower: number;
   hellStage: string;
+  magicResist?: number;
 };
 
 export type TopGrower = {

@@ -18,6 +18,7 @@ import {
   ChevronDown,
   Crown,
   Flame,
+  Shield,
   Sparkles,
   TrendingUp,
   Users,
@@ -51,6 +52,7 @@ export type GrowthCharacter = {
   hellStage: string;
   challenge: Challenge;
   runeBuilds?: RuneBuild[];
+  magicResist?: number;
 };
 
 type HistoryEntry = {
@@ -230,6 +232,7 @@ export function GrowthAnalysisSection({
         avgAbyss: "-",
         totalCharacters: 0,
         totalMembers: 0,
+        avgMagicResist: null as number | null,
       };
     }
     const avgPower = Math.round(
@@ -244,12 +247,19 @@ export function GrowthAnalysisSection({
             hellVals.reduce((s, v) => s + v, 0) / hellVals.length,
           )
         : "-";
+    const mrVals = characters
+      .map((c) => c.magicResist)
+      .filter((v): v is number => typeof v === "number");
+    const avgMagicResist: number | null = mrVals.length > 0
+      ? Math.round(mrVals.reduce((s, v) => s + v, 0) / mrVals.length)
+      : null;
     const owners = new Set(characters.map((c) => c.owner));
     return {
       avgPower,
       avgAbyss,
       totalCharacters: n,
       totalMembers: owners.size,
+      avgMagicResist,
     };
   }, [characters]);
 
@@ -529,7 +539,7 @@ export function GrowthAnalysisSection({
             <h3 className="mb-4 font-serif text-sm tracking-wider text-stardust">
               길드 통계
             </h3>
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
               <StatTile
                 icon={
                   <Zap
@@ -572,6 +582,17 @@ export function GrowthAnalysisSection({
                 }
                 label="캐릭터"
                 value={`${stats.totalCharacters}개`}
+                dl2={dl2}
+              />
+              <StatTile
+                icon={
+                  <Shield
+                    className={`h-3.5 w-3.5 ${dl2 ? "" : "text-peach-accent"}`}
+                    style={dl2 ? { color: "#8a6710" } : undefined}
+                  />
+                }
+                label="평균 마저"
+                value={stats.avgMagicResist != null ? stats.avgMagicResist.toLocaleString() : "-"}
                 dl2={dl2}
               />
             </div>
