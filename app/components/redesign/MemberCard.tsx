@@ -10,7 +10,6 @@ export type MemberCardData = {
   nickname: string;
   bio?: string;
   profileImage?: string;
-  registered: boolean;
   lastSeenHours?: number;
 };
 
@@ -97,7 +96,7 @@ export function MemberCard({
   index: number;
   dl2?: boolean;
 }) {
-  const { id, nickname, bio, profileImage, registered, lastSeenHours } = member;
+  const { id, nickname, bio, profileImage, lastSeenHours } = member;
   const recent = lastSeenHours != null && lastSeenHours < 1;
 
   const stars = useMemo(() => {
@@ -112,76 +111,6 @@ export function MemberCard({
 
   const status = getStatus(lastSeenHours);
   const statusStyle = (dl2 ? DL2_STATUS_STYLE : STATUS_STYLE)[status];
-
-  if (dl2 && !registered) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        whileHover={{ y: -2 }}
-        transition={{ duration: 0.4, delay: Math.min(index * 0.02, 0.2) }}
-        className="group relative"
-      >
-        <Link
-          href={`/members/${id}`}
-          className="relative block rounded-2xl"
-          aria-label="아직 정착하지 않은 섬 — 프로필 등록하러 가기"
-        >
-          <div
-            className="relative flex items-center gap-2.5 rounded-2xl p-3 transition-transform duration-300 group-hover:-translate-y-0.5 sm:gap-4 sm:p-5"
-            style={{
-              minHeight: 104,
-              background: "rgba(168, 164, 160, 0.4)",
-              border: "1px dashed rgba(168, 164, 160, 0.6)",
-            }}
-          >
-            <div
-              className="relative flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full sm:h-16 sm:w-16"
-              style={{
-                border: "1.5px dashed rgba(90, 86, 82, 0.6)",
-              }}
-              aria-hidden
-            >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="rgba(90, 86, 82, 0.7)"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M5 21V4" />
-                <path d="M5 4 L17 4 L14 8 L17 12 L5 12" fill="rgba(90, 86, 82, 0.2)" />
-              </svg>
-            </div>
-
-            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-              <span
-                className="truncate text-[13px] font-semibold tracking-wide sm:text-sm"
-                style={{ color: "#4a4a4a" }}
-              >
-                {nickname || "미등록된 새벽"}
-              </span>
-              <span
-                className="wrap-anywhere text-[11px] italic leading-relaxed sm:text-[12px]"
-                style={{
-                  color: "#6a6560",
-                  display: "-webkit-box",
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: "vertical",
-                  overflow: "hidden",
-                }}
-              >
-                {nickname ? "아직 정착하지 않은 섬" : "아직 깃발이 꽂히지 않은 자리"}
-              </span>
-            </div>
-          </div>
-        </Link>
-      </motion.div>
-    );
-  }
 
   if (dl2) {
     return (
@@ -279,64 +208,6 @@ export function MemberCard({
     );
   }
 
-  if (!registered) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 0.5, y: 0 }}
-        whileHover={{ opacity: 0.75 }}
-        transition={{ duration: 0.4, delay: Math.min(index * 0.02, 0.2) }}
-        className="group relative"
-      >
-        <Link
-          href={`/members/${id}`}
-          className="relative block rounded-2xl"
-          aria-label="빈 길드원 슬롯 — 프로필 등록하러 가기"
-        >
-          <div
-            className="relative flex items-center gap-2.5 rounded-2xl p-3 transition-all duration-300 group-hover:-translate-y-0.5 sm:gap-4 sm:p-5"
-            style={{
-              minHeight: 104,
-              background: "rgba(107, 75, 168, 0.03)",
-              backdropFilter: "blur(16px)",
-              border: "1px dashed rgba(200, 168, 233, 0.22)",
-            }}
-          >
-            <div
-              className="relative flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full sm:h-16 sm:w-16"
-              style={{
-                border: "1.5px dashed rgba(200, 168, 233, 0.35)",
-                background:
-                  "radial-gradient(circle, rgba(107,75,168,0.08) 0%, rgba(11,8,33,0.2) 70%, transparent 100%)",
-              }}
-            >
-              <span className="font-serif text-xl text-text-sub/50">·</span>
-            </div>
-
-            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-              <span
-                className="truncate font-serif text-[13px] tracking-wide text-text-sub/60 italic sm:text-sm"
-                style={{ filter: nickname ? undefined : "blur(0.4px)" }}
-              >
-                {nickname || "미등록된 새벽"}
-              </span>
-              <span
-                className="wrap-anywhere font-serif text-[10px] italic leading-relaxed text-text-sub/50 sm:text-[11px]"
-                style={{
-                  display: "-webkit-box",
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: "vertical",
-                  overflow: "hidden",
-                }}
-              >
-                {nickname ? "프로필 등록을 기다리는 별" : "아직 이곳에 빛이 머물기 전"}
-              </span>
-            </div>
-          </div>
-        </Link>
-      </motion.div>
-    );
-  }
 
   return (
     <motion.div

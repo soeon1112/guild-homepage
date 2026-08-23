@@ -10,6 +10,7 @@ import {
 } from "react";
 import { doc, getDoc, setDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
+import { pickFreeSlotId } from "@/src/lib/pickFreeSlotId";
 
 type AuthResult = { ok: boolean; error?: string };
 
@@ -105,6 +106,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           guildId,
           createdAt: serverTimestamp(),
         });
+        // members doc 자동 생성 → 바로 "하늘 섬의 동료들" 목록에 표시
+        try {
+          const slotId = await pickFreeSlotId();
+          await setDoc(doc(db, "members", slotId), {
+            nickname: n,
+            statusMessage: "",
+            profileImage: "",
+            createdAt: serverTimestamp(),
+          });
+        } catch (e) {
+          console.warn("[signup] members doc 생성 실패 — 미니홈피에서 직접 등록 가능:", e);
+        }
         localStorage.setItem(STORAGE_KEY, n);
         setNickname(n);
         return { ok: true };

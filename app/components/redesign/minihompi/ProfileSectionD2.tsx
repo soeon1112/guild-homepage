@@ -18,6 +18,7 @@ import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { db, storage } from "@/src/lib/firebase";
 import { useUserMbti } from "@/src/lib/userMbti";
 import { logActivity } from "@/src/lib/activity";
+import { pickFreeSlotId } from "@/src/lib/pickFreeSlotId";
 import { BgmPlayerD2 } from "./BgmPlayerD2";
 import ProfileCropModal from "@/app/components/shared/ProfileCropModal";
 import type { MemberDoc } from "./ProfileSection";
@@ -36,16 +37,6 @@ import type { MemberDoc } from "./ProfileSection";
 //   - 아바타: cosmic Avatar 시스템 그대로
 //   - BGM: BgmPlayerD2 (음표만 + 짙은 베이지 박스)
 
-async function pickFreeSlotId(): Promise<string> {
-  const snap = await getDocs(collection(db, "members"));
-  const used = new Set<string>();
-  snap.forEach((d) => used.add(d.id));
-  for (let i = 1; i < 10000; i++) {
-    const candidate = String(i);
-    if (!used.has(candidate)) return candidate;
-  }
-  return `slot-${Date.now()}`;
-}
 
 const MOOD_OPTIONS: { value: string; emoji: string; label: string }[] = [
   { value: "happy", emoji: "😊", label: "좋음" },

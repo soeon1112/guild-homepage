@@ -121,16 +121,6 @@ export default function MembersPage() {
               nickname,
               bio: hit.data.bio || hit.data.statusMessage || "",
               profileImage: hit.data.profileImage || "",
-              registered: true,
-              lastSeenHours,
-            });
-          } else {
-            cards.push({
-              id: nickname,
-              nickname,
-              bio: "",
-              profileImage: "",
-              registered: false,
               lastSeenHours,
             });
           }
@@ -150,36 +140,15 @@ export default function MembersPage() {
 
   const q = queryText.trim().toLowerCase();
 
-  const registered = useMemo(
-    () => members.filter((m) => m.registered),
-    [members],
-  );
-  const unregistered = useMemo(
-    () => members.filter((m) => !m.registered),
-    [members],
-  );
-
   const filteredRegistered = useMemo(
     () =>
-      registered
+      members
         .filter((m) => m.nickname.toLowerCase().includes(q))
         .sort((a, b) => nicknameCompare(a.nickname, b.nickname)),
-    [registered, q],
-  );
-  const filteredUnregistered = useMemo(
-    () =>
-      q
-        ? unregistered.filter(
-            (m) =>
-              m.id.toLowerCase().includes(q) ||
-              m.nickname.toLowerCase().includes(q),
-          )
-        : unregistered,
-    [unregistered, q],
+    [members, q],
   );
 
-  const hasAnyResult =
-    filteredRegistered.length + filteredUnregistered.length > 0;
+  const hasAnyResult = filteredRegistered.length > 0;
 
   if (isDawnlight2) {
     return (
@@ -327,32 +296,6 @@ export default function MembersPage() {
           </section>
         )}
 
-        {loaded && filteredUnregistered.length > 0 && (
-          <section className="mb-6">
-            <header className="mb-4">
-              <h2
-                className="text-base font-semibold leading-tight sm:text-lg"
-                style={{
-                  color: "rgba(254, 245, 230, 0.8)",
-                  letterSpacing: "0.02em",
-                }}
-              >
-                아직 깃발이 없는 섬
-              </h2>
-              <p
-                className="mt-1 text-[10px] font-medium uppercase tracking-[0.32em]"
-                style={{ color: "rgba(200, 184, 232, 0.7)" }}
-              >
-                UNCLAIMED ISLES
-              </p>
-            </header>
-            <div className="grid grid-cols-2 gap-2 sm:gap-4">
-              {filteredUnregistered.map((m, i) => (
-                <MemberCard key={m.id} member={m} index={i} dl2 />
-              ))}
-            </div>
-          </section>
-        )}
       </div>
     );
   }
@@ -428,22 +371,6 @@ export default function MembersPage() {
         </section>
       )}
 
-      {loaded && filteredUnregistered.length > 0 && (
-        <section className="mb-6">
-          <div className="mb-4 flex items-center gap-3">
-            <span className="h-px flex-1 bg-gradient-to-r from-transparent via-text-sub/20 to-transparent" />
-            <h2 className="font-serif text-[11px] tracking-[0.35em] text-text-sub uppercase">
-              아직 잠든 별들
-            </h2>
-            <span className="h-px flex-1 bg-gradient-to-r from-transparent via-text-sub/20 to-transparent" />
-          </div>
-          <div className="grid grid-cols-2 gap-2 sm:gap-4">
-            {filteredUnregistered.map((m, i) => (
-              <MemberCard key={m.id} member={m} index={i} />
-            ))}
-          </div>
-        </section>
-      )}
     </div>
   );
 }
