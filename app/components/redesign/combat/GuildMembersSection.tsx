@@ -490,7 +490,12 @@ function CharacterRow({
           <div className="flex items-center justify-between gap-2 sm:hidden">
             <PowerNumber value={char.combatPower || 0} small dl2={dl2} />
             <div className="flex items-center gap-2">
-              <span className="font-mono text-[11px] tabular-nums" style={{ color: dl2 ? "#2a4570" : "#ffe5c4" }}>{floor > 0 ? `지옥${floor}` : <span style={{ color: dl2 ? "#5a7090" : "rgba(155,143,184,0.7)" }}>미도전</span>}<span style={{ color: dl2 ? "#5a7090" : "rgba(155,143,184,0.7)" }}>{` · 마저 ${char.magicResist != null ? char.magicResist.toLocaleString() : "-"}`}</span></span>
+              {/* 마저: 투력 80% 크기 + 투력 색 강조 */}
+              <span className="font-mono text-[9px] tabular-nums font-medium" style={{ color: dl2 ? "#8a6710" : "#FFE5C4" }}>
+                {`마저 ${char.magicResist != null ? char.magicResist.toLocaleString() : "-"}`}
+              </span>
+              {/* 지옥: 현재 스타일 그대로 */}
+              <span className="font-mono text-[11px] tabular-nums" style={{ color: dl2 ? "#2a4570" : "#ffe5c4" }}>{floor > 0 ? `지옥${floor}` : <span style={{ color: dl2 ? "#5a7090" : "rgba(155,143,184,0.7)" }}>미도전</span>}</span>
               <ChallengeDot challenge={char.challenge} dl2={dl2} />
             </div>
           </div>
@@ -511,8 +516,13 @@ function CharacterRow({
         <div className="hidden justify-end sm:flex">
           <PowerNumber value={char.combatPower || 0} dl2={dl2} />
         </div>
-        <div className="hidden justify-start sm:flex">
-          <span className="font-mono text-[11px] tabular-nums" style={{ color: dl2 ? "#2a4570" : "#ffe5c4" }}>{floor > 0 ? `지옥${floor}` : <span style={{ color: dl2 ? "#5a7090" : "rgba(155,143,184,0.7)" }}>미도전</span>}<span style={{ color: dl2 ? "#5a7090" : "rgba(155,143,184,0.7)" }}>{` · 마저 ${char.magicResist != null ? char.magicResist.toLocaleString() : "-"}`}</span></span>
+        <div className="hidden items-center gap-2 justify-start sm:flex">
+          {/* 마저: 투력 80% 크기 + 투력 색 강조 */}
+          <span className="font-mono text-[9px] tabular-nums font-medium" style={{ color: dl2 ? "#8a6710" : "#FFE5C4" }}>
+            {`마저 ${char.magicResist != null ? char.magicResist.toLocaleString() : "-"}`}
+          </span>
+          {/* 지옥: 현재 스타일 그대로 */}
+          <span className="font-mono text-[11px] tabular-nums" style={{ color: dl2 ? "#2a4570" : "#ffe5c4" }}>{floor > 0 ? `지옥${floor}` : <span style={{ color: dl2 ? "#5a7090" : "rgba(155,143,184,0.7)" }}>미도전</span>}</span>
         </div>
         <div className="hidden justify-center sm:flex">
           <ChallengeDot challenge={char.challenge} dl2={dl2} />
