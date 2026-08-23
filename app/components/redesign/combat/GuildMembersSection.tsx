@@ -491,7 +491,7 @@ function CharacterRow({
             <PowerNumber value={char.combatPower || 0} small dl2={dl2} />
             <div className="flex items-center gap-2">
               {/* 마저: 투력 80% 크기 + 투력 색 강조 */}
-              <span className="font-mono text-[9px] tabular-nums font-medium" style={{ color: dl2 ? "#8a6710" : "#FFE5C4" }}>
+              <span className="font-mono text-[11px] tabular-nums font-normal" style={{ color: dl2 ? "#8a6710" : "#FFE5C4" }}>
                 {`마저 ${char.magicResist != null ? char.magicResist.toLocaleString() : "-"}`}
               </span>
               {/* 지옥: 현재 스타일 그대로 */}
