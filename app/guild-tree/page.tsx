@@ -241,7 +241,7 @@ function GuildCard({
                   <img
                     src={logo}
                     alt={`${guild.name} 로고`}
-                    className="h-[90px] w-[90px] object-contain"
+                    className="h-[180px] w-[180px] object-contain"
                   />
                 </div>
               )}
