@@ -28,7 +28,6 @@ import { useAuth } from "@/app/components/AuthProvider";
 import NicknameLink from "@/app/components/NicknameLink";
 import { CommentImageView } from "@/app/components/CommentImage";
 import { formatSmart } from "@/src/lib/formatSmart";
-import { handleEvent } from "@/src/lib/badgeCheck";
 import {
   getOpenPanel,
   setChatInputFocused,
@@ -1136,12 +1135,6 @@ export default function FloatingChat() {
               },
             }
           : {}),
-      });
-      handleEvent({
-        type: "chat",
-        nickname,
-        when: new Date(),
-        totalChatCountBeforeThis: messages.length,
       });
     } catch (e) {
       console.error(e);

@@ -27,7 +27,6 @@ import {
 import { db, storage } from "@/src/lib/firebase";
 import { logActivity } from "@/src/lib/activity";
 import { addPoints } from "@/src/lib/points";
-import { handleEvent } from "@/src/lib/badgeCheck";
 import { useModalBodyLock } from "@/src/lib/useModalBodyLock";
 import { useBackdropClose } from "@/src/lib/useBackdropClose";
 import { CollapsibleSection } from "./CollapsibleSection";
@@ -497,14 +496,6 @@ function UploadModal({
         );
       }
       await addPoints(loginNick, "사진", 2, "미니홈피 사진첩에 사진 업로드");
-      if (loginNick) {
-        handleEvent({
-          type: "photo",
-          nickname: loginNick,
-          when: new Date(),
-          source: "minihome",
-        });
-      }
       onClose();
     } catch (e) {
       console.error(e);

@@ -36,7 +36,6 @@ import {
 } from "@/src/lib/useCommentActionSheet";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
 import { formatSmart } from "@/src/lib/formatSmart";
-import { handleEvent } from "@/src/lib/badgeCheck";
 import { josa, truncate } from "@/src/lib/text";
 import {
   MentionPicker,
@@ -173,7 +172,6 @@ function BoardDetailPageInner({
 
   useEffect(() => {
     if (!loginNick) return;
-    handleEvent({ type: "read", nickname: loginNick });
   }, [id, loginNick]);
 
   useEffect(() => {
@@ -317,12 +315,6 @@ function BoardDetailPageInner({
         );
       }
       await addPoints(loginNick, "댓글", 1, "게시판에 댓글 작성");
-      handleEvent({
-        type: "comment",
-        nickname: loginNick,
-        content: commentContent,
-        when: new Date(),
-      });
     } catch {
       alert("댓글 등록에 실패했습니다.");
     }
@@ -652,12 +644,6 @@ function BoardCommentItem({
         );
       }
       await addPoints(loginNick, "대댓글", 1, "게시판에 대댓글 작성");
-      handleEvent({
-        type: "comment",
-        nickname: loginNick,
-        content: msg,
-        when: new Date(),
-      });
     } catch {
       alert("대댓글 등록에 실패했습니다.");
     }

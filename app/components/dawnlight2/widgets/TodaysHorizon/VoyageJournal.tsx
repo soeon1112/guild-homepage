@@ -13,7 +13,6 @@ import {
 } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
 import { useAuth } from "@/app/components/AuthProvider";
-import { handleEvent } from "@/src/lib/badgeCheck";
 import { HorizonIllustration } from "./HorizonIllustration";
 import { getRandomVerse } from "./dailyVerse";
 
@@ -131,7 +130,6 @@ export function VoyageJournal() {
         description: "출석 체크",
         createdAt: serverTimestamp(),
       });
-      await handleEvent({ type: "attend", nickname, when: new Date() });
 
       // Play the stamp animation, then transition to the post-stamp view.
       // 1.45s covers stamp-press (0.55s) + ink-splat + glow + parchment-vanish.

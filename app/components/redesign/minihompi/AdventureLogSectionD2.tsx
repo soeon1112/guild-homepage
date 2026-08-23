@@ -20,7 +20,6 @@ import {
   deleteActivitiesByTargetPath,
   logActivity,
 } from "@/src/lib/activity";
-import { handleEvent } from "@/src/lib/badgeCheck";
 
 // dawnlight2 미니홈피 4단계 — 모험기록 (월넛 박스 + 타임라인 + 우표 카드).
 // logic은 cosmic AdventureLogSection 1:1 동일. 디자인만 사용자 결정대로.
@@ -97,12 +96,6 @@ export function AdventureLogSectionD2({
           `/members/${id}#minihome-adventure`,
           `members/${id}/adventures/${advRef.id}`,
         );
-        handleEvent({
-          type: "adventure",
-          nickname: memberNickname,
-          entryDate: date,
-          when: new Date(),
-        });
       }
     } catch (e) {
       console.error(e);

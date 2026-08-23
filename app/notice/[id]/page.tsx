@@ -8,7 +8,6 @@ import { ref, deleteObject } from "firebase/storage";
 import { db, storage } from "@/src/lib/firebase";
 import { deleteActivitiesByLink } from "@/src/lib/activity";
 import { useAuth } from "@/app/components/AuthProvider";
-import { handleEvent } from "@/src/lib/badgeCheck";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
 import { canManageNotice } from "@/src/lib/noticePermissions";
 
@@ -62,11 +61,6 @@ export default function NoticeDetailPage({
         });
         if (loginNick) {
           const noticeCreated = d.createdAt?.toDate?.() ?? null;
-          handleEvent({
-            type: "noticeRead",
-            nickname: loginNick,
-            noticeCreatedAt: noticeCreated,
-          });
         }
       }
       setLoading(false);

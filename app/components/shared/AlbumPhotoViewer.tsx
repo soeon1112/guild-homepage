@@ -46,7 +46,6 @@ import {
   type CommentActionContext,
 } from "@/src/lib/useCommentActionSheet";
 import { formatSmart } from "@/src/lib/formatSmart";
-import { handleEvent } from "@/src/lib/badgeCheck";
 import { josa, truncate } from "@/src/lib/text";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
 import { MentionText } from "@/app/components/mention/MentionText";
@@ -769,12 +768,6 @@ function AlbumCommentsSection({
         );
       }
       await addPoints(loginNick, "댓글", 1, "앨범에 댓글 작성");
-      handleEvent({
-        type: "comment",
-        nickname: loginNick,
-        content,
-        when: new Date(),
-      });
     } catch (e) {
       console.error(e);
     }
@@ -969,12 +962,6 @@ function AlbumCommentItem({
         );
       }
       await addPoints(loginNick, "대댓글", 1, "앨범 댓글에 대댓글 작성");
-      handleEvent({
-        type: "comment",
-        nickname: loginNick,
-        content: msg,
-        when: new Date(),
-      });
     } catch (e) {
       console.error(e);
     }

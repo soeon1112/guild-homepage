@@ -5,7 +5,6 @@ import { AuthProvider } from "./components/AuthProvider";
 import FloatingChat from "./components/redesign/FloatingChat";
 import { ChromeShell } from "./components/redesign/ChromeShell";
 import { AuthGuard } from "./components/AuthGuard";
-import BadgeToast from "./components/BadgeToast";
 import KeyboardScrollGuard from "./components/KeyboardScrollGuard";
 import { VisualViewportSync } from "./components/VisualViewportSync";
 import "./globals.css";
@@ -75,7 +74,6 @@ export default function RootLayout({
           <VisualViewportSync />
           <ChromeShell><AuthGuard>{children}</AuthGuard></ChromeShell>
           <FloatingChat />
-          <BadgeToast />
         </AuthProvider>
       </body>
     </html>

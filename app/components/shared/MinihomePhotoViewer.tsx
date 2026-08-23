@@ -62,7 +62,6 @@ import {
   applyMentionInsert,
 } from "@/app/components/mention/MentionPicker";
 import { formatSmart } from "@/src/lib/formatSmart";
-import { handleEvent } from "@/src/lib/badgeCheck";
 import { josa, truncate } from "@/src/lib/text";
 
 export type MediaKind = "image" | "video" | "gif";
@@ -720,12 +719,6 @@ function PhotoComments({
         1,
         `${memberNickname ?? "미니홈피"}님 사진에 댓글 작성`,
       );
-      handleEvent({
-        type: "comment",
-        nickname: loginNick,
-        content,
-        when: new Date(),
-      });
     } catch (e) {
       console.error(e);
     }
@@ -1033,12 +1026,6 @@ function PhotoCommentItem({
         1,
         `${memberNickname ?? "미니홈피"}님 사진에 대댓글 작성`,
       );
-      handleEvent({
-        type: "comment",
-        nickname: loginNick,
-        content: msg,
-        when: new Date(),
-      });
     } catch (e) {
       console.error(e);
     }

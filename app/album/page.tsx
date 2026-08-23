@@ -19,7 +19,6 @@ import {
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { logActivity } from "@/src/lib/activity";
 import { addPoints } from "@/src/lib/points";
-import { handleEvent } from "@/src/lib/badgeCheck";
 import { useModalBodyLock } from "@/src/lib/useModalBodyLock";
 import { useBackdropClose } from "@/src/lib/useBackdropClose";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
@@ -263,7 +262,6 @@ export default function AlbumPage() {
       await uploadBytes(storageRef, file);
       const url = await getDownloadURL(storageRef);
       // photographer auto-set to login nickname (per 2026-04-29 redesign).
-      // Existing badge dispatch (`handleEvent` below) keys off this field
       // so the shape stays identical — just sourced from auth instead of
       // a manual input.
       const newRef = await addDoc(collection(db, "album"), {
@@ -285,14 +283,6 @@ export default function AlbumPage() {
         `/album?photo=${newRef.id}`,
         `album/${newRef.id}`,
       );
-      handleEvent({
-        type: "photo",
-        nickname: loginNick,
-        people,
-        photographer: loginNick,
-        when: new Date(),
-        source: "album",
-      });
     } catch (e) {
       console.error(e);
       alert("업로드 실패");

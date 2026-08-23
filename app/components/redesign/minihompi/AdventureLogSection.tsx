@@ -20,7 +20,6 @@ import {
   deleteActivitiesByTargetPath,
   logActivity,
 } from "@/src/lib/activity";
-import { handleEvent } from "@/src/lib/badgeCheck";
 import { CollapsibleSection } from "./CollapsibleSection";
 
 type AdventureEntry = {
@@ -100,12 +99,6 @@ export function AdventureLogSection({
           `/members/${id}#minihome-adventure`,
           `members/${id}/adventures/${advRef.id}`,
         );
-        handleEvent({
-          type: "adventure",
-          nickname: memberNickname,
-          entryDate: date,
-          when: new Date(),
-        });
       }
     } catch (e) {
       console.error(e);

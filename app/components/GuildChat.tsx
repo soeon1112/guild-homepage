@@ -18,7 +18,6 @@ import { useAuth } from "./AuthProvider";
 import NicknameLink from "./NicknameLink";
 import { CommentImageView } from "./CommentImage";
 import { formatSmart } from "@/src/lib/formatSmart";
-import { handleEvent } from "@/src/lib/badgeCheck";
 
 type ChatFileType = "image" | "gif" | "video";
 
@@ -225,12 +224,6 @@ export default function GuildChat() {
         imageUrl,
         fileType: fileType ?? "",
         createdAt: serverTimestamp(),
-      });
-      handleEvent({
-        type: "chat",
-        nickname,
-        when: new Date(),
-        totalChatCountBeforeThis: messages.length,
       });
     } catch (e) {
       console.error(e);

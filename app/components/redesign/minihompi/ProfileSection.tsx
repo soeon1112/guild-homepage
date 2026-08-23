@@ -33,9 +33,7 @@ import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { db, storage } from "@/src/lib/firebase";
 import { useUserMbti } from "@/src/lib/userMbti";
 import { logActivity } from "@/src/lib/activity";
-import { handleEvent } from "@/src/lib/badgeCheck";
 import { BgmPlayer } from "./BgmPlayer";
-import { KeywordsSection } from "./KeywordsSection";
 import ProfileCropModal from "@/app/components/shared/ProfileCropModal";
 
 export type MemberDoc = {
@@ -167,11 +165,6 @@ export function ProfileSection({
         createdAt: serverTimestamp(),
       });
       onChange(created);
-      handleEvent({
-        type: "profileCreate",
-        nickname: loginNick,
-        when: new Date(),
-      });
       if (slotId !== id) router.replace(`/members/${slotId}`);
     } catch (e) {
       console.error(e);
@@ -246,24 +239,6 @@ export function ProfileSection({
           `/members/${id}`,
         );
       }
-      if (statusChanged) {
-        handleEvent({ type: "statusChange", nickname: member.nickname });
-      }
-      if (bgmChanged && newBgmUrl) {
-        handleEvent({
-          type: "bgmChange",
-          nickname: member.nickname,
-          first: !prevBgmUrl,
-        });
-      }
-      if (moodChanged && newMood) {
-        handleEvent({
-          type: "moodChange",
-          nickname: member.nickname,
-          mood: newMood,
-          when: new Date(),
-        });
-      }
       setEditMode(false);
     } catch (e) {
       console.error(e);
@@ -307,7 +282,6 @@ export function ProfileSection({
           : `${member.nickname}님이 프로필 사진을 설정했어요`,
         `/members/${id}`,
       );
-      handleEvent({ type: "profileImageChange", nickname: member.nickname });
     } catch (e) {
       console.error(e);
       alert("이미지 업로드 실패");
@@ -603,12 +577,6 @@ export function ProfileSection({
               </div>
             )}
 
-            <KeywordsSection
-              memberId={id}
-              targetNickname={member.nickname}
-              loginNick={loginNick}
-              isOwner={isOwner}
-            />
           </>
         )}
 
