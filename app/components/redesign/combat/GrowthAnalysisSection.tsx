@@ -57,6 +57,7 @@ export type GrowthCharacter = {
 
 type HistoryEntry = {
   combatPower: number;
+  magicResist?: number;
   recordedAt: Timestamp | null;
 };
 
@@ -64,7 +65,13 @@ type Point = {
   ts: number;
   date: string; // v0 uses "date" key on XAxis
   power: number;
+  mr?: number;
 };
+
+const POWER_COLOR_COSMIC = "#7ba7f5";
+const POWER_COLOR_DL2 = "#2a4570";
+const MR_COLOR_COSMIC = "#f09830";
+const MR_COLOR_DL2 = "#c47820";
 
 type Grower = {
   owner: string;
@@ -158,18 +165,16 @@ export function GrowthAnalysisSection({
         const ts = h.recordedAt?.toMillis();
         if (typeof ts !== "number") return null;
         const d = new Date(ts);
-        return {
-          ts,
-          date: formatDayLabel(d),
-          power: h.combatPower,
-        };
+        const p: Point = { ts, date: formatDayLabel(d), power: h.combatPower };
+        if (h.magicResist !== undefined) p.mr = h.magicResist;
+        return p;
       })
       .filter((p): p is Point => p !== null);
-    // Current snapshot as latest point
     points.push({
       ts: nowMs,
       date: formatDayLabel(new Date(nowMs)),
       power: selectedChar.combatPower,
+      mr: selectedChar.magicResist,
     });
     return points;
   }, [history, selectedChar, nowMs]);
@@ -188,17 +193,14 @@ export function GrowthAnalysisSection({
 
   const growth = useMemo(() => {
     if (!selectedChar || nowMs === null) {
-      return {
-        hasData: false,
-        week: 0,
-        month: 0,
-        total: 0,
-      };
+      return { hasData: false, week: null, month: null, total: null,
+               weekMr: null, monthMr: null, totalMr: null };
     }
     const current = selectedChar.combatPower;
+    const currentMr = selectedChar.magicResist ?? null;
     const withTs = history
-      .map((h) => ({ ts: h.recordedAt?.toMillis(), cp: h.combatPower }))
-      .filter((h): h is { ts: number; cp: number } => typeof h.ts === "number");
+      .filter((h) => h.recordedAt != null)
+      .map((h) => ({ ts: h.recordedAt!.toMillis(), cp: h.combatPower, mr: h.magicResist }));
 
     const valueAt = (cutoff: number): number | null => {
       const firstAfter = withTs.find((h) => h.ts >= cutoff);
@@ -206,21 +208,30 @@ export function GrowthAnalysisSection({
       if (withTs.length === 0) return null;
       return current;
     };
+    const valueAtMr = (cutoff: number): number | null => {
+      const hasMrHistory = withTs.some((h) => h.mr !== undefined);
+      if (!hasMrHistory || currentMr === null) return null;
+      const firstAfter = withTs.find((h) => h.ts >= cutoff && h.mr !== undefined);
+      if (firstAfter) return firstAfter.mr ?? null;
+      return currentMr;
+    };
 
-    const week = valueAt(nowMs - 7 * 24 * 60 * 60 * 1000);
-    const month = valueAt(nowMs - 30 * 24 * 60 * 60 * 1000);
+    const week  = valueAt(nowMs - 7  * 86400000);
+    const month = valueAt(nowMs - 30 * 86400000);
     const first = withTs.length > 0 ? withTs[0].cp : null;
+    const wMr   = valueAtMr(nowMs - 7  * 86400000);
+    const mMr   = valueAtMr(nowMs - 30 * 86400000);
+    const firstMrEntry = withTs.find((h) => h.mr !== undefined);
+    const firstMr = firstMrEntry?.mr ?? null;
 
     return {
       hasData: true,
-      week: week === null ? null : current - week,
+      week:  week  === null ? null : current - week,
       month: month === null ? null : current - month,
       total: first === null ? null : current - first,
-    } as {
-      hasData: boolean;
-      week: number | null;
-      month: number | null;
-      total: number | null;
+      weekMr:  wMr   === null || currentMr === null ? null : currentMr - wMr,
+      monthMr: mMr   === null || currentMr === null ? null : currentMr - mMr,
+      totalMr: firstMr === null || currentMr === null ? null : currentMr - firstMr,
     };
   }, [selectedChar, history, nowMs]);
 
@@ -337,10 +348,10 @@ export function GrowthAnalysisSection({
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {/* Merged: 투력 변화 + 성장폭 */}
             <GlassCard>
-              {/* 투력 변화 */}
-              <div className="mb-3 flex items-center justify-between gap-3">
+              {/* 변화 */}
+              <div className="mb-2 flex items-center justify-between gap-3">
                 <h3 className="font-serif text-sm tracking-wider text-stardust">
-                  투력 변화
+                  변화
                 </h3>
                 <div className="flex items-center gap-1 rounded-full border border-nebula-pink/20 bg-abyss-deep/40 p-0.5">
                   <TogglePill
@@ -358,6 +369,17 @@ export function GrowthAnalysisSection({
                     전체
                   </TogglePill>
                 </div>
+              </div>
+              {/* 범례 */}
+              <div className="mb-2 flex gap-3">
+                <span className="flex items-center gap-1 font-mono text-[10px]" style={{ color: dl2 ? "#5a7090" : "rgba(155,143,184,0.8)" }}>
+                  <span className="inline-block h-2 w-2 rounded-full" style={{ background: dl2 ? POWER_COLOR_DL2 : POWER_COLOR_COSMIC }} />
+                  투력
+                </span>
+                <span className="flex items-center gap-1 font-mono text-[10px]" style={{ color: dl2 ? "#5a7090" : "rgba(155,143,184,0.8)" }}>
+                  <span className="inline-block h-2 w-2 rounded-full" style={{ background: dl2 ? MR_COLOR_DL2 : MR_COLOR_COSMIC }} />
+                  마저
+                </span>
               </div>
 
               <div className="h-[180px] w-full">
@@ -404,6 +426,7 @@ export function GrowthAnalysisSection({
                         interval={Math.max(Math.floor(series.length / 6), 0)}
                       />
                       <YAxis
+                        yAxisId="left"
                         stroke={dl2 ? "#5a7090" : "rgba(155, 143, 184, 0.6)"}
                         fontSize={10}
                         tickLine={false}
@@ -415,6 +438,21 @@ export function GrowthAnalysisSection({
                             : String(v)
                         }
                         width={48}
+                      />
+                      <YAxis
+                        yAxisId="right"
+                        orientation="right"
+                        stroke={dl2 ? MR_COLOR_DL2 : MR_COLOR_COSMIC}
+                        fontSize={9}
+                        tickLine={false}
+                        axisLine={false}
+                        domain={["dataMin - 50", "dataMax + 50"]}
+                        tickFormatter={(v) =>
+                          typeof v === "number" && v >= 1000
+                            ? `${(v / 1000).toFixed(1)}k`
+                            : String(Math.round(v))
+                        }
+                        width={36}
                       />
                       <Tooltip
                         cursor={{
@@ -442,21 +480,25 @@ export function GrowthAnalysisSection({
                       <Area
                         type="monotone"
                         dataKey="power"
-                        stroke="url(#powerLineGradient)"
-                        strokeWidth={2.5}
+                        yAxisId="left"
+                        stroke={dl2 ? POWER_COLOR_DL2 : POWER_COLOR_COSMIC}
+                        strokeWidth={2}
                         fill="url(#powerAreaGradient)"
-                        dot={{
-                          r: 2,
-                          fill: dl2 ? "#b85420" : "#FFE5C4",
-                          stroke: dl2 ? "#b85420" : "#D896C8",
-                          strokeWidth: 1,
-                        }}
-                        activeDot={{
-                          r: 4,
-                          fill: dl2 ? "#b85420" : "#FFE5C4",
-                          stroke: dl2 ? "#ff9a6c" : "#FFB5A7",
-                          strokeWidth: 2,
-                        }}
+                        dot={{ r: 2, fill: dl2 ? POWER_COLOR_DL2 : "#FFE5C4", strokeWidth: 0 }}
+                        activeDot={{ r: 4, fill: dl2 ? POWER_COLOR_DL2 : "#FFE5C4", strokeWidth: 1 }}
+                        animationDuration={900}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="mr"
+                        yAxisId="right"
+                        stroke={dl2 ? MR_COLOR_DL2 : MR_COLOR_COSMIC}
+                        strokeWidth={1.8}
+                        strokeDasharray="5 2"
+                        fill="none"
+                        dot={{ r: 2, fill: dl2 ? MR_COLOR_DL2 : MR_COLOR_COSMIC, strokeWidth: 0 }}
+                        activeDot={{ r: 3, fill: dl2 ? MR_COLOR_DL2 : MR_COLOR_COSMIC, strokeWidth: 1 }}
+                        connectNulls={false}
                         animationDuration={900}
                       />
                     </AreaChart>
@@ -487,17 +529,20 @@ export function GrowthAnalysisSection({
                   <GrowthRow
                     label="이번 주"
                     value={growth.hasData ? growth.week : null}
+                    mrValue={growth.hasData ? growth.weekMr : null}
                     series={weekSeries}
                     dl2={dl2}
                   />
                   <GrowthRow
                     label="이번 달"
                     value={growth.hasData ? growth.month : null}
+                    mrValue={growth.hasData ? growth.monthMr : null}
                     dl2={dl2}
                   />
                   <GrowthRow
                     label="전체"
                     value={growth.hasData ? growth.total : null}
+                    mrValue={growth.hasData ? growth.totalMr : null}
                     dl2={dl2}
                   />
                 </div>
@@ -836,77 +881,56 @@ function CharacterSelect({
 function GrowthRow({
   label,
   value,
+  mrValue,
   series,
   dl2 = false,
 }: {
   label: string;
   value: number | null;
-  series?: { power: number }[];
+  mrValue?: number | null;
+  series?: Point[];
   dl2?: boolean;
 }) {
-  const up = (value ?? 0) >= 0;
-  const dl2UpColor = "#8a6710";
-  const dl2DownColor = "#a8691f";
+  const up   = (value ?? 0) >= 0;
+  const upMr = (mrValue ?? 0) >= 0;
+  const powerColor = dl2 ? (up   ? POWER_COLOR_DL2 : "#a8691f") : (up   ? POWER_COLOR_COSMIC : "#d08080");
+  const mrColor    = dl2 ? (upMr ? MR_COLOR_DL2    : "#8a5020") : (upMr ? MR_COLOR_COSMIC    : "#d08060");
   return (
-    <div className="flex items-center justify-between gap-3 py-2.5">
+    <div className="flex items-start justify-between gap-3 py-2.5">
       <span
-        className={
-          dl2
-            ? "font-serif text-[11px] tracking-wider"
-            : "font-serif text-[11px] tracking-wider text-text-sub"
-        }
+        className={dl2 ? "font-serif text-[11px] tracking-wider" : "font-serif text-[11px] tracking-wider text-text-sub"}
         style={dl2 ? { color: "#5c3a1f" } : undefined}
       >
         {label}
       </span>
       {value === null ? (
-        <span
-          className={
-            dl2
-              ? "font-serif text-[11px] italic"
-              : "font-serif text-[11px] italic text-text-sub/70"
-          }
-          style={dl2 ? { color: "#8a6a4a" } : undefined}
-        >
+        <span className={dl2 ? "font-serif text-[11px] italic" : "font-serif text-[11px] italic text-text-sub/70"}
+          style={dl2 ? { color: "#8a6a4a" } : undefined}>
           기록 부족
         </span>
       ) : (
-        <div className="flex items-center gap-2">
-          {series && series.length > 1 && <MiniSparkline series={series} dl2={dl2} />}
-          <span
-            className={
-              dl2
-                ? "font-mono text-sm tabular-nums"
-                : "font-mono text-sm font-medium tabular-nums"
-            }
-            style={{
-              color: dl2
-                ? up
-                  ? dl2UpColor
-                  : dl2DownColor
-                : up
-                  ? "#A8E8C0"
-                  : "#E8A8B8",
-              fontWeight: dl2 ? 700 : undefined,
-            }}
-          >
-            {up && value > 0 ? "+" : ""}
-            {value.toLocaleString()}
-          </span>
-          <span
-            aria-hidden
-            style={{
-              color: dl2
-                ? up
-                  ? dl2UpColor
-                  : dl2DownColor
-                : up
-                  ? "#A8E8C0"
-                  : "#E8A8B8",
-            }}
-          >
-            <TrendingUp className={`h-3.5 w-3.5 ${up ? "" : "rotate-180"}`} />
-          </span>
+        <div className="flex flex-col gap-0.5 items-end">
+          {/* 투력 */}
+          <div className="flex items-center gap-2">
+            {series && series.length > 1 && <MiniSparkline series={series} dl2={dl2} />}
+            <span className={dl2 ? "font-mono text-sm tabular-nums" : "font-mono text-sm font-medium tabular-nums"}
+              style={{ color: powerColor, fontWeight: dl2 ? 700 : undefined }}>
+              {up && value > 0 ? "+" : ""}{value.toLocaleString()}
+            </span>
+            <span aria-hidden style={{ color: powerColor }}>
+              <TrendingUp className={`h-3.5 w-3.5 ${up ? "" : "rotate-180"}`} />
+            </span>
+          </div>
+          {/* 마저 */}
+          {mrValue !== undefined && (
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-[11px] tabular-nums" style={{ color: mrColor }}>
+                {mrValue === null
+                  ? "마저 -"
+                  : `마저 ${upMr && mrValue > 0 ? "+" : ""}${mrValue.toLocaleString()}`}
+              </span>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -917,37 +941,41 @@ function MiniSparkline({
   series,
   dl2 = false,
 }: {
-  series: { power: number }[];
+  series: Point[];
   dl2?: boolean;
 }) {
-  const values = series.map((s) => s.power);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const w = 60;
-  const h = 18;
-  const denom = Math.max(values.length - 1, 1);
-  const points = values
-    .map((v, i) => {
-      const x = (i / denom) * w;
-      const y = h - ((v - min) / Math.max(max - min, 1)) * h;
+  const w = 60, h = 18, denom = Math.max(series.length - 1, 1);
+  // 투력 라인
+  const powerVals = series.map((s) => s.power);
+  const minP = Math.min(...powerVals), maxP = Math.max(...powerVals);
+  const powerPts = powerVals.map((v, i) => {
+    const x = (i / denom) * w;
+    const y = h - ((v - minP) / Math.max(maxP - minP, 1)) * h;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+  // 마저 라인
+  const mrEntries = series.filter((s) => s.mr !== undefined);
+  let mrPts = "";
+  if (mrEntries.length >= 2) {
+    const mrVals = mrEntries.map((s) => s.mr as number);
+    const minMr = Math.min(...mrVals), maxMr = Math.max(...mrVals);
+    mrPts = mrEntries.map((s) => {
+      const idx = series.indexOf(s);
+      const x = (idx / denom) * w;
+      const y = h - ((s.mr! - minMr) / Math.max(maxMr - minMr, 1)) * h;
       return `${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(" ");
+    }).join(" ");
+  }
   return (
     <svg width={w} height={h} aria-hidden>
-      <polyline
-        points={points}
-        fill="none"
-        stroke={dl2 ? "#8a6710" : "#A8E8C0"}
-        strokeWidth="1.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        style={{
-          filter: dl2
-            ? "drop-shadow(0 0 3px rgba(138, 103, 16, 0.35))"
-            : "drop-shadow(0 0 4px rgba(168, 232, 192, 0.6))",
-        }}
-      />
+      <polyline points={powerPts} fill="none"
+        stroke={dl2 ? POWER_COLOR_DL2 : POWER_COLOR_COSMIC}
+        strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      {mrPts && (
+        <polyline points={mrPts} fill="none"
+          stroke={dl2 ? MR_COLOR_DL2 : MR_COLOR_COSMIC}
+          strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      )}
     </svg>
   );
 }

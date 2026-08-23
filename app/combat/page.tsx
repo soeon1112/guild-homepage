@@ -196,13 +196,16 @@ function CombatPageInner() {
             throw new Error("본인 캐릭터만 수정할 수 있습니다.");
           }
           const prevCp = existing.combatPower || 0;
+          const prevMr = existing.magicResist ?? 0;
           const cpChanged = prevCp !== values.combatPower;
-          if (cpChanged) {
+          const mrChanged = prevMr !== (values.magicResist ?? 0);
+          if (cpChanged || mrChanged) {
+            // 투력 또는 마저 변경 시 history에 이전 값 기록 (시계열).
             await addDoc(
               collection(db, "characters", formInitial.id, "history"),
               {
                 combatPower: prevCp,
-                hellStage: existing.hellStage || "",
+                magicResist: prevMr,
                 recordedAt: serverTimestamp(),
               },
             );
