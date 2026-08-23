@@ -305,6 +305,9 @@ function GroupBlock({
   const topPower = Math.max(
     ...group.characters.map((c) => c.combatPower || 0),
   );
+  const topMagicResist = Math.max(
+    ...group.characters.map((c) => c.magicResist ?? 0),
+  );
   return (
     <motion.div
       layout
@@ -364,6 +367,14 @@ function GroupBlock({
             <span style={{ color: dl2 ? "#8a6710" : undefined, fontWeight: dl2 ? 700 : undefined }}>
               {topPower.toLocaleString()}
             </span>
+            {topMagicResist > 0 && (
+              <>
+                {" · "}
+                <span style={{ color: dl2 ? "#8a6710" : undefined, fontWeight: dl2 ? 700 : undefined }}>
+                  {topMagicResist.toLocaleString()}
+                </span>
+              </>
+            )}
           </span>
         </div>
 
@@ -490,9 +501,9 @@ function CharacterRow({
           <div className="flex items-center justify-between gap-2 sm:hidden">
             <PowerNumber value={char.combatPower || 0} small dl2={dl2} />
             <div className="flex items-center gap-2">
-              {/* 마저: 투력 80% 크기 + 투력 색 강조 */}
-              <span className="font-mono text-[11px] tabular-nums font-normal" style={{ color: dl2 ? "#8a6710" : "#FFE5C4" }}>
-                {`마저 ${char.magicResist != null ? char.magicResist.toLocaleString() : "-"}`}
+              {/* 마저: 투력과 동일 스타일, 숫자만 */}
+              <span className="font-mono text-[11px] tabular-nums font-medium" style={{ color: dl2 ? "#8a6710" : "#FFE5C4", fontWeight: dl2 ? 700 : undefined }}>
+                {char.magicResist != null ? char.magicResist.toLocaleString() : "-"}
               </span>
               {/* 지옥: 현재 스타일 그대로 */}
               <span className="font-mono text-[11px] tabular-nums" style={{ color: dl2 ? "#2a4570" : "#ffe5c4" }}>{floor > 0 ? `지옥${floor}` : <span style={{ color: dl2 ? "#5a7090" : "rgba(155,143,184,0.7)" }}>미도전</span>}</span>
@@ -517,9 +528,9 @@ function CharacterRow({
           <PowerNumber value={char.combatPower || 0} dl2={dl2} />
         </div>
         <div className="hidden items-center gap-2 justify-start sm:flex">
-          {/* 마저: 투력과 동일 크기 (text-sm = 14px) + 굵기만 얇게 */}
-          <span className="font-mono text-sm tabular-nums font-normal" style={{ color: dl2 ? "#8a6710" : "#FFE5C4" }}>
-            {`마저 ${char.magicResist != null ? char.magicResist.toLocaleString() : "-"}`}
+          {/* 마저: 투력과 동일 스타일, 숫자만 */}
+          <span className="font-mono text-sm tabular-nums font-medium" style={{ color: dl2 ? "#8a6710" : "#FFE5C4", fontWeight: dl2 ? 700 : undefined }}>
+            {char.magicResist != null ? char.magicResist.toLocaleString() : "-"}
           </span>
           {/* 지옥: 현재 스타일 그대로 */}
           <span className="font-mono text-[11px] tabular-nums" style={{ color: dl2 ? "#2a4570" : "#ffe5c4" }}>{floor > 0 ? `지옥${floor}` : <span style={{ color: dl2 ? "#5a7090" : "rgba(155,143,184,0.7)" }}>미도전</span>}</span>
