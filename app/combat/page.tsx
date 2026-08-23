@@ -221,7 +221,7 @@ function CombatPageInner() {
             dps: deleteField(),
             updatedAt: serverTimestamp(),
           });
-          if (cpChanged) {
+          if (cpChanged || mrChanged) {
             await logActivity(
               "combat",
               owner,
