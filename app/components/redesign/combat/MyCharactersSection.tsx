@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Pencil, Plus, Trash2, Lock } from "lucide-react";
-import { JobIcon, parseAbyssFloor, ABYSS_MAX } from "./JobIcon";
+import { JobIcon, parseAbyssFloor } from "./JobIcon";
 
 type Challenge = "있음" | "다소 있음" | "없음";
 
@@ -132,7 +132,6 @@ function MyCharacterCard({
   dl2?: boolean;
 }) {
   const floor = parseAbyssFloor(char.hellStage);
-  const progress = Math.min(floor / ABYSS_MAX, 1);
   // dl2 challenge palette — sage / amber (hollow) / grey trio replaces
   // cosmic mint/yellow/pink for a calmer, more legible read.
   const challengeColor =
@@ -297,16 +296,12 @@ function MyCharacterCard({
         </span>
       </div>
 
-      {/* Abyss progress */}
-      <div className="mt-3">
-        <div className="mb-1.5 flex items-center justify-between font-serif text-[10px] tracking-wider text-text-sub">
-          <span>지옥 진행도</span>
-          <span className="text-stardust">
-            {floor > 0 ? `지옥 ${floor}` : "미도전"}
-            <span className="text-text-sub/70"> / {ABYSS_MAX}</span>
-          </span>
-        </div>
-        <AbyssProgressBar progress={progress} delay={index * 0.1} dl2={dl2} />
+      {/* 지옥 단계 */}
+      <div className="mt-3 flex items-center justify-between font-serif text-[10px] tracking-wider">
+        <span className="text-text-sub">지옥 단계</span>
+        <span className={dl2 ? "text-[#2a4570]" : "text-stardust"}>
+          {floor > 0 ? `지옥 ${floor}` : "미도전"}
+        </span>
       </div>
 
       {/* Challenge + rune builds */}
@@ -370,53 +365,3 @@ function MyCharacterCard({
   );
 }
 
-function AbyssProgressBar({
-  progress,
-  delay,
-  dl2 = false,
-}: {
-  progress: number;
-  delay?: number;
-  dl2?: boolean;
-}) {
-  return (
-    <div
-      className="relative h-2 w-full overflow-hidden rounded-full"
-      style={{
-        background: dl2 ? "rgba(42, 69, 112, 0.15)" : "rgba(107, 75, 168, 0.18)",
-        boxShadow: dl2 ? "none" : "inset 0 1px 2px rgba(11, 8, 33, 0.5)",
-      }}
-    >
-      <motion.div
-        initial={{ width: "0%" }}
-        animate={{ width: `${progress * 100}%` }}
-        transition={{ duration: 1.1, delay: delay ?? 0, ease: "easeOut" }}
-        className="relative h-full rounded-full"
-        style={{
-          // dl2: all-gold gauge — light gold → antique gold → deep gold.
-          // cosmic stays purple → peach.
-          background: dl2
-            ? "linear-gradient(90deg, #e6c97a 0%, #c4992f 55%, #8a6710 100%)"
-            : "linear-gradient(90deg, #6B4BA8 0%, #D896C8 60%, #FFB5A7 100%)",
-          boxShadow: dl2
-            ? "0 0 8px rgba(196, 153, 47, 0.4)"
-            : "0 0 10px rgba(216, 150, 200, 0.55)",
-        }}
-      >
-        {progress > 0 && (
-          <span
-            aria-hidden
-            className="pointer-events-none absolute right-0 top-1/2 h-2.5 w-2.5 -translate-y-1/2 translate-x-1/2 rounded-full"
-            style={{
-              background: dl2 ? "#c4992f" : "#FFE5C4",
-              boxShadow: dl2
-                ? "0 0 8px #c4992f, 0 0 14px rgba(196, 153, 47, 0.6)"
-                : "0 0 8px #FFE5C4, 0 0 14px rgba(255, 181, 167, 0.8)",
-              animation: "twinkle 2s ease-in-out infinite",
-            }}
-          />
-        )}
-      </motion.div>
-    </div>
-  );
-}

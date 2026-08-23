@@ -73,7 +73,7 @@ type Grower = {
 
 const HELL_INDEX: Record<string, number> = (() => {
   const map: Record<string, number> = { "매어 이하": 0 };
-  for (let i = 1; i <= 15; i++) map[`지옥${i}`] = i;
+  for (let i = 1; i <= 2; i++) map[`지옥${i}`] = i;
   return map;
 })();
 
@@ -81,7 +81,7 @@ function hellLabelFromAverage(avg: number): string {
   if (!Number.isFinite(avg)) return "-";
   const rounded = Math.round(avg);
   if (rounded <= 0) return "0";
-  if (rounded >= 15) return "15";
+  if (rounded >= 2) return "2";
   return String(rounded);
 }
 

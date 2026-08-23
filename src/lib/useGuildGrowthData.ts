@@ -42,7 +42,7 @@ type HistoryEntry = { combatPower: number; recordedAt: Timestamp | null };
 
 const HELL_INDEX: Record<string, number> = (() => {
   const map: Record<string, number> = { "매어 이하": 0 };
-  for (let i = 1; i <= 15; i++) map[`지옥${i}`] = i;
+  for (let i = 1; i <= 2; i++) map[`지옥${i}`] = i;
   return map;
 })();
 
@@ -50,7 +50,7 @@ function hellLabelFromAverage(avg: number): string {
   if (!Number.isFinite(avg)) return "-";
   const r = Math.round(avg);
   if (r <= 0) return "0";
-  if (r >= 15) return "15";
+  if (r >= 2) return "2";
   return String(r);
 }
 

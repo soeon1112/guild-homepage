@@ -210,11 +210,11 @@ export function JobIcon({
   }
 }
 
-/** Parse a hellStage string ("지옥5", "지옥15", "매어 이하") to a number floor 0-15. */
+/** Parse a hellStage string ("지옥1", "지옥2", "매어 이하") to a number floor 0-2. */
 export function parseAbyssFloor(hellStage: string | undefined | null): number {
   if (!hellStage) return 0;
   const m = hellStage.match(/지옥\s*(\d+)/);
   return m ? parseInt(m[1], 10) : 0;
 }
 
-export const ABYSS_MAX = 15;
+export const ABYSS_MAX = 2;

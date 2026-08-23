@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Search, Lock } from "lucide-react";
 import NicknameLink from "@/app/components/NicknameLink";
-import { JobIcon, parseAbyssFloor, ABYSS_MAX } from "./JobIcon";
+import { JobIcon, parseAbyssFloor } from "./JobIcon";
 
 type Challenge = "있음" | "다소 있음" | "없음";
 
@@ -427,7 +427,6 @@ function CharacterRow({
 }) {
   const [expanded, setExpanded] = useState(false);
   const floor = parseAbyssFloor(char.hellStage);
-  const progress = Math.min(floor / ABYSS_MAX, 1);
 
   const allBuilds = char.runeBuilds ?? [];
   const visibleBuilds =
@@ -490,7 +489,7 @@ function CharacterRow({
           <div className="flex items-center justify-between gap-2 sm:hidden">
             <PowerNumber value={char.combatPower || 0} small dl2={dl2} />
             <div className="flex items-center gap-2">
-              <AbyssInline floor={floor} progress={progress} dl2={dl2} />
+              <span className="font-mono text-[11px] tabular-nums" style={{ color: dl2 ? "#2a4570" : "#ffe5c4" }}>{floor > 0 ? `지옥${floor}` : <span style={{ color: dl2 ? "#5a7090" : "rgba(155,143,184,0.7)" }}>미도전</span>}</span>
               <ChallengeDot challenge={char.challenge} dl2={dl2} />
             </div>
           </div>
@@ -512,7 +511,7 @@ function CharacterRow({
           <PowerNumber value={char.combatPower || 0} dl2={dl2} />
         </div>
         <div className="hidden justify-start sm:flex">
-          <AbyssInline floor={floor} progress={progress} dl2={dl2} />
+          <span className="font-mono text-[11px] tabular-nums" style={{ color: dl2 ? "#2a4570" : "#ffe5c4" }}>{floor > 0 ? `지옥${floor}` : <span style={{ color: dl2 ? "#5a7090" : "rgba(155,143,184,0.7)" }}>미도전</span>}</span>
         </div>
         <div className="hidden justify-center sm:flex">
           <ChallengeDot challenge={char.challenge} dl2={dl2} />
@@ -584,54 +583,6 @@ function PowerNumber({
     >
       {value.toLocaleString()}
     </span>
-  );
-}
-
-function AbyssInline({
-  floor,
-  progress,
-  dl2 = false,
-}: {
-  floor: number;
-  progress: number;
-  dl2?: boolean;
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <span
-        className="font-mono text-[11px] tabular-nums"
-        style={{ color: dl2 ? "#2a4570" : "#ffe5c4" }}
-      >
-        {floor > 0 ? (
-          `지옥${floor}`
-        ) : (
-          <span style={{ color: dl2 ? "#5a7090" : "rgba(155,143,184,0.7)" }}>
-            미도전
-          </span>
-        )}
-      </span>
-      <div
-        className="relative h-1.5 w-16 overflow-hidden rounded-full"
-        style={{
-          background: dl2 ? "rgba(42, 69, 112, 0.15)" : "rgba(107, 75, 168, 0.2)",
-        }}
-      >
-        <motion.div
-          initial={{ width: "0%" }}
-          animate={{ width: `${progress * 100}%` }}
-          transition={{ duration: 0.9, ease: "easeOut" }}
-          className="h-full rounded-full"
-          style={{
-            background: dl2
-              ? "linear-gradient(90deg, #e6c97a 0%, #c4992f 55%, #8a6710 100%)"
-              : "linear-gradient(90deg, #6B4BA8 0%, #D896C8 70%, #FFB5A7 100%)",
-            boxShadow: dl2
-              ? "0 0 6px rgba(196, 153, 47, 0.45)"
-              : "0 0 6px rgba(216, 150, 200, 0.55)",
-          }}
-        />
-      </div>
-    </div>
   );
 }
 
