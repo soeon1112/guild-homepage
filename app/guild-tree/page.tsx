@@ -17,7 +17,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Crown, Star, TreePine } from "lucide-react";
 import { db } from "@/src/lib/firebase";
-import { useGuilds } from "@/src/lib/useGuilds";
+import { useGuilds, guildAccent } from "@/src/lib/useGuilds";
 
 const HIDDEN_NICKNAMES = new Set<string>(["테스트"]);
 
@@ -197,7 +197,7 @@ function GuildCard({
           <span
             aria-hidden
             className="inline-block h-6 w-1 rounded-full"
-            style={{ background: "#ffc785" }}
+            style={{ background: guildAccent(guild.id).hex }}
           />
           <div>
             <h2

@@ -30,7 +30,7 @@ import {
 import { createPortal } from "react-dom";
 import { useAuth } from "../components/AuthProvider";
 import { db } from "@/src/lib/firebase";
-import { useGuilds } from "@/src/lib/useGuilds";
+import { useGuilds, guildAccent } from "@/src/lib/useGuilds";
 import { canManageNotice, writableCategories } from "@/src/lib/noticePermissions";
 import { writeBatch } from "firebase/firestore";
 import {
@@ -205,9 +205,9 @@ function NoticePageInner() {
       ) : (
         visibleCategories.map((guild) => {
           const list = grouped.get(guild.id) ?? [];
-          // 카테고리별 톤 — 연합(union)은 mist-lavender, 길드는 sunset-gold.
-          // 다른 길드 추가 시 색상 매핑 확장.
-          const accent = guild.isUnion ? "200, 184, 232" : "255, 199, 133";
+          // 카테고리별 톤 — guildAccent()가 길드ID별 매핑 (연합=라벤더, 세나패밀리즈=오카리나, 나머지=sunset-gold).
+          const guildTone = guildAccent(guild.id, guild.isUnion);
+          const accent = guildTone.rgb;
           return (
             <section
               key={guild.id}
@@ -233,7 +233,7 @@ function NoticePageInner() {
                     "'Pretendard Variable', Pretendard, 'Noto Sans KR', sans-serif",
                   fontSize: "12px",
                   fontWeight: 500,
-                  color: guild.isUnion ? "#c8b8e8" : "#ffc785",
+                  color: guildTone.hex,
                   letterSpacing: "0.02em",
                 }}
               >
@@ -243,7 +243,7 @@ function NoticePageInner() {
                     display: "inline-block",
                     width: 3,
                     height: 12,
-                    background: guild.isUnion ? "#c8b8e8" : "#ffc785",
+                    background: guildTone.hex,
                     borderRadius: 2,
                   }}
                 />

@@ -27,6 +27,24 @@ export interface Guild {
   createdAt?: Timestamp;
 }
 
+export interface GuildAccent {
+  hex: string;
+  rgb: string; // rgba() 템플릿용 "r, g, b"
+}
+
+const UNION_ACCENT: GuildAccent = { hex: "#c8b8e8", rgb: "200, 184, 232" };
+const DEFAULT_GUILD_ACCENT: GuildAccent = { hex: "#ffc785", rgb: "255, 199, 133" };
+
+// 길드별 톤 매핑. 여기 없는 (일반) 길드는 DEFAULT_GUILD_ACCENT(sunset-gold) 사용.
+const GUILD_ACCENTS: Record<string, GuildAccent> = {
+  senafamilies: { hex: "#d97848", rgb: "217, 120, 72" }, // 오카리나 톤
+};
+
+export function guildAccent(id: string, isUnion?: boolean): GuildAccent {
+  if (isUnion) return UNION_ACCENT;
+  return GUILD_ACCENTS[id] ?? DEFAULT_GUILD_ACCENT;
+}
+
 function guildNameCompare(a: Guild, b: Guild): number {
   // union 우선 (항상 맨 위)
   if (a.isUnion && !b.isUnion) return -1;

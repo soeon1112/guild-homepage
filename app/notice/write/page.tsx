@@ -18,7 +18,7 @@ import { logActivity } from "@/src/lib/activity";
 import { josa, truncate } from "@/src/lib/text";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
 import { useAuth } from "@/app/components/AuthProvider";
-import { useGuilds } from "@/src/lib/useGuilds";
+import { useGuilds, guildAccent } from "@/src/lib/useGuilds";
 import { writableCategories } from "@/src/lib/noticePermissions";
 
 type AttachmentType = "image" | "video" | "gif";
@@ -191,7 +191,8 @@ export default function NoticeWritePage() {
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
           {writable.map((g) => {
-            const accent = g.isUnion ? "200, 184, 232" : "255, 199, 133";
+            const gTone = guildAccent(g.id, g.isUnion);
+            const accent = gTone.rgb;
             return (
               <button
                 key={g.id}
@@ -205,7 +206,7 @@ export default function NoticeWritePage() {
                   background: `rgba(${accent}, 0.12)`,
                   border: `1px solid rgba(${accent}, 0.35)`,
                   borderRadius: 10,
-                  color: g.isUnion ? "#c8b8e8" : "#ffc785",
+                  color: gTone.hex,
                   fontFamily:
                     "'Pretendard Variable', Pretendard, 'Noto Sans KR', sans-serif",
                   fontSize: "14px",
@@ -220,7 +221,7 @@ export default function NoticeWritePage() {
                     display: "inline-block",
                     width: 3,
                     height: 14,
-                    background: g.isUnion ? "#c8b8e8" : "#ffc785",
+                    background: gTone.hex,
                     borderRadius: 2,
                   }}
                 />
@@ -239,7 +240,9 @@ export default function NoticeWritePage() {
   }
 
   const selectedGuild = guilds.find((g) => g.id === selectedCategory);
-  const selectedAccent = selectedGuild?.isUnion ? "#c8b8e8" : "#ffc785";
+  const selectedAccent = selectedGuild
+    ? guildAccent(selectedGuild.id, selectedGuild.isUnion).hex
+    : "#ffc785";
 
   return (
     <div className={rootClass}>
