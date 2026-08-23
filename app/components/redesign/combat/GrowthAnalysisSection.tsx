@@ -908,7 +908,8 @@ function GrowthRow({
       ) : (
         <div className="flex flex-col gap-0.5 items-end">
           {/* 투력 */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            <span className="inline-block h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ background: powerColor }} aria-hidden />
             <span className={dl2 ? "font-mono text-sm tabular-nums" : "font-mono text-sm font-medium tabular-nums"}
               style={{ color: powerColor, fontWeight: dl2 ? 700 : undefined }}>
               {up && value > 0 ? "+" : ""}{value.toLocaleString()}
@@ -919,11 +920,12 @@ function GrowthRow({
           </div>
           {/* 마저 */}
           {mrValue !== undefined && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <span className="inline-block h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ background: mrColor }} aria-hidden />
               <span className="font-mono text-[11px] tabular-nums" style={{ color: mrColor }}>
                 {mrValue === null
-                  ? "마저 -"
-                  : `마저 ${upMr && mrValue > 0 ? "+" : ""}${mrValue.toLocaleString()}`}
+                  ? "-"
+                  : `${upMr && mrValue > 0 ? "+" : ""}${mrValue.toLocaleString()}`}
               </span>
             </div>
           )}
