@@ -553,6 +553,17 @@ export function GrowthAnalysisSection({
               />
               <StatTile
                 icon={
+                  <Shield
+                    className={`h-3.5 w-3.5 ${dl2 ? "" : "text-peach-accent"}`}
+                    style={dl2 ? { color: "#8a6710" } : undefined}
+                  />
+                }
+                label="평균 마저"
+                value={stats.avgMagicResist != null ? stats.avgMagicResist.toLocaleString() : "-"}
+                dl2={dl2}
+              />
+              <StatTile
+                icon={
                   <Flame
                     className={`h-3.5 w-3.5 ${dl2 ? "" : "text-peach-accent"}`}
                     style={dl2 ? { color: "#8a6710" } : undefined}
@@ -582,17 +593,6 @@ export function GrowthAnalysisSection({
                 }
                 label="캐릭터"
                 value={`${stats.totalCharacters}개`}
-                dl2={dl2}
-              />
-              <StatTile
-                icon={
-                  <Shield
-                    className={`h-3.5 w-3.5 ${dl2 ? "" : "text-peach-accent"}`}
-                    style={dl2 ? { color: "#8a6710" } : undefined}
-                  />
-                }
-                label="평균 마저"
-                value={stats.avgMagicResist != null ? stats.avgMagicResist.toLocaleString() : "-"}
                 dl2={dl2}
               />
             </div>
