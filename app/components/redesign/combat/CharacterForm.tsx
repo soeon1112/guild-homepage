@@ -359,31 +359,30 @@ export function CharacterForm({
                   </div>
                 </Field>
 
-                <Field label="투력">
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={combatPower}
-                    onChange={(e) => setCombatPower(e.target.value)}
-                    disabled={submitting}
-                    placeholder="예: 6500"
-                    className="w-full rounded-full border border-nebula-pink/30 bg-abyss-deep/60 px-3.5 py-2 font-mono text-[13px] tabular-nums text-text-primary placeholder:text-text-sub/60 focus:border-peach-accent/60 focus:outline-none focus:ring-2 focus:ring-peach-accent/30 disabled:opacity-60"
-                  />
-                </Field>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="마도 저항">
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={magicResist}
-                    onChange={(e) => setMagicResist(e.target.value)}
-                    disabled={submitting}
-                    placeholder="예: 4200"
-                    className="w-full rounded-full border border-nebula-pink/30 bg-abyss-deep/60 px-3.5 py-2 font-mono text-[13px] tabular-nums text-text-primary placeholder:text-text-sub/60 focus:border-peach-accent/60 focus:outline-none focus:ring-2 focus:ring-peach-accent/30 disabled:opacity-60"
-                  />
-                </Field>
+                <div className="flex flex-col gap-3">
+                  <Field label="투력">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={combatPower}
+                      onChange={(e) => setCombatPower(e.target.value)}
+                      disabled={submitting}
+                      placeholder="예: 6500"
+                      className="w-full rounded-full border border-nebula-pink/30 bg-abyss-deep/60 px-3.5 py-2 font-mono text-[13px] tabular-nums text-text-primary placeholder:text-text-sub/60 focus:border-peach-accent/60 focus:outline-none focus:ring-2 focus:ring-peach-accent/30 disabled:opacity-60"
+                    />
+                  </Field>
+                  <Field label="마도 저항">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={magicResist}
+                      onChange={(e) => setMagicResist(e.target.value)}
+                      disabled={submitting}
+                      placeholder="예: 4200"
+                      className="w-full rounded-full border border-nebula-pink/30 bg-abyss-deep/60 px-3.5 py-2 font-mono text-[13px] tabular-nums text-text-primary placeholder:text-text-sub/60 focus:border-peach-accent/60 focus:outline-none focus:ring-2 focus:ring-peach-accent/30 disabled:opacity-60"
+                    />
+                  </Field>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">

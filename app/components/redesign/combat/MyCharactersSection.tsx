@@ -273,8 +273,8 @@ function MyCharacterCard({
         </div>
       </div>
 
-      {/* Middle: power number */}
-      <div className="mt-4 flex items-baseline gap-2">
+      {/* Power + 마저 나란히 */}
+      <div className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <span className="font-serif text-[10px] uppercase tracking-[0.25em] text-text-sub">
           투력
         </span>
@@ -295,6 +295,26 @@ function MyCharacterCard({
         >
           {(char.combatPower || 0).toLocaleString()}
         </span>
+        <span className="font-serif text-[10px] uppercase tracking-[0.25em] text-text-sub">
+          마저
+        </span>
+        <span
+          className="font-mono text-2xl font-bold tabular-nums sm:text-[28px]"
+          style={
+            dl2
+              ? { color: "#8a6710", fontWeight: 700 }
+              : {
+                  backgroundImage: "linear-gradient(135deg, #FFE5C4, #D896C8)",
+                  WebkitBackgroundClip: "text",
+                  backgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  color: "transparent",
+                  filter: "drop-shadow(0 0 8px rgba(216, 150, 200, 0.35))",
+                }
+          }
+        >
+          {char.magicResist != null ? char.magicResist.toLocaleString() : "-"}
+        </span>
       </div>
 
       {/* 지옥 단계 */}
@@ -302,14 +322,6 @@ function MyCharacterCard({
         <span className="text-text-sub">지옥 단계</span>
         <span className={dl2 ? "text-[#2a4570]" : "text-stardust"}>
           {floor > 0 ? `지옥 ${floor}` : "미도전"}
-        </span>
-      </div>
-
-      {/* 마도 저항 */}
-      <div className="mt-1.5 flex items-center justify-between font-serif text-[10px] tracking-wider">
-        <span className="text-text-sub">마도 저항</span>
-        <span className={dl2 ? "text-[#2a4570]" : "text-stardust"}>
-          {char.magicResist != null ? char.magicResist.toLocaleString() : "-"}
         </span>
       </div>
 
