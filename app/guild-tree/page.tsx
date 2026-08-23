@@ -21,6 +21,11 @@ import { useGuilds, guildAccent } from "@/src/lib/useGuilds";
 
 const HIDDEN_NICKNAMES = new Set<string>(["테스트"]);
 
+// 길드별 로고. 여기 없는 (로고 미보유) 길드는 렌더 스킵.
+const GUILD_LOGOS: Record<string, string> = {
+  senafamilies: "/images/senafamilies.png",
+};
+
 function isKorean(s: string) {
   return /[가-힯]/.test(s.charAt(0));
 }
@@ -177,6 +182,7 @@ function GuildCard({
     [leader, viceLeaders],
   );
   const regularMembers = members.filter((m) => !leaderSet.has(m.nickname));
+  const logo = GUILD_LOGOS[guild.id];
 
   return (
     <section
@@ -230,6 +236,15 @@ function GuildCard({
             style={{ overflow: "hidden" }}
           >
             <div className="px-5 pb-5">
+              {logo && (
+                <div className="mb-3 flex justify-center">
+                  <img
+                    src={logo}
+                    alt={`${guild.name} 로고`}
+                    className="h-[72px] w-[72px] object-contain"
+                  />
+                </div>
+              )}
               {/* 길마 — 큰 프사 + 왕관 overlay + 가운데 단일 카드 */}
               <div className="mb-6 flex flex-col items-center">
                 <div className="mb-2 flex items-center gap-1.5">
