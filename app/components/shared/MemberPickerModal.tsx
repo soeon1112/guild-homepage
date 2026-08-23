@@ -38,8 +38,9 @@ export function MemberPickerModal({
     (async () => {
       try {
         const snap = await getDocs(collection(db, "users"));
+        const ALBUM_HIDDEN = new Set<string>(["테스트"]);
         const nicks = snap.docs
-          .filter((d) => typeof d.data().password === "string")
+          .filter((d) => typeof d.data().password === "string" && !ALBUM_HIDDEN.has(d.id))
           .map((d) => d.id);
         const all = [...nicks, ...SPECIAL_TAGS];
         // Sort: English block first (a-z), then Korean (가나다…). Within

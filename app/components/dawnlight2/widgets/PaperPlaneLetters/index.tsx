@@ -311,9 +311,10 @@ function ComposeModal({
       try {
         const snap = await getDocs(collection(db, "users"));
         if (cancelled) return;
+        const LETTER_HIDDEN = new Set<string>(["기타", "테스트"]);
         const nicks = snap.docs
           .map((d) => (d.data().nickname as string | undefined) ?? d.id)
-          .filter((n): n is string => !!n && n !== nickname)
+          .filter((n): n is string => !!n && n !== nickname && !LETTER_HIDDEN.has(n))
           .sort((a, b) => a.localeCompare(b, "ko"));
         setUsers(nicks);
       } catch (e) {
