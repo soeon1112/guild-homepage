@@ -530,7 +530,6 @@ export function GrowthAnalysisSection({
                     label="이번 주"
                     value={growth.hasData ? growth.week : null}
                     mrValue={growth.hasData ? growth.weekMr : null}
-                    series={weekSeries}
                     dl2={dl2}
                   />
                   <GrowthRow
@@ -882,13 +881,11 @@ function GrowthRow({
   label,
   value,
   mrValue,
-  series,
   dl2 = false,
 }: {
   label: string;
   value: number | null;
   mrValue?: number | null;
-  series?: Point[];
   dl2?: boolean;
 }) {
   const up   = (value ?? 0) >= 0;
@@ -912,7 +909,6 @@ function GrowthRow({
         <div className="flex flex-col gap-0.5 items-end">
           {/* 투력 */}
           <div className="flex items-center gap-2">
-            {series && series.length > 1 && <MiniSparkline series={series} dl2={dl2} />}
             <span className={dl2 ? "font-mono text-sm tabular-nums" : "font-mono text-sm font-medium tabular-nums"}
               style={{ color: powerColor, fontWeight: dl2 ? 700 : undefined }}>
               {up && value > 0 ? "+" : ""}{value.toLocaleString()}
@@ -934,49 +930,6 @@ function GrowthRow({
         </div>
       )}
     </div>
-  );
-}
-
-function MiniSparkline({
-  series,
-  dl2 = false,
-}: {
-  series: Point[];
-  dl2?: boolean;
-}) {
-  const w = 60, h = 18, denom = Math.max(series.length - 1, 1);
-  // 투력 라인
-  const powerVals = series.map((s) => s.power);
-  const minP = Math.min(...powerVals), maxP = Math.max(...powerVals);
-  const powerPts = powerVals.map((v, i) => {
-    const x = (i / denom) * w;
-    const y = h - ((v - minP) / Math.max(maxP - minP, 1)) * h;
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  }).join(" ");
-  // 마저 라인
-  const mrEntries = series.filter((s) => s.mr !== undefined);
-  let mrPts = "";
-  if (mrEntries.length >= 2) {
-    const mrVals = mrEntries.map((s) => s.mr as number);
-    const minMr = Math.min(...mrVals), maxMr = Math.max(...mrVals);
-    mrPts = mrEntries.map((s) => {
-      const idx = series.indexOf(s);
-      const x = (idx / denom) * w;
-      const y = h - ((s.mr! - minMr) / Math.max(maxMr - minMr, 1)) * h;
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    }).join(" ");
-  }
-  return (
-    <svg width={w} height={h} aria-hidden>
-      <polyline points={powerPts} fill="none"
-        stroke={dl2 ? POWER_COLOR_DL2 : POWER_COLOR_COSMIC}
-        strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-      {mrPts && (
-        <polyline points={mrPts} fill="none"
-          stroke={dl2 ? MR_COLOR_DL2 : MR_COLOR_COSMIC}
-          strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-      )}
-    </svg>
   );
 }
 
