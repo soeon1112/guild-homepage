@@ -941,7 +941,7 @@ function TopGrowthRow({
   dl2 = false,
 }: {
   rank: number;
-  entry: { name: string; job: string; delta: number };
+  entry: { name: string; job: string; delta: number; mrDelta: number | null };
   dl2?: boolean;
 }) {
   const isGold = rank === 1;
@@ -1039,19 +1039,28 @@ function TopGrowthRow({
             </span>
           </div>
         </div>
-        <span
-          className="font-mono text-sm tabular-nums"
-          style={{
-            color: isTopTier ? "#fef5e6" : scoreColor,
-            fontWeight: scoreWeight,
-            opacity: scoreOpacity,
-            textShadow: isTopTier
-              ? "0 1px 2px rgba(92, 58, 31, 0.3)"
-              : "none",
-          }}
-        >
-          +{entry.delta.toLocaleString()}
-        </span>
+        <div className="flex flex-col items-end gap-0.5">
+          <span
+            className="font-mono text-sm tabular-nums"
+            style={{
+              color: isTopTier ? "#fef5e6" : (dl2 ? POWER_COLOR_DL2 : POWER_COLOR_COSMIC),
+              fontWeight: scoreWeight,
+              opacity: scoreOpacity,
+            }}
+          >
+            +{entry.delta.toLocaleString()}
+          </span>
+          <span
+            className="font-mono text-[11px] tabular-nums"
+            style={{
+              color: dl2 ? MR_COLOR_DL2 : MR_COLOR_COSMIC,
+              fontWeight: scoreWeight,
+              opacity: scoreOpacity,
+            }}
+          >
+            {entry.mrDelta === null ? "-" : `${entry.mrDelta >= 0 ? "+" : ""}${entry.mrDelta.toLocaleString()}`}
+          </span>
+        </div>
       </li>
     );
   }
@@ -1093,12 +1102,14 @@ function TopGrowthRow({
           </span>
         </div>
       </div>
-      <span
-        className="font-mono text-sm font-semibold tabular-nums"
-        style={{ color: "#A8E8C0" }}
-      >
-        +{entry.delta.toLocaleString()}
-      </span>
+      <div className="flex flex-col items-end gap-0.5">
+        <span className="font-mono text-sm font-semibold tabular-nums" style={{ color: POWER_COLOR_COSMIC }}>
+          +{entry.delta.toLocaleString()}
+        </span>
+        <span className="font-mono text-[11px] font-semibold tabular-nums" style={{ color: MR_COLOR_COSMIC }}>
+          {entry.mrDelta === null ? "-" : `${entry.mrDelta >= 0 ? "+" : ""}${entry.mrDelta.toLocaleString()}`}
+        </span>
+      </div>
     </li>
   );
 }

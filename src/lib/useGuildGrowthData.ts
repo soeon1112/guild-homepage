@@ -27,6 +27,7 @@ export type TopGrower = {
   name: string;
   job: string;
   delta: number;
+  mrDelta: number | null;
 };
 
 export type JobGrowthStat = {
@@ -39,7 +40,7 @@ export type JobGrowthStat = {
   avgHellLabel: string;
 };
 
-type HistoryEntry = { combatPower: number; recordedAt: Timestamp | null };
+type HistoryEntry = { combatPower: number; magicResist?: number; recordedAt: Timestamp | null };
 
 const HELL_INDEX: Record<string, number> = (() => {
   const map: Record<string, number> = { "매어 이하": 0 };
@@ -91,14 +92,8 @@ export function useGuildGrowthData(characters: GrowthCharLite[]): {
             );
             const entries = snap.docs.map((d) => d.data() as HistoryEntry);
             const withTs = entries
-              .map((e) => ({
-                ts: e.recordedAt?.toMillis(),
-                cp: e.combatPower,
-              }))
-              .filter(
-                (e): e is { ts: number; cp: number } =>
-                  typeof e.ts === "number",
-              );
+              .filter((e) => e.recordedAt != null)
+              .map((e) => ({ ts: e.recordedAt!.toMillis(), cp: e.combatPower, mr: e.magicResist }));
 
             const valueAt = (cutoff: number): number | null => {
               const first = withTs.find((e) => e.ts >= cutoff);
@@ -106,18 +101,27 @@ export function useGuildGrowthData(characters: GrowthCharLite[]): {
               if (withTs.length === 0) return null;
               return c.combatPower;
             };
+            const valueAtMr = (cutoff: number): number | null => {
+              const hasMr = withTs.some((e) => e.mr !== undefined);
+              if (!hasMr || c.magicResist == null) return null;
+              const first = withTs.find((e) => e.ts >= cutoff && e.mr !== undefined);
+              if (first) return first.mr ?? null;
+              return c.magicResist;
+            };
 
             const v7 = valueAt(sevenDaysAgo);
+            const mr7 = valueAtMr(sevenDaysAgo);
             const v30 = valueAt(thirtyDaysAgo);
 
             return {
               c,
               delta7d: v7 === null ? null : c.combatPower - v7,
+              mrDelta7d: mr7 === null || c.magicResist == null ? null : c.magicResist - mr7,
               delta30d: v30 === null ? null : c.combatPower - v30,
             };
           } catch (e) {
             console.error(e);
-            return { c, delta7d: null, delta30d: null };
+            return { c, delta7d: null, mrDelta7d: null, delta30d: null };
           }
         }),
       );
@@ -134,6 +138,7 @@ export function useGuildGrowthData(characters: GrowthCharLite[]): {
           name: r.c.nickname,
           job: r.c.job,
           delta: r.delta7d,
+          mrDelta: r.mrDelta7d ?? null,
         }))
         .sort((a, b) => b.delta - a.delta)
         .slice(0, 5);
