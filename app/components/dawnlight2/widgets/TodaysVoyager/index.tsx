@@ -1,18 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  addDoc,
   collection,
   getDocs,
-  serverTimestamp,
 } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
-import { useAuth } from "@/app/components/AuthProvider";
-import { logActivity } from "@/src/lib/activity";
-import { addPoints } from "@/src/lib/points";
-import { josa, truncate } from "@/src/lib/text";
 
 // Today's Voyager — Dawnlight 2 daily-rotating spotlight.
 //
@@ -33,7 +27,6 @@ type MemberCard = {
 };
 
 const NAVY = "#2a4570";
-const NAVY_SOFT = "#5a7090";
 const CREAM = "#fef5e6";
 
 // Standardized CTA pill — same shape across the three voyager
@@ -42,49 +35,6 @@ const CREAM = "#fef5e6";
 // place.
 const PILL_CLASS =
   "inline-flex items-center justify-center gap-1 rounded-full px-4 py-1.5 text-xs font-medium transition-opacity hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50";
-
-// 라벨/꼬리표 아이콘 — "키워드 선물하기" 라벨 앞에 붙는다. 좌측 끝
-// 뾰족 + 우측 사각형 + 좌측 작은 동그라미(구멍). stroke 색은 라벨
-// 글자 색(NAVY)과 동일.
-function TagIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M 20.59 13.41 L 13.42 20.58 C 13.0449 20.9551 12.5363 21.1657 12.006 21.1657 C 11.4757 21.1657 10.9671 20.9551 10.592 20.58 L 2 12 V 2 H 12 L 20.59 10.59 C 21.37 11.37 21.37 12.63 20.59 13.41 Z"
-        stroke="#2a4570"
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      <circle cx="7" cy="7" r="1.5" fill="#2a4570" />
-    </svg>
-  );
-}
-
-// v0 유리병 SVG — verbatim from GuestbookSectionD2 BottleIcon so the
-// "오늘의 항해자" 미니 카드 라벨이 미니홈피 유리병 쪽지 헤더와 시각적
-// 으로 통일된다.
-function BottleIcon() {
-  return (
-    <svg width="14" height="16" viewBox="0 0 14 16" fill="none" aria-hidden>
-      <path
-        d="M5 1h4v2l2 3v7a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6l2-3V1z"
-        stroke="#2a4570"
-        strokeWidth="1.1"
-        fill="rgba(200,230,240,0.35)"
-      />
-      <line x1="5" y1="1" x2="9" y2="1" stroke="#2a4570" strokeWidth="1.1" strokeLinecap="round" />
-      <path
-        d="M4.5 9 Q7 11 9.5 9"
-        stroke="#2a4570"
-        strokeWidth="0.9"
-        strokeLinecap="round"
-        fill="none"
-        opacity="0.6"
-      />
-    </svg>
-  );
-}
 
 // ── KST + deterministic shuffle (verbatim from cosmic StarOfDay) ──
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
@@ -128,7 +78,6 @@ function pickStarIndex(poolSize: number, date = new Date()): number {
 }
 
 export function TodaysVoyager() {
-  const { nickname } = useAuth();
   const [members, setMembers] = useState<MemberCard[]>([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -181,26 +130,7 @@ export function TodaysVoyager() {
         </p>
       </header>
 
-      {/* PC: 2-col grid (left island, right input cards stack), with
-          the right column vertically centered against the taller
-          island scene. Mobile: single column stack, smaller gap
-          between the two cards (PC widens that gap to gap-6). */}
-      <div className="grid grid-cols-1 items-center gap-4 md:grid-cols-2 md:items-center md:gap-5">
-        <FloatingIsland voyager={today} loaded={loaded} />
-
-        <div className="flex flex-col gap-3 md:gap-6">
-          <KeywordCard
-            voyagerNickname={today?.nickname ?? ""}
-            voyagerId={today?.id ?? ""}
-            senderNickname={nickname}
-          />
-          <MinihomeGuestbookCard
-            voyagerId={today?.id ?? ""}
-            voyagerNickname={today?.nickname ?? ""}
-            senderNickname={nickname}
-          />
-        </div>
-      </div>
+      <FloatingIsland voyager={today} loaded={loaded} />
     </section>
   );
 }
@@ -424,203 +354,3 @@ function Avatar({ src, nickname }: { src?: string; nickname: string }) {
   );
 }
 
-/* ─── Keyword card ──────────────────────────────────────────────── */
-
-function KeywordCard({
-  voyagerNickname,
-  voyagerId,
-  senderNickname,
-}: {
-  voyagerNickname: string;
-  voyagerId: string;
-  senderNickname: string | null;
-}) {
-  const [value, setValue] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState(false);
-
-  const handleChange = (raw: string) => {
-    let v = raw;
-    if (v && !v.startsWith("#")) v = "#" + v;
-    if (v.length > 21) v = v.slice(0, 21);
-    setValue(v);
-  };
-
-  const handleSend = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!senderNickname || !voyagerNickname || busy || done) return;
-    const text = value.trim();
-    if (!text || text === "#") return;
-    setBusy(true);
-    try {
-      await addDoc(collection(db, "users", voyagerNickname, "keywords"), {
-        text,
-        authorNickname: senderNickname,
-        createdAt: serverTimestamp(),
-      });
-      await logActivity(
-        "keyword",
-        voyagerNickname,
-        `${voyagerNickname}님의 키워드 '${truncate(text, 15)}'${josa(text, "이/가")} 추가되었어요`,
-        `/members/${voyagerId}`,
-      );
-      setDone(true);
-      setValue("");
-      setTimeout(() => setDone(false), 2200);
-    } catch (e2) {
-      console.error(e2);
-    }
-    setBusy(false);
-  };
-
-  const disabled = !senderNickname || !voyagerNickname || busy || done;
-  return (
-    <form
-      onSubmit={handleSend}
-      className="rounded-2xl px-4 py-3 sm:px-5"
-      style={{
-        background: "rgba(205, 216, 224, 0.65)",
-        border: "1px solid rgba(42, 69, 112, 0.18)",
-      }}
-    >
-      <p
-        className="mb-2 flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-[0.18em]"
-        style={{ color: NAVY }}
-      >
-        <TagIcon />
-        키워드 선물하기
-      </p>
-      <div className="flex items-center gap-2">
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => handleChange(e.target.value)}
-          placeholder="#이 별에게 선물할 키워드"
-          maxLength={21}
-          className="min-w-0 flex-1 rounded-lg px-3 py-2 outline-none focus:border-[rgba(42,69,112,0.5)]"
-          // inline fontSize beats the unlayered `input { font-size:
-          // 16px }` rule in globals.css (kept in place to block iOS
-          // Safari focus-zoom on its other forms). Tailwind v4
-          // utilities live in `@layer utilities`, so the Tailwind
-          // text-[13px] class loses the layer cascade — inline
-          // style is the only reliable override here.
-          style={{
-            background: "rgba(255, 255, 255, 0.7)",
-            color: NAVY,
-            border: "1px solid rgba(42, 69, 112, 0.22)",
-            fontSize: "13px",
-          }}
-        />
-        <button
-          type="submit"
-          disabled={disabled}
-          className={PILL_CLASS}
-          style={{ background: NAVY, color: CREAM }}
-        >
-          {done ? "전달됨" : "✦ 전하기"}
-        </button>
-      </div>
-    </form>
-  );
-}
-
-/* ─── Per-member guestbook card ─────────────────────────────────── */
-
-function MinihomeGuestbookCard({
-  voyagerId,
-  voyagerNickname,
-  senderNickname,
-}: {
-  voyagerId: string;
-  voyagerNickname: string;
-  senderNickname: string | null;
-}) {
-  const [value, setValue] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState(false);
-
-  const handleSend = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!senderNickname || !voyagerId || busy || done) return;
-    const message = value.trim();
-    if (!message) return;
-    setBusy(true);
-    try {
-      const entryRef = await addDoc(
-        collection(db, "members", voyagerId, "guestbook"),
-        {
-          nickname: senderNickname,
-          message,
-          createdAt: serverTimestamp(),
-        },
-      );
-      if (voyagerNickname) {
-        await logActivity(
-          "guestbook",
-          senderNickname,
-          `${voyagerNickname}님의 방명록에 '${truncate(message, 25)}'${josa(message, "이/가")} 달렸어요`,
-          `/members/${voyagerId}?guestbook=${entryRef.id}`,
-          `members/${voyagerId}/guestbook/${entryRef.id}`,
-        );
-      }
-      await addPoints(
-        senderNickname,
-        "방명록",
-        2,
-        `${voyagerNickname ?? "미니홈피"}님의 방명록에 글 남김`,
-      );
-      setDone(true);
-      setValue("");
-      setTimeout(() => setDone(false), 2200);
-    } catch (e2) {
-      console.error(e2);
-    }
-    setBusy(false);
-  };
-
-  const disabled = !senderNickname || !voyagerId || busy || done;
-  return (
-    <form
-      onSubmit={handleSend}
-      className="rounded-2xl px-4 py-3 sm:px-5"
-      style={{
-        background: "rgba(205, 216, 224, 0.65)",
-        border: "1px solid rgba(42, 69, 112, 0.18)",
-      }}
-    >
-      <p
-        className="mb-2 flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-[0.18em]"
-        style={{ color: NAVY }}
-      >
-        <BottleIcon />
-        유리병 쪽지
-      </p>
-      <div className="flex items-start gap-2">
-        <textarea
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          placeholder="오늘의 항해자에게 한마디"
-          maxLength={120}
-          rows={2}
-          className="min-w-0 flex-1 resize-none rounded-lg px-3 py-2 leading-relaxed outline-none focus:border-[rgba(42,69,112,0.5)]"
-          // Inline fontSize override — see KeywordCard input above
-          // for the layer-cascade explanation.
-          style={{
-            background: "rgba(255, 255, 255, 0.7)",
-            color: NAVY,
-            border: "1px solid rgba(42, 69, 112, 0.22)",
-            fontSize: "13px",
-          }}
-        />
-        <button
-          type="submit"
-          disabled={disabled}
-          className={`${PILL_CLASS} self-end`}
-          style={{ background: NAVY, color: CREAM }}
-        >
-          {done ? "전달됨" : "✦ 보내기"}
-        </button>
-      </div>
-    </form>
-  );
-}
