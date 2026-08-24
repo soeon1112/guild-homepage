@@ -46,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (stored) {
         try {
           const snap = await getDoc(doc(db, "users", stored));
-          if (!snap.exists() || !snap.data().password) {
+          if (!snap.exists() || !snap.data().password || snap.data().disabled === true) {
             localStorage.removeItem(STORAGE_KEY);
             setReady(true);
             return;
@@ -67,7 +67,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!n || !p) return { ok: false, error: "닉네임과 비밀번호를 입력해주세요." };
       try {
         const snap = await getDoc(doc(db, "users", n));
-        if (!snap.exists()) return { ok: false, error: "존재하지 않는 닉네임입니다." };
+        if (!snap.exists() || snap.data().disabled === true)
+          return { ok: false, error: "존재하지 않는 닉네임입니다." };
         if (snap.data().password !== p) {
           return { ok: false, error: "비밀번호가 일치하지 않습니다." };
         }
