@@ -38,6 +38,7 @@ const DEFAULT_GUILD_ACCENT: GuildAccent = { hex: "#ffc785", rgb: "255, 199, 133"
 // 길드별 톤 매핑. 여기 없는 (일반) 길드는 DEFAULT_GUILD_ACCENT(sunset-gold) 사용.
 const GUILD_ACCENTS: Record<string, GuildAccent> = {
   senafamilies: { hex: "#d97848", rgb: "217, 120, 72" }, // 오카리나 톤
+  end: { hex: "#4a7ba6", rgb: "74, 123, 166" }, // 청록 톤 (기존 색과 대비)
 };
 
 export function guildAccent(id: string, isUnion?: boolean): GuildAccent {
