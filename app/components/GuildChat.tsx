@@ -257,7 +257,7 @@ export default function GuildChat() {
       {open && (
         <div className="guild-chat-panel">
           <div className="guild-chat-header">
-            <h3 className="guild-chat-title">길드 채팅</h3>
+            <h3 className="guild-chat-title">연합 채팅</h3>
             <button
               type="button"
               className="guild-chat-close"

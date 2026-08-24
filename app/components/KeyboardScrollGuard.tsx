@@ -74,8 +74,8 @@ export default function KeyboardScrollGuard() {
           // FloatingChat panel uses role=dialog without aria-modal; the
           // safe distinguishing mark is the panel's own dialog role
           // attached to a NON-modal dialog. Easier to detect: panel sits
-          // inside the FloatingChat tree which has `aria-label="길드 채팅"`.
-          if (cur.getAttribute("aria-label") === "길드 채팅") return true;
+          // inside the FloatingChat tree which has `aria-label="연합 채팅"`.
+          if (cur.getAttribute("aria-label") === "연합 채팅") return true;
         }
         cur = cur.parentElement;
       }

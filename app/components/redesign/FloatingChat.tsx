@@ -1168,8 +1168,8 @@ export default function FloatingChat() {
         data-floating-fab="chat"
         aria-label={
           hasUnread
-            ? `길드 채팅 열기, 새 메시지 ${unreadCount}건`
-            : "길드 채팅 열기"
+            ? `연합 채팅 열기, 새 메시지 ${unreadCount}건`
+            : "연합 채팅 열기"
         }
         animate={{
           opacity: open ? 0 : 1,
@@ -1301,7 +1301,7 @@ export default function FloatingChat() {
 
         {/* Tooltip */}
         <span className="pointer-events-none absolute right-16 top-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border border-peach-accent/40 bg-abyss/80 px-2.5 py-1 font-serif text-[10px] tracking-wider text-stardust opacity-0 backdrop-blur-md transition-opacity group-hover:opacity-100">
-          {hasUnread ? `새 메시지 ${unreadCount}건` : "길드 채팅"}
+          {hasUnread ? `새 메시지 ${unreadCount}건` : "연합 채팅"}
         </span>
       </motion.button>
 
@@ -1346,7 +1346,7 @@ export default function FloatingChat() {
             transition={{ duration: 0.25, ease: "easeOut" }}
             onAnimationComplete={handlePanelAnimationComplete}
             role="dialog"
-            aria-label="길드 채팅"
+            aria-label="연합 채팅"
           >
             {/* Nebula glow decorations — cosmic only. The dl2 cream
                 panel reads cleanest with no inner color washes. */}
@@ -1408,7 +1408,7 @@ export default function FloatingChat() {
                       }
                 }
               >
-                길드 채팅
+                연합 채팅
               </h3>
               <button
                 type="button"
