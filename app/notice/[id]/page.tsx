@@ -9,7 +9,8 @@ import { db, storage } from "@/src/lib/firebase";
 import { deleteActivitiesByLink } from "@/src/lib/activity";
 import { useAuth } from "@/app/components/AuthProvider";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
-import { canManageNotice } from "@/src/lib/noticePermissions";
+import { canManageNoticeByCategory } from "@/src/lib/noticePermissions";
+import { useGuilds } from "@/src/lib/useGuilds";
 
 function extractYouTubeId(url: string): string | null {
   let m = url.match(/youtu\.be\/([A-Za-z0-9_-]{11})/);
@@ -33,6 +34,7 @@ type Attachment = {
 interface NoticeData {
   title: string;
   content: string;
+  category: string;
   attachments: Attachment[];
 }
 
@@ -48,6 +50,7 @@ export default function NoticeDetailPage({
   const rootClass = "board-content" + (isDawnlight2 ? " dl2-notice" : "");
   const [post, setPost] = useState<NoticeData | null>(null);
   const [loading, setLoading] = useState(true);
+  const guilds = useGuilds({ includeUnion: true });
 
   useEffect(() => {
     (async () => {
@@ -57,6 +60,7 @@ export default function NoticeDetailPage({
         setPost({
           title: d.title,
           content: d.content,
+          category: typeof d.category === "string" ? d.category : "",
           attachments: Array.isArray(d.attachments) ? (d.attachments as Attachment[]) : [],
         });
         if (loginNick) {
@@ -164,7 +168,7 @@ export default function NoticeDetailPage({
         )}
 
         <div className="board-detail-actions">
-          {canManageNotice(loginNick) && (
+          {canManageNoticeByCategory(loginNick, post.category, guilds) && (
             <>
               <button className="board-btn" onClick={handleEdit}>
                 수정

@@ -13,7 +13,8 @@ import {
 import { db, storage } from "@/src/lib/firebase";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
 import { useAuth } from "@/app/components/AuthProvider";
-import { canManageNotice } from "@/src/lib/noticePermissions";
+import { canManageNoticeByCategory } from "@/src/lib/noticePermissions";
+import { useGuilds } from "@/src/lib/useGuilds";
 
 type AttachmentType = "image" | "video" | "gif";
 
@@ -46,9 +47,10 @@ export default function NoticeEditPage({
   const isDawnlight2 = useDawnlight2();
   const rootClass = "board-content" + (isDawnlight2 ? " dl2-notice" : "");
   const { nickname: loginNick } = useAuth();
-  const allowed = canManageNotice(loginNick);
+  const guilds = useGuilds({ includeUnion: true });
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [category, setCategory] = useState("");
   const [existing, setExisting] = useState<Attachment[]>([]);
   const [removed, setRemoved] = useState<Attachment[]>([]);
   const [pending, setPending] = useState<PendingFile[]>([]);
@@ -63,6 +65,7 @@ export default function NoticeEditPage({
         const d = snap.data();
         setTitle(d.title);
         setContent(d.content);
+        setCategory(typeof d.category === "string" ? d.category : "");
         setExisting(Array.isArray(d.attachments) ? (d.attachments as Attachment[]) : []);
       } else {
         setNotFound(true);
@@ -161,6 +164,7 @@ export default function NoticeEditPage({
     );
   }
 
+  const allowed = canManageNoticeByCategory(loginNick, category, guilds);
   if (!allowed) {
     return (
       <div className={rootClass}>
