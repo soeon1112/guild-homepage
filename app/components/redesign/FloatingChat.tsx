@@ -169,10 +169,10 @@ const CHAT_AVATAR_SIZE = 36;
 const CHAT_REACTION_EMOJIS = ["❤️", "😂", "😢", "👍", "🎉", "😮"] as const;
 
 // Chat-p5: 과거 메시지 페이지네이션 — 초기 30개, 위로 스크롤할 때마다
-// 30개씩 limit 증가, 최대 200개에서 정지.
+// 30개씩 limit 증가, 최대 500개에서 정지.
 const CHAT_MESSAGE_LIMIT_INITIAL = 30;
 const CHAT_MESSAGE_LIMIT_STEP = 30;
-const CHAT_MESSAGE_LIMIT_MAX = 200;
+const CHAT_MESSAGE_LIMIT_MAX = 500;
 
 const MessageItem = memo(
   function MessageItem({
@@ -911,6 +911,13 @@ export default function FloatingChat() {
   }, []);
   const loadOlder = useCallback(() => {
     if (loadingMore) return;
+    // Chat-p5-fix2: loadingMore 는 Firestore 응답이 오면(보통 900ms 보다
+    // 훨씬 빨리) 바로 꺼진다 — 그때 사용자가 여전히 상단 40% 안에 있으면
+    // 이 가드가 없는 한 다음 loadOlder 가 또 트리거돼 prevXxxRef 를
+    // 앞선 로드의 보정이 채 끝나기 전에 덮어써버린다(두 로드가 겹치며
+    // 스크롤 튐의 실제 원인). pendingOlderLoadRef 창이 열려있는 동안은
+    // 무조건 재진입 차단.
+    if (pendingOlderLoadRef.current) return;
     if (messageLimit >= CHAT_MESSAGE_LIMIT_MAX) return;
     // 직전 snapshot 이 messageLimit 보다 적게 돌려줬다 = 더 이상 과거
     // 메시지가 없다는 뜻 — 조용히 정지 (안내 X, 사양).
