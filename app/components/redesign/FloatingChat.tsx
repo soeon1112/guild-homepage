@@ -561,6 +561,8 @@ export default function FloatingChat() {
   // exact timing; only the colors are remapped. The chat panel
   // itself stays cosmic for now (separate scope).
   const isDawnlight2 = useDawnlight2();
+  // Chat-p4 A/B: 언쏘 채팅창 세로 확장 테스트. 다른 사용자 크기는 미접촉.
+  const isLead = nickname === "언쏘";
   const [open, setOpen] = useState(false);
   // Coordinate with the pet floating UI: when chat opens, the pet
   // icon hides; when pet opens, the chat icon hides. The shared
@@ -1311,7 +1313,16 @@ export default function FloatingChat() {
           <motion.div
             className="fixed right-4 z-[200] flex flex-col overflow-hidden rounded-2xl"
             style={{
-              width: "min(380px, calc(100vw - 2rem))",
+              // Chat-p4 A/B: 언쏘 모바일은 좌우 인셋 0 으로 화면 폭 전체.
+              // 다른 사용자/데스크탑은 기존 우측 코너 anchor(className의
+              // right-4) 그대로 — undefined 로 두면 Tailwind 클래스 값이
+              // 적용된다.
+              left: isLead && isMobile ? 0 : undefined,
+              right: isLead && isMobile ? 0 : undefined,
+              width:
+                isLead && isMobile
+                  ? undefined
+                  : "min(380px, calc(100vw - 2rem))",
               // When the mobile keyboard is up we drop the 96 px reserve
               // for the chat icon (the icon is hidden behind the panel
               // anyway) so the panel bottom sits just above the keyboard
@@ -1321,11 +1332,24 @@ export default function FloatingChat() {
               // keyboard up. Stay on `vh` + 96 px in the default
               // (no-keyboard) case so the panel keeps its existing
               // gap above the BottomNav.
-              bottom: inputFocused && isMobile ? 8 : 96,
+              // Chat-p4 A/B: 언쏘 모바일은 항상 풀스크린 바닥 고정 —
+              // inputFocused 분기보다 우선. `dvh` 가 키보드 등장 시 자동
+              // 으로 줄어들어(동적 뷰포트) 별도 케이스 불필요.
+              bottom:
+                isLead && isMobile
+                  ? 0
+                  : inputFocused && isMobile
+                    ? 8
+                    : 96,
               height:
-                inputFocused && isMobile
-                  ? "min(500px, calc(100dvh - 1rem))"
-                  : "min(500px, calc(100vh - 7rem))",
+                isLead && isMobile
+                  ? "calc(100dvh - env(safe-area-inset-top, 0px))"
+                  : inputFocused && isMobile
+                    ? "min(500px, calc(100dvh - 1rem))"
+                    : `min(${isLead ? 600 : 500}px, calc(100vh - 7rem))`,
+              // Chat-p4 A/B: 언쏘 모바일 풀스크린은 화면 가장자리까지 —
+              // 코너 rounded-2xl 제거.
+              borderRadius: isLead && isMobile ? 0 : undefined,
               transition: "bottom 200ms ease, height 200ms ease",
               background: isDawnlight2 ? "#fef5e6" : "rgba(26,15,61,0.94)",
               border: isDawnlight2
