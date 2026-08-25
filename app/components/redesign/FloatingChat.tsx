@@ -897,6 +897,15 @@ export default function FloatingChat() {
   const pendingOlderLoadRef = useRef(false);
   const prevContentHeightRef = useRef(0);
   const prevScrollTopRef = useRef(0);
+  // Chat-p6: 과거 로딩과 무관하게, "다른 사람이 보낸 새 메시지" auto-pin은
+  // 페이지네이션이 끝난 뒤에도 무조건 하단으로 끌고 갔다 — 사용자가 과거
+  // 기록을 읽으려고 위쪽에 머물러 있어도 새 메시지가 오면 튕겨나갔다.
+  // openSettledRef 는 "패널을 막 연 직후의 정착 구간(항상 최신으로
+  // 열려야 함)"을 표시 — 이 구간 동안은 거리와 무관하게 pin 허용. 웹은
+  // listRef.current 에서 scrollTop/scrollHeight 를 언제든 동기적으로
+  // 읽을 수 있어 RN 과 달리 별도 추적 ref 없이 pin() 안에서 바로 계산.
+  const openSettledRef = useRef(false);
+  const NEAR_BOTTOM_PIN_THRESHOLD = 150;
   // 리사이즈 이벤트(useLayoutEffect 또는 ResizeObserver, 둘 중 먼저 온
   // 쪽)를 pendingOlderLoadRef 로 가드된 채 보정하는 공용 함수.
   const compensateOlderLoadScroll = useCallback(() => {
@@ -1069,8 +1078,19 @@ export default function FloatingChat() {
       // 위치 유지, 새 메시지 와도 아래로 안 끌려감.
       // Chat-p5-fix: pendingOlderLoadRef 도 동일하게 skip — 과거 메시지
       // 로드로 messages 가 늘어난 경우 맨 아래로 끌려가지 않게.
+      // Chat-p6: openSettledRef 정착 구간이 지난 뒤에는, 하단에서 멀리
+      // 떨어져 있으면(과거 기록을 읽는 중) 다른 사람의 새 메시지로 인한
+      // pin 도 skip — 본인이 보낸 메시지는 handleSend 의 별도
+      // scrollIntoView 로 이미 처리되므로 이 조건의 영향을 안 받는다.
       if (isJumpingRef.current) return;
       if (pendingOlderLoadRef.current) return;
+      if (openSettledRef.current) {
+        const l = listRef.current;
+        if (l) {
+          const distanceFromBottom = l.scrollHeight - l.scrollTop - l.clientHeight;
+          if (distanceFromBottom > NEAR_BOTTOM_PIN_THRESHOLD) return;
+        }
+      }
       const end = endRef.current;
       if (end) {
         end.scrollIntoView({ block: "end", behavior: "smooth" });
@@ -1135,6 +1155,22 @@ export default function FloatingChat() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, messages]);
+
+  // Chat-p6: openSettledRef 관리 — 패널이 막 열린 뒤 위 effect 의 지연
+  // pin 스케줄(sync/raf1/raf2 + ResizeObserver)이 대체로 정착될 시간
+  // (350ms) 동안은 "정착 전"으로 두어 거리 조건 없이 항상 최신으로
+  // 열리게 하고, 그 뒤부터 거리 조건이 적용되도록 켠다.
+  useEffect(() => {
+    if (!open) {
+      openSettledRef.current = false;
+      return;
+    }
+    openSettledRef.current = false;
+    const t = setTimeout(() => {
+      openSettledRef.current = true;
+    }, 350);
+    return () => clearTimeout(t);
+  }, [open]);
 
   // One extra pin after framer-motion's enter animation settles. On mobile
   // this is the first frame where the panel's scale/opacity are final, which
