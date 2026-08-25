@@ -6,6 +6,7 @@ import {
   memo,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -166,6 +167,12 @@ const CHAT_AVATAR_SIZE = 36;
 
 // p3.3: 액션 메뉴 이모지 — 카톡 표준 6개 (사용자 결정).
 const CHAT_REACTION_EMOJIS = ["❤️", "😂", "😢", "👍", "🎉", "😮"] as const;
+
+// Chat-p5: 과거 메시지 페이지네이션 — 초기 30개, 위로 스크롤할 때마다
+// 30개씩 limit 증가, 최대 200개에서 정지.
+const CHAT_MESSAGE_LIMIT_INITIAL = 30;
+const CHAT_MESSAGE_LIMIT_STEP = 30;
+const CHAT_MESSAGE_LIMIT_MAX = 200;
 
 const MessageItem = memo(
   function MessageItem({
@@ -574,6 +581,11 @@ export default function FloatingChat() {
     else if (getOpenPanel() === "chat") setOpenPanel(null);
   }, [open]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // Chat-p5: 페이지네이션 — limit 자체를 늘려 같은 onSnapshot 구독을
+  // 재활용 (별도 startAfter 쿼리 없음). loadingMore 는 다음 snapshot
+  // 도달 시 해제.
+  const [messageLimit, setMessageLimit] = useState(CHAT_MESSAGE_LIMIT_INITIAL);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [draft, setDraft] = useState("");
   // 멘션 자동완성용 — input 의 cursor 위치를 추적해 MentionPicker 가
   // `@<query>` 꼬리 감지에 쓴다. null 이면 picker 가 항상 안 뜸.
@@ -691,12 +703,14 @@ export default function FloatingChat() {
     });
   };
 
-  // Subscribe to the guild chat collection (last 50 messages, asc for display)
+  // Subscribe to the guild chat collection (paginated, asc for display).
+  // Chat-p5: startAfter 별도 쿼리 대신 같은 onSnapshot 의 limit 값 자체를
+  // 늘려 재구독 — messageLimit 이 바뀔 때마다 이 effect 가 재실행된다.
   useEffect(() => {
     const q = query(
       collection(db, "chat"),
       orderBy("createdAt", "desc"),
-      limit(50),
+      limit(messageLimit),
     );
     const unsub = onSnapshot(q, (snap) => {
       const list: ChatMessage[] = snap.docs.map((d) => {
@@ -737,9 +751,12 @@ export default function FloatingChat() {
       });
       list.reverse();
       setMessages(list);
+      // Chat-p5: limit 증가로 재구독한 snapshot 이 도달하면 로딩 해제.
+      // 최초 구독(초기 30개) 시에도 무해 — 이미 false 라 no-op.
+      setLoadingMore(false);
     });
     return unsub;
-  }, []);
+  }, [messageLimit]);
 
   // ── Chat-p1: 작성자 프사 + 카톡 연속 묶기 ──
   // 메시지 50개치 unique 닉네임을 한 번 fetch (useMemberAvatars 가 in-query
@@ -866,6 +883,52 @@ export default function FloatingChat() {
   // 리스너 등록해 사용자가 직접 손을 댄 후의 스크롤만 unlock 후보로 인정.
   const isJumpingRef = useRef(false);
   const userTouchedRef = useRef(false);
+  // Chat-p5: 과거 메시지 페이지네이션 스크롤 위치 보정.
+  // pendingOlderLoadRef — 다음 messages 커밋 직후(useLayoutEffect, paint
+  // 전) "과거 prepend 로 늘어난 높이"로 해석하고 딱 한 번 보정 스크롤을
+  // 하도록 하는 플래그(소비 즉시 false).
+  // suppressAutoPinRef — 같은 시점에 messages 변경으로 같이 발화하는
+  // "새 메시지 시 맨 아래로" pin(sync/raf1/raf2/resize 전부)을 억제.
+  // useLayoutEffect 보다 늦게 도는 것들까지 모두 가려야 해서 별도
+  // 타임아웃으로 해제.
+  const pendingOlderLoadRef = useRef(false);
+  const prevContentHeightRef = useRef(0);
+  const prevScrollTopRef = useRef(0);
+  const suppressAutoPinRef = useRef(false);
+  const loadOlder = useCallback(() => {
+    if (loadingMore) return;
+    if (messageLimit >= CHAT_MESSAGE_LIMIT_MAX) return;
+    // 직전 snapshot 이 messageLimit 보다 적게 돌려줬다 = 더 이상 과거
+    // 메시지가 없다는 뜻 — 조용히 정지 (안내 X, 사양).
+    if (messages.length < messageLimit) return;
+    const list = listRef.current;
+    if (list) {
+      prevContentHeightRef.current = list.scrollHeight;
+      prevScrollTopRef.current = list.scrollTop;
+    }
+    pendingOlderLoadRef.current = true;
+    suppressAutoPinRef.current = true;
+    setTimeout(() => {
+      suppressAutoPinRef.current = false;
+    }, 400);
+    setLoadingMore(true);
+    setMessageLimit((prev) =>
+      Math.min(prev + CHAT_MESSAGE_LIMIT_STEP, CHAT_MESSAGE_LIMIT_MAX),
+    );
+  }, [loadingMore, messageLimit, messages.length]);
+  // useLayoutEffect(paint 전, 동기) — DOM 이 새 messages 로 갱신된 직후
+  // scrollHeight 를 다시 재서 늘어난 만큼 scrollTop 을 더한다. 여기서
+  // 보정해야 화면에 "위로 확 튀는" 프레임이 한 번도 그려지지 않는다.
+  useLayoutEffect(() => {
+    if (!pendingOlderLoadRef.current) return;
+    pendingOlderLoadRef.current = false;
+    const list = listRef.current;
+    if (!list) return;
+    const delta = list.scrollHeight - prevContentHeightRef.current;
+    if (delta > 0) {
+      list.scrollTop = prevScrollTopRef.current + delta;
+    }
+  }, [messages]);
   const registerMessageRef = useCallback(
     (id: string, el: HTMLDivElement | null) => {
       if (el) messageRefsMap.current.set(id, el);
@@ -876,7 +939,7 @@ export default function FloatingChat() {
   const handleJumpToOriginal = useCallback((messageId: string) => {
     const el = messageRefsMap.current.get(messageId);
     if (!el) {
-      // limit(50) 밖 옛 메시지 — DOM 에 없음.
+      // 현재 messageLimit 밖 옛 메시지(200개 상한 밖 포함) — DOM 에 없음.
       alert("오래된 메시지라 찾을 수 없어요");
       return;
     }
@@ -894,19 +957,26 @@ export default function FloatingChat() {
     }, 1500);
   }, []);
   const handleListScroll = useCallback(() => {
-    if (!isJumpingRef.current) return;
-    // p2.5-fix2: 사용자가 직접 손을 댄(pointerdown) 후의 스크롤만 unlock
-    // 후보. 점프 smooth scroll 자기 발화 차단.
-    if (!userTouchedRef.current) return;
     const list = listRef.current;
     if (!list) return;
-    const distanceFromBottom =
-      list.scrollHeight - list.scrollTop - list.clientHeight;
-    if (distanceFromBottom < 80) {
-      isJumpingRef.current = false;
-      userTouchedRef.current = false;
+
+    // p2.5-fix2: 답글 점프 lock 해제 감지 — 기존 로직 그대로.
+    if (isJumpingRef.current && userTouchedRef.current) {
+      const distanceFromBottom =
+        list.scrollHeight - list.scrollTop - list.clientHeight;
+      if (distanceFromBottom < 80) {
+        isJumpingRef.current = false;
+        userTouchedRef.current = false;
+      }
     }
-  }, []);
+
+    // Chat-p5: 상단 40% 안쪽 도달 시 과거 메시지 추가 로드. loadOlder
+    // 자체가 loadingMore/messageLimit/messages.length 로 self-guard 하므로
+    // 스크롤 중 반복 호출돼도 안전(no-op).
+    if (list.scrollTop < list.scrollHeight * 0.4) {
+      loadOlder();
+    }
+  }, [loadOlder]);
   // p2.5-fix2: 사용자 포인터가 list 에 닿는 순간 — 이후의 onScroll 은
   // 사용자 직접 스크롤로 간주. 점프 직후 자기 발화 onScroll 과 구분.
   // mouse/touch/pen 통합 pointer 이벤트로 데스크탑+모바일 호환.
@@ -983,7 +1053,11 @@ export default function FloatingChat() {
     const pin = (label: string) => {
       // p2.5-fix: 점프 lock 활성화 중에는 모든 pin skip — 사용자가 머문
       // 위치 유지, 새 메시지 와도 아래로 안 끌려감.
+      // Chat-p5: suppressAutoPinRef 도 동일하게 skip — 과거 메시지 로드로
+      // messages 가 늘어난 경우 맨 아래로 끌려가지 않게(useLayoutEffect
+      // 의 보정 스크롤과 경합 방지).
       if (isJumpingRef.current) return;
+      if (suppressAutoPinRef.current) return;
       const end = endRef.current;
       if (end) {
         end.scrollIntoView({ block: "end", behavior: "smooth" });
@@ -1439,6 +1513,17 @@ export default function FloatingChat() {
               className="nebula-scroll relative flex-1 overflow-y-auto overflow-x-hidden px-3 py-2"
             >
               <div ref={contentRef}>
+                {/* Chat-p5: 과거 메시지 로딩 인디케이터 — 목록 맨 위. */}
+                {loadingMore ? (
+                  <p
+                    className="py-2 text-center font-serif text-[11px] italic"
+                    style={{
+                      color: isDawnlight2 ? "#8a6a4a" : "rgb(155,143,184)",
+                    }}
+                  >
+                    불러오는 중...
+                  </p>
+                ) : null}
                 {messages.length === 0 ? (
                   <div className="flex h-full items-center justify-center">
                     <p
