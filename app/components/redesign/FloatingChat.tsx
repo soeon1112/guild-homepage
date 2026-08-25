@@ -883,18 +883,32 @@ export default function FloatingChat() {
   // 리스너 등록해 사용자가 직접 손을 댄 후의 스크롤만 unlock 후보로 인정.
   const isJumpingRef = useRef(false);
   const userTouchedRef = useRef(false);
-  // Chat-p5: 과거 메시지 페이지네이션 스크롤 위치 보정.
-  // pendingOlderLoadRef — 다음 messages 커밋 직후(useLayoutEffect, paint
-  // 전) "과거 prepend 로 늘어난 높이"로 해석하고 딱 한 번 보정 스크롤을
-  // 하도록 하는 플래그(소비 즉시 false).
-  // suppressAutoPinRef — 같은 시점에 messages 변경으로 같이 발화하는
-  // "새 메시지 시 맨 아래로" pin(sync/raf1/raf2/resize 전부)을 억제.
-  // useLayoutEffect 보다 늦게 도는 것들까지 모두 가려야 해서 별도
-  // 타임아웃으로 해제.
+  // Chat-p5-fix: 과거 메시지 페이지네이션 스크롤 위치 보정.
+  // pendingOlderLoadRef 가 true 인 동안은 (a) "새 메시지 시 맨 아래로"
+  // pin(sync/raf1/raf2/ResizeObserver 전부)을 억제하고 (b) 대신 늘어난
+  // 높이만큼 scrollTop 을 보정한다. 첨부 이미지가 늦게 로드되며 컨텐츠
+  // 높이가 한 번 더 늘어날 수 있는데, useLayoutEffect 에서 딱 한 번만
+  // 보정하고 flag 를 바로 꺼버리면 그 뒤 이미지 로드로 커지는 높이가
+  // ResizeObserver 의 "새 메시지" pin 경로로 흘러 맨 아래로 스크롤되는
+  // 버그가 났다(과거 스크롤이 안 먹히는 것처럼 보임) — 그래서 flag 를
+  // 넉넉한 시간(900ms) 동안 유지하고, 그 안의 모든 리사이즈 이벤트를
+  // 누적 보정한다. prevContentHeightRef 를 매 보정마다 최신 높이로
+  // 갱신해야 다음 발화의 델타가 정확하다.
   const pendingOlderLoadRef = useRef(false);
   const prevContentHeightRef = useRef(0);
   const prevScrollTopRef = useRef(0);
-  const suppressAutoPinRef = useRef(false);
+  // 리사이즈 이벤트(useLayoutEffect 또는 ResizeObserver, 둘 중 먼저 온
+  // 쪽)를 pendingOlderLoadRef 로 가드된 채 보정하는 공용 함수.
+  const compensateOlderLoadScroll = useCallback(() => {
+    const list = listRef.current;
+    if (!list) return;
+    const delta = list.scrollHeight - prevContentHeightRef.current;
+    if (delta > 0) {
+      list.scrollTop = prevScrollTopRef.current + delta;
+      prevScrollTopRef.current = list.scrollTop;
+    }
+    prevContentHeightRef.current = list.scrollHeight;
+  }, []);
   const loadOlder = useCallback(() => {
     if (loadingMore) return;
     if (messageLimit >= CHAT_MESSAGE_LIMIT_MAX) return;
@@ -907,10 +921,9 @@ export default function FloatingChat() {
       prevScrollTopRef.current = list.scrollTop;
     }
     pendingOlderLoadRef.current = true;
-    suppressAutoPinRef.current = true;
     setTimeout(() => {
-      suppressAutoPinRef.current = false;
-    }, 400);
+      pendingOlderLoadRef.current = false;
+    }, 900);
     setLoadingMore(true);
     setMessageLimit((prev) =>
       Math.min(prev + CHAT_MESSAGE_LIMIT_STEP, CHAT_MESSAGE_LIMIT_MAX),
@@ -921,14 +934,8 @@ export default function FloatingChat() {
   // 보정해야 화면에 "위로 확 튀는" 프레임이 한 번도 그려지지 않는다.
   useLayoutEffect(() => {
     if (!pendingOlderLoadRef.current) return;
-    pendingOlderLoadRef.current = false;
-    const list = listRef.current;
-    if (!list) return;
-    const delta = list.scrollHeight - prevContentHeightRef.current;
-    if (delta > 0) {
-      list.scrollTop = prevScrollTopRef.current + delta;
-    }
-  }, [messages]);
+    compensateOlderLoadScroll();
+  }, [messages, compensateOlderLoadScroll]);
   const registerMessageRef = useCallback(
     (id: string, el: HTMLDivElement | null) => {
       if (el) messageRefsMap.current.set(id, el);
@@ -1053,11 +1060,10 @@ export default function FloatingChat() {
     const pin = (label: string) => {
       // p2.5-fix: 점프 lock 활성화 중에는 모든 pin skip — 사용자가 머문
       // 위치 유지, 새 메시지 와도 아래로 안 끌려감.
-      // Chat-p5: suppressAutoPinRef 도 동일하게 skip — 과거 메시지 로드로
-      // messages 가 늘어난 경우 맨 아래로 끌려가지 않게(useLayoutEffect
-      // 의 보정 스크롤과 경합 방지).
+      // Chat-p5-fix: pendingOlderLoadRef 도 동일하게 skip — 과거 메시지
+      // 로드로 messages 가 늘어난 경우 맨 아래로 끌려가지 않게.
       if (isJumpingRef.current) return;
-      if (suppressAutoPinRef.current) return;
+      if (pendingOlderLoadRef.current) return;
       const end = endRef.current;
       if (end) {
         end.scrollIntoView({ block: "end", behavior: "smooth" });
@@ -1080,9 +1086,19 @@ export default function FloatingChat() {
     });
 
     // Catch-all for image/video lazy loads inflating scrollHeight.
+    // Chat-p5-fix: 과거 로드 대기 중(pendingOlderLoadRef)이면 이 리사이즈도
+    // "새 메시지" pin 이 아니라 스크롤 위치 보정으로 처리 — 첨부 이미지가
+    // 늦게 로드돼 useLayoutEffect 이후에도 컨텐츠가 한 번 더 커지는
+    // 케이스를 여기서 잡는다.
     const ro =
       typeof ResizeObserver !== "undefined"
-        ? new ResizeObserver(() => pin("resize"))
+        ? new ResizeObserver(() => {
+            if (pendingOlderLoadRef.current) {
+              compensateOlderLoadScroll();
+              return;
+            }
+            pin("resize");
+          })
         : null;
     if (ro && content) ro.observe(content);
 
