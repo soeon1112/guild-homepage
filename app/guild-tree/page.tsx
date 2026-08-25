@@ -22,9 +22,7 @@ import { useGuilds, guildAccent } from "@/src/lib/useGuilds";
 const HIDDEN_NICKNAMES = new Set<string>(["테스트"]);
 
 // 길드별 로고. 여기 없는 (로고 미보유) 길드는 렌더 스킵.
-const GUILD_LOGOS: Record<string, string> = {
-  senafamilies: "/images/senafamilies.png",
-};
+const GUILD_LOGOS: Record<string, string> = {};
 
 function isKorean(s: string) {
   return /[가-힯]/.test(s.charAt(0));

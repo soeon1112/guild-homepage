@@ -205,7 +205,7 @@ function NoticePageInner() {
       ) : (
         visibleCategories.map((guild) => {
           const list = grouped.get(guild.id) ?? [];
-          // 카테고리별 톤 — guildAccent()가 길드ID별 매핑 (연합=라벤더, 세나패밀리즈=오카리나, 나머지=sunset-gold).
+          // 카테고리별 톤 — guildAccent()가 길드ID별 매핑 (연합=라벤더, END=청록, 나머지=sunset-gold).
           const guildTone = guildAccent(guild.id, guild.isUnion);
           const accent = guildTone.rgb;
           return (
