@@ -39,6 +39,7 @@ const DEFAULT_GUILD_ACCENT: GuildAccent = { hex: "#ffc785", rgb: "255, 199, 133"
 const GUILD_ACCENTS: Record<string, GuildAccent> = {
   senafamilies: { hex: "#d97848", rgb: "217, 120, 72" }, // 오카리나 톤
   end: { hex: "#4a7ba6", rgb: "74, 123, 166" }, // 청록 톤 (기존 색과 대비)
+  erin: { hex: "#4a9c72", rgb: "74, 156, 114" }, // 진녹 톤 (기존 3색과 대비)
 };
 
 export function guildAccent(id: string, isUnion?: boolean): GuildAccent {
