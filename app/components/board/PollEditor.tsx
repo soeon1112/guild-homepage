@@ -26,6 +26,8 @@ export type PollFormState = {
   deadline: string;
   anonymous: boolean;
   allowChange: boolean;
+  // 여러 항목 선택 가능 여부. 기본 false (단일 선택 = 기존 동작).
+  allowMultiple: boolean;
 };
 
 export const POLL_MIN_OPTIONS = 2;
@@ -41,6 +43,7 @@ export function createInitialPollState(): PollFormState {
     deadline: "",
     anonymous: false,
     allowChange: true,
+    allowMultiple: false,
   };
 }
 
@@ -259,6 +262,25 @@ export function PollEditor({
             }
           />
           마감 전 변경 가능
+        </label>
+        <label
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            fontSize: 13,
+            color: labelColor,
+            cursor: "pointer",
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={value.allowMultiple}
+            onChange={(e) =>
+              onChange({ ...value, allowMultiple: e.target.checked })
+            }
+          />
+          여러 항목 선택 가능
         </label>
       </div>
 

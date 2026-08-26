@@ -83,6 +83,7 @@ export default function BoardEditPage({
             deadline?: Timestamp;
             anonymous?: boolean;
             allowChange?: boolean;
+            allowMultiple?: boolean;
           };
           let deadlineStr = "";
           if (p.deadline && typeof p.deadline.toDate === "function") {
@@ -99,6 +100,7 @@ export default function BoardEditPage({
             deadline: deadlineStr,
             anonymous: !!p.anonymous,
             allowChange: p.allowChange !== false,
+            allowMultiple: !!p.allowMultiple,
           });
         }
       }
@@ -183,6 +185,7 @@ export default function BoardEditPage({
           options: pollForm.options, // 기존 그대로 보존
           anonymous: pollForm.anonymous,
           allowChange: pollForm.allowChange,
+          allowMultiple: pollForm.allowMultiple,
         };
         if (pollForm.deadline) {
           const [yy, mm, dd] = pollForm.deadline.split("-").map(Number);

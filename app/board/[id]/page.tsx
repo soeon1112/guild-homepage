@@ -153,6 +153,7 @@ function BoardDetailPageInner({
                   rawPoll.deadline as Timestamp | undefined,
                 anonymous: !!rawPoll.anonymous,
                 allowChange: rawPoll.allowChange !== false,
+                allowMultiple: !!rawPoll.allowMultiple,
               }
             : undefined;
         setPost({

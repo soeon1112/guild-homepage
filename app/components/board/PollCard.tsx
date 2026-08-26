@@ -4,15 +4,18 @@
 // 게시글 상세에서 투표 게시글 표시 + 참여. usePollVotes hook 사용.
 //
 // 정책:
-//   - 단일 토글 (hook 정책)
+//   - allowMultiple=false: 단일 토글 (radio, 기존). true: 다중 토글 (checkbox).
 //   - 결과 즉시 공개 (카운트 + % 바)
-//   - 본인 선택 ● 강조
+//   - 본인 선택 강조 — myVotes.includes(opt.id)
 //   - 마감 후: 클릭 차단, "마감됨" 표시
 //   - 마감 1일 이내: 임박 표시 (빨강 톤)
-//   - 익명: hook 이 votersByOption 본인만 노출 + "익명 투표" 배지
+//   - 익명: hook 이 votersByOption 본인만 노출 + "익명 투표" 배지. 투표자
+//     목록 UI 자체를 노출 안 함 (익명성 유지).
+//   - 실명 투표: 옵션별 표 수를 클릭하면 투표자 닉네임 인라인 펼침.
 //
 // 디자인 토큰 신규 0 — dl2 cream/잉크 + cosmic abyss/별빛 옅게 재사용.
 
+import { useState } from "react";
 import type React from "react";
 import {
   usePollVotes,
@@ -53,12 +56,16 @@ export function PollCard({
 }: Props) {
   const {
     counts,
-    myVote,
+    myVotes,
     totalVotes,
     isClosed,
     isAnonymous,
+    votersByOption,
     vote,
   } = usePollVotes(boardId, pollMeta, loginNick);
+
+  // 실명 투표에서만 사용 — 클릭한 옵션의 투표자 닉네임 인라인 펼침.
+  const [expandedOption, setExpandedOption] = useState<string | null>(null);
 
   const handleClick = async (optionId: string) => {
     if (isClosed) return;
@@ -165,8 +172,12 @@ export function PollCard({
           const count = counts.get(opt.id) ?? 0;
           const pct =
             totalVotes > 0 ? Math.round((count * 100) / totalVotes) : 0;
-          const isMine = myVote === opt.id;
+          const isMine = myVotes.includes(opt.id);
           const disabled = isClosed || !loginNick;
+          const voters = votersByOption.get(opt.id) ?? [];
+          // 투표자 목록은 실명 투표 + 1명 이상일 때만 클릭 가능.
+          const canExpand = !isAnonymous && count > 0;
+          const isExpanded = expandedOption === opt.id;
           return (
             <button
               key={opt.id}
@@ -230,7 +241,13 @@ export function PollCard({
                   <span
                     style={{ fontSize: 14, lineHeight: 1, flexShrink: 0 }}
                   >
-                    {isMine ? "●" : "○"}
+                    {pollMeta.allowMultiple
+                      ? isMine
+                        ? "☑"
+                        : "☐"
+                      : isMine
+                        ? "●"
+                        : "○"}
                   </span>
                   <span
                     style={{
@@ -242,16 +259,64 @@ export function PollCard({
                     {opt.text}
                   </span>
                 </span>
+                {canExpand ? (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setExpandedOption(isExpanded ? null : opt.id);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        setExpandedOption(isExpanded ? null : opt.id);
+                      }
+                    }}
+                    style={{
+                      flexShrink: 0,
+                      fontSize: 12,
+                      color: subColor,
+                      cursor: "pointer",
+                    }}
+                    title="투표자 보기"
+                  >
+                    {count}표 {pct}% {isExpanded ? "▲" : "▼"}
+                  </span>
+                ) : (
+                  <span
+                    style={{
+                      flexShrink: 0,
+                      fontSize: 12,
+                      color: subColor,
+                    }}
+                  >
+                    {count}표 {pct}%
+                  </span>
+                )}
+              </span>
+              {/* 투표자 목록 — 실명 투표에서 클릭한 옵션만 인라인 펼침. */}
+              {canExpand && isExpanded && (
                 <span
                   style={{
-                    flexShrink: 0,
-                    fontSize: 12,
+                    position: "relative",
+                    display: "block",
+                    marginTop: 6,
+                    paddingTop: 6,
+                    borderTop: isDawnlight2
+                      ? "1px solid rgba(92,58,31,0.12)"
+                      : "1px solid rgba(216,150,200,0.18)",
+                    fontSize: 11,
                     color: subColor,
+                    lineHeight: 1.5,
+                    zIndex: 1,
+                    textAlign: "left",
                   }}
                 >
-                  {count}표 {pct}%
+                  {voters.join(", ")}
                 </span>
-              </span>
+              )}
               {/* % 바 (background) */}
             </button>
           );

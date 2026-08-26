@@ -134,6 +134,7 @@ export default function BoardWritePage() {
               options: filledOptions,
               anonymous: pollForm.anonymous,
               allowChange: pollForm.allowChange,
+              allowMultiple: pollForm.allowMultiple,
             };
             if (pollForm.deadline) {
               // 마감일 = 해당 날짜 23:59:59 (해당 날짜 끝까지 유효).
