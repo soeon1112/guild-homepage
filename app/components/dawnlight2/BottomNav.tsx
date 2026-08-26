@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useChatInputFocused } from "@/src/lib/uiBus";
+import { useHasRecruitingProposals } from "@/src/lib/useHasRecruitingProposals";
 
 // Dawnlight 2 BottomNav (web) — same shape/size/icons/layout as cosmic
 // BottomNav, only the palette swaps to the warm ink tones. Mounted
@@ -97,6 +98,9 @@ const items: NavItem[] = [
 
 export function Dawnlight2BottomNav() {
   const pathname = usePathname();
+  // 모집중 제안이 하나라도 있으면 "제안" 탭 아이콘 배경을 은은하게 강조.
+  // 다른 탭에는 절대 적용 안 됨 — item.id === "proposals" 조건 안에서만.
+  const hasRecruiting = useHasRecruitingProposals();
 
   // Same hide-on-keyboard logic as cosmic BottomNav — see
   // app/components/redesign/BottomNav.tsx for the reasoning behind
@@ -161,6 +165,8 @@ export function Dawnlight2BottomNav() {
       >
         {items.map((it) => {
           const active = isActive(it);
+          const showRecruitingHighlight =
+            it.id === "proposals" && hasRecruiting && !active;
           return (
             <Link
               key={it.id}
@@ -183,7 +189,14 @@ export function Dawnlight2BottomNav() {
                         filter:
                           "drop-shadow(0 0 8px rgba(255, 199, 133, 0.55))",
                       }
-                    : { color: INACTIVE }
+                    : showRecruitingHighlight
+                      ? {
+                          color: INACTIVE,
+                          // 모집중 제안 강조 — active 방사형 halo와 구분되도록
+                          // 단색 원형 배경만 사용 (같은 sunset gold 계열).
+                          background: "rgba(255,199,133,0.35)",
+                        }
+                      : { color: INACTIVE }
                 }
               >
                 {it.icon}
