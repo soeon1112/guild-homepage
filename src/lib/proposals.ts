@@ -61,6 +61,13 @@ export function normalizeCategory(value: unknown): ProposalCategory {
 
 // ── Firestore doc shape ──────────────────────────────────────
 // 컬렉션: proposals
+//
+// participants — 2026-08-26 캐릭터 선택 기능으로 string[] → map 전환
+// (owner 닉네임을 key로 써서 한 계정당 슬롯 하나를 구조적으로 보장한다).
+// 기존 array 문서는 functions/migrate-proposal-participants.mjs 로 변환.
+export type ProposalParticipant = { character: string };
+export type ProposalParticipants = Record<string, ProposalParticipant>;
+
 export type ProposalDoc = {
   title: string;
   // 상세 내용 — 선택 입력. 작성 폼이 둘로 분리(제목 한 줄 + 내용 멀티라인)
@@ -73,7 +80,7 @@ export type ProposalDoc = {
   maxParticipants: number;
   proposer: string;
   isAnonymous: boolean;
-  participants: string[];
+  participants: ProposalParticipants;
   status: ProposalStatus;
   promotedAt: Timestamp | null;
   createdAt: Timestamp;
@@ -85,7 +92,7 @@ export type ProposalDoc = {
 // 어느 쪽으로 호출해도 동작하도록 minimal shape만 받는다.
 export type ProposalLike = {
   proposer: string;
-  participants?: readonly string[];
+  participants?: ProposalParticipants;
   maxParticipants: number;
   status: ProposalStatus;
   promotedAt?: Timestamp | null;
@@ -110,7 +117,25 @@ export function isParticipant(
   nickname: string | null | undefined,
 ): boolean {
   if (!nickname) return false;
-  return Array.isArray(p.participants) && p.participants.includes(nickname);
+  return !!p.participants && Object.prototype.hasOwnProperty.call(p.participants, nickname);
+}
+
+// 참가 캐릭터 정보 — 재선택 모달을 현재 선택값으로 미리 채우는 용도.
+export function getParticipantCharacter(
+  p: ProposalLike,
+  nickname: string | null | undefined,
+): string | null {
+  if (!nickname || !p.participants) return null;
+  return p.participants[nickname]?.character ?? null;
+}
+
+export function participantCount(p: ProposalLike): number {
+  return p.participants ? Object.keys(p.participants).length : 0;
+}
+
+// 대표(character === owner)면 닉네임만, 부캐면 "닉네임(캐릭터명)".
+export function participantDisplayName(owner: string, character: string): string {
+  return character === owner ? owner : `${owner}(${character})`;
 }
 
 export function canJoin(
@@ -124,8 +149,7 @@ export function canJoin(
   // 어떤 사유로 participants가 비어 있을 때도 항상 false가 되도록 명시 추가.
   if (isProposer(p, nickname)) return false;
   if (isParticipant(p, nickname)) return false;
-  const count = p.participants?.length ?? 0;
-  if (count >= p.maxParticipants) return false;
+  if (participantCount(p) >= p.maxParticipants) return false;
   return true;
 }
 

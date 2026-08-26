@@ -3,9 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
-  arrayRemove,
-  arrayUnion,
   collection,
+  deleteField,
   doc,
   onSnapshot,
   serverTimestamp,
@@ -16,17 +15,22 @@ import { useAuth } from "../components/AuthProvider";
 import { db } from "@/src/lib/firebase";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
 import { useBackdropClose } from "@/src/lib/useBackdropClose";
+import { useUserCharacters } from "@/src/lib/useCharacters";
 import {
   canCancelJoin,
   canJoin,
   canPromote,
   canSeeProposals,
   canTransitionTo,
+  getParticipantCharacter,
   getPromoteCooldownRemainingMs,
   isProposer,
   normalizeCategory,
+  participantCount,
+  participantDisplayName,
   type ProposalCategory,
   type ProposalDoc,
+  type ProposalParticipants,
   type ProposalStatus,
   STATUS_LABEL,
 } from "@/src/lib/proposals";
@@ -52,7 +56,7 @@ type ProposalListItem = {
   maxParticipants: number;
   proposer: string;
   isAnonymous: boolean;
-  participants: string[];
+  participants: ProposalParticipants;
   status: ProposalStatus;
   updatedAtMs: number;
   // canPromote / getPromoteCooldownRemainingMs 헬퍼가 toMillis()를 호출하므로
@@ -64,6 +68,11 @@ type PendingTransition = {
   id: string;
   target: ProposalStatus;
   wasAnonymous: boolean;
+};
+
+type SelectingCharacter = {
+  id: string;
+  current: string;
 };
 
 export default function ProposalsListPage() {
@@ -117,6 +126,15 @@ function ListView({
   const [currentPage, setCurrentPage] = useState(1);
   const [pending, setPending] = useState<PendingTransition | null>(null);
   const [pendingPromote, setPendingPromote] = useState<string | null>(null);
+  const [selecting, setSelecting] = useState<SelectingCharacter | null>(null);
+  // 부캐 후보 — 대표(loginNick 자체)는 characters 문서가 아니므로 목록에서
+  // 제외하고, 캐릭터명이 로그인 닉네임과 같은(=대표 역할) 캐릭터도 대표
+  // 옵션과 중복되지 않도록 뺀다.
+  const characters = useUserCharacters(loginNick);
+  const subChars = useMemo(
+    () => characters.filter((c) => c.nickname !== loginNick),
+    [characters, loginNick],
+  );
   // 30초 단위 tick — 홍보 쿨타임 카운트다운이 자동으로 줄어든다.
   // setNow는 단순 forceUpdate 트리거 — 카드 안에서 헬퍼는 직접 Date.now()를
   // 호출하므로 prop drill 불필요.
@@ -143,9 +161,14 @@ function ListView({
             maxParticipants: data.maxParticipants ?? 0,
             proposer: data.proposer ?? "",
             isAnonymous: !!data.isAnonymous,
-            participants: Array.isArray(data.participants)
-              ? (data.participants as string[])
-              : [],
+            // 마이그레이션 전 옛 array 문서 방어 — 변환 전에는 빈 맵으로
+            // fallback (canJoin이 count 0으로 보고 정상 동작, 참가자만 안 보임).
+            participants:
+              data.participants &&
+              typeof data.participants === "object" &&
+              !Array.isArray(data.participants)
+                ? (data.participants as ProposalParticipants)
+                : {},
             status: (data.status as ProposalStatus) ?? "recruiting",
             updatedAtMs: data.updatedAt?.toMillis?.() ?? 0,
             promotedAt: data.promotedAt ?? null,
@@ -169,10 +192,10 @@ function ListView({
     [allItems, safePage],
   );
 
-  const handleJoin = async (id: string) => {
+  const handleJoin = async (id: string, character: string) => {
     try {
       await updateDoc(doc(db, "proposals", id), {
-        participants: arrayUnion(loginNick),
+        [`participants.${loginNick}`]: { character },
         updatedAt: serverTimestamp(),
       });
     } catch (e) {
@@ -184,7 +207,7 @@ function ListView({
   const handleCancelJoin = async (id: string) => {
     try {
       await updateDoc(doc(db, "proposals", id), {
-        participants: arrayRemove(loginNick),
+        [`participants.${loginNick}`]: deleteField(),
         updatedAt: serverTimestamp(),
       });
     } catch (e) {
@@ -192,6 +215,27 @@ function ListView({
       alert("참가 취소에 실패했습니다.");
     }
   };
+
+  // 부캐가 없으면 모달 없이 바로 대표로 참가. 있으면 선택 모달을 연다.
+  const openJoin = (id: string) => {
+    if (subChars.length === 0) {
+      handleJoin(id, loginNick);
+      return;
+    }
+    setSelecting({ id, current: loginNick });
+  };
+
+  const openChangeCharacter = (id: string, current: string) => {
+    setSelecting({ id, current });
+  };
+
+  const confirmSelect = async (character: string) => {
+    if (!selecting) return;
+    await handleJoin(selecting.id, character);
+    setSelecting(null);
+  };
+
+  const dismissSelect = () => setSelecting(null);
 
   const askTransition = (
     id: string,
@@ -273,8 +317,15 @@ function ListView({
               key={p.id}
               item={p}
               loginNick={loginNick}
-              onJoin={() => handleJoin(p.id)}
+              hasSubChars={subChars.length > 0}
+              onJoin={() => openJoin(p.id)}
               onCancelJoin={() => handleCancelJoin(p.id)}
+              onChangeCharacter={() =>
+                openChangeCharacter(
+                  p.id,
+                  getParticipantCharacter(p, loginNick) ?? loginNick,
+                )
+              }
               onTransition={(target) =>
                 askTransition(p.id, target, p.isAnonymous)
               }
@@ -318,6 +369,14 @@ function ListView({
           onCancel={dismissPromote}
         />
       ) : null}
+
+      <CharacterSelectModal
+        selecting={selecting}
+        loginNick={loginNick}
+        subChars={subChars}
+        onConfirm={confirmSelect}
+        onCancel={dismissSelect}
+      />
     </div>
   );
 }
@@ -325,15 +384,19 @@ function ListView({
 function ProposalCard({
   item,
   loginNick,
+  hasSubChars,
   onJoin,
   onCancelJoin,
+  onChangeCharacter,
   onTransition,
   onPromote,
 }: {
   item: ProposalListItem;
   loginNick: string;
+  hasSubChars: boolean;
   onJoin: () => void;
   onCancelJoin: () => void;
+  onChangeCharacter: () => void;
   onTransition: (target: ProposalStatus) => void;
   onPromote: () => void;
 }) {
@@ -344,21 +407,26 @@ function ProposalCard({
   const showAnonymous = item.isAnonymous && item.status === "recruiting";
   const proposerLabel = showAnonymous ? "익명" : item.proposer;
   // 익명 + 모집중일 때만 참가자 리스트 안의 제안자 본인 닉네임을 "익명"으로
-  // 치환. 다른 참가자는 본인 의지로 참가했으니 그대로 노출.
-  const maskedParticipants = showAnonymous
-    ? item.participants.map((n) => (n === item.proposer ? "익명" : n))
-    : item.participants;
+  // 치환. 다른 참가자는 본인 의지로 참가했으니 그대로 노출. 대표는 닉네임만,
+  // 부캐는 "닉네임(캐릭터명)"으로 표시.
+  const maskedParticipants = Object.entries(item.participants).map(
+    ([owner, v]) =>
+      showAnonymous && owner === item.proposer
+        ? "익명"
+        : participantDisplayName(owner, v.character),
+  );
   const participantsLine =
     maskedParticipants.length > 0 ? maskedParticipants.join(", ") : "없음";
 
   const showJoin = canJoin(item, loginNick);
   const showCancelJoin = canCancelJoin(item, loginNick);
+  const showChangeCharacter = showCancelJoin && hasSubChars;
   const showFull =
     item.status === "recruiting" &&
     !showJoin &&
     !showCancelJoin &&
     !isProposer(item, loginNick) &&
-    item.participants.length >= item.maxParticipants;
+    participantCount(item) >= item.maxParticipants;
 
   const proposerActions: ProposalStatus[] =
     isProposer(item, loginNick) && item.status === "recruiting"
@@ -380,7 +448,12 @@ function ProposalCard({
   const isCancelled = item.status === "cancelled";
   const hasActions =
     !isCancelled &&
-    (showJoin || showCancelJoin || showFull || proposerActions.length > 0 || showPromote);
+    (showJoin ||
+      showCancelJoin ||
+      showChangeCharacter ||
+      showFull ||
+      proposerActions.length > 0 ||
+      showPromote);
 
   return (
     <div className="proposals-card" data-status={item.status}>
@@ -417,7 +490,7 @@ function ProposalCard({
         <div className="proposals-highlight-card">
           <span className="proposals-highlight-label">인원</span>
           <span className="proposals-highlight-value">
-            {item.participants.length} / {item.maxParticipants}
+            {participantCount(item)} / {item.maxParticipants}
           </span>
         </div>
       </div>
@@ -439,6 +512,11 @@ function ProposalCard({
           {showCancelJoin ? (
             <button className="proposals-action-default" onClick={onCancelJoin}>
               참가 취소
+            </button>
+          ) : null}
+          {showChangeCharacter ? (
+            <button className="proposals-action-default" onClick={onChangeCharacter}>
+              캐릭터 변경
             </button>
           ) : null}
           {showFull ? (
@@ -557,6 +635,117 @@ function PromoteConfirmModal({
             disabled={submitting}
           >
             {submitting ? "처리 중..." : "확인"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// 참가 캐릭터 선택 — 대표(loginNick) + 부캐 라디오. selecting이 null이면
+// 렌더 자체를 안 해서(다른 모달과 동일 패턴) 백드롭이 안 뜬다.
+function CharacterSelectModal({
+  selecting,
+  loginNick,
+  subChars,
+  onConfirm,
+  onCancel,
+}: {
+  selecting: SelectingCharacter | null;
+  loginNick: string;
+  subChars: ReturnType<typeof useUserCharacters>;
+  onConfirm: (character: string) => void;
+  onCancel: () => void;
+}) {
+  const [choice, setChoice] = useState(selecting?.current ?? loginNick);
+  const [submitting, setSubmitting] = useState(false);
+  const backdropHandlers = useBackdropClose(onCancel, !submitting);
+
+  // selecting이 바뀔 때(다른 제안 클릭 / 재오픈)마다 현재 참가 캐릭터로
+  // 라디오 초기값을 다시 맞춘다.
+  useEffect(() => {
+    if (selecting) {
+      setChoice(selecting.current);
+      setSubmitting(false);
+    }
+  }, [selecting]);
+
+  if (!selecting) return null;
+
+  const handleConfirm = async () => {
+    setSubmitting(true);
+    try {
+      await onConfirm(choice);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div
+      className="proposals-modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="proposals-character-title"
+      {...backdropHandlers}
+    >
+      <div
+        className="proposals-modal-card"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          className="proposals-modal-close"
+          onClick={onCancel}
+          aria-label="닫기"
+          disabled={submitting}
+        >
+          ×
+        </button>
+        <h2 id="proposals-character-title" className="proposals-modal-title">
+          참가 캐릭터 선택
+        </h2>
+        <div className="proposals-character-options">
+          <label className="proposals-character-option">
+            <input
+              type="radio"
+              name="proposal-character"
+              checked={choice === loginNick}
+              onChange={() => setChoice(loginNick)}
+            />
+            <span>{loginNick} (대표)</span>
+          </label>
+          {subChars.map((c) => (
+            <label key={c.id} className="proposals-character-option">
+              <input
+                type="radio"
+                name="proposal-character"
+                checked={choice === c.nickname}
+                onChange={() => setChoice(c.nickname)}
+              />
+              <span>
+                {c.nickname}
+                {c.job ? ` (${c.job})` : ""}
+              </span>
+            </label>
+          ))}
+        </div>
+        <div className="proposals-modal-footer-two">
+          <button
+            type="button"
+            className="proposals-modal-cancel"
+            onClick={onCancel}
+            disabled={submitting}
+          >
+            취소
+          </button>
+          <button
+            type="button"
+            className="proposals-modal-confirm"
+            onClick={handleConfirm}
+            disabled={submitting}
+          >
+            {submitting ? "처리 중..." : "이 캐릭터로 참가"}
           </button>
         </div>
       </div>
