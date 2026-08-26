@@ -29,6 +29,7 @@ type AuthState = {
 
 const AuthContext = createContext<AuthState | null>(null);
 const STORAGE_KEY = "auth:nickname";
+const PASSWORD_STORAGE_KEY = "auth:password";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [nickname, setNickname] = useState<string | null>(null);
@@ -45,9 +46,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         try {
+          const storedPassword = localStorage.getItem(PASSWORD_STORAGE_KEY);
           const snap = await getDoc(doc(db, "users", stored));
-          if (!snap.exists() || !snap.data().password || snap.data().disabled === true) {
+          if (
+            !snap.exists() ||
+            !snap.data().password ||
+            snap.data().disabled === true ||
+            snap.data().password !== storedPassword
+          ) {
             localStorage.removeItem(STORAGE_KEY);
+            localStorage.removeItem(PASSWORD_STORAGE_KEY);
             setReady(true);
             return;
           }
@@ -73,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return { ok: false, error: "비밀번호가 일치하지 않습니다." };
         }
         localStorage.setItem(STORAGE_KEY, n);
+        localStorage.setItem(PASSWORD_STORAGE_KEY, p);
         setNickname(n);
         return { ok: true };
       } catch (e) {
@@ -120,6 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.warn("[signup] members doc 생성 실패 — 미니홈피에서 직접 등록 가능:", e);
         }
         localStorage.setItem(STORAGE_KEY, n);
+        localStorage.setItem(PASSWORD_STORAGE_KEY, p);
         setNickname(n);
         return { ok: true };
       } catch (e) {
@@ -132,6 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(PASSWORD_STORAGE_KEY);
     setNickname(null);
   }, []);
 
@@ -150,6 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return { ok: false, error: "현재 비밀번호가 일치하지 않습니다." };
         }
         await updateDoc(ref, { password: n });
+        localStorage.setItem(PASSWORD_STORAGE_KEY, n);
         return { ok: true };
       } catch (e) {
         console.error(e);
