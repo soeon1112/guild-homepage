@@ -100,11 +100,17 @@ export function usePollVotes(
         const next = new Map<string, string[]>();
         snap.forEach((d) => {
           const data = d.data();
-          const optionIds = Array.isArray(data.optionIds)
-            ? data.optionIds.filter(
-                (v: unknown): v is string => typeof v === "string",
-              )
-            : [];
+          let optionIds: string[] = [];
+          if (Array.isArray(data.optionIds)) {
+            // 신형식 — 우선.
+            optionIds = data.optionIds.filter(
+              (v: unknown): v is string => typeof v === "string",
+            );
+          } else if (typeof data.optionId === "string") {
+            // 구형식 fallback — 배포 직후 구버전 클라이언트가 아직 optionId
+            // 단수 필드로 쓰고 있는 케이스 대응 (마이그 전에도 즉시 반영).
+            optionIds = [data.optionId];
+          }
           if (optionIds.length > 0) next.set(d.id, optionIds);
         });
         setAllVotes(next);
