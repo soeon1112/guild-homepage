@@ -11,6 +11,7 @@ import {
 } from "firebase/firestore";
 import { useAuth } from "../../components/AuthProvider";
 import { db } from "@/src/lib/firebase";
+import { useUserCharacters } from "@/src/lib/useCharacters";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
 import { useBackdropClose } from "@/src/lib/useBackdropClose";
 import {
@@ -72,6 +73,14 @@ function FormView({
   const [showAnonymousWarning, setShowAnonymousWarning] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  // 부캐 후보 — 대표(authorNick 자체)는 characters 문서가 아니므로 목록에서
+  // 제외하고, 캐릭터명이 로그인 닉네임과 같은(=대표 역할) 캐릭터도 대표
+  // 목록에서 제외 (proposals/page.tsx의 참가 캐릭터 선택과 동일 패턴).
+  const subChars = useUserCharacters(authorNick).filter(
+    (c) => c.nickname !== authorNick,
+  );
+  const [selectedCharacter, setSelectedCharacter] = useState(authorNick);
+
   const toggleAnonymous = () => {
     if (!isAnonymous) {
       // 켜는 순간 안내 모달. 모달의 확인 버튼이 setIsAnonymous(true)를
@@ -125,11 +134,13 @@ function FormView({
         scheduledAt: Timestamp.fromDate(scheduled),
         maxParticipants: max,
         proposer: authorNick,
+        proposerCharacter: selectedCharacter,
         isAnonymous,
         // 제안자는 본인의 제안에 자동 참가 — Phase 2에서 참가자 리스트
         // 표시 + 인원 카운트가 시작부터 1로 잡힘. 제안자가 빠질 수 있는
-        // 길은 "취소" 액션 한 가지뿐. 캐릭터 선택 없이 생성되므로 대표로 시작.
-        participants: { [authorNick]: { character: authorNick } },
+        // 길은 "취소" 액션 한 가지뿐. 참가 캐릭터는 작성 시 고른
+        // selectedCharacter를 그대로 반영.
+        participants: { [authorNick]: { character: selectedCharacter } },
         status: "recruiting",
         promotedAt: null,
         createdAt: serverTimestamp(),
@@ -252,6 +263,37 @@ function FormView({
           </span>
           <span className="proposals-checkbox-label">익명 제안</span>
         </label>
+
+        {subChars.length > 0 ? (
+          <div className="proposals-field">
+            <span className="proposals-field-label">작성 캐릭터</span>
+            <div className="proposals-character-options">
+              <label className="proposals-character-option">
+                <input
+                  type="radio"
+                  name="proposal-write-character"
+                  checked={selectedCharacter === authorNick}
+                  onChange={() => setSelectedCharacter(authorNick)}
+                />
+                <span>{authorNick} (대표)</span>
+              </label>
+              {subChars.map((c) => (
+                <label key={c.id} className="proposals-character-option">
+                  <input
+                    type="radio"
+                    name="proposal-write-character"
+                    checked={selectedCharacter === c.nickname}
+                    onChange={() => setSelectedCharacter(c.nickname)}
+                  />
+                  <span>
+                    {c.nickname}
+                    {c.job ? ` (${c.job})` : ""}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         <div className="board-form-buttons">
           <button

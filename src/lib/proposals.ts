@@ -79,6 +79,10 @@ export type ProposalDoc = {
   scheduledAt: Timestamp;
   maxParticipants: number;
   proposer: string;
+  // 작성 시 선택한 캐릭터. 대표로 작성하면 proposer와 동일값, 부캐로
+  // 작성하면 부캐명. 기존 문서(캐릭터 선택 기능 이전)에는 없을 수 있어
+  // reader는 항상 (data.proposerCharacter ?? data.proposer) fallback.
+  proposerCharacter?: string;
   isAnonymous: boolean;
   participants: ProposalParticipants;
   status: ProposalStatus;

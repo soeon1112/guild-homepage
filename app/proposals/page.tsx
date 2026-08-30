@@ -55,6 +55,7 @@ type ProposalListItem = {
   scheduledAtMs: number;
   maxParticipants: number;
   proposer: string;
+  proposerCharacter: string;
   isAnonymous: boolean;
   participants: ProposalParticipants;
   status: ProposalStatus;
@@ -160,6 +161,7 @@ function ListView({
             scheduledAtMs: scheduled?.getTime() ?? 0,
             maxParticipants: data.maxParticipants ?? 0,
             proposer: data.proposer ?? "",
+            proposerCharacter: data.proposerCharacter ?? data.proposer ?? "",
             isAnonymous: !!data.isAnonymous,
             // 마이그레이션 전 옛 array 문서 방어 — 변환 전에는 빈 맵으로
             // fallback (canJoin이 count 0으로 보고 정상 동작, 참가자만 안 보임).
@@ -405,7 +407,9 @@ function ProposalCard({
   // false이므로 자연스럽게 닉네임 공개. 익명은 누구에게도(관리자 포함)
   // 닉네임 노출 X — 익명성 보장 우선.
   const showAnonymous = item.isAnonymous && item.status === "recruiting";
-  const proposerLabel = showAnonymous ? "익명" : item.proposer;
+  const proposerLabel = showAnonymous
+    ? "익명"
+    : participantDisplayName(item.proposer, item.proposerCharacter);
   // 익명 + 모집중일 때만 참가자 리스트 안의 제안자 본인 닉네임을 "익명"으로
   // 치환. 다른 참가자는 본인 의지로 참가했으니 그대로 노출. 대표는 닉네임만,
   // 부캐는 "닉네임(캐릭터명)"으로 표시.
