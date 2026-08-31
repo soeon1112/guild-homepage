@@ -383,6 +383,13 @@ export function NewHomeChat() {
   const { nickname, ready } = useAuth();
   const { items, loadOlder: timelineLoadOlder, hasMoreOlder, loadingMore } =
     useHomeTimeline(30);
+  // useHomeTimeline.items 는 Firestore 페이지네이션(limit 증가)이 최신
+  // N개를 가져오기 위해 createdAt DESC 로 정렬돼 있다(P1 미접촉 — 그대로
+  // 둠). FloatingChat.tsx:752 가 `list.reverse()`로 화면 표시용 ASC를
+  // 만드는 것과 동일하게, 여기서도 렌더/그룹핑 직전에만 뒤집는다 — 이
+  // 반전이 없으면 최신이 DOM 맨 위, pin()이 스크롤하는 "맨 아래"는
+  // 가장 오래된 메시지가 돼버린다(배포 후 발견된 버그).
+  const displayItems = useMemo(() => [...items].reverse(), [items]);
 
   const [draft, setDraft] = useState("");
   const [mentionCursor, setMentionCursor] = useState<number | null>(null);
@@ -422,9 +429,9 @@ export function NewHomeChat() {
   );
 
   // ── 카톡 그룹핑 — FloatingChat.tsx:786-809 을 chat+activity 혼합
-  // items 배열에 맞게 확장. sameMinuteSameSender 가 activity 이웃을
-  // 만나면 무조건 false 를 돌려주므로, "채팅 A → 카드 → 채팅 A" 순서는
-  // 카드가 그룹을 끊어 양쪽 채팅 모두 showAvatar/showNickname=true.
+  // displayItems(ASC) 배열에 맞게 확장. sameMinuteSameSender 가 activity
+  // 이웃을 만나면 무조건 false 를 돌려주므로, "채팅 A → 카드 → 채팅 A"
+  // 순서는 카드가 그룹을 끊어 양쪽 채팅 모두 showAvatar/showNickname=true.
   const decoratedItems = useMemo(() => {
     const minuteOf = (t: Timestamp | null) =>
       t && typeof t.toMillis === "function" ? Math.floor(t.toMillis() / 60000) : null;
@@ -435,17 +442,17 @@ export function NewHomeChat() {
       const mb = minuteOf(b.ts);
       return ma !== null && ma === mb;
     };
-    return items.map((item, i) => {
+    return displayItems.map((item, i) => {
       if (!isChatItem(item)) {
         return { item, showAvatar: false, showNickname: false, showTime: false };
       }
-      const prev = items[i - 1];
-      const next = items[i + 1];
+      const prev = displayItems[i - 1];
+      const next = displayItems[i + 1];
       const startsGroup = !prev || !sameMinuteSameSender(prev, item);
       const endsGroup = !next || !sameMinuteSameSender(item, next);
       return { item, showAvatar: startsGroup, showNickname: startsGroup, showTime: endsGroup };
     });
-  }, [items]);
+  }, [displayItems]);
 
   // ── 답글 액션 메뉴 — FloatingChat.tsx:811-863 verbatim ──
   const handleActionMenu = useCallback((m: ChatItem) => setActionMenuFor(m), []);
@@ -712,7 +719,13 @@ export function NewHomeChat() {
   };
 
   return (
-    <div className="flex h-full w-full flex-col" style={{ background: "transparent" }}>
+    // PC 데스크탑에서 뷰포트 전체 폭으로 퍼지던 문제 — 원본 FloatingChat
+    // 패널은 애초에 380px 코너 패널이었는데(FloatingChat.tsx:1450 min(380px,
+    // ...)) 풀스크린으로 옮기며 폭 제한이 빠졌다. max-w-[480px] + mx-auto 로
+    // 카톡/디스코드 스타일 중앙 컬럼 복원. 480px 는 대부분의 모바일 뷰포트
+    // 폭보다 넓어 w-full 이 그 안에서 자연히 꽉 차므로 모바일은 별도 분기
+    // 없이 그대로 풀폭 유지된다.
+    <div className="mx-auto flex h-full w-full max-w-[480px] flex-col" style={{ background: "transparent" }}>
       {/* 헤더 — 원본 FloatingChat 패널 헤더와 달리 닫기 버튼 없음(풀스크린
           홈이라 "닫을" 대상이 없음). 컨테이너가 어두운 dl2 배경 위에
           transparent 로 얹히므로 제목은 cream(다른 dl2 섹션 헤더와 동일
