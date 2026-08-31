@@ -35,6 +35,7 @@ import {
 } from "@/src/lib/useChatReactions";
 import { useHomeTimeline, type TimelineItem } from "@/src/lib/useHomeTimeline";
 import { ActivityCard } from "@/app/components/ActivityCard";
+import { useCommentActionSheet } from "@/src/lib/useCommentActionSheet";
 
 // Home 채팅 메인 리뉴얼 Phase 3 — 채팅(chat) + 최신 소식(activity) 카드가
 // 시간순으로 섞인 풀스크린 채팅 컴포넌트. 사용처는 아직 없음(Phase 4에서
@@ -60,6 +61,19 @@ type ActivityItem = Extract<TimelineItem, { kind: "activity" }>;
 function isChatItem(item: TimelineItem): item is ChatItem {
   return item.kind === "chat";
 }
+
+// P4.2 답글 — chat/{id}.replyTo 는 이미 { messageId, nickname, snippet,
+// fileType? } 스냅샷 객체라(FloatingChat.tsx, 채팅 답글 시스템 미접촉),
+// activity 에 대한 답글도 스키마 변경 없이 이 모양 그대로 넣을 수 있다.
+// ChatItem 은 이 4개 필드를 구조적으로 이미 만족하므로(초과 필드는
+// 문제 없음), replyingTo 를 ChatItem 전용에서 이 최소 타입으로만
+// 넓히면 activity 답글도 같은 handleSend 경로를 그대로 탄다.
+type ReplyTarget = {
+  id: string;
+  nickname: string;
+  message: string;
+  fileType?: ChatFileType;
+};
 
 function formatTime(ts: Timestamp | null): string {
   if (!ts) return "";
@@ -403,8 +417,13 @@ export function NewHomeChat() {
   const [mentionCursor, setMentionCursor] = useState<number | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [sending, setSending] = useState(false);
-  const [replyingTo, setReplyingTo] = useState<ChatItem | null>(null);
+  const [replyingTo, setReplyingTo] = useState<ReplyTarget | null>(null);
   const [actionMenuFor, setActionMenuFor] = useState<ChatItem | null>(null);
+  // P4.2 — ActivityCard 전용 답글 액션시트. actionMenuFor(채팅 6-이모지+
+  // 답글 팝오버)와는 완전히 별개 인스턴스 — 이모지 없음, 재사용만(이
+  // hook 자체는 board.tsx 등에서 이미 쓰이는 기존 코드, 수정 X).
+  const { open: openActivityReplyMenu, sheet: activityReplySheet } =
+    useCommentActionSheet();
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
 
   const filePreview = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
@@ -799,7 +818,23 @@ export function NewHomeChat() {
               if (!isChatItem(item)) {
                 const activity = item as ActivityItem;
                 return (
-                  <ActivityCard key={activity.id} message={activity.message} link={activity.link ?? ""} />
+                  <ActivityCard
+                    key={activity.id}
+                    message={activity.message}
+                    link={activity.link ?? ""}
+                    onOpenMenu={() =>
+                      openActivityReplyMenu({
+                        content: activity.message,
+                        isMine: false,
+                        onReply: () =>
+                          setReplyingTo({
+                            id: activity.id,
+                            nickname: activity.nickname,
+                            message: activity.message,
+                          }),
+                      })
+                    }
+                  />
                 );
               }
               return (
@@ -1008,6 +1043,9 @@ export function NewHomeChat() {
           </div>
         </div>
       )}
+      {/* P4.2 — ActivityCard 답글 전용 액션시트(useCommentActionSheet 는
+          내부에서 createPortal(document.body) 하므로 이 위치는 무관). */}
+      {activityReplySheet}
     </div>
   );
 }

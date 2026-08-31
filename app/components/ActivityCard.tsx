@@ -18,17 +18,37 @@ import Link from "next/link";
 type Props = {
   message: string;
   link: string;
+  // P4.2 답글 — 실제 액션시트(useCommentActionSheet) 인스턴스는 부모
+  // (NewHomeChat) 하나만 갖고 있고, 이 콜백은 그 open() 을 이 카드에
+  // 바인딩해서 내려받은 것 — ActivityCard 는 훅 자체를 모른다(재사용만,
+  // 시스템 미접촉).
+  onOpenMenu?: () => void;
 };
 
-export function ActivityCard({ message, link }: Props) {
+export function ActivityCard({ message, link, onOpenMenu }: Props) {
   return (
     <div className="my-2 flex justify-center">
       <Link
         href={link}
-        className="inline-block max-w-[80%] rounded-full border border-[#c8b8e8]/50 bg-[#c8b8e8]/15 px-4 py-2 text-center font-serif text-xs transition-colors hover:bg-[#c8b8e8]/25"
+        className="group relative inline-flex max-w-[80%] items-center gap-1.5 rounded-full border border-[#c8b8e8]/50 bg-[#c8b8e8]/15 py-2 pl-4 pr-2 text-center font-serif text-xs transition-colors hover:bg-[#c8b8e8]/25"
         style={{ color: "#5c3a1f" }}
       >
-        {message}
+        <span className="min-w-0">{message}</span>
+        {onOpenMenu && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onOpenMenu();
+            }}
+            aria-label="답글"
+            className="shrink-0 rounded-full px-1.5 py-0.5 opacity-0 transition-opacity hover:bg-[#5c3a1f]/10 group-hover:opacity-60"
+            style={{ color: "#5c3a1f", fontSize: 14, lineHeight: 1 }}
+          >
+            ⋯
+          </button>
+        )}
       </Link>
     </div>
   );
