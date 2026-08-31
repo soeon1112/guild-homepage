@@ -1,55 +1,82 @@
 "use client";
 
 import Link from "next/link";
+import type { MessageReactions } from "@/src/lib/useChatReactions";
 
-// Home 채팅 메인 리뉴얼 Phase 2 — 최신 소식(activity) 카드. 사용처는 아직
-// 없음(Phase 3에서 useHomeTimeline 의 TimelineItem[kind="activity"] 를
-// 렌더링에 연결한다). `link`은 activity.ts 의 logActivity()가 쓰던 그대로
-// 신뢰 — 별도 파싱/변환 없이 Next.js Link href에 바로 사용.
+// Home 채팅 메인 리뉴얼 Phase 2 — 최신 소식(activity) 카드. `link`은
+// activity.ts 의 logActivity()가 쓰던 그대로 신뢰 — 별도 파싱/변환 없이
+// Next.js Link href에 바로 사용.
 //
 // dl2 톤 — 배포 후 실사용 확인 결과 cream/peach 조합이 채팅 버블
 // (mine=#ffd4b8 배경, other=#f0e4cc 배경)과 거의 같은 색으로 읽혀 구분이
 // 안 됐다. mist-lavender(#c8b8e8) 계열로 교체 — 채팅 버블 두 색 어느
 // 쪽과도 겹치지 않으면서, 다른 dl2 위젯(Topbar 서브타이틀 등)이 이미
-// 보조 톤으로 쓰는 팔레트라 이탈 없음. 폰트도 버블(12px)보다 작게(12px
-// 동일선상, text-xs)+ rounded-full로 "시스템 메시지" 느낌을 살림 —
-// 라벨/시간 없음, 문구만 중앙 배열.
+// 보조 톤으로 쓰는 팔레트라 이탈 없음. 폰트도 버블(12px)과 같은 선상
+// (text-xs)+ rounded-full로 "시스템 메시지" 느낌을 살림 — 라벨/시간
+// 없음, 문구만 중앙 배열.
+//
+// P4.2.1 — ⋯ 트리거를 채팅 메시지(MessageItem)의 replyBtn 과 완전히
+// 동일한 위치/스타일로 이식: 카드(=버블) "밖"의 형제 요소, opacity-40
+// → hover:opacity-100(PC 에서 항상 최소한은 보임, hover 로 나타나는
+// 게 아님). 클릭 시 부모가 채팅과 같은 actionMenuFor 팝오버(이모지+
+// 답글)를 연다 — ActivityCard 는 그 팝오버를 모르고 콜백만 받는다.
 
 type Props = {
   message: string;
   link: string;
-  // P4.2 답글 — 실제 액션시트(useCommentActionSheet) 인스턴스는 부모
-  // (NewHomeChat) 하나만 갖고 있고, 이 콜백은 그 open() 을 이 카드에
-  // 바인딩해서 내려받은 것 — ActivityCard 는 훅 자체를 모른다(재사용만,
-  // 시스템 미접촉).
-  onOpenMenu?: () => void;
+  onActionMenu?: () => void;
+  messageReactions?: MessageReactions;
 };
 
-export function ActivityCard({ message, link, onOpenMenu }: Props) {
+export function ActivityCard({ message, link, onActionMenu, messageReactions }: Props) {
   return (
-    <div className="my-2 flex justify-center">
-      <Link
-        href={link}
-        className="group relative inline-flex max-w-[80%] items-center gap-1.5 rounded-full border border-[#c8b8e8]/50 bg-[#c8b8e8]/15 py-2 pl-4 pr-2 text-center font-serif text-xs transition-colors hover:bg-[#c8b8e8]/25"
-        style={{ color: "#5c3a1f" }}
-      >
-        <span className="min-w-0">{message}</span>
-        {onOpenMenu && (
+    <div className="my-2 flex flex-col items-center gap-1">
+      <div className="flex items-end gap-1">
+        <Link
+          href={link}
+          className="inline-block max-w-[80%] rounded-full border border-[#c8b8e8]/50 bg-[#c8b8e8]/15 px-4 py-2 text-center font-serif text-xs transition-colors hover:bg-[#c8b8e8]/25"
+          style={{ color: "#5c3a1f" }}
+        >
+          {message}
+        </Link>
+        {onActionMenu && (
           <button
             type="button"
             onClick={(e) => {
-              e.preventDefault();
               e.stopPropagation();
-              onOpenMenu();
+              onActionMenu();
             }}
-            aria-label="답글"
-            className="shrink-0 rounded-full px-1.5 py-0.5 opacity-0 transition-opacity hover:bg-[#5c3a1f]/10 group-hover:opacity-60"
-            style={{ color: "#5c3a1f", fontSize: 14, lineHeight: 1 }}
+            aria-label="액션 메뉴"
+            className="chat-action-trigger self-end opacity-40 transition-opacity hover:opacity-100"
+            style={{ padding: 4, color: "#8a6a4a", lineHeight: 1, fontSize: 16, letterSpacing: 1 }}
           >
             ⋯
           </button>
         )}
-      </Link>
+      </div>
+      {messageReactions && messageReactions.byEmoji.size > 0 && (
+        <div className="flex flex-wrap items-center justify-center gap-1">
+          {Array.from(messageReactions.byEmoji.entries()).map(([emoji, nicks]) => {
+            const isMine = messageReactions.myEmoji === emoji;
+            return (
+              <span
+                key={emoji}
+                className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 font-serif"
+                style={{
+                  background: "rgba(254,245,230,0.85)",
+                  border: isMine
+                    ? "1px solid rgba(255,184,138,0.85)"
+                    : "1px solid rgba(92,58,31,0.2)",
+                  color: "#5c3a1f",
+                }}
+              >
+                <span style={{ fontSize: 12 }}>{emoji}</span>
+                <span style={{ fontSize: 11 }}>{nicks.length}</span>
+              </span>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

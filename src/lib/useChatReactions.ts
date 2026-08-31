@@ -5,6 +5,11 @@
 //   chat/{messageId}/reactions/{nickname}
 //     { emoji: string, createdAt: serverTimestamp }
 //
+// P4.2.1 (Home 채팅 리뉴얼) — 3번째 인자 collectionRoot(기본 "chat")로
+// activity 카드 리액션도 같은 훅으로 지원. 병렬 구조:
+//   activity/{activityId}/reactions/{nickname}
+// chat 문서와는 분리된 서브컬렉션이라 서로 안 섞인다(F안 채택).
+//
 // 정책:
 //   - 단일 (한 메시지에 본인 1 reaction만). 다른 emoji 클릭 시 교체.
 //   - 같은 emoji 재클릭 → 제거 (deleteDoc).
@@ -51,6 +56,11 @@ export type ChatReactionsState = {
 export function useChatReactions(
   messageIds: string[],
   loginNick: string,
+  // P4.2.1 — Home 채팅 리뉴얼: activity 카드도 같은 리액션 UX 를 쓰기
+  // 위해 컬렉션 루트를 선택적 3번째 인자로 노출. 기존 호출부(전부
+  // "chat" 생략)는 동작 변화 없음 — 채팅 리액션 로직 자체는 무수정,
+  // 병렬 서브컬렉션(activity/{id}/reactions/{nickname})으로만 확장.
+  collectionRoot: string = "chat",
 ): ChatReactionsState {
   const [reactions, setReactions] = useState<Map<string, MessageReactions>>(
     new Map(),
@@ -85,7 +95,7 @@ export function useChatReactions(
     for (const id of ids) {
       if (unsubsRef.current.has(id)) continue;
       const unsub = onSnapshot(
-        collection(db, "chat", id, "reactions"),
+        collection(db, collectionRoot, id, "reactions"),
         (snap) => {
           const byEmoji = new Map<string, string[]>();
           let myEmoji: string | null = null;
@@ -111,7 +121,7 @@ export function useChatReactions(
     }
     // cleanup 은 unmount useEffect (아래) 에서 일괄. deps 변경 시 effect
     // 본문이 다시 실행되며 live/dead diff 처리하므로 별도 cleanup 불필요.
-  }, [idsKey, loginNick]);
+  }, [idsKey, loginNick, collectionRoot]);
 
   // unmount 시 전체 unsub — listener leak 방지.
   useEffect(() => {
@@ -126,7 +136,7 @@ export function useChatReactions(
 
   const toggleReaction = async (messageId: string, emoji: string) => {
     if (!loginNick || !messageId || !emoji) return;
-    const refDoc = doc(db, "chat", messageId, "reactions", loginNick);
+    const refDoc = doc(db, collectionRoot, messageId, "reactions", loginNick);
     const current = reactions.get(messageId)?.myEmoji ?? null;
     if (current === emoji) {
       // 같은 emoji 다시 클릭 → 제거.

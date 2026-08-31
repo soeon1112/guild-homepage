@@ -281,12 +281,17 @@ const MessageItem = memo(
         className="block max-w-full rounded-md px-2 py-1.5 text-left font-serif transition-opacity hover:opacity-80"
         style={replyQuoteStyle}
       >
-        <div
-          className="truncate text-[10px] font-semibold"
-          style={{ color: replyQuoteStyle.color as string | undefined }}
-        >
-          ↪ {m.replyTo.nickname}
-        </div>
+        {/* Home 채팅 리뉴얼(NewHomeChat) P4.2.1 — activity 카드에 대한
+            답글은 nickname 을 빈 문자열로 저장해 이 줄이 안 보이게 한다.
+            chat 원본은 nickname 이 항상 채워져 있어 동작 변화 없음. */}
+        {m.replyTo.nickname && (
+          <div
+            className="truncate text-[10px] font-semibold"
+            style={{ color: replyQuoteStyle.color as string | undefined }}
+          >
+            ↪ {m.replyTo.nickname}
+          </div>
+        )}
         <div
           className="truncate text-[11px]"
           style={{ color: replyQuoteSnippetColor, marginTop: 1 }}

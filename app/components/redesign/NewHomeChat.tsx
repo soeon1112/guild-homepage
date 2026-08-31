@@ -35,7 +35,6 @@ import {
 } from "@/src/lib/useChatReactions";
 import { useHomeTimeline, type TimelineItem } from "@/src/lib/useHomeTimeline";
 import { ActivityCard } from "@/app/components/ActivityCard";
-import { useCommentActionSheet } from "@/src/lib/useCommentActionSheet";
 
 // Home 채팅 메인 리뉴얼 Phase 3 — 채팅(chat) + 최신 소식(activity) 카드가
 // 시간순으로 섞인 풀스크린 채팅 컴포넌트. 사용처는 아직 없음(Phase 4에서
@@ -184,12 +183,18 @@ const MessageItem = memo(
         className="block max-w-full rounded-md px-2 py-1.5 text-left font-serif transition-opacity hover:opacity-80"
         style={replyQuoteStyle}
       >
-        <div
-          className="truncate text-[10px] font-semibold"
-          style={{ color: replyQuoteStyle.color as string | undefined }}
-        >
-          ↪ {m.replyTo.nickname}
-        </div>
+        {/* P4.2.1: activity 원본 답글은 nickname 을 빈 문자열로 저장해
+            "닉네임의 답글" 접두어를 아예 안 보이게 한다(활동 카드는
+            원래 라벨/닉 없이 문구만 보여주는 톤이라 답글 인용도 동일하게
+            맞춘 것 — chat 원본은 nickname 이 항상 채워져 있어 그대로 유지). */}
+        {m.replyTo.nickname && (
+          <div
+            className="truncate text-[10px] font-semibold"
+            style={{ color: replyQuoteStyle.color as string | undefined }}
+          >
+            ↪ {m.replyTo.nickname}
+          </div>
+        )}
         <div
           className="truncate text-[11px]"
           style={{ color: replyQuoteSnippetColor, marginTop: 1 }}
@@ -418,12 +423,10 @@ export function NewHomeChat() {
   const [file, setFile] = useState<File | null>(null);
   const [sending, setSending] = useState(false);
   const [replyingTo, setReplyingTo] = useState<ReplyTarget | null>(null);
-  const [actionMenuFor, setActionMenuFor] = useState<ChatItem | null>(null);
-  // P4.2 — ActivityCard 전용 답글 액션시트. actionMenuFor(채팅 6-이모지+
-  // 답글 팝오버)와는 완전히 별개 인스턴스 — 이모지 없음, 재사용만(이
-  // hook 자체는 board.tsx 등에서 이미 쓰이는 기존 코드, 수정 X).
-  const { open: openActivityReplyMenu, sheet: activityReplySheet } =
-    useCommentActionSheet();
+  // P4.2.1: 채팅 메시지의 6-이모지+답글 팝오버를 activity 카드에도 그대로
+  // 재사용 — P4.2의 useCommentActionSheet(답글만, 이모지 X) 대신 이
+  // 하나의 상태만 채팅/activity 공통으로 쓴다(요청 6 "완전 동일 UX").
+  const [actionMenuFor, setActionMenuFor] = useState<TimelineItem | null>(null);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
 
   const filePreview = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
@@ -450,10 +453,19 @@ export function NewHomeChat() {
     () => items.filter(isChatItem).map((i) => i.id),
     [items],
   );
-  const { reactions: chatReactions, toggleReaction } = useChatReactions(
-    chatMessageIds,
-    nickname ?? "",
+  const { reactions: chatReactions, toggleReaction: toggleChatReaction } =
+    useChatReactions(chatMessageIds, nickname ?? "");
+
+  // P4.2.1 — activity 카드 리액션. useChatReactions 자체는 무수정 재사용
+  // (채팅 리액션 로직 미접촉) — 컬렉션 루트만 3번째 인자로 "activity" 를
+  // 넘겨 activity/{id}/reactions/{nickname} 서브컬렉션을 본다(F안: 병렬
+  // 구조, chat 문서와 안 섞임).
+  const activityIds = useMemo(
+    () => items.filter((i): i is ActivityItem => !isChatItem(i)).map((i) => i.id),
+    [items],
   );
+  const { reactions: activityReactions, toggleReaction: toggleActivityReaction } =
+    useChatReactions(activityIds, nickname ?? "", "activity");
 
   // ── 카톡 그룹핑 — FloatingChat.tsx:786-809 을 chat+activity 혼합
   // displayItems(ASC) 배열에 맞게 확장. sameMinuteSameSender 가 activity
@@ -493,8 +505,9 @@ export function NewHomeChat() {
     [decoratedItems, filterActivityOnly],
   );
 
-  // ── 답글 액션 메뉴 — FloatingChat.tsx:811-863 verbatim ──
-  const handleActionMenu = useCallback((m: ChatItem) => setActionMenuFor(m), []);
+  // ── 답글 액션 메뉴 — FloatingChat.tsx:811-863 verbatim, chat+activity
+  // 공통으로 확장(요청 6) ──
+  const handleActionMenu = useCallback((m: TimelineItem) => setActionMenuFor(m), []);
   const handleClearReply = useCallback(() => setReplyingTo(null), []);
   const handleSelectEmoji = useCallback(
     async (emoji: string) => {
@@ -502,17 +515,33 @@ export function NewHomeChat() {
       if (!target) return;
       setActionMenuFor(null);
       try {
-        await toggleReaction(target.id, emoji);
+        if (isChatItem(target)) {
+          await toggleChatReaction(target.id, emoji);
+        } else {
+          await toggleActivityReaction(target.id, emoji);
+        }
       } catch (e) {
         console.error("[Reaction] failed", e);
       }
     },
-    [actionMenuFor, toggleReaction],
+    [actionMenuFor, toggleChatReaction, toggleActivityReaction],
   );
   const handleSelectReplyFromMenu = useCallback(() => {
     const target = actionMenuFor;
     if (!target) return;
-    setReplyingTo(target);
+    // P4.2.1: activity 원본이면 nickname 을 빈 문자열로 스냅샷 — 인용
+    // 렌더(ReplyQuote)가 이 값이 falsy 일 때 "님의 답글" 줄 자체를 안
+    // 그린다(요청 4). chat 원본은 기존대로 nickname 그대로.
+    setReplyingTo(
+      isChatItem(target)
+        ? {
+            id: target.id,
+            nickname: target.nickname,
+            message: target.message,
+            fileType: target.fileType,
+          }
+        : { id: target.id, nickname: "", message: target.message },
+    );
     setActionMenuFor(null);
   }, [actionMenuFor]);
   useEffect(() => {
@@ -822,18 +851,8 @@ export function NewHomeChat() {
                     key={activity.id}
                     message={activity.message}
                     link={activity.link ?? ""}
-                    onOpenMenu={() =>
-                      openActivityReplyMenu({
-                        content: activity.message,
-                        isMine: false,
-                        onReply: () =>
-                          setReplyingTo({
-                            id: activity.id,
-                            nickname: activity.nickname,
-                            message: activity.message,
-                          }),
-                      })
-                    }
+                    onActionMenu={() => handleActionMenu(activity)}
+                    messageReactions={activityReactions.get(activity.id)}
                   />
                 );
               }
@@ -875,7 +894,7 @@ export function NewHomeChat() {
             <div className="mb-2 flex items-center gap-2 rounded-lg px-3 py-2" style={{ background: "rgba(255,212,184,0.35)", borderLeft: "3px solid #ffb88a" }}>
               <div className="min-w-0 flex-1">
                 <div className="truncate font-serif text-[11px] font-semibold" style={{ color: "#5c3a1f" }}>
-                  ↪ {replyingTo.nickname}님에게 답글
+                  {replyingTo.nickname ? `↪ ${replyingTo.nickname}님에게 답글` : "↪ 답글"}
                 </div>
                 <div className="truncate font-serif text-[11px]" style={{ color: "rgba(92,58,31,0.8)", marginTop: 1 }}>
                   {replyingTo.message ||
@@ -1043,9 +1062,6 @@ export function NewHomeChat() {
           </div>
         </div>
       )}
-      {/* P4.2 — ActivityCard 답글 전용 액션시트(useCommentActionSheet 는
-          내부에서 createPortal(document.body) 하므로 이 위치는 무관). */}
-      {activityReplySheet}
     </div>
   );
 }
