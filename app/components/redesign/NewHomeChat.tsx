@@ -9,7 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Camera, Send, X } from "lucide-react";
+import { Camera, Filter, Send, X } from "lucide-react";
 import {
   addDoc,
   collection,
@@ -391,6 +391,14 @@ export function NewHomeChat() {
   // 가장 오래된 메시지가 돼버린다(배포 후 발견된 버그).
   const displayItems = useMemo(() => [...items].reverse(), [items]);
 
+  // P4.1: "최신 소식만 보기" 필터 — NewHomeChat 내부 자체 state(옵션 A).
+  // URL query/Context 대신 이렇게 둔 이유: 상단 바를 ChromeShell/전역
+  // Topbar 로 옮기면 그 파일은 dl2 의 모든 페이지가 공유하는 컴포넌트라
+  // "다른 페이지 미접촉" 원칙에 어긋난다. NewHomeChat 자체가 이미
+  // "홈 + 언쏘"에서만 마운트되므로, 필터 버튼을 이 컴포넌트 안에 두면
+  // D-2 의 조건부 노출이 별도 분기 없이 구조적으로 만족된다.
+  const [filterActivityOnly, setFilterActivityOnly] = useState(false);
+
   const [draft, setDraft] = useState("");
   const [mentionCursor, setMentionCursor] = useState<number | null>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -453,6 +461,18 @@ export function NewHomeChat() {
       return { item, showAvatar: startsGroup, showNickname: startsGroup, showTime: endsGroup };
     });
   }, [displayItems]);
+
+  // P4.1 필터 — 그룹핑은 항상 전체 스트림(displayItems) 기준으로 유지한
+  // 채(꺼져 있을 때 다시 켜도 그룹 경계가 안 흔들리도록), 렌더 직전에만
+  // activity 만 걸러낸다. 채팅 입력창은 필터와 무관하게 항상 노출(D-6
+  // 옵션 A) — 이 필터는 "보기"만 바꾸고 입력 가능 여부는 안 건드린다.
+  const visibleDecoratedItems = useMemo(
+    () =>
+      filterActivityOnly
+        ? decoratedItems.filter(({ item }) => !isChatItem(item))
+        : decoratedItems,
+    [decoratedItems, filterActivityOnly],
+  );
 
   // ── 답글 액션 메뉴 — FloatingChat.tsx:811-863 verbatim ──
   const handleActionMenu = useCallback((m: ChatItem) => setActionMenuFor(m), []);
@@ -725,19 +745,33 @@ export function NewHomeChat() {
     // 카톡/디스코드 스타일 중앙 컬럼 복원. 480px 는 대부분의 모바일 뷰포트
     // 폭보다 넓어 w-full 이 그 안에서 자연히 꽉 차므로 모바일은 별도 분기
     // 없이 그대로 풀폭 유지된다.
-    <div className="mx-auto flex h-full w-full max-w-[480px] flex-col" style={{ background: "transparent" }}>
-      {/* 헤더 — 원본 FloatingChat 패널 헤더와 달리 닫기 버튼 없음(풀스크린
-          홈이라 "닫을" 대상이 없음). 컨테이너가 어두운 dl2 배경 위에
-          transparent 로 얹히므로 제목은 cream(다른 dl2 섹션 헤더와 동일
-          톤) — 원본의 ink-on-cream 배색을 그대로 쓰면 어두운 배경에서
-          안 보인다. */}
-      <div className="shrink-0 px-4 py-3" style={{ borderBottom: "1px solid rgba(200,184,232,0.15)" }}>
-        <h3
-          className="leading-none text-cream"
-          style={{ fontFamily: "'Noto Serif KR', serif", fontSize: 15, fontWeight: 600, letterSpacing: "0.06em" }}
+    //
+    // P4.1: 배경을 원본 FloatingChat 의 dl2 패널 배경(#fef5e6, cream,
+    // 불투명)과 동일하게 맞춤 — FloatingChat.tsx:1462 참고. 전 Phase의
+    // transparent(어두운 dl2 홈 배경이 비치는 상태)는 카톡방인데 뒤가
+    // 훤히 비쳐 보이는 문제로 관측돼, 원본과 동일한 불투명 패널로 되돌림.
+    <div className="mx-auto flex h-full w-full max-w-[480px] flex-col" style={{ background: "#fef5e6" }}>
+      {/* 헤더 — "연합 채팅" 텍스트는 P4.1에서 제거(요청). 바 자체는 유지 —
+          "최신 소식만 보기" 필터 버튼이 여기 산다. 닫기 버튼 없음(풀스크린
+          홈이라 "닫을" 대상이 없음). */}
+      <div
+        className="flex shrink-0 items-center justify-end px-4 py-3"
+        style={{ borderBottom: "1px solid rgba(92,58,31,0.15)" }}
+      >
+        <button
+          type="button"
+          onClick={() => setFilterActivityOnly((v) => !v)}
+          aria-pressed={filterActivityOnly}
+          aria-label={filterActivityOnly ? "전체 보기" : "최신 소식만 보기"}
+          title={filterActivityOnly ? "전체 보기" : "최신 소식만 보기"}
+          className="flex h-8 w-8 items-center justify-center rounded-full transition-colors"
+          style={{
+            background: filterActivityOnly ? "rgba(255,199,133,0.35)" : "transparent",
+            color: filterActivityOnly ? "#b85420" : "#8a6a4a",
+          }}
         >
-          연합 채팅
-        </h3>
+          <Filter className="h-4 w-4" />
+        </button>
       </div>
 
       {/* 메시지 + 카드 리스트 */}
@@ -752,14 +786,14 @@ export function NewHomeChat() {
               불러오는 중...
             </p>
           ) : null}
-          {items.length === 0 ? (
+          {visibleDecoratedItems.length === 0 ? (
             <div className="flex h-full items-center justify-center">
               <p className="font-serif text-[12px] italic" style={{ color: "#8a6a4a" }}>
-                아직 대화가 없어요
+                {filterActivityOnly ? "아직 최신 소식이 없어요" : "아직 대화가 없어요"}
               </p>
             </div>
           ) : (
-            decoratedItems.map(({ item, showAvatar, showNickname, showTime }) => {
+            visibleDecoratedItems.map(({ item, showAvatar, showNickname, showTime }) => {
               if (!isChatItem(item)) {
                 const activity = item as ActivityItem;
                 return (
