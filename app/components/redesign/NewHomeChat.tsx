@@ -751,35 +751,37 @@ export function NewHomeChat() {
     // transparent(어두운 dl2 홈 배경이 비치는 상태)는 카톡방인데 뒤가
     // 훤히 비쳐 보이는 문제로 관측돼, 원본과 동일한 불투명 패널로 되돌림.
     <div className="mx-auto flex h-full w-full max-w-[480px] flex-col" style={{ background: "#fef5e6" }}>
-      {/* 헤더 — "연합 채팅" 텍스트는 P4.1에서 제거(요청). 바 자체는 유지 —
-          "최신 소식만 보기" 필터 버튼이 여기 산다. 닫기 버튼 없음(풀스크린
-          홈이라 "닫을" 대상이 없음). */}
-      <div
-        className="flex shrink-0 items-center justify-end px-4 py-3"
-        style={{ borderBottom: "1px solid rgba(92,58,31,0.15)" }}
-      >
+      {/* 상단 별도 라인 제거(P4.1.1 요청) — 필터 버튼은 메시지 영역 위에
+          뜨는 floating 원형 버튼으로 이동. 이 wrapper 가 relative 포지셔닝
+          기준이고, 버튼은 absolute 로 스크롤 영역 위에 고정되며 메시지가
+          그 뒤로 지나간다(z-10). 헤더 바 자체가 사라져 스크롤 영역이
+          그만큼 세로로 늘어난다. */}
+      <div className="relative flex-1">
         <button
           type="button"
           onClick={() => setFilterActivityOnly((v) => !v)}
           aria-pressed={filterActivityOnly}
           aria-label={filterActivityOnly ? "전체 보기" : "최신 소식만 보기"}
           title={filterActivityOnly ? "전체 보기" : "최신 소식만 보기"}
-          className="flex h-8 w-8 items-center justify-center rounded-full transition-colors"
-          style={{
-            background: filterActivityOnly ? "rgba(255,199,133,0.35)" : "transparent",
-            color: filterActivityOnly ? "#b85420" : "#8a6a4a",
-          }}
+          className={`absolute right-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-full border shadow-sm transition-colors ${
+            filterActivityOnly
+              ? "border-transparent bg-sunset-gold"
+              : "border-cloud-pink bg-cream hover:bg-sunset-gold/25"
+          }`}
+          style={{ color: "#5c3a1f" }}
         >
           <Filter className="h-4 w-4" />
         </button>
-      </div>
 
-      {/* 메시지 + 카드 리스트 */}
-      <div
-        ref={listRef}
-        onScroll={handleListScroll}
-        className="nebula-scroll relative flex-1 overflow-y-auto overflow-x-hidden px-3 py-2"
-      >
+        {/* 메시지 + 카드 리스트 — absolute inset-0 로 relative wrapper 를
+            정확히 채워야 위 필터 버튼이 스크롤과 무관하게 같은 화면
+            위치에 고정된다(부모가 스크롤 컨테이너 자신이면 absolute
+            자식도 같이 스크롤돼버림). */}
+        <div
+          ref={listRef}
+          onScroll={handleListScroll}
+          className="nebula-scroll absolute inset-0 overflow-y-auto overflow-x-hidden px-3 py-2"
+        >
         <div ref={contentRef}>
           {loadingMore ? (
             <p className="py-2 text-center font-serif text-[11px] italic" style={{ color: "#8a6a4a" }}>
@@ -820,6 +822,7 @@ export function NewHomeChat() {
           )}
           <div ref={endRef} aria-hidden />
         </div>
+        </div>
       </div>
 
       {/* 입력창 — 다음 Phase(하단 네비 대체)에서 확장 예정, 지금은 기존
@@ -828,11 +831,11 @@ export function NewHomeChat() {
           입력줄에만 부여 — 원본은 패널 자체가 cream 이라 별도 배경이
           필요 없었다(이 부분만 컨테이너 배경 변경에 따른 조정). */}
       {!ready ? (
-        <div className="shrink-0 px-4 py-4 text-center font-serif text-[11px] italic" style={{ color: "#8a6a4a", background: "rgba(254,245,230,0.92)" }}>
+        <div className="sticky bottom-0 shrink-0 px-4 py-4 text-center font-serif text-[11px] italic" style={{ color: "#8a6a4a", background: "rgba(254,245,230,0.92)" }}>
           불러오는 중...
         </div>
       ) : nickname ? (
-        <div className="relative shrink-0 px-3 py-3" style={{ background: "rgba(254,245,230,0.92)", borderTop: "1px solid rgba(92,58,31,0.15)" }}>
+        <div className="sticky bottom-0 relative shrink-0 px-3 py-3" style={{ background: "rgba(254,245,230,0.92)", borderTop: "1px solid rgba(92,58,31,0.15)" }}>
           {replyingTo && (
             <div className="mb-2 flex items-center gap-2 rounded-lg px-3 py-2" style={{ background: "rgba(255,212,184,0.35)", borderLeft: "3px solid #ffb88a" }}>
               <div className="min-w-0 flex-1">
@@ -952,7 +955,7 @@ export function NewHomeChat() {
           </div>
         </div>
       ) : (
-        <div className="shrink-0 px-4 py-4 text-center font-serif text-[11px] italic" style={{ color: "#8a6a4a", background: "rgba(254,245,230,0.92)" }}>
+        <div className="sticky bottom-0 shrink-0 px-4 py-4 text-center font-serif text-[11px] italic" style={{ color: "#8a6a4a", background: "rgba(254,245,230,0.92)" }}>
           로그인이 필요합니다
         </div>
       )}
