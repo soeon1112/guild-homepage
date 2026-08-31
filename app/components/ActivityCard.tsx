@@ -15,11 +15,16 @@ import type { MessageReactions } from "@/src/lib/useChatReactions";
 // (text-xs)+ rounded-full로 "시스템 메시지" 느낌을 살림 — 라벨/시간
 // 없음, 문구만 중앙 배열.
 //
-// P4.2.1 — ⋯ 트리거를 채팅 메시지(MessageItem)의 replyBtn 과 완전히
-// 동일한 위치/스타일로 이식: 카드(=버블) "밖"의 형제 요소, opacity-40
-// → hover:opacity-100(PC 에서 항상 최소한은 보임, hover 로 나타나는
-// 게 아님). 클릭 시 부모가 채팅과 같은 actionMenuFor 팝오버(이모지+
-// 답글)를 연다 — ActivityCard 는 그 팝오버를 모르고 콜백만 받는다.
+// P4.2.1 — ⋯ 트리거를 채팅 메시지(MessageItem)의 replyBtn 과 동일한
+// opacity-40 → hover:opacity-100(PC 에서 항상 최소한은 보임)로 이식했지만,
+// flex 형제로 두면 [카드+⋯] 묶음 전체가 중앙 정렬 대상이 돼 카드 자체가
+// 왼쪽으로 쏠리고, 폭을 나눠 갖게 돼 카드가 두 줄로 넘어가는 회귀가
+// 났다(P4.2.2). 카드 wrapper 를 relative 로 두고 ⋯ 을 그 안에서 absolute
+// 로 카드 오른쪽 "밖"에 붙이면 ⋯ 이 레이아웃 폭 계산에서 완전히
+// 빠져(포지셔닝만, 공간 차지 X) 카드는 항상 자기 자신만으로 중앙
+// 정렬·한 줄 유지된다. 클릭 시 부모가 채팅과 같은 actionMenuFor
+// 팝오버(이모지+답글)를 연다 — ActivityCard 는 그 팝오버를 모르고
+// 콜백만 받는다.
 
 type Props = {
   message: string;
@@ -31,10 +36,10 @@ type Props = {
 export function ActivityCard({ message, link, onActionMenu, messageReactions }: Props) {
   return (
     <div className="my-2 flex flex-col items-center gap-1">
-      <div className="flex items-end gap-1">
+      <div className="relative inline-block max-w-[80%]">
         <Link
           href={link}
-          className="inline-block max-w-[80%] rounded-full border border-[#c8b8e8]/50 bg-[#c8b8e8]/15 px-4 py-2 text-center font-serif text-xs transition-colors hover:bg-[#c8b8e8]/25"
+          className="block rounded-full border border-[#c8b8e8]/50 bg-[#c8b8e8]/15 px-4 py-2 text-center font-serif text-xs transition-colors hover:bg-[#c8b8e8]/25"
           style={{ color: "#5c3a1f" }}
         >
           {message}
@@ -47,8 +52,8 @@ export function ActivityCard({ message, link, onActionMenu, messageReactions }: 
               onActionMenu();
             }}
             aria-label="액션 메뉴"
-            className="chat-action-trigger self-end opacity-40 transition-opacity hover:opacity-100"
-            style={{ padding: 4, color: "#8a6a4a", lineHeight: 1, fontSize: 16, letterSpacing: 1 }}
+            className="chat-action-trigger absolute right-[-32px] top-1/2 -translate-y-1/2 opacity-40 transition-opacity hover:opacity-100"
+            style={{ padding: 4, color: "#8a6a4a", lineHeight: 1, fontSize: 14, letterSpacing: 1 }}
           >
             ⋯
           </button>
