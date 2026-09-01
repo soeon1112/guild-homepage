@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useChatInputFocused } from "@/src/lib/uiBus";
 import { useHasRecruitingProposals } from "@/src/lib/useHasRecruitingProposals";
+import { useAuth } from "@/app/components/AuthProvider";
 
 // Dawnlight 2 BottomNav (web) — same shape/size/icons/layout as cosmic
 // BottomNav, only the palette swaps to the warm ink tones. Mounted
@@ -98,6 +99,7 @@ const items: NavItem[] = [
 
 export function Dawnlight2BottomNav() {
   const pathname = usePathname();
+  const { nickname } = useAuth();
   // 모집중 제안이 하나라도 있으면 "제안" 탭 아이콘 배경을 은은하게 강조.
   // 다른 탭에는 절대 적용 안 됨 — item.id === "proposals" 조건 안에서만.
   const hasRecruiting = useHasRecruitingProposals();
@@ -129,6 +131,8 @@ export function Dawnlight2BottomNav() {
 
   const chatInputFocused = useChatInputFocused();
   const hidden = keyboardOpen || chatInputFocused;
+
+  if (pathname === "/" && nickname === "언쏘") return null;
 
   const isActive = (item: NavItem) => {
     if (!pathname) return false;
