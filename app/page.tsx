@@ -21,6 +21,19 @@
 // translateY 만큼 밀려나 있는데, 이 박스에 클리핑이 없으면 페이지가
 // 조금이라도 더 길어질 때(예: ChromeShell main 여분 패딩) 그 잔상이
 // 비쳐 보일 수 있다 — 이 박스 경계에서 무조건 잘라 방지.
+//
+// 키보드 회피 근본 fix — `100dvh`만으로는 모바일 브라우저(특히 Android
+// Chrome 다수 버전, 일부 iOS Safari)에서 소프트 키보드가 열려도 동적
+// 뷰포트 높이가 안 줄어드는 비일관성이 있다. 이 페이지는 (App
+// Router 다른 페이지들과 달리) 문서 레벨 스크롤이 아예 없이 뷰포트에
+// 정확히 맞춰 고정된 박스라, 기존 두 키보드 전략(모달의
+// `--keyboard-inset` padding-bottom, KeyboardScrollGuard의
+// scrollIntoView) 둘 다 "스크롤 여유가 있는 박스"를 전제해서 여기선
+// 스크롤할 대상 자체가 없어 무력화됐다(둘 다 미접촉, 그대로 둠).
+// VisualViewportSync(app/components/VisualViewportSync.tsx)가 이미
+// 실측 키보드 오버랩을 `--keyboard-inset`로 노출하고 있으므로, 이
+// 박스의 높이 자체에서 그만큼을 직접 빼 채팅 영역(flex-1)이 줄고
+// 입력창이 자연히 키보드 위로 밀려 올라가게 한다.
 import { useAuth } from "@/app/components/AuthProvider";
 import { MainGate } from "./components/dawnlight2/MainGate";
 import { NewHomeChat } from "./components/redesign/NewHomeChat";
@@ -32,7 +45,12 @@ export default function Home() {
 
   if (nickname === "언쏘") {
     return (
-      <div style={{ height: `calc(100dvh - ${TOPBAR_HEIGHT}px)`, overflow: "hidden" }}>
+      <div
+        style={{
+          height: `calc(100dvh - ${TOPBAR_HEIGHT}px - var(--keyboard-inset, 0px))`,
+          overflow: "hidden",
+        }}
+      >
         <NewHomeChat />
       </div>
     );
