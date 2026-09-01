@@ -1,7 +1,6 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { usePathname } from "next/navigation";
 import { Camera, Send, X } from "lucide-react";
 import {
   memo,
@@ -568,11 +567,6 @@ function reactionsEqual(
 
 export default function FloatingChat() {
   const { nickname, ready } = useAuth();
-  // P5 — 홈 + 언쏘 조기 return(아래, 이 함수 맨 끝 JSX 직전)용 pathname.
-  // 훅 자체는 다른 훅들과 같이 여기서 무조건 호출 — 실제 이른-return 문은
-  // 이 아래에 남은 모든 훅이 먼저 다 호출된 뒤여야 Rules of Hooks 를 안
-  // 어긴다.
-  const pathname = usePathname();
   // Dawnlight 2 reskin gate — for 언쏘 the FAB swaps to a flat cream
   // surface (peach radial gradient + 3D inset → solid #fef5e6 + soft
   // shadow). Pulse rings, twinkles, badge animations all keep their
@@ -1301,10 +1295,10 @@ export default function FloatingChat() {
     setOpen(false);
   };
 
-  // P5 — 홈 + 언쏘: NewHomeChat(app/page.tsx)이 이미 이 페이지 자체를
-  // 채팅 메인으로 쓰므로 FAB 이 중복. 다른 페이지/다른 사용자는 이
-  // 조건에 안 걸려 완전히 그대로(BottomNav.tsx 의 얼리 리턴과 동일 패턴).
-  if (pathname === "/" && nickname === "언쏘") return null;
+  // P5 — 언쏘: 채팅 접근은 상단 로고 → 홈(NewHomeChat, 이미 채팅 메인)
+  // 하나로 통일 — 모든 페이지에서 FAB 자체를 제거(pathname 조건 없음).
+  // 다른 사용자는 이 조건에 안 걸려 완전히 그대로.
+  if (nickname === "언쏘") return null;
 
   return (
     <>
