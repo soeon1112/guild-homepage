@@ -1,7 +1,17 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
+import { useRouter } from "next/navigation";
+import { collection, getDocs, limit, query, where } from "firebase/firestore";
+import { db } from "@/src/lib/firebase";
 
+// 프사 클릭 → 개인 공간 이동 (중앙 집중): `nickname` prop 하나만 있으면
+// 이 컴포넌트가 자체적으로 members 컬렉션을 nickname 으로 조회해 슬롯
+// doc id 를 찾고 `/members/{id}` 로 이동한다 — 채팅/게시판/앨범/길드원
+// 카드 등 호출부를 단 한 곳도 안 고쳐도 전부 자동으로 클릭 가능해진다.
+// app/components/NicknameLink.tsx(이 라운드부터 dumb span) 가 쓰던 것과
+// 같은 조회 패턴 — 닉네임에 해당하는 members 문서가 없으면(미등록/"잠든
+// 별") alert 로 안내하고 이동하지 않는다.
 type MemberAvatarProps = {
   /** Pre-fetched profile image URL. If absent or it fails to load, the
    *  neutral silhouette fallback is shown. */
@@ -27,13 +37,58 @@ export function MemberAvatar({
   dl2 = false,
 }: MemberAvatarProps) {
   const gradientId = `mavatar-${useId().replace(/:/g, "")}`;
+  const router = useRouter();
   const [imgError, setImgError] = useState(false);
+  // 닉네임별 lookup 결과 캐시 — 같은 아바타를 여러 번 눌러도 재조회 안
+  // 함. nickname 이 바뀌면(리스트 재사용 등) 리셋.
+  const [resolvedDocId, setResolvedDocId] = useState<string | null>(null);
+  const [notFound, setNotFound] = useState(false);
+  const [looking, setLooking] = useState(false);
 
   useEffect(() => {
     setImgError(false);
   }, [imageUrl]);
 
+  useEffect(() => {
+    setResolvedDocId(null);
+    setNotFound(false);
+  }, [nickname]);
+
   const showImage = !!imageUrl && !imgError;
+
+  const handleActivate = async () => {
+    if (!nickname || looking) return;
+    if (resolvedDocId) {
+      router.push(`/members/${resolvedDocId}`);
+      return;
+    }
+    if (notFound) {
+      alert("아직 공간이 없어요");
+      return;
+    }
+    setLooking(true);
+    try {
+      const q = query(
+        collection(db, "members"),
+        where("nickname", "==", nickname),
+        limit(1),
+      );
+      const snap = await getDocs(q);
+      if (snap.empty) {
+        setNotFound(true);
+        alert("아직 공간이 없어요");
+      } else {
+        const id = snap.docs[0].id;
+        setResolvedDocId(id);
+        router.push(`/members/${id}`);
+      }
+    } catch (e) {
+      console.error("[MemberAvatar] lookup failed", e);
+      alert("아직 공간이 없어요");
+    } finally {
+      setLooking(false);
+    }
+  };
 
   // Inline styles for the image fill bypass the Tailwind v4 layer cascade
   // — globals.css declares an unlayered `img { height: auto }` rule that
@@ -49,8 +104,22 @@ export function MemberAvatar({
 
   return (
     <div
+      role={nickname ? "button" : undefined}
+      tabIndex={nickname ? 0 : undefined}
+      onClick={nickname ? handleActivate : undefined}
+      onKeyDown={
+        nickname
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                void handleActivate();
+              }
+            }
+          : undefined
+      }
+      aria-label={nickname ? `${nickname} 프로필 보기` : undefined}
       className={`relative shrink-0 ${className ?? ""}`}
-      style={{ width: size, height: size }}
+      style={{ width: size, height: size, cursor: nickname ? "pointer" : undefined }}
     >
       {ring && (
         <div
