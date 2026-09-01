@@ -9,6 +9,11 @@
 // `.guestbook-entry > .nickname-link-wrap` 등 자식 결합자 셀렉터가 이
 // 래퍼의 존재 자체에 의존해 레이아웃 마진을 잡고 있어서(팝업 위치잡기용이
 // 아니라 실제 레이아웃용으로도 쓰이는 구조), 지우면 그 마진 보정이 깨진다.
+//
+// cursor/textDecoration 은 인라인 스타일로 덮는다(globals.css 의
+// `.nickname-link:hover { text-decoration: underline }` 등은 안 건드림)
+// — 인라인 스타일이 클래스 규칙보다 항상 이겨서 hover 상태 포함 항상
+// 밑줄이 안 생긴다.
 export default function NicknameLink({
   nickname,
   className,
@@ -21,7 +26,10 @@ export default function NicknameLink({
   const combinedClass = "nickname-link" + (className ? " " + className : "");
   return (
     <span className="nickname-link-wrap">
-      <span className={combinedClass} style={{ cursor: "default" }}>
+      <span
+        className={combinedClass}
+        style={{ cursor: "default", textDecoration: "none" }}
+      >
         {prefix}
         {nickname}
       </span>
