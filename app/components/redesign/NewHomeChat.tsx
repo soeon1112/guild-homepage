@@ -881,9 +881,12 @@ export function NewHomeChat() {
                 return (
                   <ActivityCard
                     key={activity.id}
+                    id={activity.id}
                     message={activity.message}
                     link={activity.link ?? ""}
                     onActionMenu={() => handleActionMenu(activity)}
+                    registerRef={registerMessageRef}
+                    highlighted={highlightedMessageId === activity.id}
                     messageReactions={activityReactions.get(activity.id)}
                   />
                 );

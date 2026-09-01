@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import type { MessageReactions } from "@/src/lib/useChatReactions";
 
@@ -27,15 +28,33 @@ import type { MessageReactions } from "@/src/lib/useChatReactions";
 // 콜백만 받는다.
 
 type Props = {
+  id?: string;
   message: string;
   link: string;
   onActionMenu?: () => void;
+  registerRef?: (id: string, el: HTMLDivElement | null) => void;
+  highlighted?: boolean;
   messageReactions?: MessageReactions;
 };
 
-export function ActivityCard({ message, link, onActionMenu, messageReactions }: Props) {
+export function ActivityCard({ id, message, link, onActionMenu, registerRef, highlighted, messageReactions }: Props) {
+  const rowRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!id || !registerRef) return;
+    registerRef(id, rowRef.current);
+    return () => registerRef(id, null);
+  }, [id, registerRef]);
+
+  const highlightStyle: React.CSSProperties = highlighted
+    ? {
+        background: "rgba(255,212,184,0.32)",
+        borderRadius: 10,
+        paddingBlock: 4,
+      }
+    : {};
+
   return (
-    <div className="my-2 flex flex-col items-center gap-1">
+    <div ref={rowRef} className="my-2 flex flex-col items-center gap-1" style={highlightStyle}>
       <div className="relative inline-block max-w-[80%]">
         <Link
           href={link}
