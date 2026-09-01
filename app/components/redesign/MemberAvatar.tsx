@@ -103,12 +103,26 @@ export function MemberAvatar({
             />
           )
         ) : dl2 ? (
-          <svg viewBox="0 0 64 64" style={imgStyle} aria-hidden>
-            {/* Cream-on-transparent silhouette — no cosmic gradient */}
-            <circle cx="32" cy="24" r="9" fill="rgba(254,245,230,0.7)" />
+          // minihompi/ProfileSectionD2.tsx 의 기본 프사 SVG verbatim(그
+          // 파일은 미접촉) — 개인 공간과 채팅/댓글/게시판/앨범/길드원
+          // 카드가 전부 같은 "탠 웃는 얼굴"을 쓰도록 통일.
+          <svg viewBox="0 0 96 96" style={imgStyle} aria-hidden>
+            <rect width="96" height="96" fill="#d4a870" />
+            <circle cx="48" cy="36" r="18" fill="#b88850" opacity="0.8" />
             <path
-              d="M 14 54 Q 32 36 50 54 L 50 64 L 14 64 Z"
-              fill="rgba(254,245,230,0.65)"
+              d="M 20 96 Q 20 64 48 64 Q 76 64 76 96 Z"
+              fill="#a87840"
+              opacity="0.7"
+            />
+            <circle cx="42" cy="33" r="2.5" fill="#3a2a1a" opacity="0.7" />
+            <circle cx="54" cy="33" r="2.5" fill="#3a2a1a" opacity="0.7" />
+            <path
+              d="M 43 41 Q 48 46 53 41"
+              stroke="#3a2a1a"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              fill="none"
+              opacity="0.7"
             />
           </svg>
         ) : (
