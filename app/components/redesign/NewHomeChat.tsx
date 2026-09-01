@@ -36,6 +36,7 @@ import {
 import { useHomeTimeline, type TimelineItem } from "@/src/lib/useHomeTimeline";
 import { ActivityCard } from "@/app/components/ActivityCard";
 import { Dawnlight2BottomNav } from "@/app/components/dawnlight2/BottomNav";
+import { useChatScrollToLatest } from "@/src/lib/uiBus";
 
 // Home 채팅 메인 리뉴얼 Phase 3 — 채팅(chat) + 최신 소식(activity) 카드가
 // 시간순으로 섞인 풀스크린 채팅 컴포넌트. 사용처는 아직 없음(Phase 4에서
@@ -731,6 +732,13 @@ export function NewHomeChat() {
     }, 350);
     return () => clearTimeout(t);
   }, []);
+
+  // P6 — 상단 로고를 이미 홈에서 다시 클릭하면 dawnlight2/Topbar.tsx 가
+  // emitChatScrollToLatest() 를 쏜다. 카톡 스타일로 최신 메시지(맨
+  // 아래)로 스크롤.
+  useChatScrollToLatest(() => {
+    endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+  });
 
   // ── 파일 첨부 / 전송 — FloatingChat.tsx:1209-1281 verbatim ──
   const pickFile = () => {

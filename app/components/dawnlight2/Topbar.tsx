@@ -10,11 +10,12 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
 import { useAuth } from "@/app/components/AuthProvider";
+import { emitChatScrollToLatest } from "@/src/lib/uiBus";
 import {
   AuthModal,
   ErrorToast,
@@ -140,6 +141,7 @@ function CreamIconButton({
 export function Dawnlight2Topbar() {
   const { nickname, ready, logout } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [hovered, setHovered] = useState<string | null>(null);
   const [mySpaceId, setMySpaceId] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -237,6 +239,16 @@ export function Dawnlight2Topbar() {
               all preserved per spec. */}
           <Link
             href="/"
+            onClick={(e) => {
+              // P6 — 이미 홈(NewHomeChat, 언쏘 전용)이면 같은 라우트로의
+              // Link 클릭은 원래 아무 일도 안 일어난다. 대신 신호만 보내
+              // NewHomeChat 이 최신 메시지로 스크롤하게 한다(다른 사용자는
+              // 이 신호를 구독하는 쪽이 없어 완전 no-op).
+              if (pathname === "/" && nickname === "언쏘") {
+                e.preventDefault();
+                emitChatScrollToLatest();
+              }
+            }}
             className="flex shrink-0 items-baseline gap-2 whitespace-nowrap leading-none"
           >
             <span
