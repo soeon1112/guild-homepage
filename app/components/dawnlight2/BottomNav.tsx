@@ -97,7 +97,13 @@ const items: NavItem[] = [
   { id: "board", label: "게시판", icon: icons.board, href: "/board" },
 ];
 
-export function Dawnlight2BottomNav() {
+// forceVisible — P7-B 슬라이드업 패널이 NewHomeChat(pathname==="/" &&
+// nickname==="언쏘") 안에서 이 컴포넌트를 재mount할 때, 아래 얼리 리턴이
+// 그 위치에서도 그대로 걸려 항상 null이 되는 문제를 우회하기 위한 옵션.
+// 기본값 false라 기존 호출부(레이아웃의 상시 마운트)는 동작 변화 없음.
+export function Dawnlight2BottomNav({
+  forceVisible = false,
+}: { forceVisible?: boolean } = {}) {
   const pathname = usePathname();
   const { nickname } = useAuth();
   // 모집중 제안이 하나라도 있으면 "제안" 탭 아이콘 배경을 은은하게 강조.
@@ -132,7 +138,7 @@ export function Dawnlight2BottomNav() {
   const chatInputFocused = useChatInputFocused();
   const hidden = keyboardOpen || chatInputFocused;
 
-  if (pathname === "/" && nickname === "언쏘") return null;
+  if (!forceVisible && pathname === "/" && nickname === "언쏘") return null;
 
   const isActive = (item: NavItem) => {
     if (!pathname) return false;

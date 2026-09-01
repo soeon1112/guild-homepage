@@ -9,7 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Camera, Filter, Send, X } from "lucide-react";
+import { Camera, Filter, Plus, Send, X } from "lucide-react";
 import {
   addDoc,
   collection,
@@ -35,6 +35,7 @@ import {
 } from "@/src/lib/useChatReactions";
 import { useHomeTimeline, type TimelineItem } from "@/src/lib/useHomeTimeline";
 import { ActivityCard } from "@/app/components/ActivityCard";
+import { Dawnlight2BottomNav } from "@/app/components/dawnlight2/BottomNav";
 
 // Home 채팅 메인 리뉴얼 Phase 3 — 채팅(chat) + 최신 소식(activity) 카드가
 // 시간순으로 섞인 풀스크린 채팅 컴포넌트. 사용처는 아직 없음(Phase 4에서
@@ -417,6 +418,16 @@ export function NewHomeChat() {
   // "홈 + 언쏘"에서만 마운트되므로, 필터 버튼을 이 컴포넌트 안에 두면
   // D-2 의 조건부 노출이 별도 분기 없이 구조적으로 만족된다.
   const [filterActivityOnly, setFilterActivityOnly] = useState(false);
+
+  // P7-B — + 버튼 슬라이드업 퀵네비. 기존 Dawnlight2BottomNav를
+  // forceVisible로 재mount(위 import 참고, 그 파일의 얼리 리턴 우회).
+  const [isNavOpen, setIsNavOpen] = useState(false);
+  const togglePanel = useCallback(() => {
+    if (!isNavOpen) {
+      messageInputRef.current?.blur();
+    }
+    setIsNavOpen((v) => !v);
+  }, [isNavOpen]);
 
   const [draft, setDraft] = useState("");
   const [mentionCursor, setMentionCursor] = useState<number | null>(null);
@@ -804,7 +815,12 @@ export function NewHomeChat() {
           기준이고, 버튼은 absolute 로 스크롤 영역 위에 고정되며 메시지가
           그 뒤로 지나간다(z-10). 헤더 바 자체가 사라져 스크롤 영역이
           그만큼 세로로 늘어난다. */}
-      <div className="relative flex-1">
+      <div
+        className="relative flex flex-1 flex-col"
+        onClick={() => {
+          if (isNavOpen) setIsNavOpen(false);
+        }}
+      >
         <button
           type="button"
           onClick={() => setFilterActivityOnly((v) => !v)}
@@ -821,14 +837,15 @@ export function NewHomeChat() {
           <Filter className="h-4 w-4" />
         </button>
 
-        {/* 메시지 + 카드 리스트 — absolute inset-0 로 relative wrapper 를
-            정확히 채워야 위 필터 버튼이 스크롤과 무관하게 같은 화면
-            위치에 고정된다(부모가 스크롤 컨테이너 자신이면 absolute
-            자식도 같이 스크롤돼버림). */}
+        {/* 메시지 + 카드 리스트 — P7-B: absolute inset-0(P4.1.1 회귀) 대신
+            flex-1로 정리. 부모(relative flex flex-col)가 필터 버튼의
+            absolute 기준점 역할은 그대로 유지하면서, 스크롤 영역은 일반
+            flex 참여자로 남아 슬라이드업 패널이 열릴 때 리사이즈에 자연히
+            따라간다. */}
         <div
           ref={listRef}
           onScroll={handleListScroll}
-          className="nebula-scroll absolute inset-0 overflow-y-auto overflow-x-hidden px-3 py-2"
+          className="nebula-scroll flex-1 overflow-y-auto overflow-x-hidden px-3 py-2"
         >
         <div ref={contentRef}>
           {loadingMore ? (
@@ -959,6 +976,24 @@ export function NewHomeChat() {
             />
             <button
               type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                togglePanel();
+              }}
+              aria-label={isNavOpen ? "빠른 이동 닫기" : "빠른 이동 열기"}
+              aria-pressed={isNavOpen}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all"
+              style={{
+                background: "#ffffff",
+                border: isNavOpen ? "1px solid rgba(184,84,32,0.4)" : "1px solid rgba(92,58,31,0.20)",
+                color: isNavOpen ? "#b85420" : "#5c3a1f",
+              }}
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+
+            <button
+              type="button"
               onClick={pickFile}
               disabled={sending}
               aria-label={file ? "첨부 제거" : "파일 첨부"}
@@ -1013,6 +1048,24 @@ export function NewHomeChat() {
           로그인이 필요합니다
         </div>
       )}
+
+      {/* P7-B — + 버튼 슬라이드업. Dawnlight2BottomNav 자체가 fixed
+          inset-x-0 bottom-0 라 이 wrapper 의 위치는 무시하지만, wrapper의
+          transform(translateY)이 CSS 스펙상 fixed 자손의 containing
+          block이 되므로 — wrapper를 fixed inset-0(=진짜 viewport와
+          동일한 크기)로 잡아두면 안의 Dawnlight2BottomNav는 평소와
+          똑같은 좌표로 계산되면서, wrapper의 translateY로 슬라이드
+          업/다운 애니메이션만 얹을 수 있다. */}
+      <div
+        className="fixed inset-0 z-40"
+        style={{
+          transform: `translateY(${isNavOpen ? "0" : "100%"})`,
+          transition: "transform 200ms ease",
+          pointerEvents: isNavOpen ? "auto" : "none",
+        }}
+      >
+        <Dawnlight2BottomNav forceVisible />
+      </div>
 
       {/* 이모지 액션 메뉴 — FloatingChat.tsx:1919-1996 verbatim (배경만
           패널 relative 대신 이 컨테이너 relative 에 맞춤). */}
