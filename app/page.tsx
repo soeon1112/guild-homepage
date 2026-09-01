@@ -41,7 +41,24 @@ import { NewHomeChat } from "./components/redesign/NewHomeChat";
 const TOPBAR_HEIGHT = 56;
 
 export default function Home() {
-  const { nickname } = useAuth();
+  const { nickname, ready } = useAuth();
+
+  // ready 게이팅 — 세션 복원(localStorage 읽기 + Firestore 재검증 왕복)
+  // 이 끝나기 전엔 nickname 이 항상 null 이라 아래 분기가 무조건
+  // MainGate(옛 홈)로 잘못 추측했다가, 복원이 끝나면 언쏘만 NewHomeChat
+  // 으로 다시 스위치되는 flash 가 있었다(진단 완료). ready 될 때까지는
+  // 아무것도 추측하지 않고 빈 화면만 보여준다 — useAuth 자체 로직은
+  // 미접촉, 이미 있던 ready 플래그만 소비.
+  if (!ready) {
+    return (
+      <div
+        style={{
+          height: `calc(100dvh - ${TOPBAR_HEIGHT}px)`,
+          background: "#fef5e6",
+        }}
+      />
+    );
+  }
 
   if (nickname === "언쏘") {
     return (
