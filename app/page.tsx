@@ -16,6 +16,11 @@
 // 라우트에서는 Breadcrumb 가 렌더되지 않아(parts.length===0) Topbar
 // (56px, Topbar.tsx:234 h-[56px]) 만 위에 남으므로, 뷰포트에서 그만큼만
 // 뺀 고정 높이 박스로 감싸 "채팅만 스크롤, 페이지는 고정"을 만든다.
+// overflow:hidden — P7-B 회귀 fix. + 버튼 슬라이드업(NewHomeChat 안,
+// Dawnlight2BottomNav forceVisible)이 닫힌 상태에서 이 박스 바로 아래로
+// translateY 만큼 밀려나 있는데, 이 박스에 클리핑이 없으면 페이지가
+// 조금이라도 더 길어질 때(예: ChromeShell main 여분 패딩) 그 잔상이
+// 비쳐 보일 수 있다 — 이 박스 경계에서 무조건 잘라 방지.
 import { useAuth } from "@/app/components/AuthProvider";
 import { MainGate } from "./components/dawnlight2/MainGate";
 import { NewHomeChat } from "./components/redesign/NewHomeChat";
@@ -27,7 +32,7 @@ export default function Home() {
 
   if (nickname === "언쏘") {
     return (
-      <div style={{ height: `calc(100dvh - ${TOPBAR_HEIGHT}px)` }}>
+      <div style={{ height: `calc(100dvh - ${TOPBAR_HEIGHT}px)`, overflow: "hidden" }}>
         <NewHomeChat />
       </div>
     );
