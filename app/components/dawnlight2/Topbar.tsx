@@ -240,11 +240,12 @@ export function Dawnlight2Topbar() {
           <Link
             href="/"
             onClick={(e) => {
-              // P6 — 이미 홈(NewHomeChat, 언쏘 전용)이면 같은 라우트로의
-              // Link 클릭은 원래 아무 일도 안 일어난다. 대신 신호만 보내
-              // NewHomeChat 이 최신 메시지로 스크롤하게 한다(다른 사용자는
-              // 이 신호를 구독하는 쪽이 없어 완전 no-op).
-              if (pathname === "/" && nickname === "언쏘") {
+              // 전체 공개 — 언쏘 전용 A/B 조건을 로그인 여부로 완화.
+              // 이미 홈(NewHomeChat)이면 같은 라우트로의 Link 클릭은
+              // 원래 아무 일도 안 일어난다. 대신 신호만 보내 NewHomeChat
+              // 이 최신 메시지로 스크롤하게 한다(비로그인은 이 신호를
+              // 구독하는 쪽이 없어 완전 no-op).
+              if (pathname === "/" && nickname) {
                 e.preventDefault();
                 emitChatScrollToLatest();
               }

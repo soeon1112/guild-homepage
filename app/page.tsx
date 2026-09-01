@@ -4,11 +4,11 @@
 // (Dawnlight 2) layout. The decision needs the logged-in nickname, so
 // it lives in a client gate; this file stays a thin server shell.
 //
-// Home 채팅 메인 리뉴얼 Phase 4 — 언쏘(로그인 nickname === "언쏘")만 홈을
-// NewHomeChat(풀스크린 채팅+최신소식 병합 화면, P3)으로 대체. 다른 모든
-// 사용자는 기존 <MainGate /> 그대로(내부 로직 미접촉). MainGate 자체는
-// 2026-05-08 dl2 전체 공개 이후 자체 게이트 로직이 없는 thin wrapper라
-// 이 분기를 이 파일에서 직접 처리한다.
+// Home 채팅 메인 리뉴얼 — 언쏘 대상 A/B 검증(Phase 4)을 거쳐 전체 공개.
+// 로그인한 모든 길드원의 홈을 NewHomeChat(풀스크린 채팅+최신소식 병합
+// 화면, P3)으로 대체. 비로그인만 기존 <MainGate /> 그대로(내부 로직
+// 미접촉). MainGate 자체는 2026-05-08 dl2 전체 공개 이후 자체 게이트
+// 로직이 없는 thin wrapper라 이 분기를 이 파일에서 직접 처리한다.
 //
 // 높이: NewHomeChat 은 내부 스크롤 영역(overflow-y-auto)이 h-full 을
 // 기준으로 동작하는데, ChromeShell 의 `.dawnlight2` 래퍼는 고정 높이가
@@ -45,10 +45,10 @@ export default function Home() {
 
   // ready 게이팅 — 세션 복원(localStorage 읽기 + Firestore 재검증 왕복)
   // 이 끝나기 전엔 nickname 이 항상 null 이라 아래 분기가 무조건
-  // MainGate(옛 홈)로 잘못 추측했다가, 복원이 끝나면 언쏘만 NewHomeChat
-  // 으로 다시 스위치되는 flash 가 있었다(진단 완료). ready 될 때까지는
-  // 아무것도 추측하지 않고 빈 화면만 보여준다 — useAuth 자체 로직은
-  // 미접촉, 이미 있던 ready 플래그만 소비.
+  // MainGate(옛 홈)로 잘못 추측했다가, 복원이 끝나면 로그인 사용자는
+  // NewHomeChat 으로 다시 스위치되는 flash 가 있었다(진단 완료). ready
+  // 될 때까지는 아무것도 추측하지 않고 빈 화면만 보여준다 — useAuth
+  // 자체 로직은 미접촉, 이미 있던 ready 플래그만 소비.
   if (!ready) {
     return (
       <div
@@ -60,7 +60,9 @@ export default function Home() {
     );
   }
 
-  if (nickname === "언쏘") {
+  // 전체 공개 — 언쏘 전용 A/B("언쏘"만) 조건을 로그인 여부로 완화.
+  // 비로그인만 옛 홈(MainGate) 유지.
+  if (nickname) {
     return (
       <div
         style={{

@@ -51,7 +51,7 @@ export function ChromeShell({ children }: { children: React.ReactNode }) {
   const { nickname } = useAuth();
   const isAdmin = pathname?.startsWith("/admin") ?? false;
   // P7-B 데스크탑 하단 공백 fix — NewHomeChat(app/page.tsx, pathname==="/"
-  // && nickname==="언쏘")은 이미 자체 calc(100dvh-56px) 고정 높이 박스로
+  // && 로그인 상태)은 이미 자체 calc(100dvh-56px) 고정 높이 박스로
   // 뷰포트를 딱 채우고, Dawnlight2BottomNav도 이 조건에서 스스로 null을
   // 반환한다(BottomNav.tsx의 얼리 리턴, P7-A). 아래 main의 pb-[calc(12rem
   // +...)] 는 "스크롤 있는 다른 페이지들이 떠 있는 BottomNav에 안 가려지게"
@@ -59,7 +59,11 @@ export function ChromeShell({ children }: { children: React.ReactNode }) {
   // 순수하게 페이지를 뷰포트보다 ~192px 더 길게 만드는 낭비 공백이었다 —
   // 데스크탑에서 특히 두드러지게 보이고, 그 아래로 (닫힌 상태로 밀려나
   // 있어야 할) 슬라이드업 네비 잔상까지 비쳐 보였다.
-  const isNewHomeChat = pathname === "/" && nickname === "언쏘";
+  // 전체 공개 — 언쏘 전용 A/B 조건을 로그인 여부로 완화. app/page.tsx
+  // 가 모든 로그인 사용자에게 NewHomeChat 을 보여주므로 이 조건도
+  // 그대로 맞춰야, 다른 길드원도 이 위치에서 pb-[calc(12rem+...)] 낭비
+  // 공백이 재발하지 않는다.
+  const isNewHomeChat = pathname === "/" && !!nickname;
 
   if (isAdmin) {
     return (

@@ -98,7 +98,7 @@ const items: NavItem[] = [
 ];
 
 // forceVisible — P7-B 슬라이드업 패널이 NewHomeChat(pathname==="/" &&
-// nickname==="언쏘") 안에서 이 컴포넌트를 재mount할 때, 아래 얼리 리턴이
+// 로그인 상태) 안에서 이 컴포넌트를 재mount할 때, 아래 얼리 리턴이
 // 그 위치에서도 그대로 걸려 항상 null이 되는 문제를 우회하기 위한 옵션.
 // 기본값 false라 기존 호출부(레이아웃의 상시 마운트)는 동작 변화 없음.
 export function Dawnlight2BottomNav({
@@ -138,7 +138,9 @@ export function Dawnlight2BottomNav({
   const chatInputFocused = useChatInputFocused();
   const hidden = keyboardOpen || chatInputFocused;
 
-  if (!forceVisible && pathname === "/" && nickname === "언쏘") return null;
+  // 전체 공개 — 언쏘 전용 A/B 조건을 로그인 여부로 완화. 홈이
+  // NewHomeChat(채팅 메인)이 되는 모든 로그인 사용자에서 하단 네비 숨김.
+  if (!forceVisible && pathname === "/" && nickname) return null;
 
   const isActive = (item: NavItem) => {
     if (!pathname) return false;

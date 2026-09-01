@@ -1295,10 +1295,11 @@ export default function FloatingChat() {
     setOpen(false);
   };
 
-  // P5 — 언쏘: 채팅 접근은 상단 로고 → 홈(NewHomeChat, 이미 채팅 메인)
-  // 하나로 통일 — 모든 페이지에서 FAB 자체를 제거(pathname 조건 없음).
-  // 다른 사용자는 이 조건에 안 걸려 완전히 그대로.
-  if (nickname === "언쏘") return null;
+  // 전체 공개 — 언쏘 전용 A/B 조건을 로그인 여부로 완화. 채팅 접근은
+  // 상단 로고 → 홈(NewHomeChat, 이미 채팅 메인) 하나로 통일 — 로그인
+  // 사용자는 모든 페이지에서 FAB 자체를 제거(pathname 조건 없음).
+  // 비로그인은 이 조건에 안 걸려 완전히 그대로.
+  if (nickname) return null;
 
   return (
     <>
