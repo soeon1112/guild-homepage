@@ -51,13 +51,18 @@ const LIVE_THRESHOLD_MS = 5 * 60 * 1000;
 // Same regex as NebulaWhispers — pulls the first "${X}님" out of the
 // message because old activity docs store the wrong nickname field.
 const NICKNAME_RE = /^(.*?)([^\s'"]+?)님(.*)$/;
-// 멘션 활동 전용 — "X님이 Y님을 언급했습니다" / "X님이 우리길원들을 언급했습니다".
-// NICKNAME_RE 보다 먼저 시도해서 누구2/우리길원들도 강조한다. 다른 카테고리는
+// 멘션 활동 전용 — "X님이 Y님을 언급했습니다" / "X님이 연합원들을 언급했습니다".
+// NICKNAME_RE 보다 먼저 시도해서 누구2/연합원들도 강조한다. 다른 카테고리는
 // 모두 "...했어요" 끝맺음이라 false positive 0.
 const MENTION_RE = /^(.+?)님이 (.+?)(님을|을) 언급했습니다$/;
+// "연합원들"로 통일 전엔 "우리길원들"이었다 — Firestore activity 문서는
+// 마이그레이션 안 하므로, 과거에 이미 저장된 문구도 계속 전체-멘션
+// 강조색으로 표시되도록 옛 문구도 같이 확인한다(functions/src/lib/
+// mentions.ts 의 LEGACY_ALL_MENTION_KEYWORDS 와 같은 이유).
+const ALL_MENTION_TARGETS = new Set(["연합원들", "우리길원들"]);
 // 멘션 활동 색상 — MentionText dl2 모드와 일치. 다른 row 영향 없게 별도 토큰.
 const MENTION_TARGET = "#2a4570"; // 개별 닉
-const MENTION_TARGET_ALL = "#b85420"; // 우리길원들
+const MENTION_TARGET_ALL = "#b85420"; // 연합원들
 
 export function WhispersFeed() {
   const router = useRouter();
@@ -156,7 +161,8 @@ export function WhispersFeed() {
                 const mentionAuthor = mm?.[1] ?? null;
                 const mentionTarget = mm?.[2] ?? null;
                 const mentionTargetSuffix = mm?.[3] ?? "";
-                const isAllMention = mentionTarget === "우리길원들";
+                const isAllMention =
+                  !!mentionTarget && ALL_MENTION_TARGETS.has(mentionTarget);
                 const nm = mm ? null : NICKNAME_RE.exec(a.message);
                 const matchedNick = nm?.[2] ?? null;
                 const nickPrefix = nm?.[1] ?? "";

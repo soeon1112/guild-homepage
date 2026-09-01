@@ -13,9 +13,13 @@ import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
 import { useBackdropClose } from "@/src/lib/useBackdropClose";
 
-// "우리 길원들" / "기타" — pre-canned group tags so users can tag the
-// whole guild or "other" without picking individual members.
-const SPECIAL_TAGS = ["우리 길원들", "기타"];
+// "연합원들" / "기타" — pre-canned group tags so users can tag the
+// whole guild or "other" without picking individual members. 이전엔
+// "우리 길원들"(공백 포함, 채팅 멘션의 "우리길원들"과는 별개 문자열)
+// 이었지만 통일. 이미 저장된 사진의 people 배열엔 옛 문자열이 그대로
+// 남아있고(마이그레이션 없음), 화면은 그 값을 그대로 렌더할 뿐이라
+// 별도 fallback 로직 없이도 옛 사진은 계속 정상 표시된다.
+const SPECIAL_TAGS = ["연합원들", "기타"];
 
 export function MemberPickerModal({
   initial,
@@ -46,7 +50,7 @@ export function MemberPickerModal({
         // Sort: English block first (a-z), then Korean (가나다…). Within
         // each block we use the matching locale collator so case and
         // jamo composition follow standard alphabet order. "기타" /
-        // "우리 길원들" fall into the Korean block at their natural
+        // "연합원들" fall into the Korean block at their natural
         // alphabetical positions.
         const isKorean = (s: string) => /^[ㄱ-ㆎ가-힯]/.test(s);
         all.sort((a, b) => {
