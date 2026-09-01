@@ -9,7 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Camera, Filter, Plus, Send, X } from "lucide-react";
+import { Camera, Filter, Plus, Send, Smile, X } from "lucide-react";
 import {
   addDoc,
   collection,
@@ -37,6 +37,8 @@ import { useHomeTimeline, type TimelineItem } from "@/src/lib/useHomeTimeline";
 import { ActivityCard } from "@/app/components/ActivityCard";
 import { Dawnlight2BottomNav } from "@/app/components/dawnlight2/BottomNav";
 import { useChatScrollToLatest } from "@/src/lib/uiBus";
+import { getEmoticonUrl } from "@/src/lib/emoticons";
+import { EmoticonPicker } from "@/app/components/EmoticonPicker";
 
 // Home 채팅 메인 리뉴얼 Phase 3 — 채팅(chat) + 최신 소식(activity) 카드가
 // 시간순으로 섞인 풀스크린 채팅 컴포넌트. 사용처는 아직 없음(Phase 4에서
@@ -74,6 +76,8 @@ type ReplyTarget = {
   nickname: string;
   message: string;
   fileType?: ChatFileType;
+  // sticker 답글 인용 썸네일 전용 스냅샷.
+  imageUrl?: string;
 };
 
 function formatTime(ts: Timestamp | null): string {
@@ -81,7 +85,7 @@ function formatTime(ts: Timestamp | null): string {
   return formatSmart(ts.toDate());
 }
 
-type ChatFileType = "image" | "gif" | "video";
+type ChatFileType = "image" | "gif" | "video" | "sticker";
 
 function detectFileType(file: File): ChatFileType {
   const name = file.name.toLowerCase();
@@ -197,6 +201,14 @@ const MessageItem = memo(
             ↪ {m.replyTo.nickname}
           </div>
         )}
+        {m.replyTo.fileType === "sticker" && m.replyTo.imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={m.replyTo.imageUrl}
+            alt=""
+            className="mt-0.5 h-8 w-8 object-contain"
+          />
+        ) : (
         <div
           className="truncate text-[11px]"
           style={{ color: replyQuoteSnippetColor, marginTop: 1 }}
@@ -208,6 +220,7 @@ const MessageItem = memo(
                 ? "[사진]"
                 : "")}
         </div>
+        )}
       </button>
     ) : null;
 
@@ -223,6 +236,10 @@ const MessageItem = memo(
           </div>
         )}
         {m.imageUrl && (
+          m.fileType === "sticker" ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={m.imageUrl} alt="" className="h-32 w-32 object-contain" />
+          ) : (
           <div
             className="max-w-full overflow-hidden rounded-xl"
             style={imageWrapStyle}
@@ -238,6 +255,7 @@ const MessageItem = memo(
               <CommentImageView url={m.imageUrl} />
             )}
           </div>
+          )
         )}
         {messageReactions && messageReactions.byEmoji.size > 0 && (
           <div
@@ -375,6 +393,7 @@ const MessageItem = memo(
     prev.m.replyTo?.nickname === next.m.replyTo?.nickname &&
     prev.m.replyTo?.snippet === next.m.replyTo?.snippet &&
     prev.m.replyTo?.fileType === next.m.replyTo?.fileType &&
+    prev.m.replyTo?.imageUrl === next.m.replyTo?.imageUrl &&
     prev.highlighted === next.highlighted &&
     reactionsEqual(prev.messageReactions, next.messageReactions) &&
     prev.onActionMenu === next.onActionMenu &&
@@ -423,12 +442,18 @@ export function NewHomeChat() {
   // P7-B — + 버튼 슬라이드업 퀵네비. 기존 Dawnlight2BottomNav를
   // forceVisible로 재mount(위 import 참고, 그 파일의 얼리 리턴 우회).
   const [isNavOpen, setIsNavOpen] = useState(false);
+  const [isEmoticonOpen, setIsEmoticonOpen] = useState(false);
   const togglePanel = useCallback(() => {
     if (!isNavOpen) {
       messageInputRef.current?.blur();
     }
+    setIsEmoticonOpen(false);
     setIsNavOpen((v) => !v);
   }, [isNavOpen]);
+  const toggleEmoticon = useCallback(() => {
+    setIsNavOpen(false);
+    setIsEmoticonOpen((v) => !v);
+  }, []);
 
   const [draft, setDraft] = useState("");
   const [mentionCursor, setMentionCursor] = useState<number | null>(null);
@@ -551,6 +576,7 @@ export function NewHomeChat() {
             nickname: target.nickname,
             message: target.message,
             fileType: target.fileType,
+            imageUrl: target.fileType === "sticker" ? target.imageUrl : undefined,
           }
         : { id: target.id, nickname: "", message: target.message },
     );
@@ -787,8 +813,14 @@ export function NewHomeChat() {
               replyTo: {
                 messageId: replySnapshot.id,
                 nickname: replySnapshot.nickname,
-                snippet: (replySnapshot.message || "").slice(0, 50),
+                snippet:
+                  replySnapshot.fileType === "sticker"
+                    ? "이모티콘"
+                    : (replySnapshot.message || "").slice(0, 50),
                 ...(replySnapshot.fileType ? { fileType: replySnapshot.fileType } : {}),
+                ...(replySnapshot.fileType === "sticker" && replySnapshot.imageUrl
+                  ? { imageUrl: replySnapshot.imageUrl }
+                  : {}),
               },
             }
           : {}),
@@ -802,6 +834,44 @@ export function NewHomeChat() {
     }
     setSending(false);
     messageInputRef.current?.focus({ preventScroll: true });
+    endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+  };
+
+  // 카톡 스타일 이모티콘 전송 — handleSend 와 별개 경로.
+  const handleEmoticonSelect = async (id: string) => {
+    if (!nickname) return;
+    setIsEmoticonOpen(false);
+    const replySnapshot = replyingTo;
+    setReplyingTo(null);
+    try {
+      await addDoc(collection(db, "chat"), {
+        nickname,
+        message: "",
+        imageUrl: getEmoticonUrl(id),
+        fileType: "sticker",
+        createdAt: serverTimestamp(),
+        ...(replySnapshot
+          ? {
+              replyTo: {
+                messageId: replySnapshot.id,
+                nickname: replySnapshot.nickname,
+                snippet:
+                  replySnapshot.fileType === "sticker"
+                    ? "이모티콘"
+                    : (replySnapshot.message || "").slice(0, 50),
+                ...(replySnapshot.fileType ? { fileType: replySnapshot.fileType } : {}),
+                ...(replySnapshot.fileType === "sticker" && replySnapshot.imageUrl
+                  ? { imageUrl: replySnapshot.imageUrl }
+                  : {}),
+              },
+            }
+          : {}),
+      });
+    } catch (e) {
+      console.error(e);
+      alert("메시지 전송에 실패했습니다.");
+      setReplyingTo(replySnapshot);
+    }
     endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
   };
 
@@ -951,6 +1021,30 @@ export function NewHomeChat() {
         </div>
       ) : nickname ? (
         <div className="sticky bottom-0 relative shrink-0 px-3 py-3" style={{ background: "rgba(254,245,230,0.92)", borderTop: "1px solid rgba(92,58,31,0.15)" }}>
+          {isEmoticonOpen && (
+            <div className="absolute bottom-full left-0 right-0 px-3 pt-2 pb-1">
+              <div className="mb-1.5 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEmoticonOpen(false);
+                    pickFile();
+                  }}
+                  disabled={sending}
+                  aria-label={file ? "첨부 제거" : "파일 첨부"}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all disabled:opacity-50"
+                  style={{
+                    background: "#ffffff",
+                    border: file ? "1px solid rgba(184,84,32,0.4)" : "1px solid rgba(92,58,31,0.20)",
+                    color: file ? "#b85420" : "#5c3a1f",
+                  }}
+                >
+                  <Camera className="h-4 w-4" />
+                </button>
+              </div>
+              <EmoticonPicker onSelect={handleEmoticonSelect} />
+            </div>
+          )}
           {replyingTo && (
             <div className="mb-2 flex items-center gap-2 rounded-lg px-3 py-2" style={{ background: "rgba(255,212,184,0.35)", borderLeft: "3px solid #ffb88a" }}>
               <div className="min-w-0 flex-1">
@@ -1038,17 +1132,17 @@ export function NewHomeChat() {
 
             <button
               type="button"
-              onClick={pickFile}
-              disabled={sending}
-              aria-label={file ? "첨부 제거" : "파일 첨부"}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all disabled:opacity-50"
+              onClick={toggleEmoticon}
+              aria-label={isEmoticonOpen ? "이모티콘 닫기" : "이모티콘 열기"}
+              aria-pressed={isEmoticonOpen}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all"
               style={{
                 background: "#ffffff",
-                border: file ? "1px solid rgba(184,84,32,0.4)" : "1px solid rgba(92,58,31,0.20)",
-                color: file ? "#b85420" : "#5c3a1f",
+                border: isEmoticonOpen ? "1px solid rgba(184,84,32,0.4)" : "1px solid rgba(92,58,31,0.20)",
+                color: isEmoticonOpen ? "#b85420" : "#5c3a1f",
               }}
             >
-              <Camera className="h-4 w-4" />
+              <Smile className="h-4 w-4" />
             </button>
 
             <input

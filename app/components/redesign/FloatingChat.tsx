@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Camera, Send, X } from "lucide-react";
+import { Camera, Send, Smile, X } from "lucide-react";
 import {
   memo,
   useCallback,
@@ -47,8 +47,10 @@ import {
   useChatReactions,
   type MessageReactions,
 } from "@/src/lib/useChatReactions";
+import { getEmoticonUrl } from "@/src/lib/emoticons";
+import { EmoticonPicker } from "@/app/components/EmoticonPicker";
 
-type ChatFileType = "image" | "gif" | "video";
+type ChatFileType = "image" | "gif" | "video" | "sticker";
 
 // Chat-p2 답글 비정규화 — 원본 메시지 삭제돼도 인용 표시가 깨지지
 // 않도록 snippet + nickname + fileType 을 답글 작성 시점에 스냅샷.
@@ -57,6 +59,8 @@ type ChatReplyTo = {
   nickname: string;
   snippet: string;
   fileType?: ChatFileType;
+  // sticker 답글 인용 썸네일 전용 — 원본 메시지의 imageUrl 스냅샷.
+  imageUrl?: string;
 };
 
 type ChatMessage = {
@@ -292,6 +296,14 @@ const MessageItem = memo(
             ↪ {m.replyTo.nickname}
           </div>
         )}
+        {m.replyTo.fileType === "sticker" && m.replyTo.imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={m.replyTo.imageUrl}
+            alt=""
+            className="mt-0.5 h-8 w-8 object-contain"
+          />
+        ) : (
         <div
           className="truncate text-[11px]"
           style={{ color: replyQuoteSnippetColor, marginTop: 1 }}
@@ -303,6 +315,7 @@ const MessageItem = memo(
                 ? "[사진]"
                 : "")}
         </div>
+        )}
       </button>
     ) : null;
 
@@ -321,6 +334,10 @@ const MessageItem = memo(
           </div>
         )}
         {m.imageUrl && (
+          m.fileType === "sticker" ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={m.imageUrl} alt="" className="h-32 w-32 object-contain" />
+          ) : (
           <div
             className="max-w-full overflow-hidden rounded-xl"
             style={imageWrapStyle}
@@ -336,6 +353,7 @@ const MessageItem = memo(
               <CommentImageView url={m.imageUrl} />
             )}
           </div>
+          )
         )}
         {/* p3.2: 리액션 배지 row — bubble 아래, contentColumn 안. mine
             정렬은 row 외부 (parent) 에서 처리하지만 contentColumn 의
@@ -538,6 +556,7 @@ const MessageItem = memo(
     prev.m.replyTo?.nickname === next.m.replyTo?.nickname &&
     prev.m.replyTo?.snippet === next.m.replyTo?.snippet &&
     prev.m.replyTo?.fileType === next.m.replyTo?.fileType &&
+    prev.m.replyTo?.imageUrl === next.m.replyTo?.imageUrl &&
     prev.highlighted === next.highlighted &&
     // p3.2: reactions 비교 — Map 자체 매번 새 reference 라 byEmoji size /
     // 각 emoji 카운트 / myEmoji 만 얕게 비교. 배지 표시상 충분.
@@ -727,6 +746,7 @@ export default function FloatingChat() {
               nickname?: unknown;
               snippet?: unknown;
               fileType?: unknown;
+              imageUrl?: unknown;
             }
           | undefined;
         const replyTo: ChatReplyTo | undefined =
@@ -742,6 +762,8 @@ export default function FloatingChat() {
                   typeof rt.fileType === "string"
                     ? (rt.fileType as ChatFileType)
                     : undefined,
+                imageUrl:
+                  typeof rt.imageUrl === "string" ? rt.imageUrl : undefined,
               }
             : undefined;
         return {
@@ -819,6 +841,10 @@ export default function FloatingChat() {
   // Menu 가 popover 자체 토글. 기존 handleReply (↩ 직접 버튼) 제거.
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [actionMenuFor, setActionMenuFor] = useState<ChatMessage | null>(null);
+  // 이모티콘 선택기 — FloatingChat 은 NewHomeChat 의 + 빠른이동 패널이
+  // 없어(다른 시스템, 미접촉) 상호배타 로직 없이 단독 토글.
+  const [isEmoticonOpen, setIsEmoticonOpen] = useState(false);
+  const toggleEmoticon = useCallback(() => setIsEmoticonOpen((v) => !v), []);
   const handleActionMenu = useCallback(
     (m: ChatMessage) => setActionMenuFor(m),
     [],
@@ -1264,9 +1290,15 @@ export default function FloatingChat() {
               replyTo: {
                 messageId: replySnapshot.id,
                 nickname: replySnapshot.nickname,
-                snippet: (replySnapshot.message || "").slice(0, 50),
+                snippet:
+                  replySnapshot.fileType === "sticker"
+                    ? "이모티콘"
+                    : (replySnapshot.message || "").slice(0, 50),
                 ...(replySnapshot.fileType
                   ? { fileType: replySnapshot.fileType }
+                  : {}),
+                ...(replySnapshot.fileType === "sticker" && replySnapshot.imageUrl
+                  ? { imageUrl: replySnapshot.imageUrl }
                   : {}),
               },
             }
@@ -1282,6 +1314,46 @@ export default function FloatingChat() {
     }
     setSending(false);
     messageInputRef.current?.focus({ preventScroll: true });
+    endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+  };
+
+  // 카톡 스타일 이모티콘 전송 — handleSend 와 별개 경로.
+  const handleEmoticonSelect = async (id: string) => {
+    if (!nickname) return;
+    setIsEmoticonOpen(false);
+    const replySnapshot = replyingTo;
+    setReplyingTo(null);
+    try {
+      await addDoc(collection(db, "chat"), {
+        nickname,
+        message: "",
+        imageUrl: getEmoticonUrl(id),
+        fileType: "sticker",
+        createdAt: serverTimestamp(),
+        ...(replySnapshot
+          ? {
+              replyTo: {
+                messageId: replySnapshot.id,
+                nickname: replySnapshot.nickname,
+                snippet:
+                  replySnapshot.fileType === "sticker"
+                    ? "이모티콘"
+                    : (replySnapshot.message || "").slice(0, 50),
+                ...(replySnapshot.fileType
+                  ? { fileType: replySnapshot.fileType }
+                  : {}),
+                ...(replySnapshot.fileType === "sticker" && replySnapshot.imageUrl
+                  ? { imageUrl: replySnapshot.imageUrl }
+                  : {}),
+              },
+            }
+          : {}),
+      });
+    } catch (e) {
+      console.error(e);
+      alert("메시지 전송에 실패했습니다.");
+      setReplyingTo(replySnapshot);
+    }
     endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
   };
 
@@ -1654,6 +1726,44 @@ export default function FloatingChat() {
                     : "1px solid rgba(216,150,200,0.2)",
                 }}
               >
+                {isEmoticonOpen && (
+                  <div className="absolute bottom-full left-0 right-0 px-3 pt-2 pb-1">
+                    <div className="mb-1.5 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsEmoticonOpen(false);
+                          pickFile();
+                        }}
+                        disabled={sending}
+                        aria-label={file ? "첨부 제거" : "파일 첨부"}
+                        className={
+                          isDawnlight2
+                            ? "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all disabled:opacity-50"
+                            : `flex h-9 w-9 shrink-0 items-center justify-center rounded-full border bg-abyss/50 text-stardust backdrop-blur-sm transition-all disabled:opacity-50 ${
+                                file
+                                  ? "border-peach-accent/70 text-peach-accent"
+                                  : "border-nebula-pink/30 hover:border-nebula-pink/60"
+                              }`
+                        }
+                        style={
+                          isDawnlight2
+                            ? {
+                                background: "#ffffff",
+                                border: file
+                                  ? "1px solid rgba(184,84,32,0.4)"
+                                  : "1px solid rgba(92,58,31,0.20)",
+                                color: file ? "#b85420" : "#5c3a1f",
+                              }
+                            : undefined
+                        }
+                      >
+                        <Camera className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <EmoticonPicker onSelect={handleEmoticonSelect} />
+                  </div>
+                )}
                 {/* p2: 답글 모드 인라인 박스 — compose 위, X 버튼으로 해제. */}
                 {replyingTo && (
                   <div
@@ -1807,14 +1917,14 @@ export default function FloatingChat() {
                   />
                   <button
                     type="button"
-                    onClick={pickFile}
-                    disabled={sending}
-                    aria-label={file ? "첨부 제거" : "파일 첨부"}
+                    onClick={toggleEmoticon}
+                    aria-label={isEmoticonOpen ? "이모티콘 닫기" : "이모티콘 열기"}
+                    aria-pressed={isEmoticonOpen}
                     className={
                       isDawnlight2
-                        ? "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all disabled:opacity-50"
-                        : `flex h-9 w-9 shrink-0 items-center justify-center rounded-full border bg-abyss/50 text-stardust backdrop-blur-sm transition-all disabled:opacity-50 ${
-                            file
+                        ? "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all"
+                        : `flex h-9 w-9 shrink-0 items-center justify-center rounded-full border bg-abyss/50 text-stardust backdrop-blur-sm transition-all ${
+                            isEmoticonOpen
                               ? "border-peach-accent/70 text-peach-accent"
                               : "border-nebula-pink/30 hover:border-nebula-pink/60"
                           }`
@@ -1823,15 +1933,15 @@ export default function FloatingChat() {
                       isDawnlight2
                         ? {
                             background: "#ffffff",
-                            border: file
+                            border: isEmoticonOpen
                               ? "1px solid rgba(184,84,32,0.4)"
                               : "1px solid rgba(92,58,31,0.20)",
-                            color: file ? "#b85420" : "#5c3a1f",
+                            color: isEmoticonOpen ? "#b85420" : "#5c3a1f",
                           }
                         : undefined
                     }
                   >
-                    <Camera className="h-4 w-4" />
+                    <Smile className="h-4 w-4" />
                   </button>
 
                   <input

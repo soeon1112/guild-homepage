@@ -21,13 +21,16 @@ import { db } from "./firebase";
 // chat 스키마: { nickname, message, imageUrl?, fileType?, replyTo?, createdAt }
 // activity 스키마: { type, nickname, message, link?, targetPath?, createdAt }
 
-type ChatFileType = "image" | "gif" | "video";
+type ChatFileType = "image" | "gif" | "video" | "sticker";
 
 type ChatReplyTo = {
   messageId: string;
   nickname: string;
   snippet: string;
   fileType?: ChatFileType;
+  // sticker 답글 인용 썸네일 전용 — 원본 메시지의 imageUrl 을 그대로
+  // 스냅샷(다른 필드와 동일하게 원본 삭제/수정에 영향 안 받음).
+  imageUrl?: string;
 };
 
 export type TimelineItem =
@@ -64,6 +67,7 @@ function parseReplyTo(raw: unknown): ChatReplyTo | undefined {
         nickname?: unknown;
         snippet?: unknown;
         fileType?: unknown;
+        imageUrl?: unknown;
       }
     | undefined;
   if (
@@ -77,6 +81,7 @@ function parseReplyTo(raw: unknown): ChatReplyTo | undefined {
       nickname: rt.nickname,
       snippet: rt.snippet,
       fileType: typeof rt.fileType === "string" ? (rt.fileType as ChatFileType) : undefined,
+      imageUrl: typeof rt.imageUrl === "string" ? rt.imageUrl : undefined,
     };
   }
   return undefined;
