@@ -816,7 +816,7 @@ export function NewHomeChat() {
           그 뒤로 지나간다(z-10). 헤더 바 자체가 사라져 스크롤 영역이
           그만큼 세로로 늘어난다. */}
       <div
-        className="relative flex flex-1 flex-col"
+        className="relative flex min-h-0 flex-1 flex-col"
         onClick={() => {
           if (isNavOpen) setIsNavOpen(false);
         }}
@@ -841,11 +841,18 @@ export function NewHomeChat() {
             flex-1로 정리. 부모(relative flex flex-col)가 필터 버튼의
             absolute 기준점 역할은 그대로 유지하면서, 스크롤 영역은 일반
             flex 참여자로 남아 슬라이드업 패널이 열릴 때 리사이즈에 자연히
-            따라간다. */}
+            따라간다.
+            P7-B 회귀 fix: min-h-0 없이는 column flex item의 기본
+            min-height:auto가 컨텐츠 높이만큼 이 div를 늘려버려(overflow-
+            y-auto가 무력화) 내부 스크롤이 아예 안 생겼다 — 그 결과 (1)
+            페이지 전체가 늘어나 pagination onScroll이 못 불렸고, (2) 늘어난
+            페이지 하단이 root(h-full, cream)의 실제 뷰포트 바깥으로 빠져
+            나가 뒤 배경이 비쳤다. min-h-0 로 flex 계산대로 다시 줄어들게
+            해서 두 증상 모두 해소. */}
         <div
           ref={listRef}
           onScroll={handleListScroll}
-          className="nebula-scroll flex-1 overflow-y-auto overflow-x-hidden px-3 py-2"
+          className="nebula-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-2"
         >
         <div ref={contentRef}>
           {loadingMore ? (
@@ -894,6 +901,32 @@ export function NewHomeChat() {
           <div ref={endRef} aria-hidden />
         </div>
         </div>
+      </div>
+
+      {/* P7-B 회귀 fix — 슬라이드업이 화면 전체(fixed inset-0)를 덮어
+          입력창 위에 겹쳐 올라오던 문제. Dawnlight2BottomNav 자신은
+          fixed inset-x-0 bottom-0 라 어디 넣든 그 좌표로 계산되는데, 이
+          wrapper 를 composeWrap 바로 위(=일반 flow, 컨텐츠 없는 0-height
+          div)에 두고 transform 을 걸면 — CSS 스펙상 transform 이 있는
+          조상은 static 이어도 fixed 자손의 containing block이 되므로,
+          Dawnlight2BottomNav 의 bottom:0 은 "진짜 화면 맨 아래"가 아니라
+          "이 0-height 지점"을 기준으로 계산된다. 즉 네비 바가 정확히
+          composeWrap 상단 경계에서 위로 솟아오르고, composeWrap 자체는
+          전혀 가려지지 않는다. translateY(110px)는 네비 바 실측 높이
+          (~86px)보다 커서 닫혔을 때 composeWrap 뒤로 완전히 숨는다(0%가
+          아니라 px인 이유: 이 div는 항상 0-height라 %기준 이동이 0px로
+          무효화되기 때문). z-index 는 의도적으로 안 줌 — DOM 순서상
+          이 wrapper가 메시지 목록보다 뒤(위로 페인트)면서 composeWrap보다
+          앞(밑에 깔림)이라, 열렸을 때는 메시지 위, 닫혔을 때는 opaque
+          composeWrap 뒤로 자연스럽게 숨는다. */}
+      <div
+        style={{
+          transform: isNavOpen ? "translateY(0)" : "translateY(110px)",
+          transition: "transform 200ms ease",
+          pointerEvents: isNavOpen ? "auto" : "none",
+        }}
+      >
+        <Dawnlight2BottomNav forceVisible />
       </div>
 
       {/* 입력창 — 다음 Phase(하단 네비 대체)에서 확장 예정, 지금은 기존
@@ -1048,24 +1081,6 @@ export function NewHomeChat() {
           로그인이 필요합니다
         </div>
       )}
-
-      {/* P7-B — + 버튼 슬라이드업. Dawnlight2BottomNav 자체가 fixed
-          inset-x-0 bottom-0 라 이 wrapper 의 위치는 무시하지만, wrapper의
-          transform(translateY)이 CSS 스펙상 fixed 자손의 containing
-          block이 되므로 — wrapper를 fixed inset-0(=진짜 viewport와
-          동일한 크기)로 잡아두면 안의 Dawnlight2BottomNav는 평소와
-          똑같은 좌표로 계산되면서, wrapper의 translateY로 슬라이드
-          업/다운 애니메이션만 얹을 수 있다. */}
-      <div
-        className="fixed inset-0 z-40"
-        style={{
-          transform: `translateY(${isNavOpen ? "0" : "100%"})`,
-          transition: "transform 200ms ease",
-          pointerEvents: isNavOpen ? "auto" : "none",
-        }}
-      >
-        <Dawnlight2BottomNav forceVisible />
-      </div>
 
       {/* 이모지 액션 메뉴 — FloatingChat.tsx:1919-1996 verbatim (배경만
           패널 relative 대신 이 컨테이너 relative 에 맞춤). */}
