@@ -717,7 +717,16 @@ export function NewHomeChat() {
       }
       const end = endRef.current;
       if (end) {
-        end.scrollIntoView({ block: "end", behavior: "smooth" });
+        // 재진단(2026-09-12) — 정착 전(openSettledRef.current===false)
+        // 구간은 "smooth"의 거리 기반 애니메이션 시간(초기 30개 메시지
+        // 기준 수백ms)이 350ms 정착 게이트가 닫히는 시점보다 늦게
+        // 끝나, 사진/리액션 등 추가 콘텐츠 없이도 스크롤이 바닥 근처
+        // 어중간한 위치에 남는 원인이었다. 앱의 scrollToEnd({animated:
+        // false})와 동일하게 정착 전엔 즉시 점프("auto")로, 정착 후
+        // (새 메시지 도착 등 사용자가 이미 보고 있는 상태)는 기존
+        // "smooth"를 그대로 유지한다 — 게이트/threshold 자체는 미변경.
+        const behavior = openSettledRef.current ? "smooth" : "auto";
+        end.scrollIntoView({ block: "end", behavior });
       } else if (list) {
         list.scrollTop = list.scrollHeight;
       }
