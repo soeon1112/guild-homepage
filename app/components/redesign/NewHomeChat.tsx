@@ -26,7 +26,7 @@ import {
   MentionPicker,
   applyMentionInsert,
 } from "@/app/components/mention/MentionPicker";
-import { MentionText } from "@/app/components/mention/MentionText";
+import { MessageText } from "@/app/components/MessageText";
 import { MemberAvatar } from "@/app/components/redesign/MemberAvatar";
 import { useMemberAvatars } from "@/src/lib/useMemberAvatars";
 import {
@@ -232,7 +232,7 @@ const MessageItem = memo(
             className="wrap-anywhere max-w-full rounded-2xl px-3 py-2 font-serif text-[12px] leading-relaxed"
             style={bubbleStyle}
           >
-            <MentionText text={m.message} dl2 />
+            <MessageText text={m.message} dl2 />
           </div>
         )}
         {m.imageUrl && (
