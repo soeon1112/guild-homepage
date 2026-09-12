@@ -252,7 +252,7 @@ const MessageItem = memo(
                 className="block max-h-[220px] w-full"
               />
             ) : (
-              <CommentImageView url={m.imageUrl} />
+              <CommentImageView url={m.imageUrl} reserveBox />
             )}
           </div>
           )
