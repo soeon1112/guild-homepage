@@ -421,7 +421,7 @@ function reactionsEqual(
 // ═══════════════════════════════════════════════════════════════════
 export function NewHomeChat() {
   const { nickname, ready } = useAuth();
-  const { items, loadOlder: timelineLoadOlder, hasMoreOlder, loadingMore } =
+  const { items, loadOlder: timelineLoadOlder, hasMoreOlder, loadingMore, streamsReady } =
     useHomeTimeline(30);
   // useHomeTimeline.items 는 Firestore 페이지네이션(limit 증가)이 최신
   // N개를 가져오기 위해 createdAt DESC 로 정렬돼 있다(P1 미접촉 — 그대로
@@ -751,13 +751,23 @@ export function NewHomeChat() {
   }, [items, compensateOlderLoadScroll]);
 
   // FloatingChat.tsx:1159-1173 verbatim — 마운트 직후 350ms 정착 구간.
+  //
+  // 재진단(2026-09-12) — FloatingChat 패널은 채팅 단일 스트림이라 이
+  // 고정 350ms 로 충분했지만, NewHomeChat 은 chat+activity 두 개의 독립
+  // onSnapshot 이 병합된다(useHomeTimeline). 하나가 350ms 이후에 늦게
+  // 도착하면 openSettledRef 가 이미 true 로 넘어간 뒤라 pin() 의 거리
+  // 게이트(NEAR_BOTTOM_PIN_THRESHOLD)에 걸려 재교정이 스킵되고, 초기
+  // 스크롤이 "완전한 하단" 이 아닌 중간 지점에 멈춘다 — pin()/게이트
+  // 자체는 그대로 두고, 두 스트림이 모두 최초 응답한 뒤에만 350ms
+  // 카운트를 시작하도록 트리거 조건만 확장한다.
   useEffect(() => {
     openSettledRef.current = false;
+    if (!streamsReady) return;
     const t = setTimeout(() => {
       openSettledRef.current = true;
     }, 350);
     return () => clearTimeout(t);
-  }, []);
+  }, [streamsReady]);
 
   // P6 — 상단 로고를 이미 홈에서 다시 클릭하면 dawnlight2/Topbar.tsx 가
   // emitChatScrollToLatest() 를 쏜다. 카톡 스타일로 최신 메시지(맨

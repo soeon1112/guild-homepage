@@ -92,11 +92,18 @@ export function useHomeTimeline(initialLimit = 30): {
   loadOlder: () => void;
   hasMoreOlder: boolean;
   loadingMore: boolean;
+  // chat/activity 두 onSnapshot 이 각각 최소 1회 응답했는지. NewHomeChat 의
+  // 초기 하단 스크롤 "정착 타이머"가 고정 350ms 대신 이 값을 트리거로
+  // 쓴다 — 늦게 도착하는 스트림이 정착 이후에 items 를 불려 auto-pin
+  // 거리 게이트에 막히는 문제 대응(pin() 자체는 미접촉).
+  streamsReady: boolean;
 } {
   const [limitValue, setLimitValue] = useState(initialLimit);
   const [chatDocs, setChatDocs] = useState<TimelineItem[]>([]);
   const [activityDocs, setActivityDocs] = useState<TimelineItem[]>([]);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [chatReady, setChatReady] = useState(false);
+  const [activityReady, setActivityReady] = useState(false);
 
   useEffect(() => {
     const q = query(
@@ -121,6 +128,7 @@ export function useHomeTimeline(initialLimit = 30): {
         }),
       );
       setLoadingMore(false);
+      setChatReady(true);
     });
     return unsub;
   }, [limitValue]);
@@ -148,6 +156,7 @@ export function useHomeTimeline(initialLimit = 30): {
         }),
       );
       setLoadingMore(false);
+      setActivityReady(true);
     });
     return unsub;
   }, [limitValue]);
@@ -178,5 +187,11 @@ export function useHomeTimeline(initialLimit = 30): {
     setLimitValue((prev) => Math.min(prev + LIMIT_STEP, LIMIT_MAX));
   };
 
-  return { items, loadOlder, hasMoreOlder, loadingMore };
+  return {
+    items,
+    loadOlder,
+    hasMoreOlder,
+    loadingMore,
+    streamsReady: chatReady && activityReady,
+  };
 }
