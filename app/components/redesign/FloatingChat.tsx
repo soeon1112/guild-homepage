@@ -41,6 +41,7 @@ import {
   applyMentionInsert,
 } from "@/app/components/mention/MentionPicker";
 import { MessageText } from "@/app/components/MessageText";
+import { LinkPreviewCard } from "@/app/components/LinkPreviewCard";
 import { MemberAvatar } from "@/app/components/redesign/MemberAvatar";
 import { useMemberAvatars } from "@/src/lib/useMemberAvatars";
 import {
@@ -345,6 +346,7 @@ const MessageItem = memo(
             <MessageText text={m.message} dl2={dl2} />
           </div>
         )}
+        {m.linkPreview && <LinkPreviewCard preview={m.linkPreview} />}
         {m.imageUrl && (
           m.fileType === "sticker" ? (
             // eslint-disable-next-line @next/next/no-img-element
