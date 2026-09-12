@@ -31,7 +31,6 @@ import {
   deleteActivitiesByTargetPath,
   logActivity,
 } from "@/src/lib/activity";
-import { addPoints } from "@/src/lib/points";
 import { uploadCommentImage } from "@/src/lib/commentImage";
 import {
   CommentImageAttach,
@@ -767,7 +766,6 @@ function AlbumCommentsSection({
           `album/${photoId}/comments/${commentRef.id}`,
         );
       }
-      await addPoints(loginNick, "댓글", 1, "앨범에 댓글 작성");
     } catch (e) {
       console.error(e);
     }
@@ -961,7 +959,6 @@ function AlbumCommentItem({
           `album/${photoId}/comments/${comment.id}/replies/${replyRef.id}`,
         );
       }
-      await addPoints(loginNick, "대댓글", 1, "앨범 댓글에 대댓글 작성");
     } catch (e) {
       console.error(e);
     }

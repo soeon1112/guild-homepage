@@ -26,7 +26,6 @@ import {
 } from "firebase/storage";
 import { db, storage } from "@/src/lib/firebase";
 import { logActivity } from "@/src/lib/activity";
-import { addPoints } from "@/src/lib/points";
 import { useModalBodyLock } from "@/src/lib/useModalBodyLock";
 import { useBackdropClose } from "@/src/lib/useBackdropClose";
 import { CollapsibleSection } from "./CollapsibleSection";
@@ -495,7 +494,6 @@ function UploadModal({
           `members/${memberId}/photos/${newRef.id}`,
         );
       }
-      await addPoints(loginNick, "사진", 2, "미니홈피 사진첩에 사진 업로드");
       onClose();
     } catch (e) {
       console.error(e);

@@ -42,7 +42,6 @@ import {
   deleteActivitiesByTargetPath,
   logActivity,
 } from "@/src/lib/activity";
-import { addPoints } from "@/src/lib/points";
 import { uploadCommentImage } from "@/src/lib/commentImage";
 import {
   CommentImageAttach,
@@ -713,12 +712,6 @@ function PhotoComments({
           `members/${memberId}/photos/${photoId}/comments/${commentRef.id}`,
         );
       }
-      await addPoints(
-        loginNick,
-        "댓글",
-        1,
-        `${memberNickname ?? "미니홈피"}님 사진에 댓글 작성`,
-      );
     } catch (e) {
       console.error(e);
     }
@@ -1020,12 +1013,6 @@ function PhotoCommentItem({
           `members/${memberId}/photos/${photoId}/comments/${comment.id}/replies/${replyRef.id}`,
         );
       }
-      await addPoints(
-        loginNick,
-        "대댓글",
-        1,
-        `${memberNickname ?? "미니홈피"}님 사진에 대댓글 작성`,
-      );
     } catch (e) {
       console.error(e);
     }

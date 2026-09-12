@@ -15,7 +15,6 @@ import { db, storage } from "@/src/lib/firebase";
 import { useAuth } from "@/app/components/AuthProvider";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
 import { logActivity } from "@/src/lib/activity";
-import { addPoints } from "@/src/lib/points";
 import { josa, truncate } from "@/src/lib/text";
 import {
   MentionPicker,
@@ -162,7 +161,6 @@ export default function BoardWritePage() {
         `/board/${newRef.id}`,
         `board/${newRef.id}`,
       );
-      await addPoints(nickname, "게시글", 2, `게시판 글 작성: ${cleanTitle}`);
       pending.forEach((p) => URL.revokeObjectURL(p.previewUrl));
       router.push("/board");
     } catch (e) {
