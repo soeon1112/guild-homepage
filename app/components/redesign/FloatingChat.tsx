@@ -63,6 +63,17 @@ type ChatReplyTo = {
   imageUrl?: string;
 };
 
+// 채팅 링크 프리뷰 Phase 2 — functions/src/triggers/chat.ts 가 백그라운드로
+// 채워 넣는 필드. 서버가 아직 처리 못했거나 URL이 없으면 undefined.
+type LinkPreview = {
+  type: "youtube" | "vimeo" | "image" | "opengraph";
+  url: string;
+  title?: string;
+  description?: string;
+  thumbnail?: string;
+  videoId?: string;
+};
+
 type ChatMessage = {
   id: string;
   nickname: string;
@@ -71,6 +82,7 @@ type ChatMessage = {
   fileType?: ChatFileType;
   createdAt: Timestamp | null;
   replyTo?: ChatReplyTo;
+  linkPreview?: LinkPreview;
 };
 
 function formatTime(ts: Timestamp | null): string {
@@ -557,6 +569,10 @@ const MessageItem = memo(
     prev.m.replyTo?.snippet === next.m.replyTo?.snippet &&
     prev.m.replyTo?.fileType === next.m.replyTo?.fileType &&
     prev.m.replyTo?.imageUrl === next.m.replyTo?.imageUrl &&
+    // 링크 프리뷰 — 서버가 백그라운드로 채워 넣는 필드라 후속 snapshot이
+    // 이 필드만 바뀌어 도달할 수 있다. 비교 빠뜨리면 프리뷰 도착해도
+    // 리렌더 안 됨.
+    prev.m.linkPreview === next.m.linkPreview &&
     prev.highlighted === next.highlighted &&
     // p3.2: reactions 비교 — Map 자체 매번 새 reference 라 byEmoji size /
     // 각 emoji 카운트 / myEmoji 만 얕게 비교. 배지 표시상 충분.
@@ -774,6 +790,7 @@ export default function FloatingChat() {
           fileType: (data.fileType as ChatFileType | undefined) || undefined,
           createdAt: data.createdAt ?? null,
           replyTo,
+          linkPreview: (data.linkPreview as LinkPreview | undefined) ?? undefined,
         };
       });
       list.reverse();

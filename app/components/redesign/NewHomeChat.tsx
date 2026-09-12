@@ -394,6 +394,10 @@ const MessageItem = memo(
     prev.m.replyTo?.snippet === next.m.replyTo?.snippet &&
     prev.m.replyTo?.fileType === next.m.replyTo?.fileType &&
     prev.m.replyTo?.imageUrl === next.m.replyTo?.imageUrl &&
+    // 링크 프리뷰 — 서버가 백그라운드로 채워 넣는 필드라 후속 snapshot이
+    // 이 필드만 바뀌어 도달할 수 있다. 비교 빠뜨리면 프리뷰 도착해도
+    // 리렌더 안 됨.
+    prev.m.linkPreview === next.m.linkPreview &&
     prev.highlighted === next.highlighted &&
     reactionsEqual(prev.messageReactions, next.messageReactions) &&
     prev.onActionMenu === next.onActionMenu &&

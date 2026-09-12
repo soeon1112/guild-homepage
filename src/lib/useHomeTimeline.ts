@@ -23,6 +23,17 @@ import { db } from "./firebase";
 
 type ChatFileType = "image" | "gif" | "video" | "sticker";
 
+// 채팅 링크 프리뷰 Phase 2 — functions/src/triggers/chat.ts 가 백그라운드로
+// 채워 넣는 필드. 서버가 아직 처리 못했거나 URL이 없으면 undefined.
+type LinkPreview = {
+  type: "youtube" | "vimeo" | "image" | "opengraph";
+  url: string;
+  title?: string;
+  description?: string;
+  thumbnail?: string;
+  videoId?: string;
+};
+
 type ChatReplyTo = {
   messageId: string;
   nickname: string;
@@ -42,6 +53,7 @@ export type TimelineItem =
       imageUrl?: string;
       fileType?: ChatFileType;
       replyTo?: ChatReplyTo;
+      linkPreview?: LinkPreview;
       ts: Timestamp | null;
     }
   | {
@@ -123,6 +135,7 @@ export function useHomeTimeline(initialLimit = 30): {
             imageUrl: data.imageUrl || undefined,
             fileType: (data.fileType as ChatFileType | undefined) || undefined,
             replyTo: parseReplyTo(data.replyTo),
+            linkPreview: (data.linkPreview as LinkPreview | undefined) ?? undefined,
             ts: data.createdAt ?? null,
           };
         }),
