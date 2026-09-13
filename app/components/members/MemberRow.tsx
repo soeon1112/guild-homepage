@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import { MemberAvatar } from "@/app/components/redesign/MemberAvatar";
 import { useUserMbti } from "@/src/lib/userMbti";
 import { guildAccent, type Guild } from "@/src/lib/useGuilds";
-import { getTagColor } from "@/src/lib/memberTags";
 
 // 길드원 한 줄 목록 — 2줄 카드 한 항목 (Phase 2.1 재디자인).
 //
@@ -30,7 +29,18 @@ const CREAM_SOFT = "rgba(254, 245, 230, 0.7)";
 const CARD_BG = "rgba(254, 245, 230, 0.12)";
 // 배지 전용 잉크 — CabinLogs INK와 동일 값(가장 어두워 대비 여유가 큼).
 const INK = "#3a2a1a";
-const COL_WIDTH = "60px";
+
+// Phase 2.3 — 태그/시간대 pill 색.
+// 취향 태그: 순환(mistLavender/peach/sunsetGold) 폐기 → mistLavender
+// 단일색 고정. peach는 이미 MBTI 배지가 쓰고 있어서(MBTI_BADGE_BG,
+// 아래) 겹치면 "이게 배지야 태그야" 헷갈리니 제외했다.
+const TAG_BG = "#c8b8e8"; // mistLavender
+const TAG_TEXT = INK;
+// 시간대 pill: 사용자가 준 예시(rgba(92,58,31,...) 잉크 테두리)는 이
+// 카드가 실제로는 어두운 twilight 배경이 비치는 반투명 카드라서(위 주석
+// 참고) 어두운 테두리+텍스트를 쓰면 안 보인다 — 크림 계열로 정정.
+const TIME_BORDER = "rgba(254, 245, 230, 0.35)";
+const TIME_TEXT = "rgba(254, 245, 230, 0.85)";
 
 export type MemberRowData = {
   nickname: string;
@@ -68,81 +78,101 @@ export function MemberRow({
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="grid items-start rounded-2xl px-3.5 py-3"
+      className="flex flex-col rounded-2xl px-3.5 py-3"
       style={{
-        gridTemplateColumns: `40px 1fr ${COL_WIDTH} ${COL_WIDTH}`,
-        columnGap: 10,
-        rowGap: 4,
         background: CARD_BG,
         boxShadow: "0 4px 18px rgba(11, 8, 33, 0.28)",
       }}
     >
-      <div
-        className="relative"
-        style={{ gridColumn: "1", gridRow: "1 / span 2" }}
-      >
-        <MemberAvatar
-          imageUrl={member.profileImage}
-          nickname={member.nickname}
-          size={40}
-          dl2
-        />
-        {/* MemberAvatar 미접촉 — 대신 같은 자리에 투명 오버레이 버튼을
-            얹어 본인 행일 때만 클릭을 가로챈다. 타인 행은 오버레이가
-            없어 MemberAvatar 자체의 개인 공간 이동이 그대로 동작. */}
-        {isOwnRow && onEditPress && (
-          <button
-            type="button"
-            onClick={onEditPress}
-            aria-label="내 프로필 편집"
-            className="absolute inset-0 z-10 cursor-pointer rounded-full"
-            style={{ background: "transparent", border: "none" }}
+      {/* 1줄: 프사 + 닉네임 + 한마디(truncate) | 오른쪽: 길드+MBTI 배지.
+          middleRow에 min-w-0 + flex-1을 줘서 justify-between과 동일한
+          효과 — 배지 그룹은 항상 카드 오른쪽 끝에 붙는다. */}
+      <div className="flex items-center gap-2.5">
+        <div className="relative shrink-0" style={{ width: 40 }}>
+          <MemberAvatar
+            imageUrl={member.profileImage}
+            nickname={member.nickname}
+            size={40}
+            dl2
           />
-        )}
+          {/* MemberAvatar 미접촉 — 대신 같은 자리에 투명 오버레이 버튼을
+              얹어 본인 행일 때만 클릭을 가로챈다. 타인 행은 오버레이가
+              없어 MemberAvatar 자체의 개인 공간 이동이 그대로 동작. */}
+          {isOwnRow && onEditPress && (
+            <button
+              type="button"
+              onClick={onEditPress}
+              aria-label="내 프로필 편집"
+              className="absolute inset-0 z-10 cursor-pointer rounded-full"
+              style={{ background: "transparent", border: "none" }}
+            />
+          )}
+        </div>
+
+        <div className="flex min-w-0 flex-1 items-baseline gap-1.5">
+          <span
+            className="shrink-0 truncate text-sm font-bold"
+            style={{ color: CREAM }}
+          >
+            {member.nickname}
+          </span>
+          {member.statusMessage && (
+            <span
+              className="min-w-0 flex-1 truncate text-xs italic"
+              style={{ color: CREAM_SOFT }}
+            >
+              {member.statusMessage}
+            </span>
+          )}
+        </div>
+
+        <div className="flex shrink-0 items-center gap-1.5">
+          {guild && <GuildBadge guild={guild} />}
+          {mbti && <MbtiBadge value={mbti} />}
+        </div>
       </div>
 
-      <span
-        className="truncate text-sm font-bold"
-        style={{ gridColumn: "2", gridRow: "1", color: CREAM }}
-      >
-        {member.nickname}
-      </span>
-
-      <div style={{ gridColumn: "3", gridRow: "1", justifySelf: "end" }}>
-        {guild && <GuildBadge guild={guild} />}
-      </div>
-      <div style={{ gridColumn: "4", gridRow: "1", justifySelf: "end" }}>
-        {mbti && <MbtiBadge value={mbti} />}
-      </div>
-
-      <div className="min-w-0" style={{ gridColumn: "2 / span 3", gridRow: "2" }}>
-        {member.statusMessage && (
-          <p className="truncate text-xs italic" style={{ color: CREAM_SOFT }}>
-            {member.statusMessage}
-          </p>
-        )}
-        {hasMeta && (
-          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+      {/* 2줄: 프사 자리만큼 빈 공간 + 오른쪽 정렬 시간대/태그. 카테고리
+          레이블(🕐 아이콘, "성향" 텍스트)로 pill만 덜렁 있는 느낌 해소. */}
+      {hasMeta && (
+        <div className="mt-1.5 flex">
+          <div className="shrink-0" style={{ width: 40 }} />
+          <div className="flex flex-1 flex-wrap items-center justify-end gap-1.5">
             {playTimes.length > 0 && (
-              <span className="text-[10.5px]" style={{ color: CREAM_SOFT }}>
-                🕐 {playTimes.join(", ")}
-              </span>
-            )}
-            {tags.map((tag, i) => {
-              const c = getTagColor(i);
-              return (
-                <span
-                  key={tag}
-                  className="rounded-full px-2 py-0.5 text-[10px] font-medium"
-                  style={{ backgroundColor: c.bg, color: c.ink }}
-                >
-                  {tag}
+              <>
+                <span className="text-[10px]" style={{ color: CREAM_SOFT }}>
+                  🕐
                 </span>
-              );
-            })}
+                {playTimes.map((t) => (
+                  <span
+                    key={t}
+                    className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                    style={{ border: `1px solid ${TIME_BORDER}`, color: TIME_TEXT }}
+                  >
+                    {t}
+                  </span>
+                ))}
+              </>
+            )}
+            {tags.length > 0 && (
+              <>
+                <span className="text-[10px]" style={{ color: CREAM_SOFT }}>
+                  성향
+                </span>
+                {tags.map((t) => (
+                  <span
+                    key={t}
+                    className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                    style={{ backgroundColor: TAG_BG, color: TAG_TEXT }}
+                  >
+                    {t}
+                  </span>
+                ))}
+              </>
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </motion.div>
   );
 }
