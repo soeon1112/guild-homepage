@@ -205,31 +205,29 @@ export function Dawnlight2Topbar() {
   };
 
   const navItems: NavItem[] = [
-    // Phase 6 — DM 진입점 언쏘 A/B. mySpaceId 조건부 항목(바로 아래)과
-    // 동일한 배열-스프레드 패턴 재사용 — useUnreadDMTotal 훅 호출(위
-    // 147행)은 조건 없이 항상 실행되고, 배열에 항목을 넣을지만 조건부.
-    ...(nickname === "언쏘"
-      ? [
-          {
-            id: "dm",
-            label: "DM",
-            icon: (
-              <span className="relative inline-flex">
-                <MessageCircle className="h-3.5 w-3.5" />
-                {unreadDMTotal > 0 && (
-                  <span
-                    className="absolute -right-1.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[9px] font-bold"
-                    style={{ background: "#dc2626", color: "#fef5e6" }}
-                  >
-                    {unreadDMTotal > 99 ? "99+" : unreadDMTotal}
-                  </span>
-                )}
-              </span>
-            ),
-            href: "/dm",
-          } as NavItem,
-        ]
-      : []),
+    // DM 진입점 — 전체 공개(언쏘 A/B 하드코딩 제거). navItems 자체가
+    // `{ready && nickname && (...)}` 안에서만 렌더되니(위 305-321행)
+    // 로그인 여부는 이미 보장돼 있어 별도 조건 불필요 — mySpaceId
+    // 조건부 항목(바로 아래, 로그인과 별개인 실제 데이터 조건)과 달리
+    // 이 항목은 항상 포함.
+    {
+      id: "dm",
+      label: "DM",
+      icon: (
+        <span className="relative inline-flex">
+          <MessageCircle className="h-3.5 w-3.5" />
+          {unreadDMTotal > 0 && (
+            <span
+              className="absolute -right-1.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[9px] font-bold"
+              style={{ background: "#dc2626", color: "#fef5e6" }}
+            >
+              {unreadDMTotal > 99 ? "99+" : unreadDMTotal}
+            </span>
+          )}
+        </span>
+      ),
+      href: "/dm",
+    },
     ...(mySpaceId
       ? [
           {

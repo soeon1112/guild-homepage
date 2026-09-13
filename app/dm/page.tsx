@@ -12,7 +12,7 @@ import { useAuth } from "@/app/components/AuthProvider";
 import { db } from "@/src/lib/firebase";
 
 // DM 목록 화면 — Phase 4 (앱 app/(tabs)/dm/index.tsx와 1:1 포트),
-// Phase 6에서 언쏘 A/B 라우트 가드 추가.
+// 전체 공개(언쏘 A/B 하드코딩 제거) 이후 로그인만 필요.
 
 const INK = "#5c3a1f";
 const INK_SOFT = "#8a6a4a";
@@ -27,12 +27,13 @@ export default function DMListPage() {
   const [rooms, setRooms] = useState<RoomRow[]>([]);
   const [newDMOpen, setNewDMOpen] = useState(false);
 
-  // Phase 6 — 언쏘 A/B 라우트 가드. 앱 dm/index.tsx의 letter.tsx verbatim
-  // 패턴과 동일 — ready 후에만 판단(세션 복원 전 nickname이 일시적으로
-  // null이라 너무 이른 redirect 방지). Topbar 진입점이 없어졌어도 URL
-  // 직접 접속 대비.
+  // 로그인 필수 라우트 가드 — 앱 dm/index.tsx의 letter.tsx verbatim
+  // 패턴과 동일(비로그인이면 홈으로). ready 후에만 판단(세션 복원 전
+  // nickname이 일시적으로 null이라 너무 이른 redirect 방지). 전역
+  // AuthGuard.tsx(미접촉)가 보통 /login으로 먼저 보내지만, 이 페이지
+  // 자체도 독립적으로 안전망을 갖는다.
   useEffect(() => {
-    if (ready && me !== "언쏘") {
+    if (ready && !me) {
       router.replace("/");
     }
   }, [ready, me, router]);

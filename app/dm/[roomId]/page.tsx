@@ -119,12 +119,12 @@ export default function DMRoomPage() {
   const partnerParam = searchParams.get("partner") ?? "";
   const { nickname: me, ready } = useAuth();
 
-  // Phase 6 — 언쏘 A/B 라우트 가드. dm/page.tsx와 동일 패턴 — ready
-  // 후에만 판단(세션 복원 전 nickname이 일시적으로 null이라 너무 이른
-  // redirect 방지). Topbar 진입점이 없어졌어도 URL 직접 접속/알림
-  // 딥링크(/dm/{roomId}) 대비.
+  // 로그인 필수 라우트 가드 — dm/page.tsx와 동일 패턴(비로그인이면
+  // 홈으로). ready 후에만 판단(세션 복원 전 nickname이 일시적으로
+  // null이라 너무 이른 redirect 방지). URL 직접 접속/알림 딥링크
+  // (/dm/{roomId}) 대비.
   useEffect(() => {
-    if (ready && me !== "언쏘") {
+    if (ready && !me) {
       router.replace("/");
     }
   }, [ready, me, router]);
