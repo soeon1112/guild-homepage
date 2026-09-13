@@ -73,7 +73,10 @@ export default function DMListPage() {
           <p className="text-sm italic" style={{ color: INK_SOFT }}>대화가 없습니다</p>
         </div>
       ) : (
-        <div className="flex-1 divide-y overflow-y-auto" style={{ borderColor: "rgba(92,58,31,0.08)" }}>
+        // 카드형 방 목록(D절) — 각 항목이 불투명 cream 카드가 돼(DMRoomListItem.tsx
+        // 참고, WCAG 대비 확보 목적) divide-y 대신 gap+padding으로 카드
+        // 사이/좌우 여백에서 mistLavender 배경이 드러나게 한다.
+        <div className="flex-1 space-y-2.5 overflow-y-auto px-3 py-2.5">
           {rooms.map(({ id, data }) => {
             const partner = getPartnerNickname(data.participants, me);
             return (

@@ -16,6 +16,13 @@ import { getUnreadTotal, type DMRoom } from "@/src/lib/dm";
 const INK = "#5c3a1f";
 const INK_SOFT = "#8a6a4a";
 const UNREAD_BADGE_BG = "#dc2626"; // PaperPlaneLetters 위젯과 동일한 빨강
+// 목록 배경이 mistLavender(0.35) 위 GlobalBackground 트와일라잇
+// 그라디언트(화면 상단은 짙은 보라)라, 행 자체가 투명하면 화면
+// 위쪽에서 INK/INK_SOFT 대비가 WCAG 4.5:1 밑으로 떨어진다(실측 약
+// 1.5:1~3.7:1). row를 불투명 cream 카드로 만들어 다른 화면(채팅
+// 입력줄 등)과 동일한 cream-on-ink 대비를 재사용한다 — INK_SOFT는
+// 순수 cream 위에서만 4.5:1을 겨우 넘겨서 반투명 카드로는 못 버틴다.
+const CREAM = "#fef5e6";
 
 function formatRoomTime(ts?: { toDate: () => Date }): string {
   if (!ts) return "";
@@ -58,7 +65,8 @@ export function DMRoomListItem({
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") router.push(`/dm/${roomId}`);
       }}
-      className="flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-[rgba(92,58,31,0.04)]"
+      className="flex cursor-pointer items-center gap-3 rounded-2xl px-4 py-3 transition-shadow hover:shadow-md"
+      style={{ background: CREAM, boxShadow: "0 1px 4px rgba(92,58,31,0.10)" }}
     >
       <div className="relative shrink-0" style={{ pointerEvents: "none" }}>
         <MemberAvatar imageUrl={avatarImageUrl} nickname={partner} size={44} dl2 />
