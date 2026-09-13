@@ -180,7 +180,9 @@ export function MemberListNewPage() {
         </motion.p>
       )}
 
-      <div className="flex flex-col gap-2 pb-10">
+      {/* Phase 2.7 — 세로 1열 → 2열 그리드(모바일은 1열로 자동 축소).
+          카드 내부(MemberRow)는 미접촉, 이 컨테이너 배치만 변경. */}
+      <div className="grid grid-cols-1 gap-3 pb-10 md:grid-cols-2">
         {filteredSorted.map((m) => (
           <MemberRow
             key={m.nickname}
