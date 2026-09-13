@@ -1,17 +1,22 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
-import { collection, getDocs, limit, query, where } from "firebase/firestore";
-import { db } from "@/src/lib/firebase";
+import { roomIdFor } from "@/src/lib/dm";
+import { useAuth } from "@/app/components/AuthProvider";
 
-// 프사 클릭 → 개인 공간 이동 (중앙 집중): `nickname` prop 하나만 있으면
-// 이 컴포넌트가 자체적으로 members 컬렉션을 nickname 으로 조회해 슬롯
-// doc id 를 찾고 `/members/{id}` 로 이동한다 — 채팅/게시판/앨범/길드원
-// 카드 등 호출부를 단 한 곳도 안 고쳐도 전부 자동으로 클릭 가능해진다.
-// app/components/NicknameLink.tsx(이 라운드부터 dumb span) 가 쓰던 것과
-// 같은 조회 패턴 — 닉네임에 해당하는 members 문서가 없으면(미등록/"잠든
-// 별") alert 로 안내하고 이동하지 않는다.
+// 프사 클릭 → DM 이동 (전역 변경): `nickname` prop 하나만 있으면 이
+// 컴포넌트가 자체적으로 roomIdFor(loginNick, nickname)를 계산해
+// `/dm/{roomId}`로 이동한다 — members 컬렉션 조회(개인 공간 존재
+// 여부)가 아예 필요 없어져 lookup 자체를 걷어냈다. 본인 프사도 같은
+// 경로를 타 roomIdFor(me, me) === "me_me" 형태의 메모장 방으로 이동
+// (별도 분기 불필요). roomId/partner 둘 다 encodeURIComponent —
+// NewDMModal.tsx가 이미 겪은 함정(한글 roomId를 인코딩 없이 넘기면
+// useParams().roomId가 디코딩 없이 그대로 와 다른 Firestore 문서가
+// 됨)과 동일한 패턴 재사용. 호출부(채팅/게시판/앨범/길드원 리스트 등)를
+// 단 한 곳도 안 고쳐도 전부 자동으로 적용된다 — 길드원 리스트의 본인
+// 카드만 그 카드 컴포넌트의 절대위치 오버레이(미접촉)가 이 클릭을
+// 가로채 편집 모달을 연다.
 type MemberAvatarProps = {
   /** Pre-fetched profile image URL. If absent or it fails to load, the
    *  neutral silhouette fallback is shown. */
@@ -38,56 +43,29 @@ export function MemberAvatar({
 }: MemberAvatarProps) {
   const gradientId = `mavatar-${useId().replace(/:/g, "")}`;
   const router = useRouter();
+  const { nickname: loginNick } = useAuth();
   const [imgError, setImgError] = useState(false);
-  // 닉네임별 lookup 결과 캐시 — 같은 아바타를 여러 번 눌러도 재조회 안
-  // 함. nickname 이 바뀌면(리스트 재사용 등) 리셋.
-  const [resolvedDocId, setResolvedDocId] = useState<string | null>(null);
-  const [notFound, setNotFound] = useState(false);
-  const [looking, setLooking] = useState(false);
-
-  useEffect(() => {
+  // imageUrl이 바뀌면 이전 에러 플래그를 리셋 — 리스트 재사용으로 같은
+  // 컴포넌트 인스턴스가 다른 프사 URL을 받는 경우 대비. useEffect 대신
+  // React가 권장하는 "렌더 중 상태 조정" 패턴(react-hooks/set-state-
+  // in-effect 회피) — 동작은 기존과 동일, 실행 시점만 effect 이후에서
+  // 렌더 중으로 바뀜.
+  const [lastImageUrl, setLastImageUrl] = useState(imageUrl);
+  if (imageUrl !== lastImageUrl) {
+    setLastImageUrl(imageUrl);
     setImgError(false);
-  }, [imageUrl]);
-
-  useEffect(() => {
-    setResolvedDocId(null);
-    setNotFound(false);
-  }, [nickname]);
+  }
 
   const showImage = !!imageUrl && !imgError;
 
-  const handleActivate = async () => {
-    if (!nickname || looking) return;
-    if (resolvedDocId) {
-      router.push(`/members/${resolvedDocId}`);
-      return;
-    }
-    if (notFound) {
-      alert("아직 공간이 없어요");
-      return;
-    }
-    setLooking(true);
-    try {
-      const q = query(
-        collection(db, "members"),
-        where("nickname", "==", nickname),
-        limit(1),
-      );
-      const snap = await getDocs(q);
-      if (snap.empty) {
-        setNotFound(true);
-        alert("아직 공간이 없어요");
-      } else {
-        const id = snap.docs[0].id;
-        setResolvedDocId(id);
-        router.push(`/members/${id}`);
-      }
-    } catch (e) {
-      console.error("[MemberAvatar] lookup failed", e);
-      alert("아직 공간이 없어요");
-    } finally {
-      setLooking(false);
-    }
+  // 비로그인(loginNick 없음)이면 무반응 — 로그인 페이지 유도 없이 조용히
+  // no-op. roomIdFor(loginNick, nickname)이 loginNick===nickname이면
+  // 정렬 후 같은 값끼리 합쳐 "me_me" 형태가 돼 본인 프사도 별도 분기
+  // 없이 메모장 방으로 간다.
+  const handleActivate = () => {
+    if (!nickname || !loginNick) return;
+    const roomId = roomIdFor(loginNick, nickname);
+    router.push(`/dm/${encodeURIComponent(roomId)}?partner=${encodeURIComponent(nickname)}`);
   };
 
   // Inline styles for the image fill bypass the Tailwind v4 layer cascade
