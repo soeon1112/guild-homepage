@@ -76,6 +76,9 @@ export default function MembersPage() {
         type UserData = {
           lastAttendance?: Timestamp;
           password?: string;
+          // Phase 1 (2026-09-13) — schema-only, no reader yet (Phase 2/3).
+          playTime?: string;
+          tags?: string[];
         };
 
         // Build a nickname-keyed lookup over members so we can find both
