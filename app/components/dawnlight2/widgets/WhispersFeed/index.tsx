@@ -11,6 +11,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
+import { isPersonalSpaceActivity } from "@/src/lib/activity";
 import { formatSmart } from "@/src/lib/formatSmart";
 
 // Ink-brown palette for the warm peach card. Pre-mixed with their
@@ -73,9 +74,15 @@ export function WhispersFeed() {
   useEffect(() => {
     const q = query(collection(db, "activity"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(q, (snap) => {
-      setItems(
-        snap.docs.map((d) => ({ id: d.id, ...d.data() })) as ActivityItem[],
-      );
+      // 개인 공간(미니홈피) activity 최신소식 노출 차단(Phase 2) — Phase 1
+      // 상수 재사용. 이 위젯은 limit() 없이 전체를 받아 클라이언트에서
+      // 페이지네이션하므로(totalPages가 items.length 기준), 여기서 걸러도
+      // 페이지 수 계산이 어긋나지 않는다. 되돌리기: 이 filter 한 줄만 지우면
+      // 즉시 복원.
+      const docs = (
+        snap.docs.map((d) => ({ id: d.id, ...d.data() })) as ActivityItem[]
+      ).filter((it) => !isPersonalSpaceActivity(it.type));
+      setItems(docs);
       setLoaded(true);
     });
     return () => unsub();

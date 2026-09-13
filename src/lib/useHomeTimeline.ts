@@ -8,6 +8,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { db } from "./firebase";
+import { isPersonalSpaceActivity } from "./activity";
 
 // Home 채팅 메인 리뉴얼 Phase 1 — 채팅(`chat`) + 최신 소식(`activity`) 병합
 // 타임라인 hook. 사용처는 아직 없음(Phase 3에서 렌더링에 붙인다) — 이 파일은
@@ -182,11 +183,21 @@ export function useHomeTimeline(initialLimit = 30): {
   // 실제로는 방금 막 쓰인 문서라 화면 맨 위/아래 어느 쪽이든 두 컬렉션이
   // 같은 규칙을 쓰므로 상대 순서는 일관된다.
   const items = useMemo(() => {
-    return [...chatDocs, ...activityDocs].sort((a, b) => {
-      const at = a.ts ? a.ts.toMillis() : 0;
-      const bt = b.ts ? b.ts.toMillis() : 0;
-      return bt - at;
-    });
+    return [...chatDocs, ...activityDocs]
+      // 개인 공간(미니홈피) activity 최신소식 노출 차단(Phase 2) — Phase 1
+      // 상수 재사용. activityDocs 자체(개수/페이지네이션 판단용)는 안
+      // 건드리고 최종 렌더용 items에서만 뺀다 — hasMoreOlder가
+      // activityDocs.length(필터 전, Firestore가 실제로 준 개수)로
+      // 계산되니 여기서 거르면 "더 있음" 판단이 틀어질 일이 없다.
+      // 되돌리기: 이 filter 한 줄만 지우면 즉시 복원.
+      .filter(
+        (item) => item.kind !== "activity" || !isPersonalSpaceActivity(item.type),
+      )
+      .sort((a, b) => {
+        const at = a.ts ? a.ts.toMillis() : 0;
+        const bt = b.ts ? b.ts.toMillis() : 0;
+        return bt - at;
+      });
   }, [chatDocs, activityDocs]);
 
   // 두 스트림 중 하나라도 현재 limit 만큼 꽉 채워 돌아왔다면 더 오래된
