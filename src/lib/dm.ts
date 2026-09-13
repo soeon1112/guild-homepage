@@ -33,11 +33,17 @@ export type DMRoom = {
   createdAt?: Timestamp;
 };
 
+// 사진 묶음(카톡 스타일 그리드) 한 메시지당 최대 장수 — 채팅/DM 공용.
+// Phase 1 스키마 전용, 사용처 0(Phase 2 업로드 UX/Phase 3 그리드 렌더에서
+// 소비 예정).
+export const MAX_IMAGES_PER_MESSAGE = 4;
+
 // dmRooms/{roomId}/messages/{messageId} 서브컬렉션 문서.
 export type DMMessage = {
   nickname: string;
   message: string;
-  imageUrl?: string;
+  imageUrl?: string; // 기존 단일 사진 — 미접촉, 호환성 유지
+  imageUrls?: string[]; // 신규 사진 묶음(최대 MAX_IMAGES_PER_MESSAGE장), 사용처 0
   fileType?: "image" | "sticker";
   createdAt: Timestamp;
   replyTo?: {

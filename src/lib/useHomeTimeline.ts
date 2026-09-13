@@ -50,7 +50,9 @@ export type TimelineItem =
       id: string;
       nickname: string;
       message: string;
-      imageUrl?: string;
+      imageUrl?: string; // 기존 단일 사진 — 미접촉, 호환성 유지
+      // 사진 묶음(카톡 스타일 그리드, 최대 4장) — Phase 1 스키마, 사용처 0.
+      imageUrls?: string[];
       fileType?: ChatFileType;
       replyTo?: ChatReplyTo;
       linkPreview?: LinkPreview;
@@ -133,6 +135,7 @@ export function useHomeTimeline(initialLimit = 30): {
             nickname: data.nickname,
             message: data.message,
             imageUrl: data.imageUrl || undefined,
+            imageUrls: Array.isArray(data.imageUrls) ? data.imageUrls : undefined,
             fileType: (data.fileType as ChatFileType | undefined) || undefined,
             replyTo: parseReplyTo(data.replyTo),
             linkPreview: (data.linkPreview as LinkPreview | undefined) ?? undefined,
