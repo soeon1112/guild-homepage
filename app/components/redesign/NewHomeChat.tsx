@@ -22,6 +22,7 @@ import { MAX_IMAGES_PER_MESSAGE } from "@/src/lib/dm";
 import { useAuth } from "@/app/components/AuthProvider";
 import NicknameLink from "@/app/components/NicknameLink";
 import { CommentImageView } from "@/app/components/CommentImage";
+import { ImageGallery } from "@/app/components/ImageGallery";
 import { formatSmart } from "@/src/lib/formatSmart";
 import {
   MentionPicker,
@@ -121,6 +122,8 @@ type MessageItemProps = {
   onJumpToOriginal: (messageId: string) => void;
   highlighted: boolean;
   messageReactions: MessageReactions | undefined;
+  // Phase 3: 사진 묶음 그리드 클릭 시 확대 — 신규 최소 뷰어(viewerUri) 오픈.
+  onOpenImage: (uri: string) => void;
 };
 
 const CHAT_AVATAR_SIZE = 36;
@@ -138,6 +141,7 @@ const MessageItem = memo(
     onJumpToOriginal,
     highlighted,
     messageReactions,
+    onOpenImage,
   }: MessageItemProps) {
     const rowRef = useRef<HTMLDivElement | null>(null);
     useEffect(() => {
@@ -238,7 +242,10 @@ const MessageItem = memo(
           </div>
         )}
         {m.linkPreview && <LinkPreviewCard preview={m.linkPreview} />}
-        {m.imageUrl && (
+        {m.imageUrls && m.imageUrls.length > 0 ? (
+          <ImageGallery urls={m.imageUrls} onImageClick={(i) => onOpenImage(m.imageUrls![i])} />
+        ) : (
+          m.imageUrl && (
           m.fileType === "sticker" ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={m.imageUrl} alt="" className="h-32 w-32 object-contain" />
@@ -258,6 +265,7 @@ const MessageItem = memo(
               <CommentImageView url={m.imageUrl} reserveBox />
             )}
           </div>
+          )
           )
         )}
         {messageReactions && messageReactions.byEmoji.size > 0 && (
@@ -389,6 +397,7 @@ const MessageItem = memo(
     prev.m.id === next.m.id &&
     prev.m.message === next.m.message &&
     prev.m.imageUrl === next.m.imageUrl &&
+    prev.m.imageUrls === next.m.imageUrls &&
     prev.m.fileType === next.m.fileType &&
     prev.m.nickname === next.m.nickname &&
     prev.m.ts?.toMillis() === next.m.ts?.toMillis() &&
@@ -405,7 +414,8 @@ const MessageItem = memo(
     reactionsEqual(prev.messageReactions, next.messageReactions) &&
     prev.onActionMenu === next.onActionMenu &&
     prev.registerRef === next.registerRef &&
-    prev.onJumpToOriginal === next.onJumpToOriginal,
+    prev.onJumpToOriginal === next.onJumpToOriginal &&
+    prev.onOpenImage === next.onOpenImage,
 );
 
 function reactionsEqual(
@@ -476,6 +486,9 @@ export function NewHomeChat() {
   // 하나의 상태만 채팅/activity 공통으로 쓴다(요청 6 "완전 동일 UX").
   const [actionMenuFor, setActionMenuFor] = useState<TimelineItem | null>(null);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
+  // Phase 3: 사진 묶음(imageUrls) 클릭 확대 전용 최소 뷰어 — 기존 단일
+  // imageUrl은 CommentImageView(자체 완결형)를 그대로 쓰므로 미접촉.
+  const [viewerUri, setViewerUri] = useState<string | null>(null);
 
   const filePreview = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
   useEffect(() => {
@@ -1044,6 +1057,7 @@ export function NewHomeChat() {
                   onJumpToOriginal={handleJumpToOriginal}
                   highlighted={highlightedMessageId === item.id}
                   messageReactions={chatReactions.get(item.id)}
+                  onOpenImage={setViewerUri}
                 />
               );
             })
@@ -1349,6 +1363,23 @@ export function NewHomeChat() {
               ↩
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Phase 3: 사진 묶음 확대 뷰어 — actionMenuFor 모달과 동일한
+          absolute inset-0 패턴. 배열 전체 스와이프는 Phase 4. */}
+      {viewerUri && (
+        <div
+          className="absolute inset-0 z-40 flex items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.85)" }}
+          onClick={() => setViewerUri(null)}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={viewerUri}
+            alt=""
+            className="max-h-[80%] max-w-[90%] object-contain"
+          />
         </div>
       )}
     </div>

@@ -21,6 +21,7 @@ import { MemberAvatar } from "@/app/components/redesign/MemberAvatar";
 import { MessageText } from "@/app/components/MessageText";
 import { LinkPreviewCard } from "@/app/components/LinkPreviewCard";
 import { EmoticonPicker } from "@/app/components/EmoticonPicker";
+import { ImageGallery } from "@/app/components/ImageGallery";
 import { Dawnlight2BottomNav } from "@/app/components/dawnlight2/BottomNav";
 import { useMemberAvatars } from "@/src/lib/useMemberAvatars";
 import { useChatReactions, type MessageReactions } from "@/src/lib/useChatReactions";
@@ -59,6 +60,9 @@ type DMMessageRow = {
   nickname: string;
   message: string;
   imageUrl?: string;
+  // 사진 묶음(Phase 3) — 있으면 카톡 그리드 렌더, 없으면 기존 imageUrl
+  // 단일 렌더(호환성).
+  imageUrls?: string[];
   fileType?: "image" | "sticker";
   ts: Timestamp | null;
   linkPreview?: {
@@ -222,6 +226,7 @@ export default function DMRoomPage() {
           nickname: typeof data.nickname === "string" ? data.nickname : "",
           message: typeof data.message === "string" ? data.message : "",
           imageUrl: typeof data.imageUrl === "string" ? data.imageUrl : undefined,
+          imageUrls: Array.isArray(data.imageUrls) ? data.imageUrls : undefined,
           fileType: data.fileType === "sticker" || data.fileType === "image" ? data.fileType : undefined,
           ts: (data.createdAt as Timestamp) ?? null,
           linkPreview: data.linkPreview ?? undefined,
@@ -775,7 +780,10 @@ const DMMessageItemView = memo(function DMMessageItemView({
         </div>
       )}
       {!!m.linkPreview && <LinkPreviewCard preview={m.linkPreview} />}
-      {!!m.imageUrl &&
+      {m.imageUrls && m.imageUrls.length > 0 ? (
+        <ImageGallery urls={m.imageUrls} onImageClick={(i) => onOpenImage(m.imageUrls![i])} />
+      ) : (
+        !!m.imageUrl &&
         (m.fileType === "sticker" ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={m.imageUrl} alt="" className="h-24 w-24 object-contain" />
@@ -784,7 +792,8 @@ const DMMessageItemView = memo(function DMMessageItemView({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={m.imageUrl} alt="" className="h-[180px] w-[180px] rounded-xl object-cover" />
           </button>
-        ))}
+        ))
+      )}
       {messageReactions && messageReactions.byEmoji.size > 0 && (
         <div className={`flex flex-wrap gap-1 ${mine ? "justify-end" : ""}`}>
           {Array.from(messageReactions.byEmoji.entries()).map(([emoji, nicks]) => (

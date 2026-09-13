@@ -29,6 +29,7 @@ import { MAX_IMAGES_PER_MESSAGE } from "@/src/lib/dm";
 import { useAuth } from "@/app/components/AuthProvider";
 import NicknameLink from "@/app/components/NicknameLink";
 import { CommentImageView } from "@/app/components/CommentImage";
+import { ImageGallery } from "@/app/components/ImageGallery";
 import { formatSmart } from "@/src/lib/formatSmart";
 import {
   getOpenPanel,
@@ -181,6 +182,8 @@ type MessageItemProps = {
   highlighted: boolean;
   // p3.2: 리액션 배지 표시 (토글은 p3.3) — undefined 면 row 자체 안 그림.
   messageReactions: MessageReactions | undefined;
+  // Phase 3: 사진 묶음 그리드 클릭 시 확대 — 신규 최소 뷰어(viewerUri) 오픈.
+  onOpenImage: (uri: string) => void;
 };
 
 const CHAT_AVATAR_SIZE = 36;
@@ -208,6 +211,7 @@ const MessageItem = memo(
     onJumpToOriginal,
     highlighted,
     messageReactions,
+    onOpenImage,
   }: MessageItemProps) {
     // p2.5: row DOM 노드 등록 — mount/m.id 변동 시 register, unmount 시
     // unregister. callback ref 를 직접 ref={...} 에 박으면 매 렌더마다
@@ -350,7 +354,10 @@ const MessageItem = memo(
           </div>
         )}
         {m.linkPreview && <LinkPreviewCard preview={m.linkPreview} />}
-        {m.imageUrl && (
+        {m.imageUrls && m.imageUrls.length > 0 ? (
+          <ImageGallery urls={m.imageUrls} onImageClick={(i) => onOpenImage(m.imageUrls![i])} />
+        ) : (
+          m.imageUrl && (
           m.fileType === "sticker" ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={m.imageUrl} alt="" className="h-32 w-32 object-contain" />
@@ -370,6 +377,7 @@ const MessageItem = memo(
               <CommentImageView url={m.imageUrl} />
             )}
           </div>
+          )
           )
         )}
         {/* p3.2: 리액션 배지 row — bubble 아래, contentColumn 안. mine
@@ -566,6 +574,7 @@ const MessageItem = memo(
     prev.m.id === next.m.id &&
     prev.m.message === next.m.message &&
     prev.m.imageUrl === next.m.imageUrl &&
+    prev.m.imageUrls === next.m.imageUrls &&
     prev.m.fileType === next.m.fileType &&
     prev.m.nickname === next.m.nickname &&
     prev.m.createdAt?.toMillis() === next.m.createdAt?.toMillis() &&
@@ -586,7 +595,8 @@ const MessageItem = memo(
     // 트리거 버튼만 들고 actionMenuOpen / onSelectEmoji 등 자체 비교 불요.
     prev.onActionMenu === next.onActionMenu &&
     prev.registerRef === next.registerRef &&
-    prev.onJumpToOriginal === next.onJumpToOriginal,
+    prev.onJumpToOriginal === next.onJumpToOriginal &&
+    prev.onOpenImage === next.onOpenImage,
 );
 
 // p3.2 helper — MessageReactions 두 객체 표시 동등성 비교.
@@ -867,6 +877,9 @@ export default function FloatingChat() {
   // Menu 가 popover 자체 토글. 기존 handleReply (↩ 직접 버튼) 제거.
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [actionMenuFor, setActionMenuFor] = useState<ChatMessage | null>(null);
+  // Phase 3: 사진 묶음(imageUrls) 클릭 확대 전용 최소 뷰어 — 기존 단일
+  // imageUrl은 CommentImageView(자체 완결형)를 그대로 쓰므로 미접촉.
+  const [viewerUri, setViewerUri] = useState<string | null>(null);
   // 이모티콘 선택기 — FloatingChat 은 NewHomeChat 의 + 빠른이동 패널이
   // 없어(다른 시스템, 미접촉) 상호배타 로직 없이 단독 토글.
   const [isEmoticonOpen, setIsEmoticonOpen] = useState(false);
@@ -1761,6 +1774,7 @@ export default function FloatingChat() {
                         onJumpToOriginal={handleJumpToOriginal}
                         highlighted={highlightedMessageId === m.id}
                         messageReactions={chatReactions.get(m.id)}
+                        onOpenImage={setViewerUri}
                       />
                     ),
                   )
@@ -2223,6 +2237,24 @@ export default function FloatingChat() {
                     ↩
                   </button>
                 </div>
+              </div>
+            )}
+
+            {/* Phase 3: 사진 묶음 확대 뷰어 — panel 영역 안(absolute inset-0,
+                actionMenuFor 모달과 동일 패턴)에서만 어두워짐. 배열 전체
+                스와이프는 Phase 4. */}
+            {viewerUri && (
+              <div
+                className="absolute inset-0 z-40 flex items-center justify-center"
+                style={{ background: "rgba(0,0,0,0.85)" }}
+                onClick={() => setViewerUri(null)}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={viewerUri}
+                  alt=""
+                  className="max-h-[80%] max-w-[90%] object-contain"
+                />
               </div>
             )}
           </motion.div>
