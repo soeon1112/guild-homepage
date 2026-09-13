@@ -7,7 +7,9 @@ import { ChevronRight, TreePine } from "lucide-react";
 import { collection, getDocs, Timestamp } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
+import { useAuth } from "@/app/components/AuthProvider";
 import { MemberCard, type MemberCardData } from "@/app/components/redesign/MemberCard";
+import { MemberListNewPage } from "@/app/components/members/MemberListNewPage";
 
 // Nicknames that have a real users doc but should never appear in the
 // members list (test/staff accounts). Edit here to add or restore.
@@ -50,6 +52,7 @@ function StarSearchIcon({ className }: { className?: string }) {
 
 export default function MembersPage() {
   const isDawnlight2 = useDawnlight2();
+  const { nickname: loginNick } = useAuth();
   const [members, setMembers] = useState<MemberCardData[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [queryText, setQueryText] = useState("");
@@ -152,6 +155,15 @@ export default function MembersPage() {
   );
 
   const hasAnyResult = filteredRegistered.length > 0;
+
+  // Phase 4 — 언쏘 조건부 라우팅. home(P4)/P7-A와 동일 패턴: 모든 훅
+  // 호출 뒤, 기존 JSX 분기(isDawnlight2) 앞에서 조기 return. 이 위의
+  // fetch/정렬/필터 로직(useEffect, useMemo)은 언쏘 세션에서도 그대로
+  // 실행되니 약간 낭비지만, 기존 페이지 로직을 안 건드리는 게 우선이라
+  // 감수 — home 화면의 P4 분기도 같은 트레이드오프.
+  if (loginNick === "언쏘") {
+    return <MemberListNewPage />;
+  }
 
   if (isDawnlight2) {
     return (
