@@ -37,10 +37,9 @@ const INK = "#3a2a1a";
 // 그 하나가 오른쪽 끝으로 붙어버려 자리가 안 고정됨).
 const GUILD_COL_WIDTH = 100;
 const MBTI_COL_WIDTH = 80;
-// 2줄 시간대/태그 그룹도 동일한 이유로 고정 폭 컬럼.
-const META_COL_WIDTH = 120;
-// 카테고리 사이(시간 그룹 ↔ 태그 그룹) 간격 — Phase 2.3의 6px(pill간
-// 간격과 동일)보다 넓게 둬서 두 그룹이 시각적으로 분리되게.
+// Phase 2.5 — 2줄 시간대/태그는 더 이상 고정폭 컬럼이 아니라(요청에
+// 따라 폐기) 내용만큼만 폭을 차지하는 두 그룹. 이 gap은 그 두 그룹
+// 사이 간격만 담당(그룹 내부 pill 간격은 gap-1로 별도).
 const META_GROUP_GAP = 16;
 
 // Phase 2.3 — 태그/시간대 pill 색.
@@ -157,53 +156,43 @@ export function MemberRow({
         </div>
       </div>
 
-      {/* 2줄: 프사 자리만큼 빈 공간 + 빈 필러 + 시간대(120px)/태그
-          (120px) 고정폭 컬럼. 각 열이 고정폭이라 — 예: 태그 없는 행 —
-          시간대 열이 그 자리로 밀려오지 않는다. 카테고리는 아이콘만
-          (텍스트 레이블 없음) — 이모지는 색을 못 바꿔서 lucide 아이콘
-          + sunsetGold로 진하게. */}
+      {/* 2줄 (Phase 2.5) — 프사 자리 spacer 없이 시간대 그룹 / 태그
+          그룹이 나란히. 각 그룹은 자기 내용만큼만 폭을 차지하고(고정폭
+          컬럼 아님), wrap도 그룹 안에서만 일어난다 — 두 그룹을 하나의
+          flex-wrap 컨테이너로 합치면 시간대 pill과 태그 pill이 섞여서
+          줄바꿈되므로 그룹마다 별도 div로 분리. 빈 그룹은 렌더 안 함
+          (Phase 2.4의 "필드 없어도 고정폭 유지" 요구는 이번 지시로
+          폐기). */}
       {hasMeta && (
-        <div className="mt-1.5 flex items-center" style={{ gap: META_GROUP_GAP }}>
-          <div className="shrink-0" style={{ width: 40 }} />
-          <div className="flex-1" />
-          <div
-            className="flex flex-wrap items-center justify-end gap-1.5"
-            style={{ width: META_COL_WIDTH }}
-          >
-            {playTimes.length > 0 && (
-              <>
-                <Clock size={11} color={CATEGORY_ICON_COLOR} strokeWidth={2.5} />
-                {playTimes.map((t) => (
-                  <span
-                    key={t}
-                    className="rounded-full px-2 py-0.5 text-[10px] font-medium"
-                    style={{ border: `1px solid ${TIME_BORDER}`, color: TIME_TEXT }}
-                  >
-                    {t}
-                  </span>
-                ))}
-              </>
-            )}
-          </div>
-          <div
-            className="flex flex-wrap items-center justify-end gap-1.5"
-            style={{ width: META_COL_WIDTH }}
-          >
-            {tags.length > 0 && (
-              <>
-                <Heart size={11} color={CATEGORY_ICON_COLOR} fill={CATEGORY_ICON_COLOR} />
-                {tags.map((t) => (
-                  <span
-                    key={t}
-                    className="rounded-full px-2 py-0.5 text-[10px] font-medium"
-                    style={{ backgroundColor: TAG_BG, color: TAG_TEXT }}
-                  >
-                    {t}
-                  </span>
-                ))}
-              </>
-            )}
-          </div>
+        <div className="mt-2 flex items-start" style={{ gap: META_GROUP_GAP }}>
+          {playTimes.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1">
+              <Clock size={11} color={CATEGORY_ICON_COLOR} strokeWidth={2.5} />
+              {playTimes.map((t) => (
+                <span
+                  key={t}
+                  className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                  style={{ border: `1px solid ${TIME_BORDER}`, color: TIME_TEXT }}
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
+          )}
+          {tags.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1">
+              <Heart size={11} color={CATEGORY_ICON_COLOR} fill={CATEGORY_ICON_COLOR} />
+              {tags.map((t) => (
+                <span
+                  key={t}
+                  className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                  style={{ backgroundColor: TAG_BG, color: TAG_TEXT }}
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </motion.div>
