@@ -5,6 +5,7 @@ import {
   Calendar,
   LogIn,
   LogOut,
+  MessageCircle,
   Menu,
   User,
   X,
@@ -15,6 +16,7 @@ import { useEffect, useState } from "react";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
 import { useAuth } from "@/app/components/AuthProvider";
+import { useUnreadDMTotal } from "@/src/lib/useUnreadDMTotal";
 import { emitChatScrollToLatest } from "@/src/lib/uiBus";
 import {
   AuthModal,
@@ -140,6 +142,9 @@ function CreamIconButton({
 
 export function Dawnlight2Topbar() {
   const { nickname, ready, logout } = useAuth();
+  // Phase 4 — DM 아이콘 배지용. 언쏘 A/B는 Phase 6에서(이 Phase는 UI만,
+  // 지금은 로그인한 모두에게 노출).
+  const unreadDMTotal = useUnreadDMTotal(nickname);
   const router = useRouter();
   const pathname = usePathname();
   const [hovered, setHovered] = useState<string | null>(null);
@@ -200,6 +205,27 @@ export function Dawnlight2Topbar() {
   };
 
   const navItems: NavItem[] = [
+    // Phase 4 — DM 진입점. 로그인 버튼(현재는 항상 로그인 상태에서만
+    // 이 nav가 보이지만) 근처 아이콘 줄의 첫 자리. 언쏘 A/B(Phase 6
+    // 예정) 전까지는 로그인한 모두에게 노출.
+    {
+      id: "dm",
+      label: "DM",
+      icon: (
+        <span className="relative inline-flex">
+          <MessageCircle className="h-3.5 w-3.5" />
+          {unreadDMTotal > 0 && (
+            <span
+              className="absolute -right-1.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[9px] font-bold"
+              style={{ background: "#dc2626", color: "#fef5e6" }}
+            >
+              {unreadDMTotal > 99 ? "99+" : unreadDMTotal}
+            </span>
+          )}
+        </span>
+      ),
+      href: "/dm",
+    },
     ...(mySpaceId
       ? [
           {
