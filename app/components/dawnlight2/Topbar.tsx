@@ -2,7 +2,6 @@
 
 import { AnimatePresence } from "framer-motion";
 import {
-  Calendar,
   LogIn,
   LogOut,
   MessageCircle,
@@ -13,8 +12,6 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { collection, getDocs, query, where } from "firebase/firestore";
-import { db } from "@/src/lib/firebase";
 import { useAuth } from "@/app/components/AuthProvider";
 import { useUnreadDMTotal } from "@/src/lib/useUnreadDMTotal";
 import { emitChatScrollToLatest } from "@/src/lib/uiBus";
@@ -148,7 +145,6 @@ export function Dawnlight2Topbar() {
   const router = useRouter();
   const pathname = usePathname();
   const [hovered, setHovered] = useState<string | null>(null);
-  const [mySpaceId, setMySpaceId] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [authModal, setAuthModal] = useState<{
     open: boolean;
@@ -166,33 +162,6 @@ export function Dawnlight2Topbar() {
     };
   }, []);
 
-  // Resolve the current user's member-slot id for the "내공간" link —
-  // same query cosmic TopHeader runs.
-  useEffect(() => {
-    if (!nickname) {
-      setMySpaceId(null);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const q = query(
-          collection(db, "members"),
-          where("nickname", "==", nickname),
-        );
-        const snap = await getDocs(q);
-        if (cancelled) return;
-        setMySpaceId(snap.empty ? null : snap.docs[0].id);
-      } catch (e) {
-        console.error(e);
-        if (!cancelled) setMySpaceId(null);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [nickname]);
-
   useEffect(() => {
     if (!toastErr) return;
     const t = setTimeout(() => setToastErr(null), 3000);
@@ -206,10 +175,8 @@ export function Dawnlight2Topbar() {
 
   const navItems: NavItem[] = [
     // DM 진입점 — 전체 공개(언쏘 A/B 하드코딩 제거). navItems 자체가
-    // `{ready && nickname && (...)}` 안에서만 렌더되니(위 305-321행)
-    // 로그인 여부는 이미 보장돼 있어 별도 조건 불필요 — mySpaceId
-    // 조건부 항목(바로 아래, 로그인과 별개인 실제 데이터 조건)과 달리
-    // 이 항목은 항상 포함.
+    // `{ready && nickname && (...)}` 안에서만 렌더되니 로그인 여부는
+    // 이미 보장돼 있어 별도 조건 불필요.
     {
       id: "dm",
       label: "DM",
@@ -228,16 +195,6 @@ export function Dawnlight2Topbar() {
       ),
       href: "/dm",
     },
-    ...(mySpaceId
-      ? [
-          {
-            id: "space",
-            label: "내공간",
-            icon: <Calendar className="h-3.5 w-3.5" />,
-            href: `/members/${mySpaceId}`,
-          } as NavItem,
-        ]
-      : []),
     {
       id: "my",
       label: "MY",
