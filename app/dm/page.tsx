@@ -17,6 +17,8 @@ import { db } from "@/src/lib/firebase";
 
 const INK = "#5c3a1f";
 const INK_SOFT = "#8a6a4a";
+// mistLavender 톤 — [roomId]/page.tsx의 DM_BG와 동일(D-2, 목록/대화 통일감).
+const DM_BG = "rgba(200, 184, 232, 0.15)";
 
 type RoomRow = { id: string; data: DMRoom };
 
@@ -46,7 +48,7 @@ export default function DMListPage() {
   const avatars = useMemberAvatars(partners);
 
   return (
-    <div className="mx-auto flex h-[calc(100dvh-56px)] w-full max-w-2xl flex-col">
+    <div className="mx-auto flex h-[calc(100dvh-56px)] w-full max-w-2xl flex-col" style={{ background: DM_BG }}>
       <div
         className="flex shrink-0 items-center gap-2.5 px-3 py-2.5"
         style={{ borderBottom: "1px solid rgba(92,58,31,0.10)", background: "rgba(254, 245, 230, 0.9)" }}

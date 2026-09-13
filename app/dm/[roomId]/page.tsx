@@ -15,12 +15,13 @@ import {
 } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, Send, Smile, X } from "lucide-react";
+import { Camera, ChevronLeft, Plus, Send, Smile, X } from "lucide-react";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { MemberAvatar } from "@/app/components/redesign/MemberAvatar";
 import { MessageText } from "@/app/components/MessageText";
 import { LinkPreviewCard } from "@/app/components/LinkPreviewCard";
 import { EmoticonPicker } from "@/app/components/EmoticonPicker";
+import { Dawnlight2BottomNav } from "@/app/components/dawnlight2/BottomNav";
 import { useMemberAvatars } from "@/src/lib/useMemberAvatars";
 import { useChatReactions, type MessageReactions } from "@/src/lib/useChatReactions";
 import { getEmoticonUrl } from "@/src/lib/emoticons";
@@ -46,6 +47,10 @@ import { db, storage } from "@/src/lib/firebase";
 const INK = "#5c3a1f";
 const INK_SOFT = "#8a6a4a";
 const CREAM = "#fef5e6";
+// mistLavender(dl2Colors.mistLavender, #c8b8e8)를 rgb로 풀어 alpha만
+// 조정 — 앱 [roomId].tsx의 DM_BG, ActivityCard의 LAVENDER_BG(0.15)와
+// 동일 강도. 채팅 화면의 cream 배경과 명확히 구분되는 톤(Phase 6, D절).
+const DM_BG = "rgba(200, 184, 232, 0.15)";
 const CHAT_REACTION_EMOJIS = ["❤️", "😂", "😢", "👍", "🎉", "😮"] as const;
 const AVATAR_SIZE = 32;
 
@@ -110,6 +115,7 @@ export default function DMRoomPage() {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [file, setFile] = useState<{ uri: string; name: string; raw: File } | null>(null);
+  const [isNavOpen, setIsNavOpen] = useState(false);
   const [isEmoticonOpen, setIsEmoticonOpen] = useState(false);
   const [replyingTo, setReplyingTo] = useState<ReplyTarget | null>(null);
   const [actionMenuFor, setActionMenuFor] = useState<DMMessageRow | null>(null);
@@ -119,6 +125,19 @@ export default function DMRoomPage() {
   const listRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const messageInputRef = useRef<HTMLInputElement>(null);
+
+  // P7-B — NewHomeChat.tsx(redesign):452-462의 togglePanel/toggleEmoticon과
+  // 동일 상호배타 로직(E-3). + 열림 시 이모티콘 닫힘, 반대도 마찬가지.
+  const togglePanel = () => {
+    if (!isNavOpen) messageInputRef.current?.blur();
+    setIsEmoticonOpen(false);
+    setIsNavOpen((v) => !v);
+  };
+  const toggleEmoticon = () => {
+    setIsNavOpen(false);
+    setIsEmoticonOpen((v) => !v);
+  };
 
   // 방 존재 확인만 — Phase 5: 자동 생성 제거(지연 생성으로 변경, D절).
   // 방이 없어도 partnerParam이 있으면 정상 진입(첫 메시지 보낼 때
@@ -370,7 +389,7 @@ export default function DMRoomPage() {
   }
 
   return (
-    <div className="mx-auto flex h-[calc(100dvh-56px)] w-full max-w-2xl flex-col">
+    <div className="mx-auto flex h-[calc(100dvh-56px)] w-full max-w-2xl flex-col" style={{ background: DM_BG }}>
       {/* 상단 헤더 — 뒤로가기 + 상대방 프사/닉네임(G-2). Topbar는 그대로
           위에 남아있고(다른 시스템 미접촉), 이 헤더는 그 아래 대화 전용
           서브헤더. */}
@@ -406,10 +425,50 @@ export default function DMRoomPage() {
         ))}
       </div>
 
+      {/* P7-B 슬라이드업 — NewHomeChat.tsx(redesign):1028-1036과 동일
+          transform 트릭(0-height wrapper의 transform이 fixed 자손인
+          Dawnlight2BottomNav의 containing block이 돼, 그 bottom:0이
+          "화면 맨 아래"가 아니라 이 지점 기준으로 계산됨). 닫혔을 때는
+          composeArea 뒤로 완전히 숨는다. */}
       <div
-        className="shrink-0 space-y-1.5 px-2.5 pb-2.5 pt-2"
+        style={{
+          transform: isNavOpen ? "translateY(0)" : "translateY(110px)",
+          transition: "transform 200ms ease",
+          pointerEvents: isNavOpen ? "auto" : "none",
+        }}
+      >
+        <Dawnlight2BottomNav forceVisible />
+      </div>
+
+      <div
+        className="relative shrink-0 space-y-1.5 px-2.5 pb-2.5 pt-2"
         style={{ borderTop: "1px solid rgba(92,58,31,0.10)", background: "rgba(254, 245, 230, 0.9)" }}
       >
+        {isEmoticonOpen && (
+          <div className="absolute bottom-full left-0 right-0 px-2.5 pt-2 pb-1">
+            <div className="mb-1.5 flex justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEmoticonOpen(false);
+                  fileInputRef.current?.click();
+                }}
+                disabled={sending}
+                aria-label={file ? "첨부 제거" : "사진 첨부"}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all disabled:opacity-50"
+                style={{
+                  background: "#ffffff",
+                  border: file ? "1px solid rgba(184,84,32,0.4)" : "1px solid rgba(92,58,31,0.20)",
+                  color: file ? "#b85420" : INK,
+                }}
+              >
+                <Camera className="h-4 w-4" />
+              </button>
+            </div>
+            <EmoticonPicker onSelect={handleEmoticonSelect} />
+          </div>
+        )}
+
         {replyingTo && (
           <div className="flex items-center justify-between gap-2 rounded-[10px] px-2.5 py-1.5" style={{ background: "rgba(92,58,31,0.06)" }}>
             <span className="truncate text-[11px]" style={{ color: INK_SOFT }}>
@@ -432,29 +491,36 @@ export default function DMRoomPage() {
           </div>
         )}
 
-        {isEmoticonOpen && <EmoticonPicker onSelect={handleEmoticonSelect} />}
-
         <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            aria-label="사진 첨부"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-lg font-semibold"
-            style={{ background: "rgba(92,58,31,0.06)", color: INK }}
-          >
-            +
-          </button>
           <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePickImage} style={{ display: "none" }} />
           <button
             type="button"
-            onClick={() => setIsEmoticonOpen((v) => !v)}
-            aria-label="이모티콘"
+            onClick={(e) => {
+              e.stopPropagation();
+              togglePanel();
+            }}
+            aria-label={isNavOpen ? "빠른 이동 닫기" : "빠른 이동 열기"}
+            aria-pressed={isNavOpen}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all"
+            style={{
+              background: isNavOpen ? "rgba(255,199,133,0.4)" : "rgba(92,58,31,0.06)",
+              color: isNavOpen ? "#b85420" : INK,
+            }}
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={toggleEmoticon}
+            aria-label={isEmoticonOpen ? "이모티콘 닫기" : "이모티콘 열기"}
+            aria-pressed={isEmoticonOpen}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
             style={{ background: isEmoticonOpen ? "rgba(255,199,133,0.4)" : "rgba(92,58,31,0.06)" }}
           >
             <Smile size={16} color={isEmoticonOpen ? "#b85420" : INK} />
           </button>
           <input
+            ref={messageInputRef}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {

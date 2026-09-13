@@ -141,6 +141,11 @@ export function Dawnlight2BottomNav({
   // 전체 공개 — 언쏘 전용 A/B 조건을 로그인 여부로 완화. 홈이
   // NewHomeChat(채팅 메인)이 되는 모든 로그인 사용자에서 하단 네비 숨김.
   if (!forceVisible && pathname === "/" && nickname) return null;
+  // DM Phase 6 — 대화 화면(/dm/{roomId})에서만 숨김. 목록(/dm)은 정확히
+  // "/dm"이라 startsWith("/dm/")에 안 걸려 그대로 노출된다. forceVisible는
+  // DM 대화 화면 자체의 "+" 슬라이드업(NewHomeChat과 동일 패턴)이 이
+  // 얼리 리턴을 우회해 재mount할 때 쓴다.
+  if (!forceVisible && pathname?.startsWith("/dm/")) return null;
 
   const isActive = (item: NavItem) => {
     if (!pathname) return false;
