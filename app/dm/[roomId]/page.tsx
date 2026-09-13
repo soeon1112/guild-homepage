@@ -50,7 +50,7 @@ const CREAM = "#fef5e6";
 // mistLavender(dl2Colors.mistLavender, #c8b8e8)를 rgb로 풀어 alpha만
 // 조정 — 앱 [roomId].tsx의 DM_BG, ActivityCard의 LAVENDER_BG(0.15)와
 // 동일 강도. 채팅 화면의 cream 배경과 명확히 구분되는 톤(Phase 6, D절).
-const DM_BG = "rgba(200, 184, 232, 0.15)";
+const DM_BG = "rgba(200, 184, 232, 0.35)";
 const CHAT_REACTION_EMOJIS = ["❤️", "😂", "😢", "👍", "🎉", "😮"] as const;
 const AVATAR_SIZE = 32;
 

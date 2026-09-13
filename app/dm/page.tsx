@@ -18,7 +18,7 @@ import { db } from "@/src/lib/firebase";
 const INK = "#5c3a1f";
 const INK_SOFT = "#8a6a4a";
 // mistLavender 톤 — [roomId]/page.tsx의 DM_BG와 동일(D-2, 목록/대화 통일감).
-const DM_BG = "rgba(200, 184, 232, 0.15)";
+const DM_BG = "rgba(200, 184, 232, 0.35)";
 
 type RoomRow = { id: string; data: DMRoom };
 
