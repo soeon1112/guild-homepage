@@ -86,9 +86,16 @@ export function MemberRow({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
       className="flex gap-3 rounded-2xl px-3.5 py-3"
+      // 카드 테두리/배경/그림자 — 이전 MemberCard.tsx dl2 카드 verbatim.
+      // Phase 2.1에서 "격자선 없음" 요구로 border를 뺐었는데, 이번
+      // 지시로 그 결정을 뒤집고 원래 카드의 은은한 크림 테두리를 되살림.
       style={{
         background: CARD_BG,
-        boxShadow: "0 4px 18px rgba(11, 8, 33, 0.28)",
+        border: "1px solid rgba(254, 245, 230, 0.25)",
+        backdropFilter: "blur(16px)",
+        WebkitBackdropFilter: "blur(16px)",
+        boxShadow:
+          "0 2px 14px rgba(11, 8, 33, 0.18), inset 0 1px 0 rgba(254, 245, 230, 0.08)",
       }}
     >
       {/* Phase 2.6 — 4줄 세로 스택. 프사(48px)는 items-start로 위쪽
@@ -96,10 +103,14 @@ export function MemberRow({
           — 1줄 닉네임+한마디, 2줄 길드+MBTI, 3줄 시간대, 4줄 태그.
           각 줄은 내용 없으면 렌더 자체를 안 함. */}
       <div className="relative shrink-0" style={{ width: 48 }}>
+        {/* ring — 이전 MemberCard.tsx가 항상 켜던 prop인데 이 리스트로
+            옮기며 빠뜨렸던 것. MemberAvatar 자체는 미접촉, 호출부에서
+            켜기만 함(halo 스타일은 그 컴포넌트 안에 이미 있음). */}
         <MemberAvatar
           imageUrl={member.profileImage}
           nickname={member.nickname}
           size={48}
+          ring
           dl2
         />
         {/* MemberAvatar 미접촉 — 대신 같은 자리에 투명 오버레이 버튼을
