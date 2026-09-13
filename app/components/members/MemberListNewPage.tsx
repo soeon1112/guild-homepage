@@ -21,9 +21,13 @@ import { MemberSearchBar } from "@/app/components/members/MemberSearchBar";
 // 편집 모달(Phase 3), 언쏘 A/B 라우팅(Phase 4)은 아직 없음. 이 화면은
 // /members-new 임시 라우트로만 접근 가능.
 
+// Phase 2.1 — 카드 톤을 실제 dl2 계열(cream-glass on twilight)로 정정.
+// 근거는 MemberRow.tsx 상단 주석 참고. 이 파일의 guildTreeCard/loading/
+// empty 텍스트도 같은 이유로 잉크(#5c3a1f)가 아니라 크림 계열을 쓴다 —
+// 원래 members/page.tsx dl2 분기와 동일한 값으로 맞춤.
 const DL2_SUNSET_GOLD = "#ffc785";
-const INK = "#5c3a1f";
-const INK_SOFT = "#8a6a4a";
+const DL2_CREAM = "#fef5e6";
+const DL2_MIST_LAVENDER = "rgba(200, 184, 232, 0.85)";
 
 export function MemberListNewPage() {
   const guilds = useGuilds();
@@ -107,7 +111,7 @@ export function MemberListNewPage() {
   return (
     <div
       className="dl2-members-new relative mx-auto w-full px-4 pt-3"
-      style={{ maxWidth: 480 }}
+      style={{ maxWidth: 560 }}
     >
       <Link
         href="/guild-tree"
@@ -127,13 +131,13 @@ export function MemberListNewPage() {
         <span className="flex-1">
           <span
             className="block text-sm font-semibold leading-tight"
-            style={{ color: INK }}
+            style={{ color: DL2_CREAM }}
           >
             하늘섬 가계도
           </span>
           <span
             className="mt-0.5 block text-[10px] uppercase tracking-[0.28em]"
-            style={{ color: INK_SOFT }}
+            style={{ color: DL2_MIST_LAVENDER }}
           >
             SKY ISLAND · 연합 길드 구성을 한눈에
           </span>
@@ -144,7 +148,10 @@ export function MemberListNewPage() {
       <MemberSearchBar value={query} onChange={setQuery} />
 
       {!loaded && (
-        <p className="py-16 text-center text-xs italic" style={{ color: INK_SOFT }}>
+        <p
+          className="py-16 text-center text-xs italic"
+          style={{ color: "rgba(254, 245, 230, 0.65)" }}
+        >
           길드원을 불러오는 중...
         </p>
       )}
@@ -154,7 +161,7 @@ export function MemberListNewPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           className="py-16 text-center text-sm italic"
-          style={{ color: INK_SOFT }}
+          style={{ color: "rgba(254, 245, 230, 0.65)" }}
         >
           찾는 길드원이 보이지 않아요
         </motion.p>
