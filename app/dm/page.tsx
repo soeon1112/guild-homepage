@@ -2,9 +2,10 @@
 
 import { collection, onSnapshot, orderBy, query, where } from "firebase/firestore";
 import { useRouter } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { DMRoomListItem } from "@/app/components/dm/DMRoomListItem";
+import { NewDMModal } from "@/app/components/dm/NewDMModal";
 import { useMemberAvatars } from "@/src/lib/useMemberAvatars";
 import { getPartnerNickname, type DMRoom } from "@/src/lib/dm";
 import { useAuth } from "@/app/components/AuthProvider";
@@ -23,6 +24,7 @@ export default function DMListPage() {
   const router = useRouter();
   const { nickname: me } = useAuth();
   const [rooms, setRooms] = useState<RoomRow[]>([]);
+  const [newDMOpen, setNewDMOpen] = useState(false);
 
   useEffect(() => {
     if (!me) return;
@@ -52,7 +54,16 @@ export default function DMListPage() {
         <button type="button" onClick={() => router.back()} aria-label="뒤로가기" className="p-1">
           <ChevronLeft size={22} color={INK} />
         </button>
-        <span className="text-[15px] font-semibold" style={{ color: INK }}>DM</span>
+        <span className="flex-1 text-[15px] font-semibold" style={{ color: INK }}>DM</span>
+        <button
+          type="button"
+          onClick={() => setNewDMOpen(true)}
+          aria-label="새 대화 시작"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+          style={{ background: "rgba(255, 199, 133, 0.35)" }}
+        >
+          <Plus size={20} color={INK} />
+        </button>
       </div>
 
       {!me ? null : rooms.length === 0 ? (
@@ -76,6 +87,8 @@ export default function DMListPage() {
           })}
         </div>
       )}
+
+      <NewDMModal visible={newDMOpen} onClose={() => setNewDMOpen(false)} />
     </div>
   );
 }

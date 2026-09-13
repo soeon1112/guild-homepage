@@ -16,7 +16,7 @@ import {
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, Send, Smile, X } from "lucide-react";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { MemberAvatar } from "@/app/components/redesign/MemberAvatar";
 import { MessageText } from "@/app/components/MessageText";
 import { LinkPreviewCard } from "@/app/components/LinkPreviewCard";
@@ -120,6 +120,10 @@ export default function DMRoomPage() {
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // 방 존재 확인만 — Phase 5: 자동 생성 제거(지연 생성으로 변경, D절).
+  // 방이 없어도 partnerParam이 있으면 정상 진입(첫 메시지 보낼 때
+  // ensureRoomExists가 만든다). 방도 없고 partnerParam도 없을 때만
+  // "잘못된 접근". 자기 자신 DM 방지도 제거(E절, 메모장 용도로 허용).
   useEffect(() => {
     if (!roomId || !me) return;
     let cancelled = false;
@@ -130,31 +134,14 @@ export default function DMRoomPage() {
         const roomRef = doc(db, "dmRooms", roomId);
         const snap = await getDoc(roomRef);
         if (snap.exists()) {
-          const data = snap.data() as DMRoom;
-          const partner = getPartnerNickname(data.participants, me);
-          if (partner === me) {
-            if (!cancelled) setRoomError("잘못된 대화방입니다.");
-            return;
-          }
-          if (!cancelled) setRoom(data);
-        } else {
-          if (!partnerParam) {
-            if (!cancelled) setRoomError("잘못된 접근입니다.");
-            return;
-          }
-          if (partnerParam === me) {
-            if (!cancelled) setRoomError("나 자신에게는 쪽지를 보낼 수 없어요.");
-            return;
-          }
-          const created: DMRoom = {
-            participants: [me, partnerParam].sort((a, b) => a.localeCompare(b)) as [string, string],
-            unreadCount: { [me]: 0, [partnerParam]: 0 },
-          };
-          await setDoc(roomRef, { ...created, createdAt: serverTimestamp() });
-          if (!cancelled) setRoom(created);
+          if (!cancelled) setRoom(snap.data() as DMRoom);
+        } else if (!partnerParam) {
+          if (!cancelled) setRoomError("잘못된 접근입니다.");
         }
+        // else: 방 없고 partnerParam 있음 → room은 null로 두고 그냥
+        // 진입(빈 대화). 첫 메시지 전송 시 ensureRoomExists가 생성.
       } catch (e) {
-        console.error("[dm] room load/create failed", e);
+        console.error("[dm] room load failed", e);
         if (!cancelled) setRoomError("대화방을 여는 데 실패했어요.");
       }
       if (!cancelled) setRoomLoading(false);
@@ -164,7 +151,10 @@ export default function DMRoomPage() {
     };
   }, [roomId, me, partnerParam]);
 
-  const partner = room && me ? getPartnerNickname(room.participants, me) : "";
+  // 방이 있으면 참가자 배열에서, 없으면(아직 미생성) 쿼리 파라미터에서
+  // 상대 닉네임을 구한다.
+  const partner = room && me ? getPartnerNickname(room.participants, me) : partnerParam;
+  const isSelfMemo = !!me && !!partner && partner === me;
 
   useEffect(() => {
     if (!roomId || roomError) return;
@@ -202,12 +192,16 @@ export default function DMRoomPage() {
     return unsub;
   }, [roomId, roomError]);
 
+  // 화면 열 때 본인 unreadCount 리셋 — 방이 있을 때만(D-3). hasRoom을
+  // boolean으로 따로 둬서 room 객체 참조가 onSnapshot마다 바뀌어도
+  // 이 effect가 다시 안 돌게 한다.
+  const hasRoom = !!room;
   useEffect(() => {
-    if (!roomId || !me || roomLoading || roomError) return;
+    if (!roomId || !me || roomLoading || roomError || !hasRoom) return;
     updateDoc(doc(db, "dmRooms", roomId), {
       [`unreadCount.${me}`]: 0,
     }).catch((e) => console.error("[dm] unread reset failed", e));
-  }, [roomId, me, roomLoading, roomError]);
+  }, [roomId, me, roomLoading, roomError, hasRoom]);
 
   const avatars = useMemberAvatars(partner ? [partner] : []);
   const partnerAvatar = partner ? avatars.get(partner) : undefined;
@@ -219,6 +213,26 @@ export default function DMRoomPage() {
     `dmRooms/${roomId}/messages`,
   );
 
+  // Phase 5 — 지연 생성(D절). 첫 메시지/이모티콘 전송 직전에 호출.
+  // 이미 있으면(둘째 메시지부터) no-op. 자기 자신 DM(E절)이면
+  // targetPartner === me라 participants가 [me, me], unreadCount 객체
+  // 리터럴의 같은 키가 겹쳐써져도 둘 다 0이라 문제 없음. handleSend와
+  // 동일하게 일반 함수로 둔다 — useCallback으로 감싸면 이걸 참조하는
+  // handleEmoticonSelect 쪽 react-hooks/preserve-manual-memoization가
+  // 깨져서(React Compiler가 setState를 엉뚱하게 추론) 오히려 더 꼬인다.
+  const ensureRoomExists = async (targetPartner: string) => {
+    if (!me) return;
+    const roomRef = doc(db, "dmRooms", roomId);
+    const snap = await getDoc(roomRef);
+    if (snap.exists()) return;
+    const created: DMRoom = {
+      participants: [me, targetPartner].sort((a, b) => a.localeCompare(b)) as [string, string],
+      unreadCount: { [me]: 0, [targetPartner]: 0 },
+    };
+    await setDoc(roomRef, { ...created, createdAt: serverTimestamp() });
+    setRoom(created);
+  };
+
   const handlePickImage = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -227,7 +241,7 @@ export default function DMRoomPage() {
   };
 
   const handleSend = async () => {
-    if (!me || !roomId) return;
+    if (!me || !roomId || !partner) return;
     if (sending) return;
     const text = draft.trim();
     const pendingFile = file;
@@ -240,6 +254,7 @@ export default function DMRoomPage() {
     setSending(true);
 
     try {
+      await ensureRoomExists(partner);
       let imageUrl = "";
       let fileType: "image" | undefined;
       if (pendingFile) {
@@ -288,43 +303,41 @@ export default function DMRoomPage() {
     setSending(false);
   };
 
-  const handleEmoticonSelect = useCallback(
-    async (id: string) => {
-      if (!me || !roomId) return;
-      setIsEmoticonOpen(false);
-      const replySnapshot = replyingTo;
-      setReplyingTo(null);
-      try {
-        await addDoc(collection(db, "dmRooms", roomId, "messages"), {
-          nickname: me,
-          message: "",
-          imageUrl: getEmoticonUrl(id),
-          fileType: "sticker",
-          createdAt: serverTimestamp(),
-          ...(replySnapshot
-            ? {
-                replyTo: {
-                  messageId: replySnapshot.id,
-                  nickname: replySnapshot.nickname,
-                  snippet:
-                    replySnapshot.fileType === "sticker"
-                      ? "이모티콘"
-                      : (replySnapshot.message || "").slice(0, 50),
-                  ...(replySnapshot.fileType ? { fileType: replySnapshot.fileType } : {}),
-                  ...(replySnapshot.fileType === "sticker" && replySnapshot.imageUrl
-                    ? { imageUrl: replySnapshot.imageUrl }
-                    : {}),
-                },
-              }
-            : {}),
-        });
-      } catch (e) {
-        console.error("[dm] sticker send failed", e);
-        setReplyingTo(replySnapshot);
-      }
-    },
-    [me, roomId, replyingTo],
-  );
+  const handleEmoticonSelect = async (id: string) => {
+    if (!me || !roomId || !partner) return;
+    setIsEmoticonOpen(false);
+    const replySnapshot = replyingTo;
+    setReplyingTo(null);
+    try {
+      await ensureRoomExists(partner);
+      await addDoc(collection(db, "dmRooms", roomId, "messages"), {
+        nickname: me,
+        message: "",
+        imageUrl: getEmoticonUrl(id),
+        fileType: "sticker",
+        createdAt: serverTimestamp(),
+        ...(replySnapshot
+          ? {
+              replyTo: {
+                messageId: replySnapshot.id,
+                nickname: replySnapshot.nickname,
+                snippet:
+                  replySnapshot.fileType === "sticker"
+                    ? "이모티콘"
+                    : (replySnapshot.message || "").slice(0, 50),
+                ...(replySnapshot.fileType ? { fileType: replySnapshot.fileType } : {}),
+                ...(replySnapshot.fileType === "sticker" && replySnapshot.imageUrl
+                  ? { imageUrl: replySnapshot.imageUrl }
+                  : {}),
+              },
+            }
+          : {}),
+      });
+    } catch (e) {
+      console.error("[dm] sticker send failed", e);
+      setReplyingTo(replySnapshot);
+    }
+  };
 
   const handleJumpToOriginal = (messageId: string) => {
     messageRefs.current[messageId]?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -370,7 +383,7 @@ export default function DMRoomPage() {
         </button>
         <MemberAvatar imageUrl={partnerAvatar?.imageUrl} nickname={partner} size={AVATAR_SIZE} dl2 />
         <span className="flex-1 truncate text-[15px] font-semibold" style={{ color: INK }}>
-          {partner}
+          {isSelfMemo ? "메모" : partner}
         </span>
       </div>
 
