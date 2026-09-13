@@ -68,7 +68,12 @@ export function ImageGallery({ urls, onImageClick }: Props) {
   }
 
   if (count === 2) {
-    // 정사각 2개 나란히 (C-2).
+    // 정사각 2개 나란히 (C-2). 컨테이너 자체에 aspectRatio(2/1)를 직접
+    // 박아 높이를 확정한다(top-down) — 1/3/4장 케이스와 동일한 방식.
+    // 이전엔 컨테이너에 높이 지정이 없어 grid-auto-rows가 Cell의
+    // aspectRatio로부터 역산(bottom-up)했는데, 이 경로가 일부 브라우저/
+    // 타이밍에서 씹혀 컨테이너 높이가 0으로 잡히고 다음 메시지가 그 위로
+    // 겹쳐 보이는 버그의 원인이었다.
     return (
       <div
         className="grid"
@@ -77,6 +82,7 @@ export function ImageGallery({ urls, onImageClick }: Props) {
           gap: GAP,
           width: GALLERY_SIZE,
           maxWidth: "100%",
+          aspectRatio: "2 / 1",
         }}
       >
         {urls.map((url, i) => (
@@ -84,7 +90,7 @@ export function ImageGallery({ urls, onImageClick }: Props) {
             key={`${url}-${i}`}
             url={url}
             index={i}
-            style={{ aspectRatio: "1 / 1" }}
+            style={{ width: "100%", height: "100%" }}
             onImageClick={onImageClick}
           />
         ))}
