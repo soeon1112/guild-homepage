@@ -23,6 +23,7 @@ import { useAuth } from "@/app/components/AuthProvider";
 import NicknameLink from "@/app/components/NicknameLink";
 import { CommentImageView } from "@/app/components/CommentImage";
 import { ImageGallery } from "@/app/components/ImageGallery";
+import { GalleryViewer } from "@/app/components/GalleryViewer";
 import { formatSmart } from "@/src/lib/formatSmart";
 import {
   MentionPicker,
@@ -122,8 +123,9 @@ type MessageItemProps = {
   onJumpToOriginal: (messageId: string) => void;
   highlighted: boolean;
   messageReactions: MessageReactions | undefined;
-  // Phase 3: 사진 묶음 그리드 클릭 시 확대 — 신규 최소 뷰어(viewerUri) 오픈.
-  onOpenImage: (uri: string) => void;
+  // Phase 4: 배열 전체 스와이프 뷰어를 위해 (uri) 단일 대신
+  // (urls, index) 시그니처로 확장 — 단일 이미지도 배열 1개로 통합.
+  onOpenImage: (urls: string[], index: number) => void;
 };
 
 const CHAT_AVATAR_SIZE = 36;
@@ -243,7 +245,7 @@ const MessageItem = memo(
         )}
         {m.linkPreview && <LinkPreviewCard preview={m.linkPreview} />}
         {m.imageUrls && m.imageUrls.length > 0 ? (
-          <ImageGallery urls={m.imageUrls} onImageClick={(i) => onOpenImage(m.imageUrls![i])} />
+          <ImageGallery urls={m.imageUrls} onImageClick={(i) => onOpenImage(m.imageUrls!, i)} />
         ) : (
           m.imageUrl && (
           m.fileType === "sticker" ? (
@@ -486,9 +488,14 @@ export function NewHomeChat() {
   // 하나의 상태만 채팅/activity 공통으로 쓴다(요청 6 "완전 동일 UX").
   const [actionMenuFor, setActionMenuFor] = useState<TimelineItem | null>(null);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
-  // Phase 3: 사진 묶음(imageUrls) 클릭 확대 전용 최소 뷰어 — 기존 단일
-  // imageUrl은 CommentImageView(자체 완결형)를 그대로 쓰므로 미접촉.
-  const [viewerUri, setViewerUri] = useState<string | null>(null);
+  // 사진 묶음(imageUrls) 클릭 확대 전용 뷰어 — 기존 단일 imageUrl은
+  // CommentImageView(자체 완결형)를 그대로 쓰므로 미접촉. Phase 4: 배열
+  // 전체 스와이프를 위해 { urls, index } 형태로 보관.
+  const [viewer, setViewer] = useState<{ urls: string[]; index: number } | null>(null);
+  const handleOpenImage = useCallback(
+    (urls: string[], index: number) => setViewer({ urls, index }),
+    [],
+  );
 
   const filePreview = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
   useEffect(() => {
@@ -1057,7 +1064,7 @@ export function NewHomeChat() {
                   onJumpToOriginal={handleJumpToOriginal}
                   highlighted={highlightedMessageId === item.id}
                   messageReactions={chatReactions.get(item.id)}
-                  onOpenImage={setViewerUri}
+                  onOpenImage={handleOpenImage}
                 />
               );
             })
@@ -1366,21 +1373,13 @@ export function NewHomeChat() {
         </div>
       )}
 
-      {/* Phase 3: 사진 묶음 확대 뷰어 — actionMenuFor 모달과 동일한
-          absolute inset-0 패턴. 배열 전체 스와이프는 Phase 4. */}
-      {viewerUri && (
-        <div
-          className="absolute inset-0 z-40 flex items-center justify-center"
-          style={{ background: "rgba(0,0,0,0.85)" }}
-          onClick={() => setViewerUri(null)}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={viewerUri}
-            alt=""
-            className="max-h-[80%] max-w-[90%] object-contain"
-          />
-        </div>
+      {/* Phase 4: 사진 묶음 확대 뷰어 — 배열 전체 스와이프. */}
+      {viewer && (
+        <GalleryViewer
+          urls={viewer.urls}
+          initialIndex={viewer.index}
+          onClose={() => setViewer(null)}
+        />
       )}
     </div>
   );

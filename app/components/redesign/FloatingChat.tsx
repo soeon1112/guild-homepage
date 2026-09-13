@@ -30,6 +30,7 @@ import { useAuth } from "@/app/components/AuthProvider";
 import NicknameLink from "@/app/components/NicknameLink";
 import { CommentImageView } from "@/app/components/CommentImage";
 import { ImageGallery } from "@/app/components/ImageGallery";
+import { GalleryViewer } from "@/app/components/GalleryViewer";
 import { formatSmart } from "@/src/lib/formatSmart";
 import {
   getOpenPanel,
@@ -182,8 +183,9 @@ type MessageItemProps = {
   highlighted: boolean;
   // p3.2: 리액션 배지 표시 (토글은 p3.3) — undefined 면 row 자체 안 그림.
   messageReactions: MessageReactions | undefined;
-  // Phase 3: 사진 묶음 그리드 클릭 시 확대 — 신규 최소 뷰어(viewerUri) 오픈.
-  onOpenImage: (uri: string) => void;
+  // Phase 4: 배열 전체 스와이프 뷰어를 위해 (uri) 단일 대신
+  // (urls, index) 시그니처로 확장 — 단일 이미지도 배열 1개로 통합.
+  onOpenImage: (urls: string[], index: number) => void;
 };
 
 const CHAT_AVATAR_SIZE = 36;
@@ -355,7 +357,7 @@ const MessageItem = memo(
         )}
         {m.linkPreview && <LinkPreviewCard preview={m.linkPreview} />}
         {m.imageUrls && m.imageUrls.length > 0 ? (
-          <ImageGallery urls={m.imageUrls} onImageClick={(i) => onOpenImage(m.imageUrls![i])} />
+          <ImageGallery urls={m.imageUrls} onImageClick={(i) => onOpenImage(m.imageUrls!, i)} />
         ) : (
           m.imageUrl && (
           m.fileType === "sticker" ? (
@@ -877,9 +879,14 @@ export default function FloatingChat() {
   // Menu 가 popover 자체 토글. 기존 handleReply (↩ 직접 버튼) 제거.
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [actionMenuFor, setActionMenuFor] = useState<ChatMessage | null>(null);
-  // Phase 3: 사진 묶음(imageUrls) 클릭 확대 전용 최소 뷰어 — 기존 단일
-  // imageUrl은 CommentImageView(자체 완결형)를 그대로 쓰므로 미접촉.
-  const [viewerUri, setViewerUri] = useState<string | null>(null);
+  // 사진 묶음(imageUrls) 클릭 확대 전용 뷰어 — 기존 단일 imageUrl은
+  // CommentImageView(자체 완결형)를 그대로 쓰므로 미접촉. Phase 4: 배열
+  // 전체 스와이프를 위해 { urls, index } 형태로 보관.
+  const [viewer, setViewer] = useState<{ urls: string[]; index: number } | null>(null);
+  const handleOpenImage = useCallback(
+    (urls: string[], index: number) => setViewer({ urls, index }),
+    [],
+  );
   // 이모티콘 선택기 — FloatingChat 은 NewHomeChat 의 + 빠른이동 패널이
   // 없어(다른 시스템, 미접촉) 상호배타 로직 없이 단독 토글.
   const [isEmoticonOpen, setIsEmoticonOpen] = useState(false);
@@ -1774,7 +1781,7 @@ export default function FloatingChat() {
                         onJumpToOriginal={handleJumpToOriginal}
                         highlighted={highlightedMessageId === m.id}
                         messageReactions={chatReactions.get(m.id)}
-                        onOpenImage={setViewerUri}
+                        onOpenImage={handleOpenImage}
                       />
                     ),
                   )
@@ -2240,22 +2247,17 @@ export default function FloatingChat() {
               </div>
             )}
 
-            {/* Phase 3: 사진 묶음 확대 뷰어 — panel 영역 안(absolute inset-0,
-                actionMenuFor 모달과 동일 패턴)에서만 어두워짐. 배열 전체
-                스와이프는 Phase 4. */}
-            {viewerUri && (
-              <div
-                className="absolute inset-0 z-40 flex items-center justify-center"
-                style={{ background: "rgba(0,0,0,0.85)" }}
-                onClick={() => setViewerUri(null)}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={viewerUri}
-                  alt=""
-                  className="max-h-[80%] max-w-[90%] object-contain"
-                />
-              </div>
+            {/* Phase 4: 사진 묶음 확대 뷰어 — 배열 전체 스와이프.
+                GalleryViewer는 fixed inset-0로 그리지만, panel(motion.div)이
+                framer-motion transform으로 새 containing block을 만들고
+                overflow:hidden이라 Phase 3의 absolute inset-0와 동일하게
+                panel 영역에 그대로 갇힌다. */}
+            {viewer && (
+              <GalleryViewer
+                urls={viewer.urls}
+                initialIndex={viewer.index}
+                onClose={() => setViewer(null)}
+              />
             )}
           </motion.div>
         )}

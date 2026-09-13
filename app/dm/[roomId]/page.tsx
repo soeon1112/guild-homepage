@@ -22,6 +22,7 @@ import { MessageText } from "@/app/components/MessageText";
 import { LinkPreviewCard } from "@/app/components/LinkPreviewCard";
 import { EmoticonPicker } from "@/app/components/EmoticonPicker";
 import { ImageGallery } from "@/app/components/ImageGallery";
+import { GalleryViewer } from "@/app/components/GalleryViewer";
 import { Dawnlight2BottomNav } from "@/app/components/dawnlight2/BottomNav";
 import { useMemberAvatars } from "@/src/lib/useMemberAvatars";
 import { useChatReactions, type MessageReactions } from "@/src/lib/useChatReactions";
@@ -149,7 +150,11 @@ export default function DMRoomPage() {
   const [replyingTo, setReplyingTo] = useState<ReplyTarget | null>(null);
   const [actionMenuFor, setActionMenuFor] = useState<DMMessageRow | null>(null);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
-  const [viewerUri, setViewerUri] = useState<string | null>(null);
+  // Phase 4: 배열 전체 스와이프를 위해 단일 uri 대신 { urls, index } 형태로
+  // 보관 — 단일 이미지도 배열 1개로 통합. useCallback 미사용 — 이 파일
+  // 관례(276행 근처)와 동일하게 일반 함수로 둔다.
+  const [viewer, setViewer] = useState<{ urls: string[]; index: number } | null>(null);
+  const handleOpenImage = (urls: string[], index: number) => setViewer({ urls, index });
 
   const listRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -495,7 +500,7 @@ export default function DMRoomPage() {
             registerRef={(el) => {
               messageRefs.current[m.id] = el;
             }}
-            onOpenImage={setViewerUri}
+            onOpenImage={handleOpenImage}
             onLongPress={setActionMenuFor}
             onJumpToOriginal={handleJumpToOriginal}
             highlighted={highlightedMessageId === m.id}
@@ -705,16 +710,13 @@ export default function DMRoomPage() {
         </div>
       )}
 
-      {/* 이미지 뷰어 */}
-      {viewerUri && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          style={{ background: "rgba(0,0,0,0.85)" }}
-          onClick={() => setViewerUri(null)}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={viewerUri} alt="" className="max-h-[80vh] max-w-[90vw] object-contain" />
-        </div>
+      {/* 이미지 뷰어 (Phase 4) — 배열 전체 스와이프. */}
+      {viewer && (
+        <GalleryViewer
+          urls={viewer.urls}
+          initialIndex={viewer.index}
+          onClose={() => setViewer(null)}
+        />
       )}
     </div>
   );
@@ -737,7 +739,9 @@ const DMMessageItemView = memo(function DMMessageItemView({
   mine: boolean;
   avatarImageUrl: string | undefined;
   registerRef: (el: HTMLDivElement | null) => void;
-  onOpenImage: (uri: string) => void;
+  // Phase 4: 배열 전체 스와이프 뷰어를 위해 (uri) 단일 대신
+  // (urls, index) 시그니처로 확장 — 단일 이미지도 배열 1개로 통합.
+  onOpenImage: (urls: string[], index: number) => void;
   onLongPress: (m: DMMessageRow) => void;
   onJumpToOriginal: (messageId: string) => void;
   highlighted: boolean;
@@ -781,14 +785,14 @@ const DMMessageItemView = memo(function DMMessageItemView({
       )}
       {!!m.linkPreview && <LinkPreviewCard preview={m.linkPreview} />}
       {m.imageUrls && m.imageUrls.length > 0 ? (
-        <ImageGallery urls={m.imageUrls} onImageClick={(i) => onOpenImage(m.imageUrls![i])} />
+        <ImageGallery urls={m.imageUrls} onImageClick={(i) => onOpenImage(m.imageUrls!, i)} />
       ) : (
         !!m.imageUrl &&
         (m.fileType === "sticker" ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={m.imageUrl} alt="" className="h-24 w-24 object-contain" />
         ) : (
-          <button type="button" onClick={() => onOpenImage(m.imageUrl!)} aria-label="사진 크게 보기">
+          <button type="button" onClick={() => onOpenImage([m.imageUrl!], 0)} aria-label="사진 크게 보기">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={m.imageUrl} alt="" className="h-[180px] w-[180px] rounded-xl object-cover" />
           </button>
