@@ -18,6 +18,7 @@ import {
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "@/src/lib/firebase";
+import { MAX_IMAGES_PER_MESSAGE } from "@/src/lib/dm";
 import { useAuth } from "@/app/components/AuthProvider";
 import NicknameLink from "@/app/components/NicknameLink";
 import { CommentImageView } from "@/app/components/CommentImage";
@@ -464,6 +465,10 @@ export function NewHomeChat() {
   const [draft, setDraft] = useState("");
   const [mentionCursor, setMentionCursor] = useState<number | null>(null);
   const [file, setFile] = useState<File | null>(null);
+  // 사진 묶음(Phase 2) — 최대 MAX_IMAGES_PER_MESSAGE(4)장. 기존 단일
+  // file(이미지/영상/GIF 공용, 미접촉)과 별개 state. FloatingChat.tsx의
+  // 동일 확장 verbatim.
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [sending, setSending] = useState(false);
   const [replyingTo, setReplyingTo] = useState<ReplyTarget | null>(null);
   // P4.2.1: 채팅 메시지의 6-이모지+답글 팝오버를 activity 카드에도 그대로
@@ -477,6 +482,17 @@ export function NewHomeChat() {
     if (!filePreview) return;
     return () => URL.revokeObjectURL(filePreview);
   }, [filePreview]);
+
+  // 사진 묶음(Phase 2) 미리보기 URL — filePreview와 동일 패턴, 배열로.
+  const imageFilePreviews = useMemo(
+    () => imageFiles.map((f) => URL.createObjectURL(f)),
+    [imageFiles],
+  );
+  useEffect(() => {
+    return () => {
+      imageFilePreviews.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [imageFilePreviews]);
 
   const listRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
@@ -794,11 +810,16 @@ export function NewHomeChat() {
   // ── 파일 첨부 / 전송 — FloatingChat.tsx:1209-1281 verbatim ──
   const pickFile = () => {
     if (sending) return;
-    if (file) {
+    if (file || imageFiles.length > 0) {
       setFile(null);
+      setImageFiles([]);
       return;
     }
     fileInputRef.current?.click();
+  };
+
+  const handleRemoveImageFile = (index: number) => {
+    setImageFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSend = async () => {
@@ -806,12 +827,14 @@ export function NewHomeChat() {
     if (sending) return;
     const text = draft.trim();
     const pendingFile = file;
-    if (!text && !pendingFile) return;
+    const pendingImageFiles = imageFiles;
+    if (!text && !pendingFile && pendingImageFiles.length === 0) return;
 
     const replySnapshot = replyingTo;
     isJumpingRef.current = false;
     setDraft("");
     setFile(null);
+    setImageFiles([]);
     setReplyingTo(null);
     setSending(true);
     messageInputRef.current?.focus({ preventScroll: true });
@@ -827,10 +850,30 @@ export function NewHomeChat() {
         await uploadBytes(r, pendingFile);
         imageUrl = await getDownloadURL(r);
       }
+      // 사진 묶음(Phase 2) — pendingFile(단일 이미지/영상/GIF, 위 그대로
+      // 미접촉)과 별개 경로. 병렬 업로드, 하나라도 실패하면 Promise.all이
+      // 즉시 reject해 아래 catch로 빠진다(전체 롤백, D-5 권장안).
+      let imageUrls: string[] = [];
+      if (pendingImageFiles.length > 0) {
+        fileType = "image";
+        imageUrls = await Promise.all(
+          pendingImageFiles.map(async (pendingImageFile, i) => {
+            const safeName = pendingImageFile.name.replace(/[^\w.\-]/g, "_");
+            const path = `chat/${Date.now()}_${i}_${safeName}`;
+            const r = ref(storage, path);
+            await uploadBytes(r, pendingImageFile);
+            return getDownloadURL(r);
+          }),
+        );
+      }
       await addDoc(collection(db, "chat"), {
         nickname,
         message: text,
         imageUrl,
+        // 새로 저장하는 사진 묶음 메시지는 위 imageUrl(기존 단일 필드,
+        // 여기선 빈 문자열)과 별개로 imageUrls만 실제 값을 갖는다(Phase 1
+        // 스키마, E-1) — 옛 메시지의 imageUrl 렌더는 Phase 3에서 처리.
+        ...(imageUrls.length > 0 ? { imageUrls } : {}),
         fileType: fileType ?? "",
         createdAt: serverTimestamp(),
         ...(replySnapshot
@@ -855,6 +898,7 @@ export function NewHomeChat() {
       alert("메시지 전송에 실패했습니다.");
       setDraft(text);
       setFile(pendingFile);
+      setImageFiles(pendingImageFiles);
       setReplyingTo(replySnapshot);
     }
     setSending(false);
@@ -1056,12 +1100,15 @@ export function NewHomeChat() {
                     pickFile();
                   }}
                   disabled={sending}
-                  aria-label={file ? "첨부 제거" : "파일 첨부"}
+                  aria-label={file || imageFiles.length > 0 ? "첨부 제거" : "파일 첨부"}
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all disabled:opacity-50"
                   style={{
                     background: "#ffffff",
-                    border: file ? "1px solid rgba(184,84,32,0.4)" : "1px solid rgba(92,58,31,0.20)",
-                    color: file ? "#b85420" : "#5c3a1f",
+                    border:
+                      file || imageFiles.length > 0
+                        ? "1px solid rgba(184,84,32,0.4)"
+                        : "1px solid rgba(92,58,31,0.20)",
+                    color: file || imageFiles.length > 0 ? "#b85420" : "#5c3a1f",
                   }}
                 >
                   <Camera className="h-4 w-4" />
@@ -1108,6 +1155,34 @@ export function NewHomeChat() {
             </div>
           )}
 
+          {/* 사진 묶음 미리보기 그리드(Phase 2) — 최대 4장, 각 썸네일
+              우상단에 반투명 원형 X. 렌더는 Phase 3까지 안 건드림 — 이건
+              전송 "전" 미리보기라 별개. */}
+          {imageFiles.length > 0 && (
+            <div className="mb-2 flex flex-wrap gap-2">
+              {imageFiles.map((f, i) => (
+                <div key={`${f.name}-${i}`} className="relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={imageFilePreviews[i]}
+                    alt=""
+                    className="h-14 w-14 rounded-[10px] object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveImageFile(i)}
+                    disabled={sending}
+                    aria-label="사진 제거"
+                    className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full disabled:opacity-50"
+                    style={{ background: "rgba(92,58,31,0.75)" }}
+                  >
+                    <X size={12} color="#fef5e6" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           <MentionPicker
             text={draft}
             cursor={mentionCursor}
@@ -1130,10 +1205,26 @@ export function NewHomeChat() {
               ref={fileInputRef}
               type="file"
               accept="image/*,video/mp4,.gif"
+              multiple
               style={{ display: "none" }}
               onChange={(e) => {
-                setFile(e.target.files?.[0] ?? null);
+                const picked = Array.from(e.target.files ?? []);
                 e.target.value = "";
+                if (picked.length === 0) return;
+                if (picked.length > 1) {
+                  // 사진 묶음(Phase 2) — 여러 장 선택 시. 영상/GIF가 섞여
+                  // 있으면 사진만 추린다(단일 영상/GIF 첨부는 아래 한 장
+                  // 선택 분기가 그대로 담당).
+                  const images = picked.filter((f) => detectFileType(f) === "image");
+                  if (images.length === 0) return;
+                  const files = images.slice(0, MAX_IMAGES_PER_MESSAGE);
+                  if (images.length > MAX_IMAGES_PER_MESSAGE) {
+                    alert(`최대 ${MAX_IMAGES_PER_MESSAGE}장까지 보낼 수 있어요`);
+                  }
+                  setImageFiles(files);
+                  return;
+                }
+                setFile(picked[0]);
               }}
               disabled={sending}
             />
@@ -1197,7 +1288,7 @@ export function NewHomeChat() {
               onMouseDown={(e) => e.preventDefault()}
               onTouchStart={(e) => e.preventDefault()}
               onClick={handleSend}
-              disabled={sending || (!draft.trim() && !file)}
+              disabled={sending || (!draft.trim() && !file && imageFiles.length === 0)}
               aria-label="메시지 전송"
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
               style={{ background: "#ffd4b8", color: "#5c3a1f" }}

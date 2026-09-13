@@ -25,7 +25,7 @@ import { Dawnlight2BottomNav } from "@/app/components/dawnlight2/BottomNav";
 import { useMemberAvatars } from "@/src/lib/useMemberAvatars";
 import { useChatReactions, type MessageReactions } from "@/src/lib/useChatReactions";
 import { getEmoticonUrl } from "@/src/lib/emoticons";
-import { getPartnerNickname, type DMRoom } from "@/src/lib/dm";
+import { getPartnerNickname, MAX_IMAGES_PER_MESSAGE, type DMRoom } from "@/src/lib/dm";
 import { useAuth } from "@/app/components/AuthProvider";
 import { db, storage } from "@/src/lib/firebase";
 
@@ -137,6 +137,9 @@ export default function DMRoomPage() {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [file, setFile] = useState<{ uri: string; name: string; raw: File } | null>(null);
+  // 사진 묶음(Phase 2) — 최대 MAX_IMAGES_PER_MESSAGE(4)장. 기존 단일
+  // file(미접촉)과 별개 state.
+  const [imageFiles, setImageFiles] = useState<{ uri: string; name: string; raw: File }[]>([]);
   const [isNavOpen, setIsNavOpen] = useState(false);
   const [isEmoticonOpen, setIsEmoticonOpen] = useState(false);
   const [replyingTo, setReplyingTo] = useState<ReplyTarget | null>(null);
@@ -275,10 +278,25 @@ export default function DMRoomPage() {
   };
 
   const handlePickImage = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    setFile({ uri: URL.createObjectURL(f), name: f.name, raw: f });
+    const picked = Array.from(e.target.files ?? []);
     e.target.value = "";
+    if (picked.length === 0) return;
+    if (picked.length > 1) {
+      // 사진 묶음(Phase 2) — 여러 장 선택 시. 한 장이면(아래) 기존
+      // 단일 첨부 분기 그대로.
+      const files = picked.slice(0, MAX_IMAGES_PER_MESSAGE);
+      if (picked.length > MAX_IMAGES_PER_MESSAGE) {
+        alert(`최대 ${MAX_IMAGES_PER_MESSAGE}장까지 보낼 수 있어요`);
+      }
+      setImageFiles(files.map((f) => ({ uri: URL.createObjectURL(f), name: f.name, raw: f })));
+      return;
+    }
+    const f = picked[0];
+    setFile({ uri: URL.createObjectURL(f), name: f.name, raw: f });
+  };
+
+  const handleRemoveImageFile = (index: number) => {
+    setImageFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSend = async () => {
@@ -286,11 +304,13 @@ export default function DMRoomPage() {
     if (sending) return;
     const text = draft.trim();
     const pendingFile = file;
-    if (!text && !pendingFile) return;
+    const pendingImageFiles = imageFiles;
+    if (!text && !pendingFile && pendingImageFiles.length === 0) return;
 
     const replySnapshot = replyingTo;
     setDraft("");
     setFile(null);
+    setImageFiles([]);
     setReplyingTo(null);
     setSending(true);
 
@@ -308,10 +328,30 @@ export default function DMRoomPage() {
         await uploadBytes(r, pendingFile.raw);
         imageUrl = await getDownloadURL(r);
       }
+      // 사진 묶음(Phase 2) — pendingFile(단일, 위 그대로 미접촉)과 별개
+      // 경로. 병렬 업로드, 하나라도 실패하면 Promise.all이 즉시 reject해
+      // 아래 catch로 빠진다(전체 롤백, D-5 권장안).
+      let imageUrls: string[] = [];
+      if (pendingImageFiles.length > 0) {
+        fileType = "image";
+        imageUrls = await Promise.all(
+          pendingImageFiles.map(async (pendingImageFile, i) => {
+            const safeName = pendingImageFile.name.replace(/[^\w.\-]/g, "_");
+            const path = `dm/${roomId}/${Date.now()}_${i}_${safeName}`;
+            const r = ref(storage, path);
+            await uploadBytes(r, pendingImageFile.raw);
+            return getDownloadURL(r);
+          }),
+        );
+      }
       await addDoc(collection(db, "dmRooms", roomId, "messages"), {
         nickname: me,
         message: text,
         imageUrl,
+        // 새로 저장하는 사진 묶음 메시지는 위 imageUrl(기존 단일 필드,
+        // 여기선 빈 문자열)과 별개로 imageUrls만 실제 값을 갖는다(Phase 1
+        // 스키마, E-1) — 옛 메시지의 imageUrl 렌더는 Phase 3에서 처리.
+        ...(imageUrls.length > 0 ? { imageUrls } : {}),
         fileType: fileType ?? "",
         createdAt: serverTimestamp(),
         ...(replySnapshot
@@ -338,6 +378,7 @@ export default function DMRoomPage() {
       console.error("[dm] send failed", e);
       setDraft(text);
       setFile(pendingFile);
+      setImageFiles(pendingImageFiles);
       setReplyingTo(replySnapshot);
       alert("전송 실패");
     }
@@ -487,12 +528,15 @@ export default function DMRoomPage() {
                   fileInputRef.current?.click();
                 }}
                 disabled={sending}
-                aria-label={file ? "첨부 제거" : "사진 첨부"}
+                aria-label={file || imageFiles.length > 0 ? "첨부 제거" : "사진 첨부"}
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all disabled:opacity-50"
                 style={{
                   background: "#ffffff",
-                  border: file ? "1px solid rgba(184,84,32,0.4)" : "1px solid rgba(92,58,31,0.20)",
-                  color: file ? "#b85420" : INK,
+                  border:
+                    file || imageFiles.length > 0
+                      ? "1px solid rgba(184,84,32,0.4)"
+                      : "1px solid rgba(92,58,31,0.20)",
+                  color: file || imageFiles.length > 0 ? "#b85420" : INK,
                 }}
               >
                 <Camera className="h-4 w-4" />
@@ -524,8 +568,38 @@ export default function DMRoomPage() {
           </div>
         )}
 
+        {/* 사진 묶음 미리보기 그리드(Phase 2) — 최대 4장, 각 썸네일
+            우상단에 반투명 원형 X. 렌더는 Phase 3까지 안 건드림 — 이건
+            전송 "전" 미리보기라 별개. */}
+        {imageFiles.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {imageFiles.map((f, i) => (
+              <div key={`${f.uri}-${i}`} className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={f.uri} alt="" className="h-14 w-14 rounded-[10px] object-cover" />
+                <button
+                  type="button"
+                  onClick={() => handleRemoveImageFile(i)}
+                  aria-label="사진 제거"
+                  className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full"
+                  style={{ background: "rgba(92,58,31,0.75)" }}
+                >
+                  <X size={12} color="#fef5e6" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="flex items-center gap-1.5">
-          <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePickImage} style={{ display: "none" }} />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handlePickImage}
+            style={{ display: "none" }}
+          />
           <button
             type="button"
             onClick={(e) => {
@@ -569,7 +643,7 @@ export default function DMRoomPage() {
           <button
             type="button"
             onClick={handleSend}
-            disabled={sending || (!draft.trim() && !file)}
+            disabled={sending || (!draft.trim() && !file && imageFiles.length === 0)}
             aria-label="메시지 전송"
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-transform hover:scale-105 disabled:opacity-50"
             style={{ background: "#ffd4b8" }}
