@@ -401,7 +401,18 @@ export default function DMRoomPage() {
   }
 
   return (
-    <div className="mx-auto flex h-[calc(100dvh-56px)] w-full max-w-2xl flex-col" style={{ background: DM_BG }}>
+    // 키보드 회피 — app/page.tsx(NewHomeChat 호스트, 미접촉·verbatim 참고만)의
+    // `calc(100dvh - TOPBAR_HEIGHT - var(--keyboard-inset,0px))` 패턴 그대로.
+    // 기존엔 100dvh만 썼는데, 다수 모바일 브라우저는 소프트 키보드가 열려도
+    // 동적 뷰포트 높이가 안 줄어 컴포즈 바가 키보드 뒤로 사라졌다.
+    // VisualViewportSync(app root, layout.tsx에 이미 마운트돼있어 전역
+    // 사용 가능 — 이 화면에서 새로 마운트할 필요 없음)가 노출하는
+    // --keyboard-inset을 박스 높이에서 직접 빼면 flex-1인 메시지 영역이
+    // 줄고 입력줄이 자연히 키보드 위로 올라온다.
+    <div
+      className="mx-auto flex w-full max-w-2xl flex-col"
+      style={{ height: "calc(100dvh - 56px - var(--keyboard-inset, 0px))", overflow: "hidden", background: DM_BG }}
+    >
       {/* 상단 헤더 — 뒤로가기 + 상대방 프사/닉네임(G-2). Topbar는 그대로
           위에 남아있고(다른 시스템 미접촉), 이 헤더는 그 아래 대화 전용
           서브헤더. */}
