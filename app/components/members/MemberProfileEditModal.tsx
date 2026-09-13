@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, setDoc, updateDoc } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { db, storage } from "@/src/lib/firebase";
 import { useUserMbti } from "@/src/lib/userMbti";
@@ -70,17 +70,43 @@ export function MemberProfileEditModal({
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  // 열릴 때(visible: false → true)만 폼을 현재 값으로 시드한다. mbti는
-  // onSnapshot 구독이라 계속 값이 갱신되는데, 그때마다 재시드하면 편집
-  // 중인 선택이 날아가므로 의도적으로 `visible`에만 의존한다.
+  // 열릴 때(visible: false → true)만 statusMessage/playTime/tags를
+  // 현재 값으로 시드한다 — 이 세 필드는 member prop에서 바로 오니까
+  // 값이 확정돼 있다.
   useEffect(() => {
     if (!visible || !member) return;
     setEditStatus(member.statusMessage ?? "");
-    setEditMbti(currentMbti);
     setEditPlayTime(member.playTime ?? []);
     setEditTags(member.tags ?? []);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
+
+  // Phase 2.6 — MBTI 저장 버그 fix (원인 1/2).
+  // mbti는 member prop이 아니라 useUserMbti의 onSnapshot 구독값
+  // (currentMbti)에서 온다. 이전엔 `visible`에만 의존하는 위 effect
+  // 안에서 같이 시드했는데, 모달이 열리는 바로 그 렌더에서 onSnapshot이
+  // 아직 첫 스냅샷을 못 받아 currentMbti가 초기값 ""인 경우가 있다 —
+  // 그 순간에 시드하면 editMbti가 실제 값과 무관하게 ""로 굳어버리고,
+  // 사용자가 MBTI 칸을 안 건드린 채 다른 필드만 고쳐 저장하면 기존
+  // mbti가 빈 값으로 덮어써진다("저장 후 반영 안 됨/풀림"의 실제
+  // 재현 경로). 그래서 mbti는 따로: 모달이 열려 있고 아직 사용자가
+  // MBTI를 직접 고르지 않은 동안은 매번 currentMbti를 따라가다가,
+  // 실제 값이 도착하면(또는 이미 있었으면) 그걸로 확정된다. 사용자가
+  // pill을 누르면 mbtiTouchedRef가 true가 돼서 그 뒤로는 구독값이
+  // 덮어쓰지 않는다.
+  const mbtiTouchedRef = useRef(false);
+  useEffect(() => {
+    if (!visible) {
+      mbtiTouchedRef.current = false;
+      return;
+    }
+    if (!mbtiTouchedRef.current) setEditMbti(currentMbti);
+  }, [visible, currentMbti]);
+
+  const handleMbtiSelect = (value: string) => {
+    mbtiTouchedRef.current = true;
+    setEditMbti(value);
+  };
 
   if (!member) return null;
 
@@ -106,10 +132,24 @@ export function MemberProfileEditModal({
     if (!member.memberDocId) return;
     setSaving(true);
     try {
+      // Phase 2.6 — MBTI 저장 버그 fix (원인 2/2).
+      // mbti를 playTime/tags와 한 updateDoc으로 묶어서 보냈었는데,
+      // playTime/tags는 이번 라운드(Phase 1/3)에 새로 생긴 필드라
+      // Firestore 보안 규칙이 아직 users 문서에서 이 두 필드를 허용
+      // 하지 않는 상태라면(규칙은 이 레포에 없어 콘솔에서만 확인
+      // 가능 — Phase 0 진단 참고) 하나의 updateDoc 안에 있는 필드
+      // 전부가 통째로 거부돼 mbti까지 같이 저장 안 됐을 수 있다.
+      // ProfileSectionD2가 이미 검증된 setDoc(...,{merge:true}) 패턴
+      // 으로 mbti만 먼저 독립적으로 커밋해서, playTime/tags 쪽에
+      // 문제가 있어도 mbti 저장은 별개로 성공하게 분리했다.
+      await setDoc(
+        doc(db, "users", member.nickname),
+        { mbti: editMbti },
+        { merge: true },
+      );
       await updateDoc(doc(db, "users", member.nickname), {
         playTime: editPlayTime,
         tags: editTags,
-        mbti: editMbti,
       });
       await updateDoc(doc(db, "members", member.memberDocId), {
         statusMessage: editStatus.trim(),
@@ -211,14 +251,14 @@ export function MemberProfileEditModal({
                 <EditPill
                   label="선택 안 함"
                   active={editMbti === ""}
-                  onClick={() => setEditMbti("")}
+                  onClick={() => handleMbtiSelect("")}
                 />
                 {MBTI_TYPES.map((t) => (
                   <EditPill
                     key={t}
                     label={t}
                     active={editMbti === t}
-                    onClick={() => setEditMbti(t)}
+                    onClick={() => handleMbtiSelect(t)}
                   />
                 ))}
               </div>

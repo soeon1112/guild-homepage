@@ -31,17 +31,6 @@ const CARD_BG = "rgba(254, 245, 230, 0.12)";
 // 배지 전용 잉크 — CabinLogs INK와 동일 값(가장 어두워 대비 여유가 큼).
 const INK = "#3a2a1a";
 
-// Phase 2.4 — 길드/MBTI 배지 열 폭 고정. 필드가 없어도 열 자리를
-// 그대로 유지해야 해서(카드마다 폭이 변하면 안 됨) 배지 유무와 무관한
-// 고정 폭 컬럼 2개로 분리했다(이전 Phase 2.3은 배지가 하나만 있으면
-// 그 하나가 오른쪽 끝으로 붙어버려 자리가 안 고정됨).
-const GUILD_COL_WIDTH = 100;
-const MBTI_COL_WIDTH = 80;
-// Phase 2.5 — 2줄 시간대/태그는 더 이상 고정폭 컬럼이 아니라(요청에
-// 따라 폐기) 내용만큼만 폭을 차지하는 두 그룹. 이 gap은 그 두 그룹
-// 사이 간격만 담당(그룹 내부 pill 간격은 gap-1로 별도).
-const META_GROUP_GAP = 16;
-
 // Phase 2.3 — 태그/시간대 pill 색.
 // 취향 태그: 순환(mistLavender/peach/sunsetGold) 폐기 → mistLavender
 // 단일색 고정. peach는 이미 MBTI 배지가 쓰고 있어서(MBTI_BADGE_BG,
@@ -90,49 +79,47 @@ export function MemberRow({
   const mbti = useUserMbti(member.nickname);
   const tags = member.tags ?? [];
   const playTimes = member.playTime ?? [];
-  const hasMeta = playTimes.length > 0 || tags.length > 0;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="flex flex-col rounded-2xl px-3.5 py-3"
+      className="flex gap-3 rounded-2xl px-3.5 py-3"
       style={{
         background: CARD_BG,
         boxShadow: "0 4px 18px rgba(11, 8, 33, 0.28)",
       }}
     >
-      {/* 1줄: 프사 + 닉네임 + 한마디(truncate) | 오른쪽: 길드+MBTI 배지.
-          middleRow에 min-w-0 + flex-1을 줘서 justify-between과 동일한
-          효과 — 배지 그룹은 항상 카드 오른쪽 끝에 붙는다. */}
-      <div className="flex items-center gap-2.5">
-        <div className="relative shrink-0" style={{ width: 40 }}>
-          <MemberAvatar
-            imageUrl={member.profileImage}
-            nickname={member.nickname}
-            size={40}
-            dl2
+      {/* Phase 2.6 — 4줄 세로 스택. 프사(48px)는 items-start로 위쪽
+          기준 "세로 병합"(오른쪽 스택이 길어져도 프사는 맨 위에 고정)
+          — 1줄 닉네임+한마디, 2줄 길드+MBTI, 3줄 시간대, 4줄 태그.
+          각 줄은 내용 없으면 렌더 자체를 안 함. */}
+      <div className="relative shrink-0" style={{ width: 48 }}>
+        <MemberAvatar
+          imageUrl={member.profileImage}
+          nickname={member.nickname}
+          size={48}
+          dl2
+        />
+        {/* MemberAvatar 미접촉 — 대신 같은 자리에 투명 오버레이 버튼을
+            얹어 본인 행일 때만 클릭을 가로챈다. 타인 행은 오버레이가
+            없어 MemberAvatar 자체의 개인 공간 이동이 그대로 동작. */}
+        {isOwnRow && onEditPress && (
+          <button
+            type="button"
+            onClick={onEditPress}
+            aria-label="내 프로필 편집"
+            className="absolute inset-0 z-10 cursor-pointer rounded-full"
+            style={{ background: "transparent", border: "none" }}
           />
-          {/* MemberAvatar 미접촉 — 대신 같은 자리에 투명 오버레이 버튼을
-              얹어 본인 행일 때만 클릭을 가로챈다. 타인 행은 오버레이가
-              없어 MemberAvatar 자체의 개인 공간 이동이 그대로 동작. */}
-          {isOwnRow && onEditPress && (
-            <button
-              type="button"
-              onClick={onEditPress}
-              aria-label="내 프로필 편집"
-              className="absolute inset-0 z-10 cursor-pointer rounded-full"
-              style={{ background: "transparent", border: "none" }}
-            />
-          )}
-        </div>
+        )}
+      </div>
 
-        <div className="flex min-w-0 flex-1 items-baseline gap-1.5">
-          <span
-            className="shrink-0 truncate text-sm font-bold"
-            style={{ color: CREAM }}
-          >
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        {/* 1줄: 닉네임 + 한마디 */}
+        <div className="flex items-baseline gap-2">
+          <span className="shrink-0 truncate text-sm font-bold" style={{ color: CREAM }}>
             {member.nickname}
           </span>
           {member.statusMessage && (
@@ -145,56 +132,46 @@ export function MemberRow({
           )}
         </div>
 
-        {/* 길드(100px)/MBTI(80px) 고정폭 컬럼 — 배지가 없어도 폭을
-            그대로 차지해서, 예: MBTI 없는 행에서 길드 배지가 그 자리로
-            밀려오지 않는다. */}
-        <div className="flex shrink-0 items-center justify-end" style={{ width: GUILD_COL_WIDTH }}>
-          {guild && <GuildBadge guild={guild} />}
-        </div>
-        <div className="flex shrink-0 items-center justify-end" style={{ width: MBTI_COL_WIDTH }}>
-          {mbti && <MbtiBadge value={mbti} />}
-        </div>
-      </div>
+        {/* 2줄: 길드 + MBTI (배지 자체는 미접촉, 왼쪽 정렬 flex로만 배치) */}
+        {(guild || mbti) && (
+          <div className="flex items-center gap-2">
+            {guild && <GuildBadge guild={guild} />}
+            {mbti && <MbtiBadge value={mbti} />}
+          </div>
+        )}
 
-      {/* 2줄 (Phase 2.5) — 프사 자리 spacer 없이 시간대 그룹 / 태그
-          그룹이 나란히. 각 그룹은 자기 내용만큼만 폭을 차지하고(고정폭
-          컬럼 아님), wrap도 그룹 안에서만 일어난다 — 두 그룹을 하나의
-          flex-wrap 컨테이너로 합치면 시간대 pill과 태그 pill이 섞여서
-          줄바꿈되므로 그룹마다 별도 div로 분리. 빈 그룹은 렌더 안 함
-          (Phase 2.4의 "필드 없어도 고정폭 유지" 요구는 이번 지시로
-          폐기). */}
-      {hasMeta && (
-        <div className="mt-2 flex items-start" style={{ gap: META_GROUP_GAP }}>
-          {playTimes.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1">
-              <Clock size={11} color={CATEGORY_ICON_COLOR} strokeWidth={2.5} />
-              {playTimes.map((t) => (
-                <span
-                  key={t}
-                  className="rounded-full px-2 py-0.5 text-[10px] font-medium"
-                  style={{ border: `1px solid ${TIME_BORDER}`, color: TIME_TEXT }}
-                >
-                  {t}
-                </span>
-              ))}
-            </div>
-          )}
-          {tags.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1">
-              <Heart size={11} color={CATEGORY_ICON_COLOR} fill={CATEGORY_ICON_COLOR} />
-              {tags.map((t) => (
-                <span
-                  key={t}
-                  className="rounded-full px-2 py-0.5 text-[10px] font-medium"
-                  style={{ backgroundColor: TAG_BG, color: TAG_TEXT }}
-                >
-                  {t}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+        {/* 3줄: 시간대 */}
+        {playTimes.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1">
+            <Clock size={14} color={CATEGORY_ICON_COLOR} strokeWidth={2.5} />
+            {playTimes.map((t) => (
+              <span
+                key={t}
+                className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                style={{ border: `1px solid ${TIME_BORDER}`, color: TIME_TEXT }}
+              >
+                {t}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* 4줄: 태그 */}
+        {tags.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1">
+            <Heart size={14} color={CATEGORY_ICON_COLOR} fill={CATEGORY_ICON_COLOR} />
+            {tags.map((t) => (
+              <span
+                key={t}
+                className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                style={{ backgroundColor: TAG_BG, color: TAG_TEXT }}
+              >
+                {t}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
     </motion.div>
   );
 }
