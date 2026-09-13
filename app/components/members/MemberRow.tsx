@@ -116,7 +116,7 @@ export function MemberRow({
         )}
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         {/* 1줄: 닉네임 + 한마디 */}
         <div className="flex items-baseline gap-2">
           <span className="shrink-0 truncate text-sm font-bold" style={{ color: CREAM }}>
