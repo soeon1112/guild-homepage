@@ -11,9 +11,8 @@ import { getPartnerNickname, type DMRoom } from "@/src/lib/dm";
 import { useAuth } from "@/app/components/AuthProvider";
 import { db } from "@/src/lib/firebase";
 
-// DM 목록 화면 — Phase 4 (앱 app/(tabs)/dm/index.tsx와 1:1 포트). 임시
-// 접근: 지금은 조건부 없이 누구나 /dm 접속 가능(F절) — 언쏘 A/B는
-// Phase 6에서 Topbar 진입점에만 건다.
+// DM 목록 화면 — Phase 4 (앱 app/(tabs)/dm/index.tsx와 1:1 포트),
+// Phase 6에서 언쏘 A/B 라우트 가드 추가.
 
 const INK = "#5c3a1f";
 const INK_SOFT = "#8a6a4a";
@@ -24,9 +23,19 @@ type RoomRow = { id: string; data: DMRoom };
 
 export default function DMListPage() {
   const router = useRouter();
-  const { nickname: me } = useAuth();
+  const { nickname: me, ready } = useAuth();
   const [rooms, setRooms] = useState<RoomRow[]>([]);
   const [newDMOpen, setNewDMOpen] = useState(false);
+
+  // Phase 6 — 언쏘 A/B 라우트 가드. 앱 dm/index.tsx의 letter.tsx verbatim
+  // 패턴과 동일 — ready 후에만 판단(세션 복원 전 nickname이 일시적으로
+  // null이라 너무 이른 redirect 방지). Topbar 진입점이 없어졌어도 URL
+  // 직접 접속 대비.
+  useEffect(() => {
+    if (ready && me !== "언쏘") {
+      router.replace("/");
+    }
+  }, [ready, me, router]);
 
   useEffect(() => {
     if (!me) return;
@@ -46,6 +55,10 @@ export default function DMListPage() {
     [rooms, me],
   );
   const avatars = useMemberAvatars(partners);
+
+  // GuildTestBanner/TopHeader 등 verbatim 패턴 — ready 전엔 빈 화면(auth
+  // 결정 직후 자동 redirect 또는 본문).
+  if (!ready) return null;
 
   return (
     <div className="mx-auto flex h-[calc(100dvh-56px)] w-full max-w-2xl flex-col" style={{ background: DM_BG }}>
