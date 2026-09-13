@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ChevronRight, TreePine } from "lucide-react";
@@ -8,8 +8,10 @@ import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
 import { useGuilds } from "@/src/lib/useGuilds";
 import { sortMembers } from "@/src/lib/sortMembers";
+import { useAuth } from "@/app/components/AuthProvider";
 import { MemberRow, type MemberRowData } from "@/app/components/members/MemberRow";
 import { MemberSearchBar } from "@/app/components/members/MemberSearchBar";
+import { MemberProfileEditModal } from "@/app/components/members/MemberProfileEditModal";
 
 // 길드원 한 줄 목록 — Phase 2. 신규 컴포넌트, 기존 app/members/page.tsx는
 // 미접촉. 데이터 fetch는 그 파일의 members+users join 패턴을 그대로
@@ -30,6 +32,7 @@ const DL2_CREAM = "#fef5e6";
 const DL2_MIST_LAVENDER = "rgba(200, 184, 232, 0.85)";
 
 export function MemberListNewPage() {
+  const { nickname: loginNick } = useAuth();
   const guilds = useGuilds();
   const guildById = useMemo(
     () => new Map(guilds.map((g) => [g.id, g])),
@@ -39,64 +42,74 @@ export function MemberListNewPage() {
   const [members, setMembers] = useState<MemberRowData[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [query, setQuery] = useState("");
+  // Phase 3 — 본인 프사 클릭으로 여는 편집 모달의 대상. null이면 닫힘.
+  const [editingMember, setEditingMember] = useState<MemberRowData | null>(
+    null,
+  );
+
+  const loadMembers = useCallback(async () => {
+    try {
+      const [membersSnap, usersSnap] = await Promise.all([
+        getDocs(collection(db, "members")),
+        getDocs(collection(db, "users")),
+      ]);
+
+      type MemberData = {
+        nickname?: string;
+        statusMessage?: string;
+        profileImage?: string;
+      };
+      type UserData = {
+        password?: string;
+        guildId?: string;
+        // Phase 3 — 여러 개 선택 가능하도록 string[]로 변경.
+        playTime?: string[];
+        tags?: string[];
+      };
+
+      const memberByNickname = new Map<
+        string,
+        { id: string; data: MemberData }
+      >();
+      membersSnap.forEach((d) => {
+        const data = d.data() as MemberData;
+        const nick = (data.nickname ?? "").trim();
+        if (nick) memberByNickname.set(nick, { id: d.id, data });
+      });
+
+      const rows: MemberRowData[] = [];
+      usersSnap.forEach((u) => {
+        const userData = u.data() as UserData;
+        if (typeof userData.password !== "string") return; // junk doc
+        const nickname = u.id;
+        const hit = memberByNickname.get(nickname);
+        if (!hit) return; // 잠든 별 — 기존 페이지와 동일하게 목록 밖
+        rows.push({
+          nickname,
+          memberDocId: hit.id,
+          guildId: userData.guildId,
+          playTime: userData.playTime,
+          tags: userData.tags,
+          statusMessage: hit.data.statusMessage || "",
+          profileImage: hit.data.profileImage || "",
+        });
+      });
+
+      setMembers(rows);
+      setLoaded(true);
+    } catch (e) {
+      console.error(e);
+      setLoaded(true);
+    }
+  }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const [membersSnap, usersSnap] = await Promise.all([
-          getDocs(collection(db, "members")),
-          getDocs(collection(db, "users")),
-        ]);
-        if (cancelled) return;
-
-        type MemberData = {
-          nickname?: string;
-          statusMessage?: string;
-          profileImage?: string;
-        };
-        type UserData = {
-          password?: string;
-          guildId?: string;
-          playTime?: string;
-          tags?: string[];
-        };
-
-        const memberByNickname = new Map<string, MemberData>();
-        membersSnap.forEach((d) => {
-          const data = d.data() as MemberData;
-          const nick = (data.nickname ?? "").trim();
-          if (nick) memberByNickname.set(nick, data);
-        });
-
-        const rows: MemberRowData[] = [];
-        usersSnap.forEach((u) => {
-          const userData = u.data() as UserData;
-          if (typeof userData.password !== "string") return; // junk doc
-          const nickname = u.id;
-          const hit = memberByNickname.get(nickname);
-          if (!hit) return; // 잠든 별 — 기존 페이지와 동일하게 목록 밖
-          rows.push({
-            nickname,
-            guildId: userData.guildId,
-            playTime: userData.playTime,
-            tags: userData.tags,
-            statusMessage: hit.statusMessage || "",
-            profileImage: hit.profileImage || "",
-          });
-        });
-
-        setMembers(rows);
-        setLoaded(true);
-      } catch (e) {
-        console.error(e);
-        if (!cancelled) setLoaded(true);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    // 마운트 시 1회 fetch — loadMembers는 저장 후 재사용을 위해 뽑아낸
+    // 함수라 eslint의 set-state-in-effect 규칙이 오탐하지만, Phase 2의
+    // 원래 인라인 IIFE와 동작은 동일한 표준 "fetch on mount" 패턴이다.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadMembers();
+  }, [loadMembers]);
 
   const q = query.trim().toLowerCase();
   const filteredSorted = useMemo(() => {
@@ -173,9 +186,18 @@ export function MemberListNewPage() {
             key={m.nickname}
             member={m}
             guild={m.guildId ? guildById.get(m.guildId) : undefined}
+            isOwnRow={!!loginNick && loginNick === m.nickname}
+            onEditPress={() => setEditingMember(m)}
           />
         ))}
       </div>
+
+      <MemberProfileEditModal
+        visible={!!editingMember}
+        member={editingMember}
+        onClose={() => setEditingMember(null)}
+        onSaved={loadMembers}
+      />
     </div>
   );
 }

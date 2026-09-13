@@ -34,23 +34,34 @@ const COL_WIDTH = "60px";
 
 export type MemberRowData = {
   nickname: string;
+  // members/{memberDocId} 문서 id — 편집 모달이 profileImage/statusMessage를
+  // 쓸 대상. members 존재 여부로 이 리스트에 들어온 멤버는 항상 있음.
+  memberDocId?: string;
   guildId?: string;
   profileImage?: string;
   statusMessage?: string;
-  playTime?: string;
+  // Phase 3 — 여러 시간대 선택 가능하도록 string[]로 변경(Phase 1/2의
+  // string은 사용처가 없어 그대로 폐기, 마이그 불필요).
+  playTime?: string[];
   tags?: string[];
 };
 
 export function MemberRow({
   member,
   guild,
+  isOwnRow,
+  onEditPress,
 }: {
   member: MemberRowData;
   guild?: Guild;
+  /** 로그인 사용자 본인 행이면 true — 프사 클릭이 편집 모달을 연다. */
+  isOwnRow?: boolean;
+  onEditPress?: () => void;
 }) {
   const mbti = useUserMbti(member.nickname);
   const tags = member.tags ?? [];
-  const hasMeta = !!member.playTime || tags.length > 0;
+  const playTimes = member.playTime ?? [];
+  const hasMeta = playTimes.length > 0 || tags.length > 0;
 
   return (
     <motion.div
@@ -66,13 +77,28 @@ export function MemberRow({
         boxShadow: "0 4px 18px rgba(11, 8, 33, 0.28)",
       }}
     >
-      <div style={{ gridColumn: "1", gridRow: "1 / span 2" }}>
+      <div
+        className="relative"
+        style={{ gridColumn: "1", gridRow: "1 / span 2" }}
+      >
         <MemberAvatar
           imageUrl={member.profileImage}
           nickname={member.nickname}
           size={40}
           dl2
         />
+        {/* MemberAvatar 미접촉 — 대신 같은 자리에 투명 오버레이 버튼을
+            얹어 본인 행일 때만 클릭을 가로챈다. 타인 행은 오버레이가
+            없어 MemberAvatar 자체의 개인 공간 이동이 그대로 동작. */}
+        {isOwnRow && onEditPress && (
+          <button
+            type="button"
+            onClick={onEditPress}
+            aria-label="내 프로필 편집"
+            className="absolute inset-0 z-10 cursor-pointer rounded-full"
+            style={{ background: "transparent", border: "none" }}
+          />
+        )}
       </div>
 
       <span
@@ -97,9 +123,9 @@ export function MemberRow({
         )}
         {hasMeta && (
           <div className="mt-1 flex flex-wrap items-center gap-1.5">
-            {member.playTime && (
+            {playTimes.length > 0 && (
               <span className="text-[10.5px]" style={{ color: CREAM_SOFT }}>
-                🕐 {member.playTime}
+                🕐 {playTimes.join(", ")}
               </span>
             )}
             {tags.map((tag, i) => {
