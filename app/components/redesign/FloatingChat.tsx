@@ -345,7 +345,12 @@ const MessageItem = memo(
     // 결정해 bubble 이 왼쪽으로 밀리던 회귀. items-end 로 replyQuote /
     // bubble / image 모두 우측 끝 anchor.
     const contentColumn = (
-      <div className={`flex flex-col gap-1 ${mine ? "items-end" : "items-start"}`}>
+      <div
+        className={`flex flex-col gap-1 ${mine ? "items-end" : "items-start"}`}
+        // 사진 그리드 겹침 방어 — display/flexDirection 인라인 명시 +
+        // flexShrink:0 (NewHomeChat.tsx와 동일 방어).
+        style={{ display: "flex", flexDirection: "column", flexShrink: 0 }}
+      >
         {replyQuote}
         {m.message && (
           <div
@@ -464,9 +469,9 @@ const MessageItem = memo(
         <div
           ref={rowRef}
           className="group flex w-full justify-end transition-[background] duration-300"
-          style={{ marginTop: rowMarginTop, ...highlightStyle }}
+          style={{ marginTop: rowMarginTop, flexShrink: 0, ...highlightStyle }}
         >
-          <div className="flex max-w-[82%] items-end gap-1">
+          <div className="flex max-w-[82%] items-end gap-1" style={{ flexShrink: 0 }}>
             {showTime && (
               <span
                 className="whitespace-nowrap pb-1 font-serif tracking-wider"
@@ -487,7 +492,7 @@ const MessageItem = memo(
       <div
         ref={rowRef}
         className="flex w-full items-start gap-2 transition-[background] duration-300"
-        style={{ marginTop: rowMarginTop, ...highlightStyle }}
+        style={{ marginTop: rowMarginTop, flexShrink: 0, ...highlightStyle }}
       >
         <div
           className="shrink-0"
@@ -548,7 +553,7 @@ const MessageItem = memo(
                 />
               </div>
             ))}
-          <div className="flex max-w-full items-end gap-1">
+          <div className="flex max-w-full items-end gap-1" style={{ flexShrink: 0 }}>
             {contentColumn}
             {replyBtn}
             {showTime && (

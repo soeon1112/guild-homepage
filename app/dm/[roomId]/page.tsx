@@ -769,7 +769,12 @@ const DMMessageItemView = memo(function DMMessageItemView({
   ) : null;
 
   const content = (
-    <div className={`flex flex-col gap-1 ${mine ? "items-end" : "items-start"}`}>
+    <div
+      className={`flex flex-col gap-1 ${mine ? "items-end" : "items-start"}`}
+      // 사진 그리드 겹침 방어 — display/flexDirection 인라인 명시 +
+      // flexShrink:0 (웹 채팅 파일들과 동일 방어).
+      style={{ display: "flex", flexDirection: "column", flexShrink: 0 }}
+    >
       {replyQuote}
       {!!m.message && (
         <div
@@ -827,9 +832,10 @@ const DMMessageItemView = memo(function DMMessageItemView({
         onLongPress(m);
       }}
       className={`flex items-end gap-1.5 rounded-xl transition-colors ${mine ? "justify-end" : ""} ${highlighted ? "bg-[rgba(255,199,133,0.25)]" : ""}`}
+      style={{ flexShrink: 0 }}
     >
       {!mine && <MemberAvatar imageUrl={avatarImageUrl} nickname={m.nickname} size={AVATAR_SIZE} dl2 />}
-      <div className="flex max-w-[82%] items-end gap-1">
+      <div className="flex max-w-[82%] items-end gap-1" style={{ flexShrink: 0 }}>
         {content}
         <span className="whitespace-nowrap text-[9px]" style={{ color: INK_SOFT }}>{formatTime(m.ts)}</span>
       </div>

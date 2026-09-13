@@ -233,7 +233,14 @@ const MessageItem = memo(
     ) : null;
 
     const contentColumn = (
-      <div className={`flex flex-col gap-1 ${mine ? "items-end" : "items-start"}`}>
+      <div
+        className={`flex flex-col gap-1 ${mine ? "items-end" : "items-start"}`}
+        // 사진 그리드 겹침 방어 — display/flexDirection을 인라인으로도
+        // 명시(className의 Tailwind flex 유틸이 이 레포 globals.css의
+        // unlayered 규칙에 밀릴 가능성 방어), flexShrink:0으로 부모 flex
+        // row가 이 컬럼을 눌러 줄이는 경우를 원천 차단.
+        style={{ display: "flex", flexDirection: "column", flexShrink: 0 }}
+      >
         {replyQuote}
         {m.message && (
           <div
@@ -324,9 +331,9 @@ const MessageItem = memo(
         <div
           ref={rowRef}
           className="group flex w-full justify-end transition-[background] duration-300"
-          style={{ marginTop: rowMarginTop, ...highlightStyle }}
+          style={{ marginTop: rowMarginTop, flexShrink: 0, ...highlightStyle }}
         >
-          <div className="flex max-w-[82%] items-end gap-1">
+          <div className="flex max-w-[82%] items-end gap-1" style={{ flexShrink: 0 }}>
             {showTime && (
               <span className="whitespace-nowrap pb-1 font-serif tracking-wider" style={timeStyle}>
                 {formatTime(m.ts)}
@@ -343,7 +350,7 @@ const MessageItem = memo(
       <div
         ref={rowRef}
         className="flex w-full items-start gap-2 transition-[background] duration-300"
-        style={{ marginTop: rowMarginTop, ...highlightStyle }}
+        style={{ marginTop: rowMarginTop, flexShrink: 0, ...highlightStyle }}
       >
         <div className="shrink-0" style={{ width: CHAT_AVATAR_SIZE, height: CHAT_AVATAR_SIZE }}>
           {showAvatar ? (
@@ -375,7 +382,7 @@ const MessageItem = memo(
               <NicknameLink nickname={m.nickname} className="font-semibold" />
             </div>
           )}
-          <div className="flex max-w-full items-end gap-1">
+          <div className="flex max-w-full items-end gap-1" style={{ flexShrink: 0 }}>
             {contentColumn}
             {replyBtn}
             {showTime && (
