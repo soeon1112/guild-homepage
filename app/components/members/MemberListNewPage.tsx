@@ -122,10 +122,8 @@ export function MemberListNewPage() {
   const hasAnyResult = filteredSorted.length > 0;
 
   return (
-    <div
-      className="dl2-members-new relative mx-auto w-full px-4 pt-3"
-      style={{ maxWidth: 560 }}
-    >
+    // 이전 /members 페이지(app/members/page.tsx)의 max-w-2xl과 통일.
+    <div className="dl2-members-new relative mx-auto w-full max-w-2xl px-4 pt-3">
       <Link
         href="/guild-tree"
         className="mb-4 flex items-center gap-3 rounded-xl border px-4 py-3 transition-all hover:scale-[1.01]"
