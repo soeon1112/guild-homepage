@@ -28,7 +28,8 @@ import { getTagColor } from "@/src/lib/memberTags";
 const CREAM = "#fef5e6";
 const CREAM_SOFT = "rgba(254, 245, 230, 0.7)";
 const CARD_BG = "rgba(254, 245, 230, 0.12)";
-const SUNSET_GOLD = "#ffc785";
+// 배지 전용 잉크 — CabinLogs INK와 동일 값(가장 어두워 대비 여유가 큼).
+const INK = "#3a2a1a";
 const COL_WIDTH = "60px";
 
 export type MemberRowData = {
@@ -120,23 +121,66 @@ export function MemberRow({
   );
 }
 
+// 배지 가독성 fix — 이전엔 accent 색을 반투명 배경 + 같은 accent 색
+// 텍스트로 썼는데, 카드 뒤로 어두운 twilight 배경이 비치는 정도가
+// 스크롤 위치마다 달라서 대비가 들쭉날쭉했다(peace/erin은 배경에 따라
+// 거의 안 보임). 배경을 불투명으로 고정하고, 그 배경의 상대 휘도를 계산해
+// 밝은 accent(sunsetGold/mistLavender류)는 잉크 텍스트, 어두운 accent
+// (end/erin/peace류)는 조금 더 눌러서(×0.72) 크림 텍스트를 얹어 항상
+// WCAG AA(4.5:1) 이상을 확보한다.
+function relativeLuminance(hex: string): number {
+  const n = parseInt(hex.replace("#", ""), 16);
+  const channel = (v: number) => {
+    const s = v / 255;
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  };
+  const r = channel((n >> 16) & 255);
+  const g = channel((n >> 8) & 255);
+  const b = channel(n & 255);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function badgeColors(accent: { hex: string; rgb: string }): {
+  bg: string;
+  text: string;
+} {
+  if (relativeLuminance(accent.hex) > 0.4) {
+    // 밝은 accent(sunsetGold #ffc785, mistLavender #c8b8e8) — 그대로
+    // 불투명 배경, 잉크 텍스트. 대비 ≈9:1.
+    return { bg: accent.hex, text: INK };
+  }
+  // 어두운/진한 accent(end/erin/peace) — 0.72배 더 눌러 크림 텍스트와
+  // 항상 6:1 이상 확보(원색 그대로면 4.5:1 근처라 배경에 따라 위험).
+  const darker = accent.rgb
+    .split(",")
+    .map((v) => Math.round(parseInt(v.trim(), 10) * 0.72))
+    .join(", ");
+  return { bg: `rgb(${darker})`, text: CREAM };
+}
+
 function GuildBadge({ guild }: { guild: Guild }) {
   const accent = guildAccent(guild.id, guild.isUnion);
+  const { bg, text } = badgeColors(accent);
   return (
     <span
       className="inline-block max-w-full truncate rounded-full px-1.5 py-0.5 text-[9.5px] font-medium"
-      style={{ backgroundColor: `rgba(${accent.rgb}, 0.18)`, color: accent.hex }}
+      style={{ backgroundColor: bg, color: text }}
     >
       {guild.name}
     </span>
   );
 }
 
+// MBTI는 길드가 아니라서 accent 색과 겹치면 혼동되므로, 어느 길드에도
+// 안 쓰이는 peach(#ffd4b8, dl2Colors.cloudPink)를 단일 색으로 고정
+// 사용 — 잉크 텍스트 대비 ≈10:1.
+const MBTI_BADGE_BG = "#ffd4b8";
+
 function MbtiBadge({ value }: { value: string }) {
   return (
     <span
       className="inline-block max-w-full truncate rounded-full px-1.5 py-0.5 text-[9.5px] font-medium"
-      style={{ backgroundColor: "rgba(255, 199, 133, 0.18)", color: SUNSET_GOLD }}
+      style={{ backgroundColor: MBTI_BADGE_BG, color: INK }}
     >
       ✦ {value}
     </span>
