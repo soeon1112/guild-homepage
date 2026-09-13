@@ -65,7 +65,11 @@ export function NewDMModal({
     const roomId = roomIdFor(me, partnerNick);
     setQuery("");
     onClose();
-    router.push(`/dm/${roomId}?partner=${encodeURIComponent(partnerNick)}`);
+    // 진단 결과 원인 ③ fix: roomId가 한글(닉네임 기반)이라 인코딩 없이
+    // 넣으면 브라우저가 pathname을 퍼센트 인코딩하는데 useParams().roomId는
+    // 그걸 그대로(디코딩 없이) 돌려줘 [roomId]/page.tsx가 다른 Firestore
+    // 문서(%EC%96%B8...)를 만들어버렸다 — encodeURIComponent로 명시 인코딩.
+    router.push(`/dm/${encodeURIComponent(roomId)}?partner=${encodeURIComponent(partnerNick)}`);
   };
 
   if (!visible) return null;

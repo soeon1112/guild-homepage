@@ -103,7 +103,19 @@ export default function DMRoomPage() {
   const router = useRouter();
   const params = useParams<{ roomId: string }>();
   const searchParams = useSearchParams();
-  const roomId = params.roomId ?? "";
+  // 진단 결과 원인 ③ fix: useParams().roomId는 디코딩 없이 URL 세그먼트를
+  // 그대로 돌려준다(확인됨 — NewDMModal의 encodeURIComponent(roomId) 없이
+  // 넘긴 한글 roomId가 실제로 percent-encoded 문자열째로 Firestore 문서 ID가
+  // 됐었다). "%"가 없는 일반 문자열에 decodeURIComponent를 걸어도 그대로
+  // 돌아오니 이미 존재하는 방(목록에서 진입, 인코딩 안 된 예전 링크 등)도
+  // 안전 — 혹시 모를 잘못된 % 시퀀스만 catch로 원본 유지.
+  const roomIdParam = params.roomId ?? "";
+  let roomId = roomIdParam;
+  try {
+    roomId = decodeURIComponent(roomIdParam);
+  } catch {
+    // malformed % 시퀀스 — 원본 그대로 사용.
+  }
   const partnerParam = searchParams.get("partner") ?? "";
   const { nickname: me } = useAuth();
 
