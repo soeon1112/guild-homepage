@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { Clock, Heart } from "lucide-react";
 import { MemberAvatar } from "@/app/components/redesign/MemberAvatar";
 import { useUserMbti } from "@/src/lib/userMbti";
 import { guildAccent, type Guild } from "@/src/lib/useGuilds";
@@ -30,6 +31,18 @@ const CARD_BG = "rgba(254, 245, 230, 0.12)";
 // 배지 전용 잉크 — CabinLogs INK와 동일 값(가장 어두워 대비 여유가 큼).
 const INK = "#3a2a1a";
 
+// Phase 2.4 — 길드/MBTI 배지 열 폭 고정. 필드가 없어도 열 자리를
+// 그대로 유지해야 해서(카드마다 폭이 변하면 안 됨) 배지 유무와 무관한
+// 고정 폭 컬럼 2개로 분리했다(이전 Phase 2.3은 배지가 하나만 있으면
+// 그 하나가 오른쪽 끝으로 붙어버려 자리가 안 고정됨).
+const GUILD_COL_WIDTH = 100;
+const MBTI_COL_WIDTH = 80;
+// 2줄 시간대/태그 그룹도 동일한 이유로 고정 폭 컬럼.
+const META_COL_WIDTH = 120;
+// 카테고리 사이(시간 그룹 ↔ 태그 그룹) 간격 — Phase 2.3의 6px(pill간
+// 간격과 동일)보다 넓게 둬서 두 그룹이 시각적으로 분리되게.
+const META_GROUP_GAP = 16;
+
 // Phase 2.3 — 태그/시간대 pill 색.
 // 취향 태그: 순환(mistLavender/peach/sunsetGold) 폐기 → mistLavender
 // 단일색 고정. peach는 이미 MBTI 배지가 쓰고 있어서(MBTI_BADGE_BG,
@@ -41,6 +54,13 @@ const TAG_TEXT = INK;
 // 참고) 어두운 테두리+텍스트를 쓰면 안 보인다 — 크림 계열로 정정.
 const TIME_BORDER = "rgba(254, 245, 230, 0.35)";
 const TIME_TEXT = "rgba(254, 245, 230, 0.85)";
+// Phase 2.4 — 카테고리 아이콘. 이모지(🕐)는 OS가 그리는 고정 색 그림
+// 글자라 color 스타일이 아예 안 먹는다(Phase 2.3에서 CREAM_SOFT를
+// 줬지만 시각적으로 아무 효과가 없었던 이유) — 그래서 진하게 만들
+// 수도 없었다. 색을 통제할 수 있는 lucide 벡터 아이콘으로 교체하고,
+// 다른 dl2 페이지의 "아이콘 accent" 관례(검색창/가계도 카드 아이콘
+// 전부 sunsetGold)를 그대로 따라 sunsetGold + 100% 불투명으로 진하게.
+const CATEGORY_ICON_COLOR = "#ffc785"; // sunsetGold
 
 export type MemberRowData = {
   nickname: string;
@@ -126,23 +146,33 @@ export function MemberRow({
           )}
         </div>
 
-        <div className="flex shrink-0 items-center gap-1.5">
+        {/* 길드(100px)/MBTI(80px) 고정폭 컬럼 — 배지가 없어도 폭을
+            그대로 차지해서, 예: MBTI 없는 행에서 길드 배지가 그 자리로
+            밀려오지 않는다. */}
+        <div className="flex shrink-0 items-center justify-end" style={{ width: GUILD_COL_WIDTH }}>
           {guild && <GuildBadge guild={guild} />}
+        </div>
+        <div className="flex shrink-0 items-center justify-end" style={{ width: MBTI_COL_WIDTH }}>
           {mbti && <MbtiBadge value={mbti} />}
         </div>
       </div>
 
-      {/* 2줄: 프사 자리만큼 빈 공간 + 오른쪽 정렬 시간대/태그. 카테고리
-          레이블(🕐 아이콘, "성향" 텍스트)로 pill만 덜렁 있는 느낌 해소. */}
+      {/* 2줄: 프사 자리만큼 빈 공간 + 빈 필러 + 시간대(120px)/태그
+          (120px) 고정폭 컬럼. 각 열이 고정폭이라 — 예: 태그 없는 행 —
+          시간대 열이 그 자리로 밀려오지 않는다. 카테고리는 아이콘만
+          (텍스트 레이블 없음) — 이모지는 색을 못 바꿔서 lucide 아이콘
+          + sunsetGold로 진하게. */}
       {hasMeta && (
-        <div className="mt-1.5 flex">
+        <div className="mt-1.5 flex items-center" style={{ gap: META_GROUP_GAP }}>
           <div className="shrink-0" style={{ width: 40 }} />
-          <div className="flex flex-1 flex-wrap items-center justify-end gap-1.5">
+          <div className="flex-1" />
+          <div
+            className="flex flex-wrap items-center justify-end gap-1.5"
+            style={{ width: META_COL_WIDTH }}
+          >
             {playTimes.length > 0 && (
               <>
-                <span className="text-[10px]" style={{ color: CREAM_SOFT }}>
-                  🕐
-                </span>
+                <Clock size={11} color={CATEGORY_ICON_COLOR} strokeWidth={2.5} />
                 {playTimes.map((t) => (
                   <span
                     key={t}
@@ -154,11 +184,14 @@ export function MemberRow({
                 ))}
               </>
             )}
+          </div>
+          <div
+            className="flex flex-wrap items-center justify-end gap-1.5"
+            style={{ width: META_COL_WIDTH }}
+          >
             {tags.length > 0 && (
               <>
-                <span className="text-[10px]" style={{ color: CREAM_SOFT }}>
-                  성향
-                </span>
+                <Heart size={11} color={CATEGORY_ICON_COLOR} fill={CATEGORY_ICON_COLOR} />
                 {tags.map((t) => (
                   <span
                     key={t}
