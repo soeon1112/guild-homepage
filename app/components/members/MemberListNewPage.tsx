@@ -1,0 +1,174 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { motion } from "framer-motion";
+import { ChevronRight, TreePine } from "lucide-react";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "@/src/lib/firebase";
+import { useGuilds } from "@/src/lib/useGuilds";
+import { sortMembers } from "@/src/lib/sortMembers";
+import { MemberRow, type MemberRowData } from "@/app/components/members/MemberRow";
+import { MemberSearchBar } from "@/app/components/members/MemberSearchBar";
+
+// 길드원 한 줄 목록 — Phase 2. 신규 컴포넌트, 기존 app/members/page.tsx는
+// 미접촉. 데이터 fetch는 그 파일의 members+users join 패턴을 그대로
+// 따르되 guildId/playTime/tags(Phase 1 신규 필드)를 추가로 읽는다.
+// 정렬/검색 결과는 기존 페이지와 동일해야 하므로 users(회원가입 원본,
+// password 필드 존재 = 정회원) 기준으로 순회하고 members 존재 여부로
+// "빛나는 별"만 표시한다 — "잠든 별" 섹션은 기존 페이지에도 없다.
+//
+// 편집 모달(Phase 3), 언쏘 A/B 라우팅(Phase 4)은 아직 없음. 이 화면은
+// /members-new 임시 라우트로만 접근 가능.
+
+const DL2_SUNSET_GOLD = "#ffc785";
+const INK = "#5c3a1f";
+const INK_SOFT = "#8a6a4a";
+
+export function MemberListNewPage() {
+  const guilds = useGuilds();
+  const guildById = useMemo(
+    () => new Map(guilds.map((g) => [g.id, g])),
+    [guilds],
+  );
+
+  const [members, setMembers] = useState<MemberRowData[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [membersSnap, usersSnap] = await Promise.all([
+          getDocs(collection(db, "members")),
+          getDocs(collection(db, "users")),
+        ]);
+        if (cancelled) return;
+
+        type MemberData = {
+          nickname?: string;
+          statusMessage?: string;
+          profileImage?: string;
+        };
+        type UserData = {
+          password?: string;
+          guildId?: string;
+          playTime?: string;
+          tags?: string[];
+        };
+
+        const memberByNickname = new Map<string, MemberData>();
+        membersSnap.forEach((d) => {
+          const data = d.data() as MemberData;
+          const nick = (data.nickname ?? "").trim();
+          if (nick) memberByNickname.set(nick, data);
+        });
+
+        const rows: MemberRowData[] = [];
+        usersSnap.forEach((u) => {
+          const userData = u.data() as UserData;
+          if (typeof userData.password !== "string") return; // junk doc
+          const nickname = u.id;
+          const hit = memberByNickname.get(nickname);
+          if (!hit) return; // 잠든 별 — 기존 페이지와 동일하게 목록 밖
+          rows.push({
+            nickname,
+            guildId: userData.guildId,
+            playTime: userData.playTime,
+            tags: userData.tags,
+            statusMessage: hit.statusMessage || "",
+            profileImage: hit.profileImage || "",
+          });
+        });
+
+        setMembers(rows);
+        setLoaded(true);
+      } catch (e) {
+        console.error(e);
+        if (!cancelled) setLoaded(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const q = query.trim().toLowerCase();
+  const filteredSorted = useMemo(() => {
+    const filtered = members.filter((m) =>
+      m.nickname.toLowerCase().includes(q),
+    );
+    return sortMembers(filtered);
+  }, [members, q]);
+
+  const hasAnyResult = filteredSorted.length > 0;
+
+  return (
+    <div
+      className="dl2-members-new relative mx-auto w-full px-4 pt-3"
+      style={{ maxWidth: 480 }}
+    >
+      <Link
+        href="/guild-tree"
+        className="mb-4 flex items-center gap-3 rounded-xl border px-4 py-3 transition-all hover:scale-[1.01]"
+        style={{
+          background: "rgba(255, 199, 133, 0.12)",
+          borderColor: "rgba(255, 199, 133, 0.35)",
+        }}
+      >
+        <span
+          aria-hidden
+          className="flex h-9 w-9 items-center justify-center rounded-full"
+          style={{ background: "rgba(255, 199, 133, 0.2)" }}
+        >
+          <TreePine className="h-4 w-4" style={{ color: DL2_SUNSET_GOLD }} />
+        </span>
+        <span className="flex-1">
+          <span
+            className="block text-sm font-semibold leading-tight"
+            style={{ color: INK }}
+          >
+            하늘섬 가계도
+          </span>
+          <span
+            className="mt-0.5 block text-[10px] uppercase tracking-[0.28em]"
+            style={{ color: INK_SOFT }}
+          >
+            SKY ISLAND · 연합 길드 구성을 한눈에
+          </span>
+        </span>
+        <ChevronRight className="h-4 w-4" style={{ color: DL2_SUNSET_GOLD }} />
+      </Link>
+
+      <MemberSearchBar value={query} onChange={setQuery} />
+
+      {!loaded && (
+        <p className="py-16 text-center text-xs italic" style={{ color: INK_SOFT }}>
+          길드원을 불러오는 중...
+        </p>
+      )}
+
+      {loaded && !hasAnyResult && (
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="py-16 text-center text-sm italic"
+          style={{ color: INK_SOFT }}
+        >
+          찾는 길드원이 보이지 않아요
+        </motion.p>
+      )}
+
+      <div className="flex flex-col gap-2 pb-10">
+        {filteredSorted.map((m) => (
+          <MemberRow
+            key={m.nickname}
+            member={m}
+            guild={m.guildId ? guildById.get(m.guildId) : undefined}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
