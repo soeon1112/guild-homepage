@@ -19,7 +19,9 @@ import {
   subscribeVoiceRoom,
   type VoiceRoomDoc,
 } from "@/src/lib/voiceRoom";
-import { ParticipantGrid, type ParticipantGridItem } from "@/app/components/voice/ParticipantGrid";
+import { ParticipantPanel, type ParticipantPanelItem } from "@/app/components/voice/ParticipantPanel";
+import { VoiceChatPanel } from "@/app/components/voice/VoiceChatPanel";
+import { MobileTabs } from "@/app/components/voice/MobileTabs";
 import { VoiceControls } from "@/app/components/voice/VoiceControls";
 
 // 앱(dawnlight-app)과 동일 프로젝트(dawnlight-guild)에 배포된 Agora App ID.
@@ -58,6 +60,7 @@ export default function VoiceRoom() {
   const [muted, setMuted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [speakingUids, setSpeakingUids] = useState<Set<number>>(new Set());
+  const [mobileTab, setMobileTab] = useState<"participants" | "chat">("participants");
 
   const clientRef = useRef<IAgoraRTCClient | null>(null);
   const localTrackRef = useRef<IMicrophoneAudioTrack | null>(null);
@@ -218,7 +221,7 @@ export default function VoiceRoom() {
 
   if (!ready || !me) return null;
 
-  const gridItems: ParticipantGridItem[] = participantEntries.map(([nickname, p]) => ({
+  const participantItems: ParticipantPanelItem[] = participantEntries.map(([nickname, p]) => ({
     nickname,
     imageUrl: avatarMap.get(nickname)?.imageUrl,
     muted: nickname === me ? muted : p.muted,
@@ -229,11 +232,10 @@ export default function VoiceRoom() {
   return (
     // 고정 레이아웃(C절) — Topbar.tsx가 sticky top-0 56px이라 top:56로
     // 바로 아래부터 화면 끝까지 position:fixed. overflow-hidden이라
-    // 참가자가 많아 그리드가 커져도 페이지 자체는 절대 스크롤되지 않는다
-    // (Phase 2 버그: h-[calc(100dvh-56px)]만 쓰고 overflow 제약이 없어서
-    // 콘텐츠가 넘치면 문서 전체가 스크롤 — 그 결과 fixed인 BottomNav
-    // 뒤로 배경이 밀려다니는 것처럼 보였음). z-30 < BottomNav의 z-40이라
-    // 겹쳐도 네비가 항상 위.
+    // 콘텐츠가 넘쳐도 페이지 자체는 절대 스크롤되지 않는다(예전 버그:
+    // h-[calc(100dvh-56px)]만 쓰고 overflow 제약이 없어서 fixed인
+    // BottomNav 뒤로 배경이 밀려다니는 것처럼 보였음). z-30 < BottomNav의
+    // z-40이라 겹쳐도 네비가 항상 위.
     <div
       className="fixed inset-x-0 bottom-0 z-30 flex flex-col overflow-hidden"
       style={{
@@ -254,40 +256,75 @@ export default function VoiceRoom() {
         </span>
       </div>
 
-      <div className="flex flex-1 items-center justify-center overflow-y-auto">
-        <ParticipantGrid participants={gridItems} emptyLabel="아직 아무도 없습니다" />
-      </div>
-
       {error && (
-        <p className="shrink-0 px-4 pb-2 text-center text-xs" style={{ color: "#ffb5a7" }}>
+        <p className="shrink-0 px-4 pt-2 text-center text-xs" style={{ color: "#ffb5a7" }}>
           {error}
         </p>
       )}
 
-      {/* 하단 네비(BottomNav.tsx, fixed bottom-0 z-40) 위로 확실히
-          떨어지도록 paddingBottom으로 여백 확보 — 참가하기 버튼/컨트롤
-          모두 이 안에서 위치가 흔들리지 않게 동일 wrapper 사용. */}
-      <div className="shrink-0 px-4 pt-2" style={{ paddingBottom: BOTTOM_NAV_CLEARANCE }}>
-        {joined ? (
-          <VoiceControls muted={muted} onToggleMute={handleToggleMute} onLeave={handleLeave} />
-        ) : (
-          <div className="flex flex-col items-center gap-2">
-            <button
-              type="button"
-              onClick={handleJoin}
-              disabled={joining}
-              className="rounded-full px-10 py-3.5 text-sm font-semibold transition-all duration-200 disabled:opacity-60"
-              style={{
-                color: "#2a1f4a",
-                background: "#ffc785",
-                boxShadow: "0 0 16px rgba(255, 199, 133, 0.5)",
-              }}
+      {joined ? (
+        // 참가 후 — 디코 스타일 분할(C/D절). 데스크탑: 좌(참가자+컨트롤)
+        // 35~40% / 우(채팅) 나머지, 항상 동시 노출. 모바일: MobileTabs로
+        // 탭 전환(D-3, 세로 분할은 둘 다 너무 좁아져 비실용적이라 기각),
+        // 컨트롤만은 탭 무관하게 하단 고정(F-1) — 채팅 탭에서도 나가기/
+        // 음소거는 항상 눌러야 하므로.
+        <>
+          <MobileTabs active={mobileTab} onChange={setMobileTab} participantCount={participantEntries.length} />
+
+          <div className="flex min-h-0 flex-1 md:flex-row">
+            <div
+              className={`min-h-0 flex-col md:flex md:w-[36%] md:max-w-sm md:shrink-0 ${
+                mobileTab === "participants" ? "flex flex-1" : "hidden"
+              }`}
+              style={{ borderRight: "1px solid rgba(254, 245, 230, 0.14)" }}
             >
-              {joining ? "연결 중..." : "참가하기"}
-            </button>
+              <ParticipantPanel participants={participantItems} emptyLabel="아직 아무도 없습니다" />
+              {/* 데스크탑 전용 — 좌측 패널 하단에 컨트롤(C-1). 모바일은
+                  아래 별도 고정 바가 담당(패널이 탭 전환으로 숨을 수
+                  있어서). */}
+              <div className="hidden shrink-0 border-t px-4 py-4 md:block" style={{ borderColor: "rgba(254, 245, 230, 0.14)" }}>
+                <VoiceControls muted={muted} onToggleMute={handleToggleMute} onLeave={handleLeave} />
+              </div>
+            </div>
+
+            <div className={`min-h-0 flex-col md:flex md:flex-1 ${mobileTab === "chat" ? "flex flex-1" : "hidden"}`}>
+              <VoiceChatPanel me={me} />
+            </div>
           </div>
-        )}
-      </div>
+
+          {/* 모바일 전용 — 탭과 무관하게 항상 보이는 하단 고정 컨트롤.
+              BottomNav 위로 떨어지도록 paddingBottom 확보(예전 라운드
+              값 유지). */}
+          <div className="shrink-0 px-4 pt-2 md:hidden" style={{ paddingBottom: BOTTOM_NAV_CLEARANCE }}>
+            <VoiceControls muted={muted} onToggleMute={handleToggleMute} onLeave={handleLeave} />
+          </div>
+        </>
+      ) : (
+        // 참가 전(G절) — 참가자 프리뷰(컨트롤 없이) + 큰 참가하기 버튼.
+        // 채팅은 참가 후에만 노출(G-2).
+        <>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <ParticipantPanel participants={participantItems} emptyLabel="아직 아무도 없습니다" />
+          </div>
+          <div className="shrink-0 px-4 pt-2" style={{ paddingBottom: BOTTOM_NAV_CLEARANCE }}>
+            <div className="flex flex-col items-center gap-2">
+              <button
+                type="button"
+                onClick={handleJoin}
+                disabled={joining}
+                className="rounded-full px-10 py-3.5 text-sm font-semibold transition-all duration-200 disabled:opacity-60"
+                style={{
+                  color: "#2a1f4a",
+                  background: "#ffc785",
+                  boxShadow: "0 0 16px rgba(255, 199, 133, 0.5)",
+                }}
+              >
+                {joining ? "연결 중..." : "참가하기"}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

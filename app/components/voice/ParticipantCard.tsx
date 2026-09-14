@@ -2,10 +2,10 @@
 
 import { MicOff } from "lucide-react";
 
-// 말할 때 참가자 프사에 두르는 글로우 색. spring-green — 디코의 쨍한
-// 초록보다 절제됐고 dl2 석양/크림 팔레트와 부딪히지 않음(Phase 2 판단
-// 유지). 발화 감지 자체(임계값/폴링)는 VoiceRoom.tsx로 옮겨졌다 —
-// ParticipantCard는 이미 계산된 boolean만 받는 순수 표시 컴포넌트.
+// 말할 때 프사 테두리에 두르는 글로우 색. spring-green — 디코의 쨍한
+// 초록보다 절제됐고 dl2 석양/크림 팔레트와 부딪히지 않음. 발화 감지 자체
+// (getVolumeLevel 폴링/임계값)는 VoiceRoom.tsx가 담당 — 이 컴포넌트는
+// 이미 계산된 boolean만 받는 순수 표시용.
 const SPEAKING_GLOW = "rgba(134, 214, 150, 0.85)";
 
 type ParticipantCardProps = {
@@ -14,40 +14,41 @@ type ParticipantCardProps = {
   muted: boolean;
   speaking: boolean;
   isMe?: boolean;
-  /** 프사 지름(px). 참가자 수에 따라 ParticipantGrid가 결정(D-4). */
+  /** 프사 지름(px). 기본 40 — 왼쪽 참가자 목록(row) 기준. */
   size?: number;
 };
 
+// 디코 사이드바 스타일 — 원형 프사(글로우 테두리) + 닉네임 + 마이크 상태
+// 아이콘을 한 줄로. 이전 라운드의 중앙 그리드(ParticipantGrid.tsx)는 이번
+// 재작업에서 좌측 패널의 세로 리스트로 완전히 대체돼 삭제했다.
 export function ParticipantCard({
   nickname,
   imageUrl,
   muted,
   speaking,
   isMe = false,
-  size = 64,
+  size = 40,
 }: ParticipantCardProps) {
   const glowActive = speaking && !muted;
-  const ringWidth = Math.max(3, Math.round(size * 0.055));
-  const badgeSize = Math.max(16, Math.round(size * 0.32));
+  const ringWidth = Math.max(2, Math.round(size * 0.06));
 
   return (
-    <div className="flex flex-col items-center gap-2" style={{ width: size + 16 }}>
-      <div className="relative" style={{ width: size, height: size }}>
+    <div className="flex items-center gap-2.5 rounded-xl px-2 py-1.5" style={{ background: isMe ? "rgba(255, 199, 133, 0.10)" : "transparent" }}>
+      <div className="relative shrink-0" style={{ width: size, height: size }}>
         <div
           aria-hidden
-          className="absolute -inset-1.5 rounded-full transition-all duration-200 ease-out"
+          className="absolute -inset-1 rounded-full transition-all duration-150 ease-out"
           style={{
             boxShadow: glowActive
-              ? `0 0 0 ${ringWidth}px ${SPEAKING_GLOW}, 0 0 ${size * 0.28}px ${ringWidth * 0.5}px ${SPEAKING_GLOW}`
-              : `0 0 0 0 rgba(134, 214, 150, 0)`,
+              ? `0 0 0 ${ringWidth}px ${SPEAKING_GLOW}, 0 0 ${size * 0.3}px ${ringWidth * 0.5}px ${SPEAKING_GLOW}`
+              : "0 0 0 0 rgba(134, 214, 150, 0)",
           }}
         />
         <div
           className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-full"
           style={{
             background: "transparent",
-            border: "1.5px solid rgba(254, 245, 230, 0.45)",
-            boxShadow: isMe ? "0 0 0 1px rgba(255, 199, 133, 0.55)" : undefined,
+            border: isMe ? "1.5px solid rgba(255, 199, 133, 0.65)" : "1.5px solid rgba(254, 245, 230, 0.4)",
           }}
         >
           {imageUrl ? (
@@ -59,7 +60,7 @@ export function ParticipantCard({
             />
           ) : (
             // MemberAvatar.tsx dl2 기본 프사 SVG와 동일(파일 미접촉, 시각적
-            // 통일감만 복제) — 개인 공간/채팅/통화방이 같은 얼굴을 쓴다.
+            // 통일감만 복제).
             <svg viewBox="0 0 96 96" style={{ width: "100%", height: "100%" }} aria-hidden>
               <rect width="96" height="96" fill="#d4a870" />
               <circle cx="48" cy="36" r="18" fill="#b88850" opacity="0.8" />
@@ -77,29 +78,15 @@ export function ParticipantCard({
             </svg>
           )}
         </div>
-        {muted && (
-          <div
-            className="absolute flex items-center justify-center rounded-full"
-            style={{
-              right: -badgeSize * 0.15,
-              bottom: -badgeSize * 0.15,
-              width: badgeSize,
-              height: badgeSize,
-              background: "rgba(11, 8, 33, 0.9)",
-              border: "1px solid rgba(254, 245, 230, 0.5)",
-            }}
-          >
-            <MicOff size={Math.round(badgeSize * 0.55)} color="#fef5e6" />
-          </div>
-        )}
       </div>
       <span
-        className="max-w-full truncate text-center text-[11px]"
-        style={{ color: "#fef5e6", opacity: isMe ? 1 : 0.85, fontWeight: isMe ? 600 : 400 }}
+        className="min-w-0 flex-1 truncate text-[13px]"
+        style={{ color: "#fef5e6", opacity: isMe ? 1 : 0.9, fontWeight: isMe ? 600 : 400 }}
       >
         {nickname}
         {isMe ? " (나)" : ""}
       </span>
+      {muted && <MicOff size={14} color="rgba(254, 245, 230, 0.55)" className="shrink-0" />}
     </div>
   );
 }
