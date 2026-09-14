@@ -7,6 +7,8 @@ import { ChromeShell } from "./components/redesign/ChromeShell";
 import { AuthGuard } from "./components/AuthGuard";
 import KeyboardScrollGuard from "./components/KeyboardScrollGuard";
 import { VisualViewportSync } from "./components/VisualViewportSync";
+import { VoiceRoomProvider } from "./components/voice/VoiceRoomProvider";
+import { VoiceFloatingWidget } from "./components/voice/VoiceFloatingWidget";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -72,8 +74,15 @@ export default function RootLayout({
           <ScrollRestorer />
           <KeyboardScrollGuard />
           <VisualViewportSync />
-          <ChromeShell><AuthGuard>{children}</AuthGuard></ChromeShell>
-          <FloatingChat />
+          {/* VoiceRoomProvider — Phase 3. AuthProvider 안(useAuth 필요) +
+              ChromeShell 밖(children/route 전환과 무관하게 항상 마운트
+              유지 — App Router가 layout은 리마운트 안 하므로 Agora
+              client가 라우트 이동에도 살아있음). */}
+          <VoiceRoomProvider>
+            <ChromeShell><AuthGuard>{children}</AuthGuard></ChromeShell>
+            <FloatingChat />
+            <VoiceFloatingWidget />
+          </VoiceRoomProvider>
         </AuthProvider>
       </body>
     </html>

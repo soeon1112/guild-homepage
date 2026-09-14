@@ -1,51 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+// VoiceRoom.tsx — Phase 3부터는 순수 UI 컴포넌트다. Agora client/트랙/
+// join·leave·toggleMute 로직은 전부 VoiceRoomProvider.tsx(app/layout.tsx
+// 최상위 마운트)로 옮겨졌다 — 이 페이지를 벗어나도(다른 페이지로 이동)
+// Provider가 살아있는 한 통화가 끊기지 않는다. 이 파일은 useVoiceRoom()
+// 으로 상태/액션을 소비하기만 한다.
+
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import AgoraRTC, {
-  type IAgoraRTCClient,
-  type IMicrophoneAudioTrack,
-  type IRemoteAudioTrack,
-} from "agora-rtc-sdk-ng";
-import { AIDenoiserExtension, type AIDenoiserProcessor } from "agora-extension-ai-denoiser";
 import { useAuth } from "@/app/components/AuthProvider";
-import { useMemberAvatars } from "@/src/lib/useMemberAvatars";
-import { fetchAgoraToken } from "@/src/lib/getAgoraToken";
-import {
-  VOICE_CHANNEL_NAME,
-  ensureAgoraUid,
-  joinVoiceRoomDoc,
-  leaveVoiceRoomDoc,
-  setVoiceRoomMuted,
-  subscribeVoiceRoom,
-  type VoiceRoomDoc,
-} from "@/src/lib/voiceRoom";
+import { useVoiceRoom } from "@/app/components/voice/VoiceRoomProvider";
 import { ParticipantPanel, type ParticipantPanelItem } from "@/app/components/voice/ParticipantPanel";
 import { VoiceChatPanel } from "@/app/components/voice/VoiceChatPanel";
 import { MobileTabs } from "@/app/components/voice/MobileTabs";
 import { VoiceControls } from "@/app/components/voice/VoiceControls";
 
-// 앱(dawnlight-app)과 동일 프로젝트(dawnlight-guild)에 배포된 Agora App ID.
-// 클라이언트 노출은 Agora 공식 방식(Phase 0 진단 A-4) — Certificate만 서버
-// 전용(functions/src/api/agoraToken.ts, Secret Manager).
-const AGORA_APP_ID = "16f1acbc49064e1898b97831abf943a1";
-
-// 발화 감지 — client.on("volume-indicator")는 쓰지 않는다. Agora 공식
-// 문서(enableAudioVolumeIndicator) 확인 결과 이 이벤트는 고정 2초
-// 간격이고 파라미터로 줄일 수 없다 — 대화 중 2초보다 짧은 숨 고르기에도
-// "계속 켜진 것처럼" 보이는 게 이번 버그의 실제 원인이었다. 대신 공식
-// 문서가 실시간 미터링용으로 권장하는 ILocalAudioTrack/IRemoteAudioTrack.
-// getVolumeLevel()(0~1, "0.6 이상이면 발화 중"이 공식 가이드 문구)을
-// 100ms 간격으로 직접 폴링한다.
-const SPEAKING_LEVEL_THRESHOLD = 0.6;
-const POLL_INTERVAL_MS = 100;
-// 폴링 스냅샷 사이 순간적으로 threshold 아래로 떨어지는 것(단어 사이
-// 숨 고르기 등)만으로 글로우가 깜빡이지 않게 하는 유예 시간.
-const SPEAKING_HOLD_MS = 450;
-
-// BottomNav.tsx가 이제 /voice에서 항상 숨김(early return)이라 더 이상
-// 그 높이를 클리어할 필요가 없다 — 기기 하단 제스처 바/홈 인디케이터용
-// 안전 여백만 남긴다.
+// BottomNav.tsx가 /voice에서 항상 숨김(early return)이라 그 높이를 클리어할
+// 필요가 없다 — 기기 하단 제스처 바/홈 인디케이터용 안전 여백만 남긴다.
 const SAFE_BOTTOM_PADDING = "calc(16px + env(safe-area-inset-bottom))";
 
 // 다른 dl2 페이지(app/dm/page.tsx, app/dm/[roomId]/page.tsx)와 동일한
@@ -55,51 +26,26 @@ const VOICE_ROOM_MAX_WIDTH = "max-w-2xl";
 
 // FloatingChat.tsx(app/layout.tsx에 전역 마운트)의 FAB 버튼이 z-[100],
 // fixed right-4 bottom-96(또는 8)에 56px 원형으로 항상 떠 있다 — 통화방
-// 컨트롤(나가기/전송 등)이 우하단 쪽에 오면 이 FAB이 물리적으로 겹쳐
-// 클릭을 가로챌 수 있다(이번 "클릭 안 됨" 버그의 유력 원인). FloatingChat
-// 자체는 미접촉 대상이라, 통화방 페이지 전체를 그보다 위 z로 올려 이
-// 페이지에 있는 동안은 통화방 컨트롤이 항상 이긴다.
+// 컨트롤이 우하단 쪽에 오면 이 FAB이 물리적으로 겹쳐 클릭을 가로챌 수
+// 있어서, 통화방 페이지 전체를 그보다 위 z로 올려 항상 이기게 한다.
 const VOICE_ROOM_Z_INDEX = "z-[110]";
-
-// AI Denoiser 모델(wasm, ~5.8MB) — node_modules/agora-extension-ai-denoiser/
-// external/*.wasm을 public/agora-extension-ai-denoiser/external/로 그대로
-// 복사해 정적 서빙(Next.js가 node_modules 에셋을 자동으로 public에 넣어주지
-// 않아서 수동 복사 필요 — 패키지 버전을 올릴 땐 이 두 파일도 다시 복사해야
-// 함). registerExtensions는 앱 전체에서 한 번만 호출해야 해서 컴포넌트
-// 모듈 스코프의 지연 싱글톤으로 관리(useEffect 대신 — join 시점에만
-// 필요하고, React StrictMode의 effect 이중 호출로 두 번 등록되는 것도
-// 피할 수 있음).
-let aiDenoiserExtension: AIDenoiserExtension | null = null;
-function getAiDenoiserExtension(): AIDenoiserExtension {
-  if (!aiDenoiserExtension) {
-    aiDenoiserExtension = new AIDenoiserExtension({
-      assetsPath: "/agora-extension-ai-denoiser/external",
-    });
-    AgoraRTC.registerExtensions([aiDenoiserExtension]);
-  }
-  return aiDenoiserExtension;
-}
-
-type SpeakingHoldMap = Record<number, number>; // uid -> 마지막으로 threshold 넘긴 timestamp(ms)
 
 export default function VoiceRoom() {
   const router = useRouter();
   const { nickname: me, ready } = useAuth();
-
-  const [room, setRoom] = useState<VoiceRoomDoc | null>(null);
-  const [joined, setJoined] = useState(false);
-  const [joining, setJoining] = useState(false);
-  const [muted, setMuted] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [speakingUids, setSpeakingUids] = useState<Set<number>>(new Set());
+  const {
+    participantEntries,
+    avatarMap,
+    joined,
+    joining,
+    muted,
+    error,
+    speakingUids,
+    join,
+    leave,
+    toggleMute,
+  } = useVoiceRoom();
   const [mobileTab, setMobileTab] = useState<"participants" | "chat">("participants");
-
-  const clientRef = useRef<IAgoraRTCClient | null>(null);
-  const localTrackRef = useRef<IMicrophoneAudioTrack | null>(null);
-  const myUidRef = useRef<number | null>(null);
-  const remoteTracksRef = useRef<Map<number, IRemoteAudioTrack>>(new Map());
-  const lastLoudAtRef = useRef<SpeakingHoldMap>({});
-  const denoiserProcessorRef = useRef<AIDenoiserProcessor | null>(null);
 
   // 로그인 필수 라우트 가드 — app/dm/page.tsx verbatim 패턴.
   useEffect(() => {
@@ -107,199 +53,6 @@ export default function VoiceRoom() {
       router.replace("/");
     }
   }, [ready, me, router]);
-
-  // voiceRooms/skyisle 실시간 구독 — 참가 여부와 무관하게 항상 켜둬서
-  // 참가 전 프리뷰(G-1)와 참가 중 실시간 목록(H-1)을 같은 상태로 그린다.
-  useEffect(() => {
-    const unsub = subscribeVoiceRoom(setRoom);
-    return unsub;
-  }, []);
-
-  const participantEntries = room ? Object.entries(room.participants ?? {}) : [];
-  const avatarMap = useMemberAvatars(participantEntries.map(([nickname]) => nickname));
-
-  // 발화 감지 폴링 — join 중일 때만 동작. localTrack + 구독된 remote
-  // 트랙들의 getVolumeLevel()을 100ms마다 읽어 hold map을 갱신하고,
-  // hold 유예 안에 있는 uid 집합만 "말하는 중"으로 커밋한다.
-  useEffect(() => {
-    if (!joined) return;
-    const interval = setInterval(() => {
-      const now = Date.now();
-      const localTrack = localTrackRef.current;
-      const myUid = myUidRef.current;
-      if (localTrack && myUid != null) {
-        if (localTrack.getVolumeLevel() > SPEAKING_LEVEL_THRESHOLD) {
-          lastLoudAtRef.current[myUid] = now;
-        }
-      }
-      for (const [uid, track] of remoteTracksRef.current) {
-        if (track.getVolumeLevel() > SPEAKING_LEVEL_THRESHOLD) {
-          lastLoudAtRef.current[uid] = now;
-        }
-      }
-      const next = new Set<number>();
-      for (const [uidStr, ts] of Object.entries(lastLoudAtRef.current)) {
-        if (now - ts < SPEAKING_HOLD_MS) next.add(Number(uidStr));
-      }
-      setSpeakingUids(next);
-    }, POLL_INTERVAL_MS);
-    return () => clearInterval(interval);
-  }, [joined]);
-
-  const handleLeave = useCallback(async () => {
-    const client = clientRef.current;
-    const localTrack = localTrackRef.current;
-    if (denoiserProcessorRef.current) {
-      try {
-        await denoiserProcessorRef.current.destroy();
-      } catch (e) {
-        console.error("[VoiceRoom] AI Denoiser destroy 실패", e);
-      }
-      denoiserProcessorRef.current = null;
-    }
-    try {
-      localTrack?.close();
-      if (client) {
-        await client.leave();
-      }
-    } catch (e) {
-      console.error("[VoiceRoom] leave 중 오류", e);
-    }
-    clientRef.current = null;
-    localTrackRef.current = null;
-    myUidRef.current = null;
-    remoteTracksRef.current.clear();
-    lastLoudAtRef.current = {};
-    if (me) {
-      try {
-        await leaveVoiceRoomDoc(me);
-      } catch (e) {
-        console.error("[VoiceRoom] leaveVoiceRoomDoc 실패", e);
-      }
-    }
-    setJoined(false);
-    setMuted(false);
-    setSpeakingUids(new Set());
-  }, [me]);
-
-  // 페이지 이탈(뒤로가기/다른 링크 클릭)로 컴포넌트가 언마운트될 때도
-  // 참가자 문서에 유령으로 안 남게 best-effort 정리. 탭을 그냥 닫는
-  // 경우(beforeunload)까지의 완전한 방어는 Phase 3(floating widget, 세션
-  // 수명 관리)에서 다룰 예정 — Phase 2는 known gap으로 남겨둠.
-  useEffect(() => {
-    return () => {
-      if (clientRef.current || localTrackRef.current) {
-        void handleLeave();
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleJoin = useCallback(async () => {
-    if (!me || joining || joined) return;
-    setError(null);
-    setJoining(true);
-    try {
-      const uid = await ensureAgoraUid(me);
-      const { token } = await fetchAgoraToken(VOICE_CHANNEL_NAME, uid);
-
-      const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
-
-      client.on("user-published", async (user, mediaType) => {
-        await client.subscribe(user, mediaType);
-        if (mediaType === "audio" && user.audioTrack) {
-          user.audioTrack.play();
-          remoteTracksRef.current.set(user.uid as number, user.audioTrack);
-        }
-      });
-      client.on("user-unpublished", (user, mediaType) => {
-        if (mediaType === "audio") {
-          remoteTracksRef.current.delete(user.uid as number);
-        }
-      });
-      client.on("user-left", (user) => {
-        remoteTracksRef.current.delete(user.uid as number);
-      });
-
-      await client.join(AGORA_APP_ID, VOICE_CHANNEL_NAME, token, uid);
-
-      // AEC(에코 제거)/ANS(노이즈 억제)/AGC(자동 게인)는 SDK가 기본으로도
-      // 켜주긴 하지만 명시적으로 선언해 의도를 고정 — speech_standard는
-      // 32kHz/모노/24Kbps로 노이즈 억제가 특히 잘 드러나는 음성 통화용
-      // 프리셋(SDK 공식 문서 기준, 기본 speech_low_quality의 16kHz보다
-      // 한 단계 위).
-      const localTrack = await AgoraRTC.createMicrophoneAudioTrack({
-        AEC: true,
-        ANS: true,
-        AGC: true,
-        encoderConfig: "speech_standard",
-      });
-
-      // AI Denoiser — 기본 ANS(SDK 내장 노이즈 억제)로 부족한 키보드/
-      // 배경 대화까지 걸러내는 별도 확장(agora-extension-ai-denoiser).
-      // 브라우저 미지원이면 checkCompatibility()가 false를 반환하므로
-      // 조용히 건너뛰고 원본 트랙으로 계속 진행 — 참가 자체를 막지 않음.
-      try {
-        const denoiser = getAiDenoiserExtension();
-        if (denoiser.checkCompatibility()) {
-          const processor = denoiser.createProcessor();
-          // 공식 README 권장 폴백 — pipe 자체가 실패하면(리소스 로드
-          // 실패 등) denoiser를 완전히 우회해 원본 오디오로 되돌린다.
-          processor.on("pipeerror", (err: Error) => {
-            console.error("[VoiceRoom] AI Denoiser pipe 실패, 원본 오디오로 폴백", err);
-            processor.unpipe();
-            localTrack.unpipe();
-            localTrack.pipe(localTrack.processorDestination);
-          });
-          localTrack.pipe(processor).pipe(localTrack.processorDestination);
-          await processor.enable();
-          denoiserProcessorRef.current = processor;
-        }
-      } catch (e) {
-        // Denoiser 초기화 실패는 통화 자체를 막을 이유가 아니다 — 원본
-        // 오디오(AEC/ANS/AGC까지는 이미 적용됨)로 계속 진행.
-        console.error("[VoiceRoom] AI Denoiser 초기화 실패, 원본 오디오로 진행", e);
-      }
-
-      await client.publish([localTrack]);
-
-      clientRef.current = client;
-      localTrackRef.current = localTrack;
-      myUidRef.current = uid;
-
-      await joinVoiceRoomDoc(me, uid);
-      setJoined(true);
-    } catch (e) {
-      console.error("[VoiceRoom] 참가 실패", e);
-      setError(
-        e instanceof Error && e.message.toLowerCase().includes("permission")
-          ? "마이크 권한이 필요합니다. 브라우저 설정에서 마이크 접근을 허용해주세요."
-          : "통화방 참가에 실패했습니다. 잠시 후 다시 시도해주세요.",
-      );
-      if (denoiserProcessorRef.current) {
-        void denoiserProcessorRef.current.destroy().catch(() => {});
-        denoiserProcessorRef.current = null;
-      }
-      localTrackRef.current?.close();
-      clientRef.current = null;
-      localTrackRef.current = null;
-    } finally {
-      setJoining(false);
-    }
-  }, [me, joining, joined]);
-
-  const handleToggleMute = useCallback(async () => {
-    const localTrack = localTrackRef.current;
-    if (!localTrack || !me) return;
-    const next = !muted;
-    await localTrack.setEnabled(!next);
-    setMuted(next);
-    try {
-      await setVoiceRoomMuted(me, next);
-    } catch (e) {
-      console.error("[VoiceRoom] mute 동기화 실패", e);
-    }
-  }, [muted, me]);
 
   if (!ready || !me) return null;
 
@@ -312,14 +65,11 @@ export default function VoiceRoom() {
   }));
 
   return (
-    // 고정 레이아웃(C절) — Topbar.tsx가 sticky top-0 56px이라 top:56로
-    // 바로 아래부터 화면 끝까지 position:fixed. overflow-hidden이라
-    // 콘텐츠가 넘쳐도 페이지 자체는 절대 스크롤되지 않는다. mx-auto +
-    // max-w-2xl — DM(app/dm/page.tsx 등)과 동일 폭, 넓은 화면에서는
-    // 좌우로 ChromeShell의 twilight 배경이 비친다. BottomNav는 이제
-    // /voice에서 완전히 숨김(BottomNav.tsx early return)이라 그 높이를
-    // 더 이상 신경 쓸 필요 없음 — z-index는 FloatingChat FAB(z-[100])
-    // 보다 위로만 고정.
+    // 고정 레이아웃 — Topbar.tsx가 sticky top-0 56px이라 top:56로 바로
+    // 아래부터 화면 끝까지 position:fixed. overflow-hidden이라 콘텐츠가
+    // 넘쳐도 페이지 자체는 절대 스크롤되지 않는다. mx-auto + max-w-2xl —
+    // DM과 동일 폭, 넓은 화면에서는 좌우로 ChromeShell의 twilight
+    // 배경이 비친다.
     <div
       className={`fixed inset-x-0 bottom-0 ${VOICE_ROOM_Z_INDEX} mx-auto flex w-full ${VOICE_ROOM_MAX_WIDTH} flex-col overflow-hidden`}
       style={{
@@ -347,11 +97,10 @@ export default function VoiceRoom() {
       )}
 
       {joined ? (
-        // 참가 후 — 디코 스타일 분할(C/D절). 데스크탑: 좌(참가자+컨트롤)
-        // 35~40% / 우(채팅) 나머지, 항상 동시 노출. 모바일: MobileTabs로
-        // 탭 전환(D-3, 세로 분할은 둘 다 너무 좁아져 비실용적이라 기각),
-        // 컨트롤만은 탭 무관하게 하단 고정(F-1) — 채팅 탭에서도 나가기/
-        // 음소거는 항상 눌러야 하므로.
+        // 참가 후 — 디코 스타일 분할. 데스크탑: 좌(참가자+컨트롤) 36% /
+        // 우(채팅) 나머지, 항상 동시 노출. 모바일: MobileTabs로 탭
+        // 전환(세로 분할은 둘 다 너무 좁아져 비실용적이라 기각), 참가자
+        // 탭에서만 하단 고정 컨트롤(채팅 탭은 composer만 — 사용자 지시).
         <>
           <MobileTabs active={mobileTab} onChange={setMobileTab} participantCount={participantEntries.length} />
 
@@ -363,11 +112,10 @@ export default function VoiceRoom() {
               style={{ borderRight: "1px solid rgba(254, 245, 230, 0.14)" }}
             >
               <ParticipantPanel participants={participantItems} emptyLabel="아직 아무도 없습니다" />
-              {/* 데스크탑 전용 — 좌측 패널 하단에 컨트롤(C-1). 모바일은
-                  아래 별도 고정 바가 담당(패널이 탭 전환으로 숨을 수
-                  있어서). */}
+              {/* 데스크탑 전용 — 좌측 패널 하단에 컨트롤. 모바일은 아래
+                  별도 고정 바가 담당(패널이 탭 전환으로 숨을 수 있어서). */}
               <div className="hidden shrink-0 border-t px-4 py-4 md:block" style={{ borderColor: "rgba(254, 245, 230, 0.14)" }}>
-                <VoiceControls muted={muted} onToggleMute={handleToggleMute} onLeave={handleLeave} />
+                <VoiceControls muted={muted} onToggleMute={toggleMute} onLeave={leave} />
               </div>
             </div>
 
@@ -376,20 +124,15 @@ export default function VoiceRoom() {
             </div>
           </div>
 
-          {/* 모바일 전용 — 참가자 탭에서만 하단 고정 컨트롤. 채팅 탭은
-              VoiceChatPanel 자신의 composer(+/이모티콘/입력창/전송)만
-              보여야 해서 음소거/나가기는 숨김(참가자 탭으로 돌아가야
-              누를 수 있음 — 사용자 지시). BottomNav가 이제 항상 숨김이라
-              기기 안전 여백만 확보. */}
           {mobileTab === "participants" && (
             <div className="shrink-0 px-4 pt-2 md:hidden" style={{ paddingBottom: SAFE_BOTTOM_PADDING }}>
-              <VoiceControls muted={muted} onToggleMute={handleToggleMute} onLeave={handleLeave} />
+              <VoiceControls muted={muted} onToggleMute={toggleMute} onLeave={leave} />
             </div>
           )}
         </>
       ) : (
-        // 참가 전(G절) — 참가자 프리뷰(컨트롤 없이) + 큰 참가하기 버튼.
-        // 채팅은 참가 후에만 노출(G-2).
+        // 참가 전 — 참가자 프리뷰(컨트롤 없이) + 큰 참가하기 버튼. 채팅은
+        // 참가 후에만 노출.
         <>
           <div className="min-h-0 flex-1 overflow-y-auto">
             <ParticipantPanel participants={participantItems} emptyLabel="아직 아무도 없습니다" />
@@ -398,7 +141,7 @@ export default function VoiceRoom() {
             <div className="flex flex-col items-center gap-2">
               <button
                 type="button"
-                onClick={handleJoin}
+                onClick={join}
                 disabled={joining}
                 className="rounded-full px-10 py-3.5 text-sm font-semibold transition-all duration-200 disabled:opacity-60"
                 style={{
