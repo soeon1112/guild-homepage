@@ -257,7 +257,7 @@ export function VoiceRoomProvider({ children }: { children: React.ReactNode }) {
       setError(
         e instanceof Error && e.message.toLowerCase().includes("permission")
           ? "마이크 권한이 필요합니다. 브라우저 설정에서 마이크 접근을 허용해주세요."
-          : "통화방 참가에 실패했습니다. 잠시 후 다시 시도해주세요.",
+          : "음성방 참가에 실패했습니다. 잠시 후 다시 시도해주세요.",
       );
       if (denoiserProcessorRef.current) {
         void denoiserProcessorRef.current.destroy().catch(() => {});

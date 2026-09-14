@@ -33,7 +33,7 @@ export function VoiceControls({ muted, onToggleMute, onLeave }: VoiceControlsPro
         </span>
       </button>
 
-      <button type="button" onClick={onLeave} aria-label="통화방 나가기" className="group flex flex-col items-center gap-1.5">
+      <button type="button" onClick={onLeave} aria-label="음성방 나가기" className="group flex flex-col items-center gap-1.5">
         <span
           className="flex h-14 w-14 items-center justify-center rounded-full backdrop-blur-sm transition-all duration-200 group-active:scale-95"
           style={{

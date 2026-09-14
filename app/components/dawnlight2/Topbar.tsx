@@ -203,7 +203,7 @@ export function Dawnlight2Topbar() {
     // 통화방 진입점 — 전체 공개(언쏘 A/B 해제, DM/길드원과 동일 패턴).
     {
       id: "voice",
-      label: "통화방",
+      label: "음성방",
       icon: (
         <span className="relative inline-flex">
           <Mic className="h-3.5 w-3.5" />

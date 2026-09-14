@@ -37,7 +37,7 @@ export function VoiceFloatingWidget() {
       <button
         type="button"
         onClick={() => router.push("/voice")}
-        aria-label="하늘섬 통화방으로 돌아가기"
+        aria-label="하늘섬 음성방으로 돌아가기"
         className="flex items-center gap-2.5 rounded-full py-2 pl-2.5 pr-3 backdrop-blur-md transition-transform active:scale-95"
         style={{
           background: "rgba(28, 21, 48, 0.92)",
@@ -118,7 +118,7 @@ export function VoiceFloatingWidget() {
             e.stopPropagation();
             void leave();
           }}
-          aria-label="통화방 나가기"
+          aria-label="음성방 나가기"
           className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
           style={{ background: "rgba(220, 38, 38, 0.6)", color: "#fef5e6" }}
         >

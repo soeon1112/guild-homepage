@@ -85,7 +85,7 @@ export default function VoiceRoom() {
         style={{ borderBottom: "1px solid rgba(254, 245, 230, 0.14)" }}
       >
         <span className="flex-1 text-[15px] font-semibold" style={{ color: "#fef5e6" }}>
-          하늘섬 통화방
+          하늘섬 음성방
         </span>
         <span className="text-xs" style={{ color: "rgba(254, 245, 230, 0.6)" }}>
           {participantEntries.length > 0 ? `${participantEntries.length}명 참가 중` : ""}
