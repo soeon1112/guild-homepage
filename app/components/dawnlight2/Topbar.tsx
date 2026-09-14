@@ -200,26 +200,33 @@ export function Dawnlight2Topbar() {
       ),
       href: "/dm",
     },
-    // 통화방 진입점 — 앱 Phase 5와 동일 위치(DM 바로 다음). 참가자
-    // 0명이면 배지 없이 아이콘만.
-    {
-      id: "voice",
-      label: "통화방",
-      icon: (
-        <span className="relative inline-flex">
-          <Mic className="h-3.5 w-3.5" />
-          {voiceParticipantCount > 0 && (
-            <span
-              className="absolute -right-1.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[9px] font-bold"
-              style={{ background: "#dc2626", color: "#fef5e6" }}
-            >
-              {voiceParticipantCount > 99 ? "99+" : voiceParticipantCount}
-            </span>
-          )}
-        </span>
-      ),
-      href: "/voice",
-    },
+    // 통화방 진입점(Phase 6) — 언쏘 A/B. DM은 이미 전체 공개라 조건
+    // 없지만, 통화방은 이번 Phase에서 처음 도입되는 기능이라 베타
+    // 기간 동안 언쏘 전용으로 제한한다. spread 조건부라 Hook 호출
+    // 자체(useVoiceParticipantCount, 위)는 항상 실행되고 렌더 결과만
+    // 감춘다(Rules of Hooks 준수).
+    ...(nickname === "언쏘"
+      ? [
+          {
+            id: "voice",
+            label: "통화방",
+            icon: (
+              <span className="relative inline-flex">
+                <Mic className="h-3.5 w-3.5" />
+                {voiceParticipantCount > 0 && (
+                  <span
+                    className="absolute -right-1.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[9px] font-bold"
+                    style={{ background: "#dc2626", color: "#fef5e6" }}
+                  >
+                    {voiceParticipantCount > 99 ? "99+" : voiceParticipantCount}
+                  </span>
+                )}
+              </span>
+            ),
+            href: "/voice",
+          },
+        ]
+      : []),
     {
       id: "my",
       label: "MY",
