@@ -7,6 +7,7 @@ import AgoraRTC, {
   type IMicrophoneAudioTrack,
   type IRemoteAudioTrack,
 } from "agora-rtc-sdk-ng";
+import { AIDenoiserExtension, type AIDenoiserProcessor } from "agora-extension-ai-denoiser";
 import { useAuth } from "@/app/components/AuthProvider";
 import { useMemberAvatars } from "@/src/lib/useMemberAvatars";
 import { fetchAgoraToken } from "@/src/lib/getAgoraToken";
@@ -60,6 +61,25 @@ const VOICE_ROOM_MAX_WIDTH = "max-w-2xl";
 // 페이지에 있는 동안은 통화방 컨트롤이 항상 이긴다.
 const VOICE_ROOM_Z_INDEX = "z-[110]";
 
+// AI Denoiser 모델(wasm, ~5.8MB) — node_modules/agora-extension-ai-denoiser/
+// external/*.wasm을 public/agora-extension-ai-denoiser/external/로 그대로
+// 복사해 정적 서빙(Next.js가 node_modules 에셋을 자동으로 public에 넣어주지
+// 않아서 수동 복사 필요 — 패키지 버전을 올릴 땐 이 두 파일도 다시 복사해야
+// 함). registerExtensions는 앱 전체에서 한 번만 호출해야 해서 컴포넌트
+// 모듈 스코프의 지연 싱글톤으로 관리(useEffect 대신 — join 시점에만
+// 필요하고, React StrictMode의 effect 이중 호출로 두 번 등록되는 것도
+// 피할 수 있음).
+let aiDenoiserExtension: AIDenoiserExtension | null = null;
+function getAiDenoiserExtension(): AIDenoiserExtension {
+  if (!aiDenoiserExtension) {
+    aiDenoiserExtension = new AIDenoiserExtension({
+      assetsPath: "/agora-extension-ai-denoiser/external",
+    });
+    AgoraRTC.registerExtensions([aiDenoiserExtension]);
+  }
+  return aiDenoiserExtension;
+}
+
 type SpeakingHoldMap = Record<number, number>; // uid -> 마지막으로 threshold 넘긴 timestamp(ms)
 
 export default function VoiceRoom() {
@@ -79,6 +99,7 @@ export default function VoiceRoom() {
   const myUidRef = useRef<number | null>(null);
   const remoteTracksRef = useRef<Map<number, IRemoteAudioTrack>>(new Map());
   const lastLoudAtRef = useRef<SpeakingHoldMap>({});
+  const denoiserProcessorRef = useRef<AIDenoiserProcessor | null>(null);
 
   // 로그인 필수 라우트 가드 — app/dm/page.tsx verbatim 패턴.
   useEffect(() => {
@@ -128,6 +149,14 @@ export default function VoiceRoom() {
   const handleLeave = useCallback(async () => {
     const client = clientRef.current;
     const localTrack = localTrackRef.current;
+    if (denoiserProcessorRef.current) {
+      try {
+        await denoiserProcessorRef.current.destroy();
+      } catch (e) {
+        console.error("[VoiceRoom] AI Denoiser destroy 실패", e);
+      }
+      denoiserProcessorRef.current = null;
+    }
     try {
       localTrack?.close();
       if (client) {
@@ -205,6 +234,33 @@ export default function VoiceRoom() {
         AGC: true,
         encoderConfig: "speech_standard",
       });
+
+      // AI Denoiser — 기본 ANS(SDK 내장 노이즈 억제)로 부족한 키보드/
+      // 배경 대화까지 걸러내는 별도 확장(agora-extension-ai-denoiser).
+      // 브라우저 미지원이면 checkCompatibility()가 false를 반환하므로
+      // 조용히 건너뛰고 원본 트랙으로 계속 진행 — 참가 자체를 막지 않음.
+      try {
+        const denoiser = getAiDenoiserExtension();
+        if (denoiser.checkCompatibility()) {
+          const processor = denoiser.createProcessor();
+          // 공식 README 권장 폴백 — pipe 자체가 실패하면(리소스 로드
+          // 실패 등) denoiser를 완전히 우회해 원본 오디오로 되돌린다.
+          processor.on("pipeerror", (err: Error) => {
+            console.error("[VoiceRoom] AI Denoiser pipe 실패, 원본 오디오로 폴백", err);
+            processor.unpipe();
+            localTrack.unpipe();
+            localTrack.pipe(localTrack.processorDestination);
+          });
+          localTrack.pipe(processor).pipe(localTrack.processorDestination);
+          await processor.enable();
+          denoiserProcessorRef.current = processor;
+        }
+      } catch (e) {
+        // Denoiser 초기화 실패는 통화 자체를 막을 이유가 아니다 — 원본
+        // 오디오(AEC/ANS/AGC까지는 이미 적용됨)로 계속 진행.
+        console.error("[VoiceRoom] AI Denoiser 초기화 실패, 원본 오디오로 진행", e);
+      }
+
       await client.publish([localTrack]);
 
       clientRef.current = client;
@@ -220,6 +276,10 @@ export default function VoiceRoom() {
           ? "마이크 권한이 필요합니다. 브라우저 설정에서 마이크 접근을 허용해주세요."
           : "통화방 참가에 실패했습니다. 잠시 후 다시 시도해주세요.",
       );
+      if (denoiserProcessorRef.current) {
+        void denoiserProcessorRef.current.destroy().catch(() => {});
+        denoiserProcessorRef.current = null;
+      }
       localTrackRef.current?.close();
       clientRef.current = null;
       localTrackRef.current = null;
