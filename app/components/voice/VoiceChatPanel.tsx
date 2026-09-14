@@ -5,6 +5,7 @@ import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { Camera, Plus, Send, Smile, X } from "lucide-react";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { MessageText } from "@/app/components/MessageText";
+import { Dawnlight2BottomNav } from "@/app/components/dawnlight2/BottomNav";
 import { LinkPreviewCard } from "@/app/components/LinkPreviewCard";
 import { EmoticonPicker } from "@/app/components/EmoticonPicker";
 import { ImageGallery } from "@/app/components/ImageGallery";
@@ -87,6 +88,7 @@ export function VoiceChatPanel({ me }: { me: string }) {
   const [file, setFile] = useState<{ uri: string; name: string; raw: File } | null>(null);
   const [imageFiles, setImageFiles] = useState<{ uri: string; name: string; raw: File }[]>([]);
   const [isEmoticonOpen, setIsEmoticonOpen] = useState(false);
+  const [isNavOpen, setIsNavOpen] = useState(false);
   const [replyingTo, setReplyingTo] = useState<ReplyTarget | null>(null);
   const [actionMenuFor, setActionMenuFor] = useState<VoiceChatMessageRow | null>(null);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
@@ -131,6 +133,19 @@ export function VoiceChatPanel({ me }: { me: string }) {
 
   const handleRemoveImageFile = (index: number) => {
     setImageFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // app/dm/[roomId]/page.tsx:166-174 verbatim(상호배타) — + 는 하단 네비
+  // 슬라이드업(빠른 이동), 이모티콘은 그림/사진 첨부. 한쪽이 열리면
+  // 다른 쪽은 자동으로 닫힌다.
+  const togglePanel = () => {
+    if (!isNavOpen) messageInputRef.current?.blur();
+    setIsEmoticonOpen(false);
+    setIsNavOpen((v) => !v);
+  };
+  const toggleEmoticon = () => {
+    setIsNavOpen(false);
+    setIsEmoticonOpen((v) => !v);
   };
 
   const buildReplyTo = (r: ReplyTarget | null) =>
@@ -267,6 +282,20 @@ export function VoiceChatPanel({ me }: { me: string }) {
         ))}
       </div>
 
+      {/* app/dm/[roomId]/page.tsx:512-525 verbatim — 0-height transform
+          wrapper가 fixed 자손인 Dawnlight2BottomNav의 containing block이
+          돼, forceVisible로 재mount된 nav가 "화면 맨 아래"가 아니라 이
+          지점 기준 슬라이드업된다. 닫히면 composeArea 뒤로 완전히 숨음. */}
+      <div
+        style={{
+          transform: isNavOpen ? "translateY(0)" : "translateY(110px)",
+          transition: "transform 200ms ease",
+          pointerEvents: isNavOpen ? "auto" : "none",
+        }}
+      >
+        <Dawnlight2BottomNav forceVisible />
+      </div>
+
       <div
         className="relative shrink-0 space-y-1.5 px-2.5 pb-2.5 pt-2"
         style={{ borderTop: "1px solid rgba(254, 245, 230, 0.14)" }}
@@ -352,16 +381,23 @@ export function VoiceChatPanel({ me }: { me: string }) {
           />
           <button
             type="button"
-            onClick={() => fileInputRef.current?.click()}
-            aria-label="사진 첨부"
+            onClick={(e) => {
+              e.stopPropagation();
+              togglePanel();
+            }}
+            aria-label={isNavOpen ? "빠른 이동 닫기" : "빠른 이동 열기"}
+            aria-pressed={isNavOpen}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all"
-            style={{ background: "rgba(254, 245, 230, 0.08)", color: INK_ON_DARK }}
+            style={{
+              background: isNavOpen ? "rgba(255,199,133,0.3)" : "rgba(254, 245, 230, 0.08)",
+              color: isNavOpen ? "#ffc785" : INK_ON_DARK,
+            }}
           >
             <Plus className="h-4 w-4" />
           </button>
           <button
             type="button"
-            onClick={() => setIsEmoticonOpen((v) => !v)}
+            onClick={toggleEmoticon}
             aria-label={isEmoticonOpen ? "이모티콘 닫기" : "이모티콘 열기"}
             aria-pressed={isEmoticonOpen}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"

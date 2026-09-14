@@ -146,10 +146,10 @@ export function Dawnlight2BottomNav({
   // DM 대화 화면 자체의 "+" 슬라이드업(NewHomeChat과 동일 패턴)이 이
   // 얼리 리턴을 우회해 재mount할 때 쓴다.
   if (!forceVisible && pathname?.startsWith("/dm/")) return null;
-  // 통화방(/voice) — DM과 달리 forceVisible 재mount(슬라이드업 트릭)를
-  // 쓰지 않는다. 통화방 자체 컨트롤(음소거/나가기/채팅 전송)이 이 nav
-  // 바와 물리적으로 겹치는 영역에 있어 항상 숨김으로 확정(사용자 지시).
-  if (pathname?.startsWith("/voice")) return null;
+  // 통화방(/voice) — 전역 마운트(ChromeShell, forceVisible 없음)는 항상
+  // 숨김. DM과 동일하게 VoiceChatPanel 자신의 "+" 버튼이 forceVisible로
+  // 재mount할 때만(P7-B 슬라이드업 트릭) 예외적으로 렌더된다.
+  if (!forceVisible && pathname?.startsWith("/voice")) return null;
 
   const isActive = (item: NavItem) => {
     if (!pathname) return false;
