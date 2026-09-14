@@ -42,11 +42,23 @@ const POLL_INTERVAL_MS = 100;
 // 숨 고르기 등)만으로 글로우가 깜빡이지 않게 하는 유예 시간.
 const SPEAKING_HOLD_MS = 450;
 
-// 하단 네비(BottomNav.tsx: 아이콘 h-9=36 + 라벨 ~11 + 내부 py-2=16 + 외부
-// pt-2/pb-3=20 ≈ 83px)에 안 가리도록 컨트롤을 띄우는 여백. 정확한 px는
-// 폰트 렌더링에 따라 갈릴 수 있어 여유를 둔 값 — 실기기에서 시각적으로
-// 재확인 필요.
-const BOTTOM_NAV_CLEARANCE = 88;
+// BottomNav.tsx가 이제 /voice에서 항상 숨김(early return)이라 더 이상
+// 그 높이를 클리어할 필요가 없다 — 기기 하단 제스처 바/홈 인디케이터용
+// 안전 여백만 남긴다.
+const SAFE_BOTTOM_PADDING = "calc(16px + env(safe-area-inset-bottom))";
+
+// 다른 dl2 페이지(app/dm/page.tsx, app/dm/[roomId]/page.tsx)와 동일한
+// 폭 — "max-w-2xl"(672px). 배경까지 이 폭에 맞춰 좁혀 DM과 동일하게
+// 바깥은 ChromeShell의 twilight 배경이 비친다.
+const VOICE_ROOM_MAX_WIDTH = "max-w-2xl";
+
+// FloatingChat.tsx(app/layout.tsx에 전역 마운트)의 FAB 버튼이 z-[100],
+// fixed right-4 bottom-96(또는 8)에 56px 원형으로 항상 떠 있다 — 통화방
+// 컨트롤(나가기/전송 등)이 우하단 쪽에 오면 이 FAB이 물리적으로 겹쳐
+// 클릭을 가로챌 수 있다(이번 "클릭 안 됨" 버그의 유력 원인). FloatingChat
+// 자체는 미접촉 대상이라, 통화방 페이지 전체를 그보다 위 z로 올려 이
+// 페이지에 있는 동안은 통화방 컨트롤이 항상 이긴다.
+const VOICE_ROOM_Z_INDEX = "z-[110]";
 
 type SpeakingHoldMap = Record<number, number>; // uid -> 마지막으로 threshold 넘긴 timestamp(ms)
 
@@ -182,7 +194,17 @@ export default function VoiceRoom() {
 
       await client.join(AGORA_APP_ID, VOICE_CHANNEL_NAME, token, uid);
 
-      const localTrack = await AgoraRTC.createMicrophoneAudioTrack();
+      // AEC(에코 제거)/ANS(노이즈 억제)/AGC(자동 게인)는 SDK가 기본으로도
+      // 켜주긴 하지만 명시적으로 선언해 의도를 고정 — speech_standard는
+      // 32kHz/모노/24Kbps로 노이즈 억제가 특히 잘 드러나는 음성 통화용
+      // 프리셋(SDK 공식 문서 기준, 기본 speech_low_quality의 16kHz보다
+      // 한 단계 위).
+      const localTrack = await AgoraRTC.createMicrophoneAudioTrack({
+        AEC: true,
+        ANS: true,
+        AGC: true,
+        encoderConfig: "speech_standard",
+      });
       await client.publish([localTrack]);
 
       clientRef.current = client;
@@ -232,12 +254,14 @@ export default function VoiceRoom() {
   return (
     // 고정 레이아웃(C절) — Topbar.tsx가 sticky top-0 56px이라 top:56로
     // 바로 아래부터 화면 끝까지 position:fixed. overflow-hidden이라
-    // 콘텐츠가 넘쳐도 페이지 자체는 절대 스크롤되지 않는다(예전 버그:
-    // h-[calc(100dvh-56px)]만 쓰고 overflow 제약이 없어서 fixed인
-    // BottomNav 뒤로 배경이 밀려다니는 것처럼 보였음). z-30 < BottomNav의
-    // z-40이라 겹쳐도 네비가 항상 위.
+    // 콘텐츠가 넘쳐도 페이지 자체는 절대 스크롤되지 않는다. mx-auto +
+    // max-w-2xl — DM(app/dm/page.tsx 등)과 동일 폭, 넓은 화면에서는
+    // 좌우로 ChromeShell의 twilight 배경이 비친다. BottomNav는 이제
+    // /voice에서 완전히 숨김(BottomNav.tsx early return)이라 그 높이를
+    // 더 이상 신경 쓸 필요 없음 — z-index는 FloatingChat FAB(z-[100])
+    // 보다 위로만 고정.
     <div
-      className="fixed inset-x-0 bottom-0 z-30 flex flex-col overflow-hidden"
+      className={`fixed inset-x-0 bottom-0 ${VOICE_ROOM_Z_INDEX} mx-auto flex w-full ${VOICE_ROOM_MAX_WIDTH} flex-col overflow-hidden`}
       style={{
         top: 56,
         background:
@@ -271,7 +295,7 @@ export default function VoiceRoom() {
         <>
           <MobileTabs active={mobileTab} onChange={setMobileTab} participantCount={participantEntries.length} />
 
-          <div className="flex min-h-0 flex-1 md:flex-row">
+          <div className="flex min-h-0 flex-1 flex-col md:flex-row">
             <div
               className={`min-h-0 flex-col md:flex md:w-[36%] md:max-w-sm md:shrink-0 ${
                 mobileTab === "participants" ? "flex flex-1" : "hidden"
@@ -293,9 +317,8 @@ export default function VoiceRoom() {
           </div>
 
           {/* 모바일 전용 — 탭과 무관하게 항상 보이는 하단 고정 컨트롤.
-              BottomNav 위로 떨어지도록 paddingBottom 확보(예전 라운드
-              값 유지). */}
-          <div className="shrink-0 px-4 pt-2 md:hidden" style={{ paddingBottom: BOTTOM_NAV_CLEARANCE }}>
+              BottomNav가 이제 항상 숨김이라 기기 안전 여백만 확보. */}
+          <div className="shrink-0 px-4 pt-2 md:hidden" style={{ paddingBottom: SAFE_BOTTOM_PADDING }}>
             <VoiceControls muted={muted} onToggleMute={handleToggleMute} onLeave={handleLeave} />
           </div>
         </>
@@ -306,7 +329,7 @@ export default function VoiceRoom() {
           <div className="min-h-0 flex-1 overflow-y-auto">
             <ParticipantPanel participants={participantItems} emptyLabel="아직 아무도 없습니다" />
           </div>
-          <div className="shrink-0 px-4 pt-2" style={{ paddingBottom: BOTTOM_NAV_CLEARANCE }}>
+          <div className="shrink-0 px-4 pt-2" style={{ paddingBottom: SAFE_BOTTOM_PADDING }}>
             <div className="flex flex-col items-center gap-2">
               <button
                 type="button"
