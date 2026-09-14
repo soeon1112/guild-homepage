@@ -2,15 +2,10 @@
 
 import { MicOff } from "lucide-react";
 
-// 디코 스타일 "말할 때 글로우" 임계값. Agora volume-indicator level은
-// 0-100 스케일이라 5는 숨소리 정도의 잡음은 걸러내고 실제 발화만 반응하게
-// 하는 낮은 문턱값(과제서 F-2 예시값).
-export const SPEAKING_VOLUME_THRESHOLD = 5;
-
-// 말할 때 참가자 프사에 두르는 글로우 색. 과제서 예시(rgba(100,200,100,0.6))
-// 그대로 쓰면 twilight-deep(#2a1f4a) 배경 위에서 탁하게 죽어 보여서, 채도/
-// 밝기를 살짝 올린 spring-green으로 조정(Claude Code 판단, F-3) — 디코의
-// 쨍한 초록보다는 dl2 전체 톤(석양/크림)과 부딪히지 않는 부드러운 초록.
+// 말할 때 참가자 프사에 두르는 글로우 색. spring-green — 디코의 쨍한
+// 초록보다 절제됐고 dl2 석양/크림 팔레트와 부딪히지 않음(Phase 2 판단
+// 유지). 발화 감지 자체(임계값/폴링)는 VoiceRoom.tsx로 옮겨졌다 —
+// ParticipantCard는 이미 계산된 boolean만 받는 순수 표시 컴포넌트.
 const SPEAKING_GLOW = "rgba(134, 214, 150, 0.85)";
 
 type ParticipantCardProps = {
@@ -19,6 +14,8 @@ type ParticipantCardProps = {
   muted: boolean;
   speaking: boolean;
   isMe?: boolean;
+  /** 프사 지름(px). 참가자 수에 따라 ParticipantGrid가 결정(D-4). */
+  size?: number;
 };
 
 export function ParticipantCard({
@@ -27,26 +24,30 @@ export function ParticipantCard({
   muted,
   speaking,
   isMe = false,
+  size = 64,
 }: ParticipantCardProps) {
   const glowActive = speaking && !muted;
+  const ringWidth = Math.max(3, Math.round(size * 0.055));
+  const badgeSize = Math.max(16, Math.round(size * 0.32));
 
   return (
-    <div className="flex w-20 flex-col items-center gap-1.5">
-      <div className="relative">
+    <div className="flex flex-col items-center gap-2" style={{ width: size + 16 }}>
+      <div className="relative" style={{ width: size, height: size }}>
         <div
           aria-hidden
-          className="absolute -inset-1 rounded-full transition-all duration-200 ease-out"
+          className="absolute -inset-1.5 rounded-full transition-all duration-200 ease-out"
           style={{
             boxShadow: glowActive
-              ? `0 0 0 4px ${SPEAKING_GLOW}, 0 0 14px 2px ${SPEAKING_GLOW}`
-              : "0 0 0 0 rgba(134, 214, 150, 0)",
+              ? `0 0 0 ${ringWidth}px ${SPEAKING_GLOW}, 0 0 ${size * 0.28}px ${ringWidth * 0.5}px ${SPEAKING_GLOW}`
+              : `0 0 0 0 rgba(134, 214, 150, 0)`,
           }}
         />
         <div
-          className="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-full"
+          className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-full"
           style={{
             background: "transparent",
             border: "1.5px solid rgba(254, 245, 230, 0.45)",
+            boxShadow: isMe ? "0 0 0 1px rgba(255, 199, 133, 0.55)" : undefined,
           }}
         >
           {imageUrl ? (
@@ -78,18 +79,22 @@ export function ParticipantCard({
         </div>
         {muted && (
           <div
-            className="absolute -right-0.5 -bottom-0.5 flex h-5 w-5 items-center justify-center rounded-full"
+            className="absolute flex items-center justify-center rounded-full"
             style={{
-              background: "rgba(11, 8, 33, 0.85)",
+              right: -badgeSize * 0.15,
+              bottom: -badgeSize * 0.15,
+              width: badgeSize,
+              height: badgeSize,
+              background: "rgba(11, 8, 33, 0.9)",
               border: "1px solid rgba(254, 245, 230, 0.5)",
             }}
           >
-            <MicOff size={11} color="#fef5e6" />
+            <MicOff size={Math.round(badgeSize * 0.55)} color="#fef5e6" />
           </div>
         )}
       </div>
       <span
-        className="max-w-full truncate text-[11px]"
+        className="max-w-full truncate text-center text-[11px]"
         style={{ color: "#fef5e6", opacity: isMe ? 1 : 0.85, fontWeight: isMe ? 600 : 400 }}
       >
         {nickname}

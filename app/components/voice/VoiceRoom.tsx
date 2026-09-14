@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import AgoraRTC, { type IAgoraRTCClient, type IMicrophoneAudioTrack } from "agora-rtc-sdk-ng";
+import AgoraRTC, {
+  type IAgoraRTCClient,
+  type IMicrophoneAudioTrack,
+  type IRemoteAudioTrack,
+} from "agora-rtc-sdk-ng";
 import { useAuth } from "@/app/components/AuthProvider";
 import { useMemberAvatars } from "@/src/lib/useMemberAvatars";
 import { fetchAgoraToken } from "@/src/lib/getAgoraToken";
@@ -17,14 +21,32 @@ import {
 } from "@/src/lib/voiceRoom";
 import { ParticipantGrid, type ParticipantGridItem } from "@/app/components/voice/ParticipantGrid";
 import { VoiceControls } from "@/app/components/voice/VoiceControls";
-import { SPEAKING_VOLUME_THRESHOLD } from "@/app/components/voice/ParticipantCard";
 
 // 앱(dawnlight-app)과 동일 프로젝트(dawnlight-guild)에 배포된 Agora App ID.
 // 클라이언트 노출은 Agora 공식 방식(Phase 0 진단 A-4) — Certificate만 서버
 // 전용(functions/src/api/agoraToken.ts, Secret Manager).
 const AGORA_APP_ID = "16f1acbc49064e1898b97831abf943a1";
 
-type SpeakingLevels = Record<number, number>;
+// 발화 감지 — client.on("volume-indicator")는 쓰지 않는다. Agora 공식
+// 문서(enableAudioVolumeIndicator) 확인 결과 이 이벤트는 고정 2초
+// 간격이고 파라미터로 줄일 수 없다 — 대화 중 2초보다 짧은 숨 고르기에도
+// "계속 켜진 것처럼" 보이는 게 이번 버그의 실제 원인이었다. 대신 공식
+// 문서가 실시간 미터링용으로 권장하는 ILocalAudioTrack/IRemoteAudioTrack.
+// getVolumeLevel()(0~1, "0.6 이상이면 발화 중"이 공식 가이드 문구)을
+// 100ms 간격으로 직접 폴링한다.
+const SPEAKING_LEVEL_THRESHOLD = 0.6;
+const POLL_INTERVAL_MS = 100;
+// 폴링 스냅샷 사이 순간적으로 threshold 아래로 떨어지는 것(단어 사이
+// 숨 고르기 등)만으로 글로우가 깜빡이지 않게 하는 유예 시간.
+const SPEAKING_HOLD_MS = 450;
+
+// 하단 네비(BottomNav.tsx: 아이콘 h-9=36 + 라벨 ~11 + 내부 py-2=16 + 외부
+// pt-2/pb-3=20 ≈ 83px)에 안 가리도록 컨트롤을 띄우는 여백. 정확한 px는
+// 폰트 렌더링에 따라 갈릴 수 있어 여유를 둔 값 — 실기기에서 시각적으로
+// 재확인 필요.
+const BOTTOM_NAV_CLEARANCE = 88;
+
+type SpeakingHoldMap = Record<number, number>; // uid -> 마지막으로 threshold 넘긴 timestamp(ms)
 
 export default function VoiceRoom() {
   const router = useRouter();
@@ -35,11 +57,13 @@ export default function VoiceRoom() {
   const [joining, setJoining] = useState(false);
   const [muted, setMuted] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [speakingLevels, setSpeakingLevels] = useState<SpeakingLevels>({});
+  const [speakingUids, setSpeakingUids] = useState<Set<number>>(new Set());
 
   const clientRef = useRef<IAgoraRTCClient | null>(null);
   const localTrackRef = useRef<IMicrophoneAudioTrack | null>(null);
   const myUidRef = useRef<number | null>(null);
+  const remoteTracksRef = useRef<Map<number, IRemoteAudioTrack>>(new Map());
+  const lastLoudAtRef = useRef<SpeakingHoldMap>({});
 
   // 로그인 필수 라우트 가드 — app/dm/page.tsx verbatim 패턴.
   useEffect(() => {
@@ -58,6 +82,34 @@ export default function VoiceRoom() {
   const participantEntries = room ? Object.entries(room.participants ?? {}) : [];
   const avatarMap = useMemberAvatars(participantEntries.map(([nickname]) => nickname));
 
+  // 발화 감지 폴링 — join 중일 때만 동작. localTrack + 구독된 remote
+  // 트랙들의 getVolumeLevel()을 100ms마다 읽어 hold map을 갱신하고,
+  // hold 유예 안에 있는 uid 집합만 "말하는 중"으로 커밋한다.
+  useEffect(() => {
+    if (!joined) return;
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const localTrack = localTrackRef.current;
+      const myUid = myUidRef.current;
+      if (localTrack && myUid != null) {
+        if (localTrack.getVolumeLevel() > SPEAKING_LEVEL_THRESHOLD) {
+          lastLoudAtRef.current[myUid] = now;
+        }
+      }
+      for (const [uid, track] of remoteTracksRef.current) {
+        if (track.getVolumeLevel() > SPEAKING_LEVEL_THRESHOLD) {
+          lastLoudAtRef.current[uid] = now;
+        }
+      }
+      const next = new Set<number>();
+      for (const [uidStr, ts] of Object.entries(lastLoudAtRef.current)) {
+        if (now - ts < SPEAKING_HOLD_MS) next.add(Number(uidStr));
+      }
+      setSpeakingUids(next);
+    }, POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [joined]);
+
   const handleLeave = useCallback(async () => {
     const client = clientRef.current;
     const localTrack = localTrackRef.current;
@@ -72,6 +124,8 @@ export default function VoiceRoom() {
     clientRef.current = null;
     localTrackRef.current = null;
     myUidRef.current = null;
+    remoteTracksRef.current.clear();
+    lastLoudAtRef.current = {};
     if (me) {
       try {
         await leaveVoiceRoomDoc(me);
@@ -81,7 +135,7 @@ export default function VoiceRoom() {
     }
     setJoined(false);
     setMuted(false);
-    setSpeakingLevels({});
+    setSpeakingUids(new Set());
   }, [me]);
 
   // 페이지 이탈(뒤로가기/다른 링크 클릭)로 컴포넌트가 언마운트될 때도
@@ -106,21 +160,21 @@ export default function VoiceRoom() {
       const { token } = await fetchAgoraToken(VOICE_CHANNEL_NAME, uid);
 
       const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
-      client.enableAudioVolumeIndicator();
 
       client.on("user-published", async (user, mediaType) => {
         await client.subscribe(user, mediaType);
-        if (mediaType === "audio") {
-          user.audioTrack?.play();
+        if (mediaType === "audio" && user.audioTrack) {
+          user.audioTrack.play();
+          remoteTracksRef.current.set(user.uid as number, user.audioTrack);
         }
       });
-
-      client.on("volume-indicator", (result) => {
-        setSpeakingLevels(() => {
-          const next: SpeakingLevels = {};
-          for (const r of result) next[r.uid as number] = r.level;
-          return next;
-        });
+      client.on("user-unpublished", (user, mediaType) => {
+        if (mediaType === "audio") {
+          remoteTracksRef.current.delete(user.uid as number);
+        }
+      });
+      client.on("user-left", (user) => {
+        remoteTracksRef.current.delete(user.uid as number);
       });
 
       await client.join(AGORA_APP_ID, VOICE_CHANNEL_NAME, token, uid);
@@ -164,21 +218,29 @@ export default function VoiceRoom() {
 
   if (!ready || !me) return null;
 
-  const gridItems: ParticipantGridItem[] = participantEntries.map(([nickname, p]) => {
-    const speaking = joined && (speakingLevels[p.uid] ?? 0) > SPEAKING_VOLUME_THRESHOLD;
-    return {
-      nickname,
-      imageUrl: avatarMap.get(nickname)?.imageUrl,
-      muted: nickname === me ? muted : p.muted,
-      speaking,
-      isMe: nickname === me,
-    };
-  });
+  const gridItems: ParticipantGridItem[] = participantEntries.map(([nickname, p]) => ({
+    nickname,
+    imageUrl: avatarMap.get(nickname)?.imageUrl,
+    muted: nickname === me ? muted : p.muted,
+    speaking: joined && speakingUids.has(p.uid),
+    isMe: nickname === me,
+  }));
 
   return (
+    // 고정 레이아웃(C절) — Topbar.tsx가 sticky top-0 56px이라 top:56로
+    // 바로 아래부터 화면 끝까지 position:fixed. overflow-hidden이라
+    // 참가자가 많아 그리드가 커져도 페이지 자체는 절대 스크롤되지 않는다
+    // (Phase 2 버그: h-[calc(100dvh-56px)]만 쓰고 overflow 제약이 없어서
+    // 콘텐츠가 넘치면 문서 전체가 스크롤 — 그 결과 fixed인 BottomNav
+    // 뒤로 배경이 밀려다니는 것처럼 보였음). z-30 < BottomNav의 z-40이라
+    // 겹쳐도 네비가 항상 위.
     <div
-      className="mx-auto flex h-[calc(100dvh-56px)] w-full max-w-2xl flex-col"
-      style={{ background: "var(--twilight-deep, #2a1f4a)" }}
+      className="fixed inset-x-0 bottom-0 z-30 flex flex-col overflow-hidden"
+      style={{
+        top: 56,
+        background:
+          "linear-gradient(180deg, var(--twilight-deep, #2a1f4a) 0%, #241a3f 55%, #1c1530 100%)",
+      }}
     >
       <div
         className="flex shrink-0 items-center gap-2.5 px-3 py-2.5"
@@ -192,33 +254,40 @@ export default function VoiceRoom() {
         </span>
       </div>
 
-      <ParticipantGrid participants={gridItems} emptyLabel="아직 아무도 없습니다" />
+      <div className="flex flex-1 items-center justify-center overflow-y-auto">
+        <ParticipantGrid participants={gridItems} emptyLabel="아직 아무도 없습니다" />
+      </div>
 
       {error && (
-        <p className="px-4 pb-2 text-center text-xs" style={{ color: "#ffb5a7" }}>
+        <p className="shrink-0 px-4 pb-2 text-center text-xs" style={{ color: "#ffb5a7" }}>
           {error}
         </p>
       )}
 
-      {joined ? (
-        <VoiceControls muted={muted} onToggleMute={handleToggleMute} onLeave={handleLeave} />
-      ) : (
-        <div className="flex shrink-0 flex-col items-center gap-2 px-4 py-6">
-          <button
-            type="button"
-            onClick={handleJoin}
-            disabled={joining}
-            className="rounded-full px-8 py-3 text-sm font-semibold transition-all duration-200 disabled:opacity-60"
-            style={{
-              color: "#2a1f4a",
-              background: "#ffc785",
-              boxShadow: "0 0 12px rgba(255, 199, 133, 0.45)",
-            }}
-          >
-            {joining ? "연결 중..." : "참가하기"}
-          </button>
-        </div>
-      )}
+      {/* 하단 네비(BottomNav.tsx, fixed bottom-0 z-40) 위로 확실히
+          떨어지도록 paddingBottom으로 여백 확보 — 참가하기 버튼/컨트롤
+          모두 이 안에서 위치가 흔들리지 않게 동일 wrapper 사용. */}
+      <div className="shrink-0 px-4 pt-2" style={{ paddingBottom: BOTTOM_NAV_CLEARANCE }}>
+        {joined ? (
+          <VoiceControls muted={muted} onToggleMute={handleToggleMute} onLeave={handleLeave} />
+        ) : (
+          <div className="flex flex-col items-center gap-2">
+            <button
+              type="button"
+              onClick={handleJoin}
+              disabled={joining}
+              className="rounded-full px-10 py-3.5 text-sm font-semibold transition-all duration-200 disabled:opacity-60"
+              style={{
+                color: "#2a1f4a",
+                background: "#ffc785",
+                boxShadow: "0 0 16px rgba(255, 199, 133, 0.5)",
+              }}
+            >
+              {joining ? "연결 중..." : "참가하기"}
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
