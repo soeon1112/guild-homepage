@@ -316,11 +316,16 @@ export default function VoiceRoom() {
             </div>
           </div>
 
-          {/* 모바일 전용 — 탭과 무관하게 항상 보이는 하단 고정 컨트롤.
-              BottomNav가 이제 항상 숨김이라 기기 안전 여백만 확보. */}
-          <div className="shrink-0 px-4 pt-2 md:hidden" style={{ paddingBottom: SAFE_BOTTOM_PADDING }}>
-            <VoiceControls muted={muted} onToggleMute={handleToggleMute} onLeave={handleLeave} />
-          </div>
+          {/* 모바일 전용 — 참가자 탭에서만 하단 고정 컨트롤. 채팅 탭은
+              VoiceChatPanel 자신의 composer(+/이모티콘/입력창/전송)만
+              보여야 해서 음소거/나가기는 숨김(참가자 탭으로 돌아가야
+              누를 수 있음 — 사용자 지시). BottomNav가 이제 항상 숨김이라
+              기기 안전 여백만 확보. */}
+          {mobileTab === "participants" && (
+            <div className="shrink-0 px-4 pt-2 md:hidden" style={{ paddingBottom: SAFE_BOTTOM_PADDING }}>
+              <VoiceControls muted={muted} onToggleMute={handleToggleMute} onLeave={handleLeave} />
+            </div>
+          )}
         </>
       ) : (
         // 참가 전(G절) — 참가자 프리뷰(컨트롤 없이) + 큰 참가하기 버튼.
