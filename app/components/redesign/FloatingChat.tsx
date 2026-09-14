@@ -346,19 +346,29 @@ const MessageItem = memo(
     // bubble / image 모두 우측 끝 anchor.
     const contentColumn = (
       <div
-        className={`flex max-w-full flex-col gap-1 ${mine ? "items-end" : "items-start"}`}
-        // 사진 그리드 겹침 방어 — display/flexDirection 인라인 명시 +
-        // flexShrink:0 (NewHomeChat.tsx와 동일 방어).
-        // max-w-full: flexShrink:0이라 부모 row의 max-width만으로는 이
-        // 컬럼이 안 눌려 긴 텍스트가 오버플로우하던 버그의 원인
-        // (NewHomeChat.tsx와 동일 수정).
-        style={{ display: "flex", flexDirection: "column", flexShrink: 0 }}
+        className={`flex min-w-0 max-w-full flex-col gap-1 ${mine ? "items-end" : "items-start"}`}
+        // 재진단(2차, NewHomeChat.tsx와 동일 원인): 이전 fix(max-w-full)
+        // 만으론 부족 — flexShrink:0인 채로는 부모 row 안에서 시간/답글
+        // 버튼에게 폭을 양보하지 않아 그만큼 계속 넘쳤다("덜 잘리지만
+        // 잘림"). flexShrink:0 제거 + min-w-0으로 실제 형제와 폭을 나눠
+        // 갖게 한다. ImageGallery는 자체 width:240px 고정 + 별도 세로축
+        // flexShrink:0(다음 메시지 겹침 방어, 이 컬럼의 가로축 shrink와
+        // 무관)을 이미 갖고 있어 영향 없음(app/components/
+        // ImageGallery.tsx 참고).
+        style={{ display: "flex", flexDirection: "column", minWidth: 0 }}
       >
         {replyQuote}
         {m.message && (
           <div
             className="wrap-anywhere max-w-full rounded-2xl px-3 py-2 font-serif text-[12px] leading-relaxed"
-            style={bubbleStyle}
+            // 인라인 이중 방어 — className이 unlayered globals.css와
+            // 우연히 충돌해 밀리는 경우 대비(인라인은 항상 이김).
+            style={{
+              ...bubbleStyle,
+              overflowWrap: "anywhere",
+              wordBreak: "break-word",
+              minWidth: 0,
+            }}
           >
             <MessageText text={m.message} dl2={dl2} />
           </div>
@@ -448,7 +458,7 @@ const MessageItem = memo(
           onActionMenu(m);
         }}
         aria-label="액션 메뉴"
-        className="chat-action-trigger self-end opacity-40 transition-opacity hover:opacity-100"
+        className="chat-action-trigger shrink-0 self-end opacity-40 transition-opacity hover:opacity-100"
         style={{
           padding: 4,
           color: dl2 ? "#8a6a4a" : "rgb(155,143,184)",
@@ -474,10 +484,10 @@ const MessageItem = memo(
           className="group flex w-full justify-end transition-[background] duration-300"
           style={{ marginTop: rowMarginTop, flexShrink: 0, ...highlightStyle }}
         >
-          <div className="flex max-w-[82%] items-end gap-1" style={{ flexShrink: 0 }}>
+          <div className="flex max-w-[82%] min-w-0 items-end gap-1" style={{ flexShrink: 0, minWidth: 0 }}>
             {showTime && (
               <span
-                className="whitespace-nowrap pb-1 font-serif tracking-wider"
+                className="shrink-0 whitespace-nowrap pb-1 font-serif tracking-wider"
                 style={timeStyle}
               >
                 {formatTime(m.createdAt)}
@@ -556,12 +566,12 @@ const MessageItem = memo(
                 />
               </div>
             ))}
-          <div className="flex max-w-full items-end gap-1" style={{ flexShrink: 0 }}>
+          <div className="flex max-w-full min-w-0 items-end gap-1" style={{ flexShrink: 0, minWidth: 0 }}>
             {contentColumn}
             {replyBtn}
             {showTime && (
               <span
-                className="whitespace-nowrap pb-1 font-serif tracking-wider"
+                className="shrink-0 whitespace-nowrap pb-1 font-serif tracking-wider"
                 style={timeStyle}
               >
                 {formatTime(m.createdAt)}

@@ -234,23 +234,36 @@ const MessageItem = memo(
 
     const contentColumn = (
       <div
-        className={`flex max-w-full flex-col gap-1 ${mine ? "items-end" : "items-start"}`}
-        // 사진 그리드 겹침 방어 — display/flexDirection을 인라인으로도
-        // 명시(className의 Tailwind flex 유틸이 이 레포 globals.css의
-        // unlayered 규칙에 밀릴 가능성 방어), flexShrink:0으로 부모 flex
-        // row가 이 컬럼을 눌러 줄이는 경우를 원천 차단.
-        // max-w-full: flexShrink:0이라 부모 row의 max-width(82%/full)만
-        // 으로는 이 컬럼이 안 눌린다 — 긴 텍스트가 row 밖으로 오버플로우
-        // 하던 버그의 실제 원인. max-width는 flex-shrink:0이어도 flex
-        // algorithm의 hypothetical size 계산 단계에서 항상 clamp되므로
-        // 이 한 줄로 부모의 max-width 체인이 최종적으로 적용된다.
-        style={{ display: "flex", flexDirection: "column", flexShrink: 0 }}
+        className={`flex min-w-0 max-w-full flex-col gap-1 ${mine ? "items-end" : "items-start"}`}
+        // 재진단(2차): 이전 fix(max-w-full)만으론 부족했다 — 이 컬럼이
+        // flexShrink:0인 채로 부모 row(시간/답글 버튼과 같은 flex row)
+        // 안에 있으면, max-width가 row 전체 폭까지는 clamp하지만
+        // "형제(시간/답글 버튼)가 필요한 폭만큼 양보"는 안 한다(flex-
+        // shrink:0은 shrink 계산 자체에서 제외되므로). 그 결과 시간/버튼
+        // 폭만큼 여전히 row 밖으로 넘침 — "덜 잘리지만 잘림" 증상의 실제
+        // 원인. flexShrink:0 제거 + min-w-0(기본 min-width:auto가 콘텐츠
+        // 기준으로 다시 못 늘어나게)으로 진짜로 형제와 폭을 나눠 갖게
+        // 한다. 사진 그리드(ImageGallery)는 자체 width:240px 고정 +
+        // 자기 wrapper에 별도 flexShrink:0(세로축, 다음 메시지 겹침
+        // 방어용 — 이 컬럼의 가로축 shrink와는 무관)을 이미 갖고 있어
+        // 이 변경의 영향을 받지 않는다(app/components/ImageGallery.tsx
+        // 참고).
+        style={{ display: "flex", flexDirection: "column", minWidth: 0 }}
       >
         {replyQuote}
         {m.message && (
           <div
             className="wrap-anywhere max-w-full rounded-2xl px-3 py-2 font-serif text-[12px] leading-relaxed"
-            style={bubbleStyle}
+            // 인라인 이중 방어 — className의 wrap-anywhere/max-w-full이
+            // 이 레포 globals.css(unlayered, @layer 없음)의 우연한
+            // 셀렉터 충돌로 밀리는 경우를 대비해 동일 규칙을 인라인으로도
+            // 명시(인라인은 레이어 밖이라 항상 이김).
+            style={{
+              ...bubbleStyle,
+              overflowWrap: "anywhere",
+              wordBreak: "break-word",
+              minWidth: 0,
+            }}
           >
             <MessageText text={m.message} dl2 />
           </div>
@@ -322,7 +335,7 @@ const MessageItem = memo(
           onActionMenu(m);
         }}
         aria-label="액션 메뉴"
-        className="chat-action-trigger self-end opacity-40 transition-opacity hover:opacity-100"
+        className="chat-action-trigger shrink-0 self-end opacity-40 transition-opacity hover:opacity-100"
         style={{ padding: 4, color: "#8a6a4a", lineHeight: 1, fontSize: 16, letterSpacing: 1 }}
       >
         ⋯
@@ -338,9 +351,9 @@ const MessageItem = memo(
           className="group flex w-full justify-end transition-[background] duration-300"
           style={{ marginTop: rowMarginTop, flexShrink: 0, ...highlightStyle }}
         >
-          <div className="flex max-w-[82%] items-end gap-1" style={{ flexShrink: 0 }}>
+          <div className="flex max-w-[82%] min-w-0 items-end gap-1" style={{ flexShrink: 0, minWidth: 0 }}>
             {showTime && (
-              <span className="whitespace-nowrap pb-1 font-serif tracking-wider" style={timeStyle}>
+              <span className="shrink-0 whitespace-nowrap pb-1 font-serif tracking-wider" style={timeStyle}>
                 {formatTime(m.ts)}
               </span>
             )}
@@ -387,11 +400,11 @@ const MessageItem = memo(
               <NicknameLink nickname={m.nickname} className="font-semibold" />
             </div>
           )}
-          <div className="flex max-w-full items-end gap-1" style={{ flexShrink: 0 }}>
+          <div className="flex max-w-full min-w-0 items-end gap-1" style={{ flexShrink: 0, minWidth: 0 }}>
             {contentColumn}
             {replyBtn}
             {showTime && (
-              <span className="whitespace-nowrap pb-1 font-serif tracking-wider" style={timeStyle}>
+              <span className="shrink-0 whitespace-nowrap pb-1 font-serif tracking-wider" style={timeStyle}>
                 {formatTime(m.ts)}
               </span>
             )}
