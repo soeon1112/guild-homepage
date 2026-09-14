@@ -234,11 +234,16 @@ const MessageItem = memo(
 
     const contentColumn = (
       <div
-        className={`flex flex-col gap-1 ${mine ? "items-end" : "items-start"}`}
+        className={`flex max-w-full flex-col gap-1 ${mine ? "items-end" : "items-start"}`}
         // 사진 그리드 겹침 방어 — display/flexDirection을 인라인으로도
         // 명시(className의 Tailwind flex 유틸이 이 레포 globals.css의
         // unlayered 규칙에 밀릴 가능성 방어), flexShrink:0으로 부모 flex
         // row가 이 컬럼을 눌러 줄이는 경우를 원천 차단.
+        // max-w-full: flexShrink:0이라 부모 row의 max-width(82%/full)만
+        // 으로는 이 컬럼이 안 눌린다 — 긴 텍스트가 row 밖으로 오버플로우
+        // 하던 버그의 실제 원인. max-width는 flex-shrink:0이어도 flex
+        // algorithm의 hypothetical size 계산 단계에서 항상 clamp되므로
+        // 이 한 줄로 부모의 max-width 체인이 최종적으로 적용된다.
         style={{ display: "flex", flexDirection: "column", flexShrink: 0 }}
       >
         {replyQuote}

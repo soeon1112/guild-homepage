@@ -346,9 +346,12 @@ const MessageItem = memo(
     // bubble / image 모두 우측 끝 anchor.
     const contentColumn = (
       <div
-        className={`flex flex-col gap-1 ${mine ? "items-end" : "items-start"}`}
+        className={`flex max-w-full flex-col gap-1 ${mine ? "items-end" : "items-start"}`}
         // 사진 그리드 겹침 방어 — display/flexDirection 인라인 명시 +
         // flexShrink:0 (NewHomeChat.tsx와 동일 방어).
+        // max-w-full: flexShrink:0이라 부모 row의 max-width만으로는 이
+        // 컬럼이 안 눌려 긴 텍스트가 오버플로우하던 버그의 원인
+        // (NewHomeChat.tsx와 동일 수정).
         style={{ display: "flex", flexDirection: "column", flexShrink: 0 }}
       >
         {replyQuote}
