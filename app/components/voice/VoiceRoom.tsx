@@ -47,17 +47,16 @@ export default function VoiceRoom() {
   } = useVoiceRoom();
   const [mobileTab, setMobileTab] = useState<"participants" | "chat">("participants");
 
-  // 로그인 필수 라우트 가드 — app/dm/page.tsx verbatim 패턴 + Phase 6
-  // 언쏘 A/B(베타 기간 한정 접근). Topbar 진입점이 이미 언쏘에게만
-  // 보이지만, URL 직접 접속/북마크 대비 페이지 자체도 독립적으로 막는다.
+  // 로그인 필수 라우트 가드 — app/dm/page.tsx verbatim 패턴. 전체
+  // 공개(언쏘 A/B 해제, DM/길드원과 동일 패턴) — 로그인만 필요.
   useEffect(() => {
     if (!ready) return;
-    if (!me || me !== "언쏘") {
+    if (!me) {
       router.replace("/");
     }
   }, [ready, me, router]);
 
-  if (!ready || !me || me !== "언쏘") return null;
+  if (!ready || !me) return null;
 
   const participantItems: ParticipantPanelItem[] = participantEntries.map(([nickname, p]) => ({
     nickname,
