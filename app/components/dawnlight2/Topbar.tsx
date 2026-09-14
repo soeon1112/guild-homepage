@@ -6,6 +6,7 @@ import {
   LogOut,
   MessageCircle,
   Menu,
+  Mic,
   User,
   X,
 } from "lucide-react";
@@ -14,6 +15,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/app/components/AuthProvider";
 import { useUnreadDMTotal } from "@/src/lib/useUnreadDMTotal";
+import { useVoiceParticipantCount } from "@/src/lib/useVoiceParticipantCount";
 import { emitChatScrollToLatest } from "@/src/lib/uiBus";
 import {
   AuthModal,
@@ -142,6 +144,9 @@ export function Dawnlight2Topbar() {
   // Phase 4 — DM 아이콘 배지용. 언쏘 A/B는 Phase 6에서(이 Phase는 UI만,
   // 지금은 로그인한 모두에게 노출).
   const unreadDMTotal = useUnreadDMTotal(nickname);
+  // 통화방 진입점 배지용 — 앱 Phase 5와 동일 패턴, 언쏘 A/B는 Phase 6에서
+  // (지금은 로그인한 모두에게 노출).
+  const voiceParticipantCount = useVoiceParticipantCount();
   const router = useRouter();
   const pathname = usePathname();
   const [hovered, setHovered] = useState<string | null>(null);
@@ -194,6 +199,26 @@ export function Dawnlight2Topbar() {
         </span>
       ),
       href: "/dm",
+    },
+    // 통화방 진입점 — 앱 Phase 5와 동일 위치(DM 바로 다음). 참가자
+    // 0명이면 배지 없이 아이콘만.
+    {
+      id: "voice",
+      label: "통화방",
+      icon: (
+        <span className="relative inline-flex">
+          <Mic className="h-3.5 w-3.5" />
+          {voiceParticipantCount > 0 && (
+            <span
+              className="absolute -right-1.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[9px] font-bold"
+              style={{ background: "#dc2626", color: "#fef5e6" }}
+            >
+              {voiceParticipantCount > 99 ? "99+" : voiceParticipantCount}
+            </span>
+          )}
+        </span>
+      ),
+      href: "/voice",
     },
     {
       id: "my",
