@@ -298,7 +298,17 @@ export function VoiceChatPanel({ me }: { me: string }) {
 
       <div
         className="relative shrink-0 space-y-1.5 px-2.5 pb-2.5 pt-2"
-        style={{ borderTop: "1px solid rgba(254, 245, 230, 0.14)" }}
+        style={{
+          borderTop: "1px solid rgba(254, 245, 230, 0.14)",
+          // DM(app/dm/[roomId]/page.tsx:528-529)의 composeArea는
+          // background: "rgba(254, 245, 230, 0.9)"(불투명 cream)라 위
+          // 슬라이드업 wrapper가 닫힌 상태(translateY(110px))로 이 뒤에
+          // 깔려도 실제로 안 보였다 — 우리 composer엔 그 배경이 없어서
+          // (border만 있었음) "닫혀도 비쳐 보이는" 게 이번 버그의 실제
+          // 원인이었다. 통화방 dark 톤에 맞춰 twilight 그라디언트 최하단
+          // 색(#1c1530)을 불투명에 가깝게 재사용.
+          background: "rgba(28, 21, 48, 0.97)",
+        }}
       >
         {isEmoticonOpen && (
           <div className="absolute bottom-full left-0 right-0 px-2.5 pt-2 pb-1">
