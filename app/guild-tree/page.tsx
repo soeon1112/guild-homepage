@@ -12,11 +12,13 @@
 //   - 길원 닉네임 클릭 → /members/{id} (slot id 또는 nickname)
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { collection, getDocs, type Timestamp } from "firebase/firestore";
-import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Crown, Star, TreePine } from "lucide-react";
 import { db } from "@/src/lib/firebase";
+import { useAuth } from "@/app/components/AuthProvider";
+import { roomIdFor } from "@/src/lib/dm";
 import { useGuilds, guildAccent } from "@/src/lib/useGuilds";
 import { SERVERS, SERVER_LABELS, GUILD_SERVER_MAP } from "@/src/lib/guilds";
 
@@ -34,6 +36,22 @@ function nicknameCompare(a: string, b: string) {
   const bKo = isKorean(b);
   if (aKo !== bKo) return aKo ? 1 : -1;
   return a.localeCompare(b, aKo ? "ko" : "en");
+}
+
+// 프사 클릭 → DM 이동. MemberAvatar.tsx 의 handleActivate 와 동일 패턴 —
+// 본인 닉네임이면 roomIdFor(me, me) === "me_me" 형태라 별도 분기 없이
+// 메모장 방으로 간다 (가계도는 길드원 리스트가 아니라 본인 카드를 가로채는
+// 편집 모달 오버레이가 없음 — 다른 페이지 기본값과 동일하게 메모장).
+function goToDM(
+  router: ReturnType<typeof useRouter>,
+  loginNick: string | null,
+  nickname: string,
+) {
+  if (!loginNick) return;
+  const roomId = roomIdFor(loginNick, nickname);
+  router.push(
+    `/dm/${encodeURIComponent(roomId)}?partner=${encodeURIComponent(nickname)}`,
+  );
 }
 
 type UserEntry = {
@@ -203,6 +221,8 @@ function GuildCard({
   };
   members: UserEntry[];
 }) {
+  const router = useRouter();
+  const { nickname: loginNick } = useAuth();
   const [open, setOpen] = useState(false);
 
   const leader = guild.leader;
@@ -287,7 +307,12 @@ function GuildCard({
                   </span>
                 </div>
                 {leader ? (
-                  <LeaderCard nickname={leader} entry={findEntry(leader, members)} />
+                  <LeaderCard
+                    nickname={leader}
+                    entry={findEntry(leader, members)}
+                    router={router}
+                    loginNick={loginNick}
+                  />
                 ) : (
                   <p className="text-xs italic" style={{ color: "rgba(254, 245, 230, 0.5)" }}>
                     아직 지정되지 않음
@@ -313,7 +338,13 @@ function GuildCard({
                 ) : (
                   <div className="flex flex-wrap justify-center gap-3">
                     {viceLeaders.map((v) => (
-                      <ViceCard key={v} nickname={v} entry={findEntry(v, members)} />
+                      <ViceCard
+                        key={v}
+                        nickname={v}
+                        entry={findEntry(v, members)}
+                        router={router}
+                        loginNick={loginNick}
+                      />
                     ))}
                   </div>
                 )}
@@ -339,10 +370,18 @@ function GuildCard({
                 ) : (
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                     {regularMembers.map((m) => (
-                      <Link
+                      <div
                         key={m.nickname}
-                        href={`/members/${m.routeId}`}
-                        className="flex items-center gap-2 rounded-xl border px-3 py-2 transition-all hover:scale-[1.02]"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => goToDM(router, loginNick, m.nickname)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            goToDM(router, loginNick, m.nickname);
+                          }
+                        }}
+                        className="flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 transition-all hover:scale-[1.02]"
                         style={{
                           background: m.registered
                             ? "rgba(255, 199, 133, 0.08)"
@@ -381,7 +420,7 @@ function GuildCard({
                         >
                           {m.nickname}
                         </span>
-                      </Link>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -405,17 +444,28 @@ function findEntry(nickname: string, members: UserEntry[]): UserEntry | null {
 function LeaderCard({
   nickname,
   entry,
+  router,
+  loginNick,
 }: {
   nickname: string;
   entry: UserEntry | null;
+  router: ReturnType<typeof useRouter>;
+  loginNick: string | null;
 }) {
-  const routeId = entry?.routeId ?? nickname;
   const profileImage = entry?.profileImage ?? "";
   const registered = !!entry?.registered;
   return (
-    <Link
-      href={`/members/${routeId}`}
-      className="flex flex-col items-center gap-2 rounded-2xl border px-5 py-4 transition-all hover:scale-[1.02]"
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => goToDM(router, loginNick, nickname)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          goToDM(router, loginNick, nickname);
+        }
+      }}
+      className="flex cursor-pointer flex-col items-center gap-2 rounded-2xl border px-5 py-4 transition-all hover:scale-[1.02]"
       style={{
         background: "rgba(255, 199, 133, 0.12)",
         borderColor: "rgba(255, 199, 133, 0.45)",
@@ -459,24 +509,35 @@ function LeaderCard({
       >
         {nickname}
       </span>
-    </Link>
+    </div>
   );
 }
 
 function ViceCard({
   nickname,
   entry,
+  router,
+  loginNick,
 }: {
   nickname: string;
   entry: UserEntry | null;
+  router: ReturnType<typeof useRouter>;
+  loginNick: string | null;
 }) {
-  const routeId = entry?.routeId ?? nickname;
   const profileImage = entry?.profileImage ?? "";
   const registered = !!entry?.registered;
   return (
-    <Link
-      href={`/members/${routeId}`}
-      className="flex flex-col items-center gap-1.5 rounded-2xl border px-4 py-3 transition-all hover:scale-[1.02]"
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => goToDM(router, loginNick, nickname)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          goToDM(router, loginNick, nickname);
+        }
+      }}
+      className="flex cursor-pointer flex-col items-center gap-1.5 rounded-2xl border px-4 py-3 transition-all hover:scale-[1.02]"
       style={{
         background: "rgba(200, 184, 232, 0.1)",
         borderColor: "rgba(200, 184, 232, 0.35)",
@@ -520,6 +581,6 @@ function ViceCard({
       >
         {nickname}
       </span>
-    </Link>
+    </div>
   );
 }
