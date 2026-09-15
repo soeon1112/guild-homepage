@@ -15,7 +15,10 @@ import {
   addDoc,
   collection,
   doc,
+  limit,
   onSnapshot,
+  orderBy,
+  query,
   serverTimestamp,
   Timestamp,
   updateDoc,
@@ -48,34 +51,44 @@ import {
   useChatReactions,
   type MessageReactions,
 } from "@/src/lib/useChatReactions";
-import { useHomeTimeline, type TimelineItem } from "@/src/lib/useHomeTimeline";
-import { ActivityCard } from "@/app/components/ActivityCard";
 import { getEmoticonUrl } from "@/src/lib/emoticons";
 import { EmoticonPicker } from "@/app/components/EmoticonPicker";
 
 type ChatFileType = "image" | "gif" | "video" | "sticker";
 
-// Home 채팅 리뉴얼 되돌리기 — activity(최신소식) 이식. 채팅+최신소식 병합
-// 타입은 useHomeTimeline.ts 의 TimelineItem 이 갖고 있어, 기존 로컬
-// ChatMessage 타입은 그 kind:"chat" 케이스로 대체한다 — 필드는 100% 동일,
-// 시간 필드명만 createdAt → ts 로 바뀐다(아래 MessageItem 의 참조도 함께
-// 교체). ChatReplyTo/LinkPreview 도 TimelineItem 안에 이미 포함돼 로컬
-// 선언은 제거.
-type ChatItem = Extract<TimelineItem, { kind: "chat" }>;
-type ActivityItem = Extract<TimelineItem, { kind: "activity" }>;
+// Chat-p2 답글 비정규화 — 원본 메시지 삭제돼도 인용 표시가 깨지지
+// 않도록 snippet + nickname + fileType 을 답글 작성 시점에 스냅샷.
+type ChatReplyTo = {
+  messageId: string;
+  nickname: string;
+  snippet: string;
+  fileType?: ChatFileType;
+  // sticker 답글 인용 썸네일 전용 — 원본 메시지의 imageUrl 스냅샷.
+  imageUrl?: string;
+};
 
-function isChatItem(item: TimelineItem): item is ChatItem {
-  return item.kind === "chat";
-}
+// 채팅 링크 프리뷰 Phase 2 — functions/src/triggers/chat.ts 가 백그라운드로
+// 채워 넣는 필드. 서버가 아직 처리 못했거나 URL이 없으면 undefined.
+type LinkPreview = {
+  type: "youtube" | "vimeo" | "image" | "opengraph";
+  url: string;
+  title?: string;
+  description?: string;
+  thumbnail?: string;
+  videoId?: string;
+};
 
-// 답글 대상 스냅샷 — activity 원본에 대한 답글도 같은 모양으로 저장되므로
-// (nickname 만 빈 문자열), ChatItem 전용이 아닌 이 최소 타입을 쓴다.
-type ReplyTarget = {
+type ChatMessage = {
   id: string;
   nickname: string;
   message: string;
+  imageUrl?: string; // 기존 단일 사진 — 미접촉, 호환성 유지
+  // 사진 묶음(카톡 스타일 그리드, 최대 4장) — Phase 1 스키마, 사용처 0.
+  imageUrls?: string[];
   fileType?: ChatFileType;
-  imageUrl?: string;
+  createdAt: Timestamp | null;
+  replyTo?: ChatReplyTo;
+  linkPreview?: LinkPreview;
 };
 
 function formatTime(ts: Timestamp | null): string {
@@ -145,7 +158,7 @@ function TwinkleParticles({ dl2 = false }: { dl2?: boolean }) {
 }
 
 type MessageItemProps = {
-  m: ChatItem;
+  m: ChatMessage;
   mine: boolean;
   // Step 4-D: dawnlight2 reskin flag. When true, the meta row uses a
   // 12 px ink-brown nick (was 9 px stardust), and the bubble swaps the
@@ -163,7 +176,7 @@ type MessageItemProps = {
     | undefined;
   // p3.3: 기존 ↩ 답글 버튼 → ⋯ 액션 메뉴 트리거. 이모지 패널 자체는
   // p3.3-fix 에서 parent fixed inset-0 모달로 이동 (앱과 일관).
-  onActionMenu: (m: TimelineItem) => void;
+  onActionMenu: (m: ChatMessage) => void;
   // p2.5: row DOM 노드 등록 + 인용 박스 클릭 → 원본 점프 + 강조 토글.
   registerRef: (id: string, el: HTMLDivElement | null) => void;
   onJumpToOriginal: (messageId: string) => void;
@@ -181,10 +194,10 @@ const CHAT_AVATAR_SIZE = 36;
 const CHAT_REACTION_EMOJIS = ["❤️", "😂", "😢", "👍", "🎉", "😮"] as const;
 
 // Chat-p5: 과거 메시지 페이지네이션 — 초기 30개, 위로 스크롤할 때마다
-// 30개씩 limit 증가, 최대 500개에서 정지. step/max 상수는 이제
-// useHomeTimeline.ts 안에 있다(LIMIT_STEP/LIMIT_MAX, 동일 값) — initial만
-// 이 파일에서 hook 호출 시 넘긴다.
+// 30개씩 limit 증가, 최대 500개에서 정지.
 const CHAT_MESSAGE_LIMIT_INITIAL = 30;
+const CHAT_MESSAGE_LIMIT_STEP = 30;
+const CHAT_MESSAGE_LIMIT_MAX = 500;
 
 const MessageItem = memo(
   function MessageItem({
@@ -477,7 +490,7 @@ const MessageItem = memo(
                 className="shrink-0 whitespace-nowrap pb-1 font-serif tracking-wider"
                 style={timeStyle}
               >
-                {formatTime(m.ts)}
+                {formatTime(m.createdAt)}
               </span>
             )}
             {replyBtn}
@@ -561,7 +574,7 @@ const MessageItem = memo(
                 className="shrink-0 whitespace-nowrap pb-1 font-serif tracking-wider"
                 style={timeStyle}
               >
-                {formatTime(m.ts)}
+                {formatTime(m.createdAt)}
               </span>
             )}
           </div>
@@ -584,7 +597,7 @@ const MessageItem = memo(
     prev.m.imageUrls === next.m.imageUrls &&
     prev.m.fileType === next.m.fileType &&
     prev.m.nickname === next.m.nickname &&
-    prev.m.ts?.toMillis() === next.m.ts?.toMillis() &&
+    prev.m.createdAt?.toMillis() === next.m.createdAt?.toMillis() &&
     prev.m.replyTo?.messageId === next.m.replyTo?.messageId &&
     prev.m.replyTo?.nickname === next.m.replyTo?.nickname &&
     prev.m.replyTo?.snippet === next.m.replyTo?.snippet &&
@@ -642,16 +655,12 @@ export default function FloatingChat() {
     if (open) setOpenPanel("chat");
     else if (getOpenPanel() === "chat") setOpenPanel(null);
   }, [open]);
-  // Home 채팅 리뉴얼 되돌리기 — 채팅(chat) 단일 구독을 useHomeTimeline
-  // (채팅+최신소식 병합 스트림, NewHomeChat.tsx 가 쓰던 것과 동일 hook)로
-  // 교체. hook 이 pagination(초기 30 + 30씩 증가, 상한 500)/loadingMore를
-  // 자체 관리 — 아래 loadOlder()는 스크롤 위치 보정 wrapper만 담당.
-  const { items, loadOlder: timelineLoadOlder, hasMoreOlder, loadingMore, streamsReady } =
-    useHomeTimeline(CHAT_MESSAGE_LIMIT_INITIAL);
-  // hook 의 items 는 createdAt DESC(최신이 배열 맨 앞) — 화면 표시용
-  // ASC(과거→최신)로 뒤집는다. 기존 `list.reverse(); setMessages(list)`와
-  // 동일 효과.
-  const displayItems = useMemo(() => [...items].reverse(), [items]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // Chat-p5: 페이지네이션 — limit 자체를 늘려 같은 onSnapshot 구독을
+  // 재활용 (별도 startAfter 쿼리 없음). loadingMore 는 다음 snapshot
+  // 도달 시 해제.
+  const [messageLimit, setMessageLimit] = useState(CHAT_MESSAGE_LIMIT_INITIAL);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [draft, setDraft] = useState("");
   // 멘션 자동완성용 — input 의 cursor 위치를 추적해 MentionPicker 가
   // `@<query>` 꼬리 감지에 쓴다. null 이면 picker 가 항상 안 뜸.
@@ -768,9 +777,69 @@ export default function FloatingChat() {
       clientHeight: list.clientHeight,
       distanceFromBottom:
         list.scrollHeight - list.scrollTop - list.clientHeight,
-      messages: items.length,
+      messages: messages.length,
     });
   };
+
+  // Subscribe to the guild chat collection (paginated, asc for display).
+  // Chat-p5: startAfter 별도 쿼리 대신 같은 onSnapshot 의 limit 값 자체를
+  // 늘려 재구독 — messageLimit 이 바뀔 때마다 이 effect 가 재실행된다.
+  useEffect(() => {
+    const q = query(
+      collection(db, "chat"),
+      orderBy("createdAt", "desc"),
+      limit(messageLimit),
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      const list: ChatMessage[] = snap.docs.map((d) => {
+        const data = d.data();
+        // p2: replyTo 가 doc 에 있을 때만 매핑 — 기존 메시지는 undefined.
+        const rt = data.replyTo as
+          | {
+              messageId?: unknown;
+              nickname?: unknown;
+              snippet?: unknown;
+              fileType?: unknown;
+              imageUrl?: unknown;
+            }
+          | undefined;
+        const replyTo: ChatReplyTo | undefined =
+          rt &&
+          typeof rt.messageId === "string" &&
+          typeof rt.nickname === "string" &&
+          typeof rt.snippet === "string"
+            ? {
+                messageId: rt.messageId,
+                nickname: rt.nickname,
+                snippet: rt.snippet,
+                fileType:
+                  typeof rt.fileType === "string"
+                    ? (rt.fileType as ChatFileType)
+                    : undefined,
+                imageUrl:
+                  typeof rt.imageUrl === "string" ? rt.imageUrl : undefined,
+              }
+            : undefined;
+        return {
+          id: d.id,
+          nickname: data.nickname,
+          message: data.message,
+          imageUrl: data.imageUrl || "",
+          imageUrls: Array.isArray(data.imageUrls) ? data.imageUrls : undefined,
+          fileType: (data.fileType as ChatFileType | undefined) || undefined,
+          createdAt: data.createdAt ?? null,
+          replyTo,
+          linkPreview: (data.linkPreview as LinkPreview | undefined) ?? undefined,
+        };
+      });
+      list.reverse();
+      setMessages(list);
+      // Chat-p5: limit 증가로 재구독한 snapshot 이 도달하면 로딩 해제.
+      // 최초 구독(초기 30개) 시에도 무해 — 이미 false 라 no-op.
+      setLoadingMore(false);
+    });
+    return unsub;
+  }, [messageLimit]);
 
   // ── Chat-p1: 작성자 프사 + 카톡 연속 묶기 ──
   // 메시지 50개치 unique 닉네임을 한 번 fetch (useMemberAvatars 가 in-query
@@ -778,65 +847,56 @@ export default function FloatingChat() {
   // doc id 를 내려준다. 닉 클릭은 기존 NicknameLink popup 유지 (홈피만,
   // 앱은 바로 router.push).
   const allNicknames = useMemo(
-    () => Array.from(new Set(items.filter(isChatItem).map((i) => i.nickname))),
-    [items],
+    () => Array.from(new Set(messages.map((m) => m.nickname))),
+    [messages],
   );
   const avatars = useMemberAvatars(allNicknames);
 
   // p3.2: 리액션 배지 표시 (토글은 p3.3) — 메시지 50개 각각 chat/{id}/
   // reactions onSnapshot. 비용은 PhotosSectionD2 댓글 카운트와 동일 규모.
-  const chatMessageIds = useMemo(
-    () => items.filter(isChatItem).map((i) => i.id),
-    [items],
+  const allMessageIds = useMemo(
+    () => messages.map((m) => m.id),
+    [messages],
   );
-  const { reactions: chatReactions, toggleReaction: toggleChatReaction } =
-    useChatReactions(chatMessageIds, nickname ?? "");
-
-  // Home 채팅 리뉴얼 되돌리기 — activity(최신소식) 카드 리액션.
-  // useChatReactions 자체는 무수정 재사용, 컬렉션 루트만 3번째 인자로
-  // "activity"를 넘겨 activity/{id}/reactions/{nickname} 서브컬렉션을
-  // 본다(chat 문서와 안 섞이는 병렬 구조, NewHomeChat.tsx 와 동일 패턴).
-  const activityIds = useMemo(
-    () => items.filter((i): i is ActivityItem => !isChatItem(i)).map((i) => i.id),
-    [items],
+  const { reactions: chatReactions, toggleReaction } = useChatReactions(
+    allMessageIds,
+    nickname ?? "",
   );
-  const { reactions: activityReactions, toggleReaction: toggleActivityReaction } =
-    useChatReactions(activityIds, nickname ?? "", "activity");
 
   // 같은 분(minute) 안 같은 sender 묶기 — group 첫 메시지에 프사+닉,
-  // group 마지막에 시간 표시. activity 카드는 항상 자기 혼자만의 그룹
-  // (sameMinuteSameSender 가 둘 다 chat 일 때만 true 를 돌려주므로, 이웃한
-  // chat 쪽도 카드 경계에서 그룹이 끊긴다) — NewHomeChat.tsx 와 동일 패턴.
-  const decoratedItems = useMemo(() => {
+  // group 마지막에 시간 표시. createdAt 이 null(pending serverTimestamp)
+  // 인 메시지는 group 시작 으로 취급(직전 비교 결과가 항상 다름).
+  const decoratedMessages = useMemo(() => {
     const minuteOf = (t: Timestamp | null) =>
       t && typeof t.toMillis === "function"
         ? Math.floor(t.toMillis() / 60000)
         : null;
-    const sameMinuteSameSender = (a: TimelineItem, b: TimelineItem) => {
-      if (!isChatItem(a) || !isChatItem(b)) return false;
+    const sameMinuteSameSender = (a: ChatMessage, b: ChatMessage) => {
       if (a.nickname !== b.nickname) return false;
-      const ma = minuteOf(a.ts);
-      const mb = minuteOf(b.ts);
+      const ma = minuteOf(a.createdAt);
+      const mb = minuteOf(b.createdAt);
       return ma !== null && ma === mb;
     };
-    return displayItems.map((item, i) => {
-      if (!isChatItem(item)) {
-        return { item, showAvatar: false, showNickname: false, showTime: false };
-      }
-      const prev = displayItems[i - 1];
-      const next = displayItems[i + 1];
-      const startsGroup = !prev || !sameMinuteSameSender(prev, item);
-      const endsGroup = !next || !sameMinuteSameSender(item, next);
-      return { item, showAvatar: startsGroup, showNickname: startsGroup, showTime: endsGroup };
+    return messages.map((m, i) => {
+      const prev = messages[i - 1];
+      const next = messages[i + 1];
+      const startsGroup = !prev || !sameMinuteSameSender(prev, m);
+      const endsGroup = !next || !sameMinuteSameSender(m, next);
+      return {
+        m,
+        showAvatar: startsGroup,
+        showNickname: startsGroup,
+        showTime: endsGroup,
+      };
     });
-  }, [displayItems]);
+  }, [messages]);
 
   // ── Chat-p2 답글 ──
   // p3.3: 진입 방식 변경 — 메시지 옆 ⋯ 버튼 → popover (이모지 6 + ↩ 답글).
   // handleSelectReplyFromMenu 가 popover 내부 ↩ 클릭으로 분기. handleAction
   // Menu 가 popover 자체 토글. 기존 handleReply (↩ 직접 버튼) 제거.
-  const [replyingTo, setReplyingTo] = useState<ReplyTarget | null>(null);
-  const [actionMenuFor, setActionMenuFor] = useState<TimelineItem | null>(null);
+  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
+  const [actionMenuFor, setActionMenuFor] = useState<ChatMessage | null>(null);
   // 사진 묶음(imageUrls) 클릭 확대 전용 뷰어 — 기존 단일 imageUrl은
   // CommentImageView(자체 완결형)를 그대로 쓰므로 미접촉. Phase 4: 배열
   // 전체 스와이프를 위해 { urls, index } 형태로 보관.
@@ -850,7 +910,7 @@ export default function FloatingChat() {
   const [isEmoticonOpen, setIsEmoticonOpen] = useState(false);
   const toggleEmoticon = useCallback(() => setIsEmoticonOpen((v) => !v), []);
   const handleActionMenu = useCallback(
-    (m: TimelineItem) => setActionMenuFor(m),
+    (m: ChatMessage) => setActionMenuFor(m),
     [],
   );
   const handleClearReply = useCallback(() => setReplyingTo(null), []);
@@ -860,35 +920,17 @@ export default function FloatingChat() {
       if (!target) return;
       setActionMenuFor(null);
       try {
-        if (isChatItem(target)) {
-          await toggleChatReaction(target.id, emoji);
-        } else {
-          await toggleActivityReaction(target.id, emoji);
-        }
+        await toggleReaction(target.id, emoji);
       } catch (e) {
         console.error("[Reaction] failed", e);
       }
     },
-    [actionMenuFor, toggleChatReaction, toggleActivityReaction],
+    [actionMenuFor, toggleReaction],
   );
   const handleSelectReplyFromMenu = useCallback(() => {
     const target = actionMenuFor;
     if (!target) return;
-    // activity 원본이면 nickname 을 빈 문자열로 스냅샷 — 인용 렌더가 이
-    // 값이 falsy 일 때 "님의 답글" 줄 자체를 안 그린다(ActivityCard 는
-    // 라벨/닉 없이 문구만 보여주는 톤이라 답글 인용도 동일하게 맞춘 것 —
-    // chat 원본은 기존대로 nickname 그대로, NewHomeChat.tsx 와 동일 패턴).
-    setReplyingTo(
-      isChatItem(target)
-        ? {
-            id: target.id,
-            nickname: target.nickname,
-            message: target.message,
-            fileType: target.fileType,
-            imageUrl: target.fileType === "sticker" ? target.imageUrl : undefined,
-          }
-        : { id: target.id, nickname: "", message: target.message },
-    );
+    setReplyingTo(target);
     setActionMenuFor(null);
   }, [actionMenuFor]);
 
@@ -980,9 +1022,10 @@ export default function FloatingChat() {
     // 스크롤 튐의 실제 원인). pendingOlderLoadRef 창이 열려있는 동안은
     // 무조건 재진입 차단.
     if (pendingOlderLoadRef.current) return;
-    // 실제 limit 증가/상한 판단은 useHomeTimeline.hasMoreOlder 가 담당
-    // (chat/activity 두 스트림 중 하나라도 limit 만큼 꽉 찼는지로 판단).
-    if (!hasMoreOlder) return;
+    if (messageLimit >= CHAT_MESSAGE_LIMIT_MAX) return;
+    // 직전 snapshot 이 messageLimit 보다 적게 돌려줬다 = 더 이상 과거
+    // 메시지가 없다는 뜻 — 조용히 정지 (안내 X, 사양).
+    if (messages.length < messageLimit) return;
     const list = listRef.current;
     if (list) {
       prevContentHeightRef.current = list.scrollHeight;
@@ -992,15 +1035,18 @@ export default function FloatingChat() {
     setTimeout(() => {
       pendingOlderLoadRef.current = false;
     }, 900);
-    timelineLoadOlder();
-  }, [loadingMore, hasMoreOlder, timelineLoadOlder]);
-  // useLayoutEffect(paint 전, 동기) — DOM 이 새 items 로 갱신된 직후
+    setLoadingMore(true);
+    setMessageLimit((prev) =>
+      Math.min(prev + CHAT_MESSAGE_LIMIT_STEP, CHAT_MESSAGE_LIMIT_MAX),
+    );
+  }, [loadingMore, messageLimit, messages.length]);
+  // useLayoutEffect(paint 전, 동기) — DOM 이 새 messages 로 갱신된 직후
   // scrollHeight 를 다시 재서 늘어난 만큼 scrollTop 을 더한다. 여기서
   // 보정해야 화면에 "위로 확 튀는" 프레임이 한 번도 그려지지 않는다.
   useLayoutEffect(() => {
     if (!pendingOlderLoadRef.current) return;
     compensateOlderLoadScroll();
-  }, [items, compensateOlderLoadScroll]);
+  }, [messages, compensateOlderLoadScroll]);
   const registerMessageRef = useCallback(
     (id: string, el: HTMLDivElement | null) => {
       if (el) messageRefsMap.current.set(id, el);
@@ -1011,7 +1057,7 @@ export default function FloatingChat() {
   const handleJumpToOriginal = useCallback((messageId: string) => {
     const el = messageRefsMap.current.get(messageId);
     if (!el) {
-      // 현재 로드된 범위 밖 옛 메시지(500개 상한 밖 포함) — DOM 에 없음.
+      // 현재 messageLimit 밖 옛 메시지(200개 상한 밖 포함) — DOM 에 없음.
       alert("오래된 메시지라 찾을 수 없어요");
       return;
     }
@@ -1043,8 +1089,8 @@ export default function FloatingChat() {
     }
 
     // Chat-p5: 상단 40% 안쪽 도달 시 과거 메시지 추가 로드. loadOlder
-    // 자체가 loadingMore/hasMoreOlder 로 self-guard 하므로 스크롤 중
-    // 반복 호출돼도 안전(no-op).
+    // 자체가 loadingMore/messageLimit/messages.length 로 self-guard 하므로
+    // 스크롤 중 반복 호출돼도 안전(no-op).
     if (list.scrollTop < list.scrollHeight * 0.4) {
       loadOlder();
     }
@@ -1075,10 +1121,8 @@ export default function FloatingChat() {
     // `Date.now() < latestMsg` and recent messages stay marked unread
     // on close→reopen. Ceiling the optimistic value above every message
     // we've already loaded.
-    // 안 읽음 배지는 기존 그대로 채팅(chat)만 대상 — activity(최신소식)는
-    // 이 배지의 집계 대상에 넣지 않는다(동작 변화 최소화).
-    const latestSeenMs = items.filter(isChatItem).reduce((max, m) => {
-      const c = m.ts;
+    const latestSeenMs = messages.reduce((max, m) => {
+      const c = m.createdAt;
       if (!c || typeof c.toMillis !== "function") return max;
       const ms = c.toMillis();
       return ms > max ? ms : max;
@@ -1100,17 +1144,16 @@ export default function FloatingChat() {
     });
   };
 
-  // Unread count — excludes own messages, only counted when panel is closed.
-  // 채팅(chat)만 집계(activity 미포함) — markRead 의 latestSeenMs 와 동일 범위.
+  // Unread count — excludes own messages, only counted when panel is closed
   const unreadCount = useMemo(() => {
     if (open) return 0;
     if (lastReadMs === null) return 0;
-    return items.filter(isChatItem).filter((m) => {
-      if (!m.ts) return false;
+    return messages.filter((m) => {
+      if (!m.createdAt) return false;
       if (nickname && m.nickname === nickname) return false;
-      return m.ts.toMillis() > lastReadMs;
+      return m.createdAt.toMillis() > lastReadMs;
     }).length;
-  }, [items, open, nickname, lastReadMs]);
+  }, [messages, open, nickname, lastReadMs]);
 
   const hasUnread = unreadCount > 0;
 
@@ -1215,31 +1258,23 @@ export default function FloatingChat() {
       ro?.disconnect();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, items]);
+  }, [open, messages]);
 
   // Chat-p6: openSettledRef 관리 — 패널이 막 열린 뒤 위 effect 의 지연
   // pin 스케줄(sync/raf1/raf2 + ResizeObserver)이 대체로 정착될 시간
   // (350ms) 동안은 "정착 전"으로 두어 거리 조건 없이 항상 최신으로
   // 열리게 하고, 그 뒤부터 거리 조건이 적용되도록 켠다.
-  //
-  // Home 채팅 리뉴얼 되돌리기 — activity 이식 후 이 패널도 이제 chat+
-  // activity 두 개의 독립 onSnapshot 이 병합된다(useHomeTimeline). 하나가
-  // 350ms 이후에 늦게 도착하면 openSettledRef 가 이미 true 로 넘어간 뒤라
-  // pin() 의 거리 게이트에 막혀 재교정이 스킵될 수 있다(NewHomeChat.tsx
-  // 에서 실제로 겪은 회귀) — 두 스트림이 모두 최초 응답한 뒤에만 350ms
-  // 카운트를 시작하도록 트리거 조건을 streamsReady 로 확장.
   useEffect(() => {
     if (!open) {
       openSettledRef.current = false;
       return;
     }
     openSettledRef.current = false;
-    if (!streamsReady) return;
     const t = setTimeout(() => {
       openSettledRef.current = true;
     }, 350);
     return () => clearTimeout(t);
-  }, [open, streamsReady]);
+  }, [open]);
 
   // One extra pin after framer-motion's enter animation settles. On mobile
   // this is the first frame where the panel's scale/opacity are final, which
@@ -1737,7 +1772,7 @@ export default function FloatingChat() {
                     불러오는 중...
                   </p>
                 ) : null}
-                {decoratedItems.length === 0 ? (
+                {messages.length === 0 ? (
                   <div className="flex h-full items-center justify-center">
                     <p
                       className="font-serif text-[12px] italic"
@@ -1747,49 +1782,30 @@ export default function FloatingChat() {
                           : "rgba(155,143,184,0.7)",
                       }}
                     >
-                      아직 대화가 없어요
+                      아직 채팅이 없어요
                     </p>
                   </div>
                 ) : (
-                  decoratedItems.map(({ item, showAvatar, showNickname, showTime }) => {
-                    // Home 채팅 리뉴얼 되돌리기 — activity(최신소식) 카드.
-                    // 렌더는 NewHomeChat.tsx 와 동일 컴포넌트(ActivityCard)
-                    // 재사용, 채팅 리액션/답글과 같은 actionMenuFor 팝오버를
-                    // 공유(handleActionMenu 가 chat/activity 공통 진입점).
-                    if (!isChatItem(item)) {
-                      const activity = item as ActivityItem;
-                      return (
-                        <ActivityCard
-                          key={activity.id}
-                          id={activity.id}
-                          message={activity.message}
-                          link={activity.link ?? ""}
-                          onActionMenu={() => handleActionMenu(activity)}
-                          registerRef={registerMessageRef}
-                          highlighted={highlightedMessageId === activity.id}
-                          messageReactions={activityReactions.get(activity.id)}
-                        />
-                      );
-                    }
-                    return (
+                  decoratedMessages.map(
+                    ({ m, showAvatar, showNickname, showTime }) => (
                       <MessageItem
-                        key={item.id}
-                        m={item}
-                        mine={!!nickname && item.nickname === nickname}
+                        key={m.id}
+                        m={m}
+                        mine={!!nickname && m.nickname === nickname}
                         dl2={isDawnlight2}
                         showAvatar={showAvatar}
                         showNickname={showNickname}
                         showTime={showTime}
-                        avatar={avatars.get(item.nickname)}
+                        avatar={avatars.get(m.nickname)}
                         onActionMenu={handleActionMenu}
                         registerRef={registerMessageRef}
                         onJumpToOriginal={handleJumpToOriginal}
-                        highlighted={highlightedMessageId === item.id}
-                        messageReactions={chatReactions.get(item.id)}
+                        highlighted={highlightedMessageId === m.id}
+                        messageReactions={chatReactions.get(m.id)}
                         onOpenImage={handleOpenImage}
                       />
-                    );
-                  })
+                    ),
+                  )
                 )}
                 <div ref={endRef} aria-hidden />
               </div>
@@ -1879,7 +1895,7 @@ export default function FloatingChat() {
                           color: isDawnlight2 ? "#5c3a1f" : "#FFE5C4",
                         }}
                       >
-                        {replyingTo.nickname ? `↪ ${replyingTo.nickname}님에게 답글` : "↪ 답글"}
+                        ↪ {replyingTo.nickname}님에게 답글
                       </div>
                       <div
                         className="truncate font-serif text-[11px]"
