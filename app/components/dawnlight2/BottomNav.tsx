@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useChatInputFocused } from "@/src/lib/uiBus";
 import { useHasRecruitingProposals } from "@/src/lib/useHasRecruitingProposals";
-import { useAuth } from "@/app/components/AuthProvider";
 
 // Dawnlight 2 BottomNav (web) — same shape/size/icons/layout as cosmic
 // BottomNav, only the palette swaps to the warm ink tones. Mounted
@@ -97,15 +96,14 @@ const items: NavItem[] = [
   { id: "board", label: "게시판", icon: icons.board, href: "/board" },
 ];
 
-// forceVisible — P7-B 슬라이드업 패널이 NewHomeChat(pathname==="/" &&
-// 로그인 상태) 안에서 이 컴포넌트를 재mount할 때, 아래 얼리 리턴이
-// 그 위치에서도 그대로 걸려 항상 null이 되는 문제를 우회하기 위한 옵션.
-// 기본값 false라 기존 호출부(레이아웃의 상시 마운트)는 동작 변화 없음.
+// forceVisible — DM 대화 화면/통화방의 "+" 슬라이드업 패널이 이 컴포넌트를
+// 재mount할 때, 아래 얼리 리턴이 그 위치에서도 그대로 걸려 항상 null이 되는
+// 문제를 우회하기 위한 옵션. 기본값 false라 기존 호출부(레이아웃의 상시
+// 마운트)는 동작 변화 없음.
 export function Dawnlight2BottomNav({
   forceVisible = false,
 }: { forceVisible?: boolean } = {}) {
   const pathname = usePathname();
-  const { nickname } = useAuth();
   // 모집중 제안이 하나라도 있으면 "제안" 탭 아이콘 배경을 은은하게 강조.
   // 다른 탭에는 절대 적용 안 됨 — item.id === "proposals" 조건 안에서만.
   const hasRecruiting = useHasRecruitingProposals();
@@ -138,9 +136,6 @@ export function Dawnlight2BottomNav({
   const chatInputFocused = useChatInputFocused();
   const hidden = keyboardOpen || chatInputFocused;
 
-  // 전체 공개 — 언쏘 전용 A/B 조건을 로그인 여부로 완화. 홈이
-  // NewHomeChat(채팅 메인)이 되는 모든 로그인 사용자에서 하단 네비 숨김.
-  if (!forceVisible && pathname === "/" && nickname) return null;
   // DM Phase 6 — 대화 화면(/dm/{roomId})에서만 숨김. 목록(/dm)은 정확히
   // "/dm"이라 startsWith("/dm/")에 안 걸려 그대로 노출된다. forceVisible는
   // DM 대화 화면 자체의 "+" 슬라이드업(NewHomeChat과 동일 패턴)이 이
