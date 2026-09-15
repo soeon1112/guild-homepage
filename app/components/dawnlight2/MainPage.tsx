@@ -4,13 +4,12 @@ import { TodaysHorizon } from "./widgets/TodaysHorizon";
 import { WhispersFeed } from "./widgets/WhispersFeed";
 import { NoteToTheSky } from "./widgets/NoteToTheSky";
 import { PaperPlaneLetters } from "./widgets/PaperPlaneLetters";
-import { TodaysVoyager } from "./widgets/TodaysVoyager";
 import { CabinLogs } from "./widgets/CabinLogs";
 
 // 하늘섬 (Dawnlight 2) main page. Widgets land here in sequence:
 //   1. Today's Horizon (3-C)  — attendance parchment + sky quote
 //   2. 바람결 소식 (3-E)        — paper-airplane activity feed
-//   ... 별에게 한마디, 종이비행기, 오늘의 항해자, 선실의 기록 follow.
+//   ... 별에게 한마디, 종이비행기, 선실의 기록 follow.
 // `relative z-10` keeps the column above the StarryBackground (z-0).
 export function Dawnlight2MainPage() {
   return (
@@ -19,7 +18,8 @@ export function Dawnlight2MainPage() {
       <WhispersFeed />
       <NoteToTheSky />
       <PaperPlaneLetters />
-      <TodaysVoyager />
+      {/* TodaysVoyager(오늘의 항해자) 제거 — 개인 공간 미운영(2026-09-15).
+          컴포넌트 파일 자체는 dead code 로 유지, 마운트만 제거. */}
       <CabinLogs />
     </main>
   );
