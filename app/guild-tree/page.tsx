@@ -18,6 +18,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Crown, Star, TreePine } from "lucide-react";
 import { db } from "@/src/lib/firebase";
 import { useGuilds, guildAccent } from "@/src/lib/useGuilds";
+import { SERVERS, SERVER_LABELS, GUILD_SERVER_MAP } from "@/src/lib/guilds";
 
 const HIDDEN_NICKNAMES = new Set<string>(["테스트"]);
 
@@ -59,6 +60,21 @@ export default function GuildTreePage() {
     new Map(),
   );
   const [loaded, setLoaded] = useState(false);
+
+  // 서버별 그룹핑 — 던컨 → 아이라 (SERVERS 순서), 그룹 내 nicknameCompare
+  // 로 영어(abc) → 한글(가나다) 정렬. 빈 그룹은 렌더하지 않는다.
+  const groupedGuilds = useMemo(
+    () =>
+      SERVERS.map((server) => ({
+        server,
+        label: SERVER_LABELS[server],
+        list: guilds
+          .filter((g) => GUILD_SERVER_MAP[g.name] === server)
+          .slice()
+          .sort((a, b) => nicknameCompare(a.name, b.name)),
+      })).filter((group) => group.list.length > 0),
+    [guilds],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -145,14 +161,30 @@ export default function GuildTreePage() {
       )}
 
       {loaded &&
-        guilds.map((g) => (
-          <GuildCard
-            key={g.id}
-            guild={g}
-            members={(usersByGuild.get(g.id) ?? []).slice().sort((a, b) =>
-              nicknameCompare(a.nickname, b.nickname),
-            )}
-          />
+        groupedGuilds.map(({ server, label, list }) => (
+          <div key={server} className="mb-1">
+            <div className="mb-3.5 flex items-center gap-2.5">
+              <h2
+                className="text-[13px] font-semibold uppercase"
+                style={{ color: "#ffc785", letterSpacing: "0.12em" }}
+              >
+                {label}
+              </h2>
+              <div
+                className="h-px flex-1"
+                style={{ background: "rgba(255, 199, 133, 0.25)" }}
+              />
+            </div>
+            {list.map((g) => (
+              <GuildCard
+                key={g.id}
+                guild={g}
+                members={(usersByGuild.get(g.id) ?? []).slice().sort((a, b) =>
+                  nicknameCompare(a.nickname, b.nickname),
+                )}
+              />
+            ))}
+          </div>
         ))}
     </div>
   );
