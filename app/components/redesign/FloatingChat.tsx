@@ -1136,16 +1136,25 @@ export default function FloatingChat() {
       // scrollIntoView 로 이미 처리되므로 이 조건의 영향을 안 받는다.
       if (isJumpingRef.current) return;
       if (pendingOlderLoadRef.current) return;
-      if (openSettledRef.current) {
+      const settled = openSettledRef.current;
+      if (settled) {
         const l = listRef.current;
         if (l) {
           const distanceFromBottom = l.scrollHeight - l.scrollTop - l.clientHeight;
           if (distanceFromBottom > NEAR_BOTTOM_PIN_THRESHOLD) return;
         }
       }
+      // 정착(settled) 전에는 "auto"(즉시 이동) — 아바타/사진 로드로
+      // ResizeObserver 가 350ms 안에 여러 번 재발화하는데, 매번 "smooth"
+      // 로 부르면 이전 smooth 애니메이션을 계속 인터럽트해 바닥에 못
+      // 도달한 채로 openSettledRef 가 켜져버린다. 그 순간 위 거리 게이트가
+      // "과거 기록 열람 중"으로 오인해 그 중간 위치를 그대로 고정시키는
+      // 게 실제 회귀 원인 — auto 는 인터럽트할 애니메이션이 없어 매번
+      // 호출해도 항상 진짜 바닥에 재정렬된다. 정착 후(새 메시지 실시간
+      // 수신) 는 그대로 smooth 유지 — 그때는 재호출 빈도가 낮아 안전.
       const end = endRef.current;
       if (end) {
-        end.scrollIntoView({ block: "end", behavior: "smooth" });
+        end.scrollIntoView({ block: "end", behavior: settled ? "smooth" : "auto" });
       } else {
         const l = listRef.current;
         if (l) l.scrollTop = l.scrollHeight;
