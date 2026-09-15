@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   collection,
   deleteField,
@@ -13,6 +13,7 @@ import {
 } from "firebase/firestore";
 import { useAuth } from "../components/AuthProvider";
 import { db } from "@/src/lib/firebase";
+import NicknameLabel from "@/app/components/NicknameLabel";
 import { useDawnlight2 } from "@/src/lib/featureFlags";
 import { useBackdropClose } from "@/src/lib/useBackdropClose";
 import { useUserCharacters } from "@/src/lib/useCharacters";
@@ -27,7 +28,6 @@ import {
   isProposer,
   normalizeCategory,
   participantCount,
-  participantDisplayName,
   type ProposalCategory,
   type ProposalDoc,
   type ProposalParticipants,
@@ -407,20 +407,48 @@ function ProposalCard({
   // false이므로 자연스럽게 닉네임 공개. 익명은 누구에게도(관리자 포함)
   // 닉네임 노출 X — 익명성 보장 우선.
   const showAnonymous = item.isAnonymous && item.status === "recruiting";
-  const proposerLabel = showAnonymous
-    ? "익명"
-    : participantDisplayName(item.proposer, item.proposerCharacter);
+  // 닉네임 부분만 NicknameLabel(서버 툴팁)로 감싸고 "(캐릭터명)" 접미사는
+  // plain text 로 유지 — participantDisplayName 은 둘을 합친 문자열만
+  // 반환해서 여기선 안 쓰고 같은 로직을 직접 푼다. 익명 마스킹은 그대로
+  // "익명" 문자열이라 NicknameLabel 자체가 안 붙는다(진짜 닉네임이 렌더
+  // 트리에 아예 없으니 조회 대상도 없음 — 익명성 보장 그대로 유지).
+  const proposerLabel = showAnonymous ? (
+    "익명"
+  ) : (
+    <>
+      <NicknameLabel nickname={item.proposer} />
+      {item.proposerCharacter !== item.proposer
+        ? `(${item.proposerCharacter})`
+        : ""}
+    </>
+  );
   // 익명 + 모집중일 때만 참가자 리스트 안의 제안자 본인 닉네임을 "익명"으로
   // 치환. 다른 참가자는 본인 의지로 참가했으니 그대로 노출. 대표는 닉네임만,
   // 부캐는 "닉네임(캐릭터명)"으로 표시.
-  const maskedParticipants = Object.entries(item.participants).map(
-    ([owner, v]) =>
-      showAnonymous && owner === item.proposer
-        ? "익명"
-        : participantDisplayName(owner, v.character),
-  );
+  const participantEntries = Object.entries(item.participants);
   const participantsLine =
-    maskedParticipants.length > 0 ? maskedParticipants.join(", ") : "없음";
+    participantEntries.length === 0 ? (
+      "없음"
+    ) : (
+      <>
+        {participantEntries.map(([owner, v], idx) => {
+          const masked = showAnonymous && owner === item.proposer;
+          return (
+            <span key={owner}>
+              {idx > 0 ? ", " : ""}
+              {masked ? (
+                "익명"
+              ) : (
+                <>
+                  <NicknameLabel nickname={owner} />
+                  {v.character !== owner ? `(${v.character})` : ""}
+                </>
+              )}
+            </span>
+          );
+        })}
+      </>
+    );
 
   const showJoin = canJoin(item, loginNick);
   const showCancelJoin = canCancelJoin(item, loginNick);
@@ -763,7 +791,7 @@ function MetaRow({
   multiline,
 }: {
   label: string;
-  value: string;
+  value: ReactNode;
   multiline?: boolean;
 }) {
   return (

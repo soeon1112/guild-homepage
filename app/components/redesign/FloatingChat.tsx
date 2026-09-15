@@ -27,7 +27,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "@/src/lib/firebase";
 import { MAX_IMAGES_PER_MESSAGE } from "@/src/lib/dm";
 import { useAuth } from "@/app/components/AuthProvider";
-import NicknameLink from "@/app/components/NicknameLink";
+import NicknameLabel from "@/app/components/NicknameLabel";
 import { CommentImageView } from "@/app/components/CommentImage";
 import { ImageGallery } from "@/app/components/ImageGallery";
 import { GalleryViewer } from "@/app/components/GalleryViewer";
@@ -553,14 +553,14 @@ const MessageItem = memo(
                 className="px-1"
                 style={{ color: "#5c3a1f", fontSize: 12 }}
               >
-                <NicknameLink
+                <NicknameLabel
                   nickname={m.nickname}
                   className="font-semibold"
                 />
               </div>
             ) : (
               <div className="px-1 font-serif text-[11px] tracking-wider">
-                <NicknameLink
+                <NicknameLabel
                   nickname={m.nickname}
                   className="text-stardust"
                 />
