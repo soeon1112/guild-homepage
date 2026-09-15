@@ -17,6 +17,7 @@ import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
 import { useAuth } from "@/app/components/AuthProvider";
 import { useGuilds } from "@/src/lib/useGuilds";
+import { SERVERS, SERVER_LABELS, GUILD_SERVER_MAP, type Server } from "@/src/lib/guilds";
 import { useBackdropClose } from "@/src/lib/useBackdropClose";
 
 type NavItem = {
@@ -203,10 +204,18 @@ export function AuthModal({
   const [nick, setNick] = useState("");
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
+  const [server, setServer] = useState<Server | "">("");
   const [guildId, setGuildId] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const backdropHandlers = useBackdropClose(onClose);
+
+  // 서버 선택 시 해당 서버 길드만 (Phase 1 GUILD_SERVER_MAP 은 길드 name
+  // 기준 — 실제 표시/제출은 여전히 Firestore guilds 문서의 id 기반이라
+  // useGuilds() 라이브 목록을 필터링한다.
+  const guildsInServer = guilds.filter(
+    (g) => server !== "" && GUILD_SERVER_MAP[g.name] === server,
+  );
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -250,7 +259,13 @@ export function AuthModal({
     setErr(null);
     setPw("");
     setPw2("");
+    setServer("");
     setGuildId("");
+  };
+
+  const selectServer = (next: Server | "") => {
+    setServer(next);
+    setGuildId(""); // 서버 변경 시 길드 선택 리셋
   };
 
   // dl2 reskin (2026-05-09) — same structure, dl2 tokens. Card surface
@@ -388,16 +403,35 @@ export function AuthModal({
           )}
           {mode === "signup" && (
             <select
-              value={guildId}
-              onChange={(e) => setGuildId(e.target.value)}
-              aria-label="길드"
+              value={server}
+              onChange={(e) => selectServer(e.target.value as Server | "")}
+              aria-label="서버"
               className={dl2Input}
               style={dl2InputStyle}
             >
               <option value="" style={{ color: "#2a1f4a" }}>
-                길드 선택
+                서버 선택
               </option>
-              {guilds.map((g) => (
+              {SERVERS.map((s) => (
+                <option key={s} value={s} style={{ color: "#2a1f4a" }}>
+                  {SERVER_LABELS[s]}
+                </option>
+              ))}
+            </select>
+          )}
+          {mode === "signup" && (
+            <select
+              value={guildId}
+              onChange={(e) => setGuildId(e.target.value)}
+              aria-label="길드"
+              disabled={server === ""}
+              className={dl2Input}
+              style={dl2InputStyle}
+            >
+              <option value="" style={{ color: "#2a1f4a" }}>
+                {server === "" ? "서버를 먼저 선택해주세요" : "길드 선택"}
+              </option>
+              {guildsInServer.map((g) => (
                 <option key={g.id} value={g.id} style={{ color: "#2a1f4a" }}>
                   {g.name}
                 </option>
