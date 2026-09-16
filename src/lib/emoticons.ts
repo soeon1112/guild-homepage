@@ -1,8 +1,11 @@
-// Firebase Storage에 업로드된 이모티콘 12종. 새 이모티콘 추가 시 이 배열에
+// Firebase Storage에 업로드된 이모티콘 29종. 새 이모티콘 추가 시 이 배열에
 // id만 늘리면 됨 — 이미지 자체는 Storage emoticons/{id}.png 로 콘솔 업로드.
 export const EMOTICON_IDS = [
   "01", "02", "03", "04", "05", "06",
   "07", "08", "09", "10", "11", "12",
+  "13", "14", "15", "16", "17", "18",
+  "19", "20", "21", "22", "23", "24",
+  "25", "26", "27", "28", "29",
 ];
 
 // src/lib/firebase.ts storageBucket verbatim.
