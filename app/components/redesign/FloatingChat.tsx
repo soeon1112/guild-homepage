@@ -1,6 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
+import { usePathname } from "next/navigation";
 import { Camera, Send, Smile, X } from "lucide-react";
 import {
   memo,
@@ -655,6 +656,17 @@ export default function FloatingChat() {
     if (open) setOpenPanel("chat");
     else if (getOpenPanel() === "chat") setOpenPanel(null);
   }, [open]);
+
+  // 프사 클릭 → DM 이동 등 라우트 전환 시 패널이 화면 위에 남아있지
+  // 않도록 pathname 변화를 감지해 자동으로 닫는다.
+  const pathname = usePathname();
+  const prevPathnameRef = useRef(pathname);
+  useEffect(() => {
+    if (prevPathnameRef.current !== pathname) {
+      prevPathnameRef.current = pathname;
+      setOpen(false);
+    }
+  }, [pathname]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   // Chat-p5: 페이지네이션 — limit 자체를 늘려 같은 onSnapshot 구독을
   // 재활용 (별도 startAfter 쿼리 없음). loadingMore 는 다음 snapshot
@@ -1835,40 +1847,6 @@ export default function FloatingChat() {
               >
                 {isEmoticonOpen && (
                   <div className="absolute bottom-full left-0 right-0 px-3 pt-2 pb-1">
-                    <div className="mb-1.5 flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsEmoticonOpen(false);
-                          pickFile();
-                        }}
-                        disabled={sending}
-                        aria-label={file || imageFiles.length > 0 ? "첨부 제거" : "파일 첨부"}
-                        className={
-                          isDawnlight2
-                            ? "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all disabled:opacity-50"
-                            : `flex h-9 w-9 shrink-0 items-center justify-center rounded-full border bg-abyss/50 text-stardust backdrop-blur-sm transition-all disabled:opacity-50 ${
-                                file || imageFiles.length > 0
-                                  ? "border-peach-accent/70 text-peach-accent"
-                                  : "border-nebula-pink/30 hover:border-nebula-pink/60"
-                              }`
-                        }
-                        style={
-                          isDawnlight2
-                            ? {
-                                background: "#ffffff",
-                                border:
-                                  file || imageFiles.length > 0
-                                    ? "1px solid rgba(184,84,32,0.4)"
-                                    : "1px solid rgba(92,58,31,0.20)",
-                                color: file || imageFiles.length > 0 ? "#b85420" : "#5c3a1f",
-                              }
-                            : undefined
-                        }
-                      >
-                        <Camera className="h-4 w-4" />
-                      </button>
-                    </div>
                     <EmoticonPicker onSelect={handleEmoticonSelect} />
                   </div>
                 )}
@@ -2067,6 +2045,36 @@ export default function FloatingChat() {
                     }}
                     disabled={sending}
                   />
+                  <button
+                    type="button"
+                    onClick={pickFile}
+                    disabled={sending}
+                    aria-label={file || imageFiles.length > 0 ? "첨부 제거" : "파일 첨부"}
+                    className={
+                      isDawnlight2
+                        ? "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all disabled:opacity-50"
+                        : `flex h-9 w-9 shrink-0 items-center justify-center rounded-full border bg-abyss/50 text-stardust backdrop-blur-sm transition-all disabled:opacity-50 ${
+                            file || imageFiles.length > 0
+                              ? "border-peach-accent/70 text-peach-accent"
+                              : "border-nebula-pink/30 hover:border-nebula-pink/60"
+                          }`
+                    }
+                    style={
+                      isDawnlight2
+                        ? {
+                            background: "#ffffff",
+                            border:
+                              file || imageFiles.length > 0
+                                ? "1px solid rgba(184,84,32,0.4)"
+                                : "1px solid rgba(92,58,31,0.20)",
+                            color: file || imageFiles.length > 0 ? "#b85420" : "#5c3a1f",
+                          }
+                        : undefined
+                    }
+                  >
+                    <Camera className="h-4 w-4" />
+                  </button>
+
                   <button
                     type="button"
                     onClick={toggleEmoticon}

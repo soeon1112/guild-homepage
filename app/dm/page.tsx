@@ -67,7 +67,7 @@ export default function DMListPage() {
         className="flex shrink-0 items-center gap-2.5 px-3 py-2.5"
         style={{ borderBottom: "1px solid rgba(92,58,31,0.10)", background: "rgba(254, 245, 230, 0.9)" }}
       >
-        <button type="button" onClick={() => router.back()} aria-label="뒤로가기" className="p-1">
+        <button type="button" onClick={() => router.push("/")} aria-label="뒤로가기" className="p-1">
           <ChevronLeft size={22} color={INK} />
         </button>
         <span className="flex-1 text-[15px] font-semibold" style={{ color: INK }}>DM</span>

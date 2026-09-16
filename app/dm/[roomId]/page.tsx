@@ -15,7 +15,7 @@ import {
 } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { Camera, ChevronLeft, Plus, Send, Smile, X } from "lucide-react";
+import { Camera, ChevronLeft, Send, Smile, X } from "lucide-react";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { MemberAvatar } from "@/app/components/redesign/MemberAvatar";
 import { MessageText } from "@/app/components/MessageText";
@@ -23,7 +23,6 @@ import { LinkPreviewCard } from "@/app/components/LinkPreviewCard";
 import { EmoticonPicker } from "@/app/components/EmoticonPicker";
 import { ImageGallery } from "@/app/components/ImageGallery";
 import { GalleryViewer } from "@/app/components/GalleryViewer";
-import { Dawnlight2BottomNav } from "@/app/components/dawnlight2/BottomNav";
 import { useMemberAvatars } from "@/src/lib/useMemberAvatars";
 import { useChatReactions, type MessageReactions } from "@/src/lib/useChatReactions";
 import { getEmoticonUrl } from "@/src/lib/emoticons";
@@ -145,7 +144,6 @@ export default function DMRoomPage() {
   // 사진 묶음(Phase 2) — 최대 MAX_IMAGES_PER_MESSAGE(4)장. 기존 단일
   // file(미접촉)과 별개 state.
   const [imageFiles, setImageFiles] = useState<{ uri: string; name: string; raw: File }[]>([]);
-  const [isNavOpen, setIsNavOpen] = useState(false);
   const [isEmoticonOpen, setIsEmoticonOpen] = useState(false);
   const [replyingTo, setReplyingTo] = useState<ReplyTarget | null>(null);
   const [actionMenuFor, setActionMenuFor] = useState<DMMessageRow | null>(null);
@@ -161,15 +159,7 @@ export default function DMRoomPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messageInputRef = useRef<HTMLInputElement>(null);
 
-  // P7-B — NewHomeChat.tsx(redesign):452-462의 togglePanel/toggleEmoticon과
-  // 동일 상호배타 로직(E-3). + 열림 시 이모티콘 닫힘, 반대도 마찬가지.
-  const togglePanel = () => {
-    if (!isNavOpen) messageInputRef.current?.blur();
-    setIsEmoticonOpen(false);
-    setIsNavOpen((v) => !v);
-  };
   const toggleEmoticon = () => {
-    setIsNavOpen(false);
     setIsEmoticonOpen((v) => !v);
   };
 
@@ -509,49 +499,12 @@ export default function DMRoomPage() {
         ))}
       </div>
 
-      {/* P7-B 슬라이드업 — NewHomeChat.tsx(redesign):1028-1036과 동일
-          transform 트릭(0-height wrapper의 transform이 fixed 자손인
-          Dawnlight2BottomNav의 containing block이 돼, 그 bottom:0이
-          "화면 맨 아래"가 아니라 이 지점 기준으로 계산됨). 닫혔을 때는
-          composeArea 뒤로 완전히 숨는다. */}
-      <div
-        style={{
-          transform: isNavOpen ? "translateY(0)" : "translateY(110px)",
-          transition: "transform 200ms ease",
-          pointerEvents: isNavOpen ? "auto" : "none",
-        }}
-      >
-        <Dawnlight2BottomNav forceVisible />
-      </div>
-
       <div
         className="relative shrink-0 space-y-1.5 px-2.5 pb-2.5 pt-2"
         style={{ borderTop: "1px solid rgba(92,58,31,0.10)", background: "rgba(254, 245, 230, 0.9)" }}
       >
         {isEmoticonOpen && (
           <div className="absolute bottom-full left-0 right-0 px-2.5 pt-2 pb-1">
-            <div className="mb-1.5 flex justify-end">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsEmoticonOpen(false);
-                  fileInputRef.current?.click();
-                }}
-                disabled={sending}
-                aria-label={file || imageFiles.length > 0 ? "첨부 제거" : "사진 첨부"}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all disabled:opacity-50"
-                style={{
-                  background: "#ffffff",
-                  border:
-                    file || imageFiles.length > 0
-                      ? "1px solid rgba(184,84,32,0.4)"
-                      : "1px solid rgba(92,58,31,0.20)",
-                  color: file || imageFiles.length > 0 ? "#b85420" : INK,
-                }}
-              >
-                <Camera className="h-4 w-4" />
-              </button>
-            </div>
             <EmoticonPicker onSelect={handleEmoticonSelect} />
           </div>
         )}
@@ -612,19 +565,23 @@ export default function DMRoomPage() {
           />
           <button
             type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              togglePanel();
+            onClick={() => {
+              setIsEmoticonOpen(false);
+              fileInputRef.current?.click();
             }}
-            aria-label={isNavOpen ? "빠른 이동 닫기" : "빠른 이동 열기"}
-            aria-pressed={isNavOpen}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all"
+            disabled={sending}
+            aria-label={file || imageFiles.length > 0 ? "첨부 제거" : "사진 첨부"}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all disabled:opacity-50"
             style={{
-              background: isNavOpen ? "rgba(255,199,133,0.4)" : "rgba(92,58,31,0.06)",
-              color: isNavOpen ? "#b85420" : INK,
+              background: "#ffffff",
+              border:
+                file || imageFiles.length > 0
+                  ? "1px solid rgba(184,84,32,0.4)"
+                  : "1px solid rgba(92,58,31,0.20)",
+              color: file || imageFiles.length > 0 ? "#b85420" : INK,
             }}
           >
-            <Plus className="h-4 w-4" />
+            <Camera className="h-4 w-4" />
           </button>
           <button
             type="button"
