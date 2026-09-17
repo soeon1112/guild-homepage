@@ -727,10 +727,11 @@ const DMMessageItemView = memo(function DMMessageItemView({
 
   const content = (
     <div
-      className={`flex flex-col gap-1 ${mine ? "items-end" : "items-start"}`}
-      // 사진 그리드 겹침 방어 — display/flexDirection 인라인 명시 +
-      // flexShrink:0 (웹 채팅 파일들과 동일 방어).
-      style={{ display: "flex", flexDirection: "column", flexShrink: 0 }}
+      className={`flex min-w-0 flex-col gap-1 ${mine ? "items-end" : "items-start"}`}
+      // 채팅 fix(70aa7d1)와 동일 원인 — flexShrink:0인 채로는 부모 row
+      // 안에서 시간에게 폭을 양보하지 않아 오버플로우. flexShrink:0
+      // 제거 + min-w-0으로 형제와 폭을 나눠 갖게 한다.
+      style={{ display: "flex", flexDirection: "column", minWidth: 0 }}
     >
       {replyQuote}
       {!!m.message && (
@@ -740,6 +741,9 @@ const DMMessageItemView = memo(function DMMessageItemView({
             background: mine ? "#ffd4b8" : "#f0e4cc",
             border: "1px solid rgba(92,58,31,0.10)",
             color: INK,
+            overflowWrap: "anywhere",
+            wordBreak: "break-word",
+            minWidth: 0,
           }}
         >
           <MessageText text={m.message} dl2 />
@@ -792,9 +796,9 @@ const DMMessageItemView = memo(function DMMessageItemView({
       style={{ flexShrink: 0 }}
     >
       {!mine && <MemberAvatar imageUrl={avatarImageUrl} nickname={m.nickname} size={AVATAR_SIZE} dl2 />}
-      <div className="flex max-w-[82%] items-end gap-1" style={{ flexShrink: 0 }}>
+      <div className="flex min-w-0 max-w-[82%] items-end gap-1" style={{ flexShrink: 0, minWidth: 0 }}>
         {content}
-        <span className="whitespace-nowrap text-[9px]" style={{ color: INK_SOFT }}>{formatTime(m.ts)}</span>
+        <span className="shrink-0 whitespace-nowrap text-[9px]" style={{ color: INK_SOFT }}>{formatTime(m.ts)}</span>
       </div>
     </div>
   );
