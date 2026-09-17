@@ -797,8 +797,15 @@ const DMMessageItemView = memo(function DMMessageItemView({
     >
       {!mine && <MemberAvatar imageUrl={avatarImageUrl} nickname={m.nickname} size={AVATAR_SIZE} dl2 />}
       <div className="flex min-w-0 max-w-[82%] items-end gap-1" style={{ flexShrink: 0, minWidth: 0 }}>
+        {/* 채팅(FloatingChat.tsx)과 동일 — mine: 시간이 말풍선 왼쪽,
+            other: 시간이 말풍선 오른쪽. JSX 순서만으로 배치. */}
+        {mine && (
+          <span className="shrink-0 whitespace-nowrap text-[9px]" style={{ color: INK_SOFT }}>{formatTime(m.ts)}</span>
+        )}
         {content}
-        <span className="shrink-0 whitespace-nowrap text-[9px]" style={{ color: INK_SOFT }}>{formatTime(m.ts)}</span>
+        {!mine && (
+          <span className="shrink-0 whitespace-nowrap text-[9px]" style={{ color: INK_SOFT }}>{formatTime(m.ts)}</span>
+        )}
       </div>
     </div>
   );
