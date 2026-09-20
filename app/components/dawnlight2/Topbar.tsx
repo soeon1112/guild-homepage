@@ -14,7 +14,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/app/components/AuthProvider";
-import { useUnreadDMTotal } from "@/src/lib/useUnreadDMTotal";
+import { getActiveDmRoomId, useUnreadDMTotal } from "@/src/lib/useUnreadDMTotal";
 import { useVoiceParticipantCount } from "@/src/lib/useVoiceParticipantCount";
 import { emitChatScrollToLatest } from "@/src/lib/uiBus";
 import {
@@ -143,12 +143,13 @@ export function Dawnlight2Topbar() {
   const { nickname, ready, logout } = useAuth();
   // Phase 4 — DM 아이콘 배지용. 언쏘 A/B는 Phase 6에서(이 Phase는 UI만,
   // 지금은 로그인한 모두에게 노출).
-  const unreadDMTotal = useUnreadDMTotal(nickname);
+  // 대화 중인 방(/dm/{roomId})의 unread는 배지 합계에서 제외.
+  const pathname = usePathname();
+  const unreadDMTotal = useUnreadDMTotal(nickname, getActiveDmRoomId(pathname));
   // 통화방 진입점 배지용 — 앱 Phase 5와 동일 패턴, 언쏘 A/B는 Phase 6에서
   // (지금은 로그인한 모두에게 노출).
   const voiceParticipantCount = useVoiceParticipantCount();
   const router = useRouter();
-  const pathname = usePathname();
   const [hovered, setHovered] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [authModal, setAuthModal] = useState<{
