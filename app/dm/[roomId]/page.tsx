@@ -460,9 +460,19 @@ export default function DMRoomPage() {
     // 사용 가능 — 이 화면에서 새로 마운트할 필요 없음)가 노출하는
     // --keyboard-inset을 박스 높이에서 직접 빼면 flex-1인 메시지 영역이
     // 줄고 입력줄이 자연히 키보드 위로 올라온다.
+    //
+    // marginBottom: ChromeShell <main>이 BottomNav 자리로 pb-[12rem+safe-area]
+    // 를 깔아두는데, 대화 화면(/dm/{roomId})은 BottomNav가 숨겨져 있어 그
+    // 192px가 컨테이너 아래 빈 여백 + 페이지 스크롤바가 됐다. 같은 값만큼
+    // 음수 margin으로 상쇄해 페이지 총 높이 = Topbar 56 + 컨테이너 = 뷰포트.
     <div
       className="mx-auto flex w-full max-w-2xl flex-col"
-      style={{ height: "calc(100dvh - 56px - var(--keyboard-inset, 0px))", overflow: "hidden", background: DM_BG }}
+      style={{
+        height: "calc(100dvh - 56px - var(--keyboard-inset, 0px))",
+        marginBottom: "calc(-1 * (12rem + env(safe-area-inset-bottom)))",
+        overflow: "hidden",
+        background: DM_BG,
+      }}
     >
       {/* 상단 헤더 — 뒤로가기 + 상대방 프사/닉네임(G-2). Topbar는 그대로
           위에 남아있고(다른 시스템 미접촉), 이 헤더는 그 아래 대화 전용
