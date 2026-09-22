@@ -23,10 +23,18 @@ type VolumeSliderProps = {
   value: number;
   max: number;
   onChange: (value: number) => void;
+  /** 눈금 간격. 음량은 5(%), 입력 감도는 더 촘촘한 값을 쓴다. */
+  step?: number;
   ariaLabel: string;
 };
 
-export function VolumeSlider({ value, max, onChange, ariaLabel }: VolumeSliderProps) {
+export function VolumeSlider({
+  value,
+  max,
+  onChange,
+  ariaLabel,
+  step = VOICE_VOLUME_STEP,
+}: VolumeSliderProps) {
   const trackRef = useRef<HTMLDivElement>(null);
   const ratio = max > 0 ? Math.min(1, Math.max(0, value / max)) : 0;
 
@@ -37,10 +45,11 @@ export function VolumeSlider({ value, max, onChange, ariaLabel }: VolumeSliderPr
       const rect = el.getBoundingClientRect();
       if (rect.width <= 0) return;
       const nextRatio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
-      const stepped = Math.round((nextRatio * max) / VOICE_VOLUME_STEP) * VOICE_VOLUME_STEP;
+      // step이 0.01 같은 소수면 곱셈 결과에 부동소수 찌꺼기가 남는다.
+      const stepped = Number((Math.round((nextRatio * max) / step) * step).toFixed(4));
       onChange(Math.min(max, Math.max(0, stepped)));
     },
-    [max, onChange],
+    [max, onChange, step],
   );
 
   return (
@@ -67,10 +76,10 @@ export function VolumeSlider({ value, max, onChange, ariaLabel }: VolumeSliderPr
       onKeyDown={(e) => {
         if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
           e.preventDefault();
-          onChange(Math.max(0, value - VOICE_VOLUME_STEP));
+          onChange(Number(Math.max(0, value - step).toFixed(4)));
         } else if (e.key === "ArrowRight" || e.key === "ArrowUp") {
           e.preventDefault();
-          onChange(Math.min(max, value + VOICE_VOLUME_STEP));
+          onChange(Number(Math.min(max, value + step).toFixed(4)));
         }
       }}
     >

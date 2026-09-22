@@ -19,8 +19,30 @@ export const VOICE_VOLUME_STEP = 5;
 // 웹 상한 — 위 주석 1) 참고. 앱(dawnlight-app)은 200.
 export const VOICE_VOLUME_MAX = 100;
 
+// ── 입력 감도 게이트 ────────────────────────────────────────────────
+// 내 입력 레벨이 임계값 아래면 송출을 끊고, 넘으면 다시 흘린다(디코의
+// "입력 감도"와 같은 동작). 임계값 하나만 쓰면 말끝에서 레벨이 임계값을
+// 들락거리며 소리가 끊기므로 히스테리시스를 둔다 — 열 때는 임계값,
+// 닫을 때는 임계값의 70% 아래로 300ms 연속 유지돼야 닫는다.
+export const VOICE_GATE_RELEASE_RATIO = 0.7;
+export const VOICE_GATE_RELEASE_HOLD_MS = 300;
+
+// 웹 입력 레벨은 getVolumeLevel() 의 0~1 스케일.
+export const VOICE_INPUT_THRESHOLD_MAX = 1;
+export const VOICE_INPUT_THRESHOLD_DEFAULT = 0.15;
+export const VOICE_INPUT_THRESHOLD_STEP = 0.01;
+
+export function clampInputThreshold(value: number): number {
+  if (!Number.isFinite(value)) return VOICE_INPUT_THRESHOLD_DEFAULT;
+  const clamped = Math.min(VOICE_INPUT_THRESHOLD_MAX, Math.max(0, value));
+  // step 이 0.01 인 웹에서 부동소수 찌꺼기(0.15000000000000002)가 남지
+  // 않도록 잘라낸다.
+  return Number(clamped.toFixed(4));
+}
 const OUTPUT_VOLUME_KEY = "voice:outputVolume";
 const USER_VOLUMES_KEY = "voice:userVolumes";
+const INPUT_THRESHOLD_KEY = "voice:inputThreshold";
+const NOISE_SUPPRESSION_KEY = "voice:noiseSuppression";
 
 export function clampVoiceVolume(value: number): number {
   if (!Number.isFinite(value)) return VOICE_VOLUME_DEFAULT;
@@ -75,6 +97,43 @@ export function loadUserVolumes(): Record<string, number> {
 export function saveUserVolumes(volumes: Record<string, number>): void {
   try {
     localStorage.setItem(USER_VOLUMES_KEY, JSON.stringify(volumes));
+  } catch {
+    /* 위와 동일 */
+  }
+}
+
+export function loadInputThreshold(): number {
+  try {
+    const raw = localStorage.getItem(INPUT_THRESHOLD_KEY);
+    if (raw == null) return VOICE_INPUT_THRESHOLD_DEFAULT;
+    return clampInputThreshold(Number(raw));
+  } catch {
+    return VOICE_INPUT_THRESHOLD_DEFAULT;
+  }
+}
+
+export function saveInputThreshold(value: number): void {
+  try {
+    localStorage.setItem(INPUT_THRESHOLD_KEY, String(clampInputThreshold(value)));
+  } catch {
+    /* Safari 프라이빗 모드 등 */
+  }
+}
+
+// 기본값 ON — 저장된 값이 없으면 노이즈 억제를 켠 상태로 시작한다.
+export function loadNoiseSuppression(): boolean {
+  try {
+    const raw = localStorage.getItem(NOISE_SUPPRESSION_KEY);
+    if (raw == null) return true;
+    return raw === "1";
+  } catch {
+    return true;
+  }
+}
+
+export function saveNoiseSuppression(enabled: boolean): void {
+  try {
+    localStorage.setItem(NOISE_SUPPRESSION_KEY, enabled ? "1" : "0");
   } catch {
     /* 위와 동일 */
   }

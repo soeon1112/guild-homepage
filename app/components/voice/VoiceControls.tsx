@@ -1,20 +1,18 @@
 "use client";
 
-import { Headphones, Mic, MicOff, PhoneOff, Volume2, VolumeX } from "lucide-react";
-import { VolumeSlider } from "@/app/components/voice/VolumeSlider";
-import { VOICE_VOLUME_MAX } from "@/src/lib/voiceVolume";
+import { Headphones, Mic, MicOff, PhoneOff, Settings } from "lucide-react";
 
 type VoiceControlsProps = {
   muted: boolean;
   onToggleMute: () => void;
   onLeave: () => void;
-  /** 전체 출력 음량(%) — 모든 상대 목소리에 일괄 적용. */
-  outputVolume: number;
-  onOutputVolumeChange: (volume: number) => void;
   /** 마이크 없이 듣기 전용으로 참가한 상태 — 마이크 버튼을 잠근다. */
   listenOnly?: boolean;
   /** 잠긴 마이크 버튼을 눌렀을 때 — 같은 안내를 다시 띄우는 용도. */
   onListenOnlyNotice?: () => void;
+  /** 음성 설정 시트 열기. 출력 음량/입력 감도/노이즈 억제가 그 안에 있다. */
+  onOpenSettings: () => void;
+  settingsOpen: boolean;
 };
 
 // Topbar.tsx의 CreamIconButton 시각 톤(cream 테두리 + abyss 반투명 배경)을
@@ -26,36 +24,13 @@ export function VoiceControls({
   muted,
   onToggleMute,
   onLeave,
-  outputVolume,
-  onOutputVolumeChange,
   listenOnly = false,
   onListenOnlyNotice,
+  onOpenSettings,
+  settingsOpen,
 }: VoiceControlsProps) {
-  const outputMuted = outputVolume === 0;
   return (
     <div className="flex flex-col gap-3">
-      {/* 전체 출력 음량 — 마이크 송출(음소거 버튼)과는 완전히 별개로,
-          내 스피커로 들리는 상대 목소리 크기만 건드린다. */}
-      <div className="flex items-center gap-2.5 px-1">
-        <span className="shrink-0" style={{ color: outputMuted ? "rgba(254, 245, 230, 0.45)" : "#fef5e6" }}>
-          {outputMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
-        </span>
-        <div className="min-w-0 flex-1">
-          <VolumeSlider
-            value={outputVolume}
-            max={VOICE_VOLUME_MAX}
-            onChange={onOutputVolumeChange}
-            ariaLabel="전체 출력 음량"
-          />
-        </div>
-        <span
-          className="w-10 shrink-0 text-right font-serif text-[10px] tabular-nums"
-          style={{ color: "rgba(254, 245, 230, 0.7)" }}
-        >
-          {outputVolume}%
-        </span>
-      </div>
-
       <div className="flex items-start justify-center gap-8">
       {/* 듣기 전용이면 끌 마이크 자체가 없다 — 버튼을 없애는 대신 잠긴
           모습으로 남겨두고(레이아웃 유지) 누르면 이유를 다시 알려준다. */}
@@ -104,6 +79,31 @@ export function VoiceControls({
         <span className="font-serif text-[9px] tracking-wider" style={{ color: "rgba(254, 245, 230, 0.75)" }}>
           나가기
         </span>
+        </button>
+
+        {/* 음성 설정 — 출력 음량/입력 감도/노이즈 억제. 원래 컨트롤 바에
+            직접 붙어 있던 음량 슬라이더가 이 시트 안으로 들어갔다. */}
+        <button
+          type="button"
+          onClick={onOpenSettings}
+          aria-label="음성 설정"
+          aria-expanded={settingsOpen}
+          className="group flex flex-col items-center gap-1.5"
+        >
+          <span
+            className="flex h-14 w-14 items-center justify-center rounded-full backdrop-blur-sm transition-all duration-200 group-active:scale-95"
+            style={{
+              color: "#fef5e6",
+              border: "1px solid rgba(254, 245, 230, 0.7)",
+              background: settingsOpen ? "rgba(255, 199, 133, 0.25)" : "rgba(11, 8, 33, 0.5)",
+              boxShadow: "0 0 8px rgba(254, 245, 230, 0.22)",
+            }}
+          >
+            <Settings size={22} />
+          </span>
+          <span className="font-serif text-[9px] tracking-wider" style={{ color: "rgba(254, 245, 230, 0.75)" }}>
+            설정
+          </span>
         </button>
       </div>
     </div>
