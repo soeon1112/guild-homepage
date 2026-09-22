@@ -23,6 +23,15 @@ import { useAuth } from "@/app/components/AuthProvider";
 import { useMemberAvatars, type MemberAvatarInfo } from "@/src/lib/useMemberAvatars";
 import { fetchAgoraToken } from "@/src/lib/getAgoraToken";
 import {
+  VOICE_VOLUME_DEFAULT,
+  clampVoiceVolume,
+  combineVoiceVolume,
+  loadOutputVolume,
+  loadUserVolumes,
+  saveOutputVolume,
+  saveUserVolumes,
+} from "@/src/lib/voiceVolume";
+import {
   VOICE_CHANNEL_NAME,
   ensureAgoraUid,
   joinVoiceRoomDoc,
@@ -66,6 +75,12 @@ type VoiceRoomContextValue = {
   muted: boolean;
   error: string | null;
   speakingUids: Set<number>;
+  /** 전체 출력 음량(%) — 모든 원격 트랙에 일괄 적용. */
+  outputVolume: number;
+  setOutputVolume: (volume: number) => void;
+  /** 닉네임 → 사람별 음량(%). 없는 닉네임은 기본 100%. */
+  userVolumes: Record<string, number>;
+  setUserVolume: (nickname: string, volume: number) => void;
   join: () => Promise<void>;
   leave: () => Promise<void>;
   toggleMute: () => Promise<void>;
@@ -82,6 +97,12 @@ export function VoiceRoomProvider({ children }: { children: React.ReactNode }) {
   const [muted, setMuted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [speakingUids, setSpeakingUids] = useState<Set<number>>(new Set());
+  const [outputVolume, setOutputVolumeState] = useState(VOICE_VOLUME_DEFAULT);
+  const [userVolumes, setUserVolumesState] = useState<Record<string, number>>({});
+  // remoteTracksRef는 ref라 트랙이 들고 나도 리렌더가 나지 않는다 — 새로
+  // 입장한 사람에게도 저장된 음량을 자동 적용하려면 "트랙 맵이 바뀌었다"는
+  // 신호가 따로 필요해서 카운터를 하나 둔다(아래 적용 effect의 deps).
+  const [remoteTrackEpoch, setRemoteTrackEpoch] = useState(0);
 
   const clientRef = useRef<IAgoraRTCClient | null>(null);
   const localTrackRef = useRef<IMicrophoneAudioTrack | null>(null);
@@ -98,10 +119,54 @@ export function VoiceRoomProvider({ children }: { children: React.ReactNode }) {
     return unsub;
   }, []);
 
+  // localStorage 복원 — 렌더 중이 아니라 mount effect에서만 읽는다(이
+  // Provider는 app/layout.tsx 최상위라 서버에서도 렌더된다).
+  useEffect(() => {
+    setOutputVolumeState(loadOutputVolume());
+    setUserVolumesState(loadUserVolumes());
+  }, []);
+
+  const setOutputVolume = useCallback((volume: number) => {
+    const next = clampVoiceVolume(volume);
+    setOutputVolumeState(next);
+    saveOutputVolume(next);
+  }, []);
+
+  const setUserVolume = useCallback((nickname: string, volume: number) => {
+    setUserVolumesState((prev) => {
+      const next = { ...prev, [nickname]: clampVoiceVolume(volume) };
+      saveUserVolumes(next);
+      return next;
+    });
+  }, []);
+
   const participantEntries: [string, VoiceRoomParticipant][] = room
     ? Object.entries(room.participants ?? {})
     : [];
   const avatarMap = useMemberAvatars(participantEntries.map(([nickname]) => nickname));
+
+  // 음량 적용 — 웹 SDK에는 "전체 출력" API가 없고 트랙별
+  // IRemoteAudioTrack.setVolume() 하나뿐이라, 전체 × 사람별을 여기서 직접
+  // 곱해 각 트랙에 내려준다. room이 deps에 있어서 누가 새로 들어오거나
+  // 나가도(Firestore 문서 갱신) 다시 돌고, remoteTrackEpoch 덕에 실제
+  // 트랙 구독 시점에도 다시 돈다 — 재입장/재접속 복원이 이 두 신호로 커버된다.
+  // uid→닉네임 역매핑이 필요한 이유는 저장 키가 닉네임이기 때문(uid는
+  // 해시 재발급 시 바뀔 수 있음).
+  useEffect(() => {
+    const uidToNickname = new Map<number, string>();
+    for (const [nickname, p] of Object.entries(room?.participants ?? {})) {
+      uidToNickname.set(p.uid, nickname);
+    }
+    for (const [uid, track] of remoteTracksRef.current) {
+      const nickname = uidToNickname.get(uid);
+      const perUser = nickname != null ? userVolumes[nickname] ?? VOICE_VOLUME_DEFAULT : VOICE_VOLUME_DEFAULT;
+      try {
+        track.setVolume(combineVoiceVolume(outputVolume, perUser));
+      } catch (e) {
+        console.error("[VoiceRoomProvider] setVolume 실패", uid, e);
+      }
+    }
+  }, [outputVolume, userVolumes, remoteTrackEpoch, room]);
 
   // 발화 감지 폴링 — join 중일 때만 동작.
   useEffect(() => {
@@ -203,15 +268,20 @@ export function VoiceRoomProvider({ children }: { children: React.ReactNode }) {
         if (mediaType === "audio" && user.audioTrack) {
           user.audioTrack.play();
           remoteTracksRef.current.set(user.uid as number, user.audioTrack);
+          // 저장된 음량을 이 트랙에도 적용하도록 적용 effect를 깨운다
+          // (이 핸들러는 join 시점 클로저라 최신 음량 state를 직접 못 읽는다).
+          setRemoteTrackEpoch((e) => e + 1);
         }
       });
       client.on("user-unpublished", (user, mediaType) => {
         if (mediaType === "audio") {
           remoteTracksRef.current.delete(user.uid as number);
+          setRemoteTrackEpoch((e) => e + 1);
         }
       });
       client.on("user-left", (user) => {
         remoteTracksRef.current.delete(user.uid as number);
+        setRemoteTrackEpoch((e) => e + 1);
       });
 
       await client.join(AGORA_APP_ID, VOICE_CHANNEL_NAME, token, uid);
@@ -295,6 +365,10 @@ export function VoiceRoomProvider({ children }: { children: React.ReactNode }) {
         muted,
         error,
         speakingUids,
+        outputVolume,
+        setOutputVolume,
+        userVolumes,
+        setUserVolume,
         join,
         leave,
         toggleMute,

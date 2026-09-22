@@ -41,6 +41,10 @@ export default function VoiceRoom() {
     muted,
     error,
     speakingUids,
+    outputVolume,
+    setOutputVolume,
+    userVolumes,
+    setUserVolume,
     join,
     leave,
     toggleMute,
@@ -64,6 +68,7 @@ export default function VoiceRoom() {
     muted: nickname === me ? muted : p.muted,
     speaking: joined && speakingUids.has(p.uid),
     isMe: nickname === me,
+    userVolume: userVolumes[nickname],
   }));
 
   return (
@@ -113,11 +118,21 @@ export default function VoiceRoom() {
               }`}
               style={{ borderRight: "1px solid rgba(254, 245, 230, 0.14)" }}
             >
-              <ParticipantPanel participants={participantItems} emptyLabel="아직 아무도 없습니다" />
+              <ParticipantPanel
+                participants={participantItems}
+                emptyLabel="아직 아무도 없습니다"
+                onUserVolumeChange={setUserVolume}
+              />
               {/* 데스크탑 전용 — 좌측 패널 하단에 컨트롤. 모바일은 아래
                   별도 고정 바가 담당(패널이 탭 전환으로 숨을 수 있어서). */}
               <div className="hidden shrink-0 border-t px-4 py-4 md:block" style={{ borderColor: "rgba(254, 245, 230, 0.14)" }}>
-                <VoiceControls muted={muted} onToggleMute={toggleMute} onLeave={leave} />
+                <VoiceControls
+                  muted={muted}
+                  onToggleMute={toggleMute}
+                  onLeave={leave}
+                  outputVolume={outputVolume}
+                  onOutputVolumeChange={setOutputVolume}
+                />
               </div>
             </div>
 
@@ -128,7 +143,13 @@ export default function VoiceRoom() {
 
           {mobileTab === "participants" && (
             <div className="shrink-0 px-4 pt-2 md:hidden" style={{ paddingBottom: SAFE_BOTTOM_PADDING }}>
-              <VoiceControls muted={muted} onToggleMute={toggleMute} onLeave={leave} />
+              <VoiceControls
+                muted={muted}
+                onToggleMute={toggleMute}
+                onLeave={leave}
+                outputVolume={outputVolume}
+                onOutputVolumeChange={setOutputVolume}
+              />
             </div>
           )}
         </>

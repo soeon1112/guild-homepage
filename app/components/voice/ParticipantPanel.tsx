@@ -8,17 +8,21 @@ export type ParticipantPanelItem = {
   muted: boolean;
   speaking: boolean;
   isMe?: boolean;
+  /** 이 사람의 개별 음량(%). 참가 전 프리뷰에서는 넘기지 않는다. */
+  userVolume?: number;
 };
 
 type ParticipantPanelProps = {
   participants: ParticipantPanelItem[];
   emptyLabel?: string;
+  /** 없으면 사람별 음량 컨트롤이 렌더되지 않는다(참가 전 프리뷰). */
+  onUserVolumeChange?: (nickname: string, volume: number) => void;
 };
 
 // 디코 사이드바 스타일 세로 리스트 — 이전 라운드의 중앙 그리드
 // (ParticipantGrid.tsx, 삭제됨)를 완전히 대체. 참가 전 프리뷰(G-1)와
 // 참가 후 좌측 패널(C-1) 양쪽에서 재사용.
-export function ParticipantPanel({ participants, emptyLabel }: ParticipantPanelProps) {
+export function ParticipantPanel({ participants, emptyLabel, onUserVolumeChange }: ParticipantPanelProps) {
   return (
     <div className="flex h-full flex-col">
       <div className="shrink-0 px-3 pt-3 pb-1">
@@ -45,6 +49,10 @@ export function ParticipantPanel({ participants, emptyLabel }: ParticipantPanelP
               muted={p.muted}
               speaking={p.speaking}
               isMe={p.isMe}
+              userVolume={p.userVolume}
+              onUserVolumeChange={
+                onUserVolumeChange ? (volume) => onUserVolumeChange(p.nickname, volume) : undefined
+              }
             />
           ))}
         </div>

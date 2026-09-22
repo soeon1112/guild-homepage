@@ -1,6 +1,9 @@
 "use client";
 
-import { MicOff } from "lucide-react";
+import { useState } from "react";
+import { MicOff, Volume2, VolumeX } from "lucide-react";
+import { VolumeSlider } from "@/app/components/voice/VolumeSlider";
+import { VOICE_VOLUME_DEFAULT, VOICE_VOLUME_MAX } from "@/src/lib/voiceVolume";
 
 // 말할 때 프사 테두리에 두르는 글로우 색. spring-green — 디코의 쨍한
 // 초록보다 절제됐고 dl2 석양/크림 팔레트와 부딪히지 않음. 발화 감지 자체
@@ -16,6 +19,10 @@ type ParticipantCardProps = {
   isMe?: boolean;
   /** 프사 지름(px). 기본 40 — 왼쪽 참가자 목록(row) 기준. */
   size?: number;
+  /** 이 사람의 개별 음량(%). 주어지면 스피커 토글 + 슬라이더가 붙는다. */
+  userVolume?: number;
+  /** 없으면(참가 전 프리뷰 등) 음량 컨트롤 자체를 렌더하지 않는다. */
+  onUserVolumeChange?: (volume: number) => void;
 };
 
 // 디코 사이드바 스타일 — 원형 프사(글로우 테두리) + 닉네임 + 마이크 상태
@@ -28,12 +35,21 @@ export function ParticipantCard({
   speaking,
   isMe = false,
   size = 40,
+  userVolume,
+  onUserVolumeChange,
 }: ParticipantCardProps) {
   const glowActive = speaking && !muted;
   const ringWidth = Math.max(2, Math.round(size * 0.06));
+  const [volumeOpen, setVolumeOpen] = useState(false);
+  // 본인 항목에는 음량 컨트롤을 붙이지 않는다 — 자기 목소리는 애초에
+  // 로컬 재생되지 않으므로(Agora가 자기 트랙을 되돌려주지 않음) 조절할
+  // 대상 자체가 없다.
+  const volumeControlEnabled = !isMe && onUserVolumeChange != null;
+  const effectiveVolume = userVolume ?? VOICE_VOLUME_DEFAULT;
 
   return (
-    <div className="flex items-center gap-2.5 rounded-xl px-2 py-1.5" style={{ background: isMe ? "rgba(255, 199, 133, 0.10)" : "transparent" }}>
+    <div className="rounded-xl" style={{ background: isMe ? "rgba(255, 199, 133, 0.10)" : "transparent" }}>
+    <div className="flex items-center gap-2.5 px-2 py-1.5">
       <div className="relative shrink-0" style={{ width: size, height: size }}>
         <div
           aria-hidden
@@ -87,6 +103,40 @@ export function ParticipantCard({
         {isMe ? " (나)" : ""}
       </span>
       {muted && <MicOff size={14} color="rgba(254, 245, 230, 0.55)" className="shrink-0" />}
+      {volumeControlEnabled && (
+        <button
+          type="button"
+          onClick={() => setVolumeOpen((v) => !v)}
+          aria-label={`${nickname} 음량 조절`}
+          aria-expanded={volumeOpen}
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-colors duration-150"
+          style={{
+            color: effectiveVolume === 0 ? "rgba(254, 245, 230, 0.45)" : "#ffc785",
+            background: volumeOpen ? "rgba(255, 199, 133, 0.18)" : "transparent",
+          }}
+        >
+          {effectiveVolume === 0 ? <VolumeX size={14} /> : <Volume2 size={14} />}
+        </button>
+      )}
+    </div>
+    {volumeControlEnabled && volumeOpen && (
+      <div className="flex items-center gap-2 px-2 pb-1.5 pl-3">
+        <div className="min-w-0 flex-1">
+          <VolumeSlider
+            value={effectiveVolume}
+            max={VOICE_VOLUME_MAX}
+            onChange={(v) => onUserVolumeChange?.(v)}
+            ariaLabel={`${nickname} 음량`}
+          />
+        </div>
+        <span
+          className="w-10 shrink-0 text-right font-serif text-[10px] tabular-nums"
+          style={{ color: "rgba(254, 245, 230, 0.7)" }}
+        >
+          {effectiveVolume}%
+        </span>
+      </div>
+    )}
     </div>
   );
 }
