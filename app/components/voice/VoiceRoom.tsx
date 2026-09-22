@@ -57,6 +57,9 @@ export default function VoiceRoom() {
     speakingUids,
     listenOnly,
     listenOnlyReason,
+    voiceDebug,
+    inputLevel,
+    inputLevelPeak,
     outputVolume,
     setOutputVolume,
     userVolumes,
@@ -153,6 +156,27 @@ export default function VoiceRoom() {
             <Headphones size={13} />
             {listenOnlyMessage}
           </p>
+        </div>
+      )}
+
+      {/* ⚠️ 임시 진단 박스 (2026-09-22) — AI Denoiser가 실제로 물렸는지 확인용.
+          확인 끝나면 이 블록 + Provider의 voiceDebug/inputLevel 전부 삭제할 것. */}
+      {joined && (
+        <div
+          className="mx-4 mt-2 max-h-40 shrink-0 overflow-y-auto rounded-lg border p-2.5"
+          style={{ borderColor: "rgba(255, 181, 167, 0.5)", background: "rgba(11, 8, 33, 0.7)" }}
+        >
+          <p className="mb-1 text-[10px] font-semibold" style={{ color: "#ffb5a7" }}>
+            AI Denoiser 진단 (임시)
+          </p>
+          <p className="text-[12px] font-semibold" style={{ color: "#ffc785" }}>
+            입력 레벨 {inputLevel.toFixed(3)} / 최고 {inputLevelPeak.toFixed(3)}
+          </p>
+          <pre className="whitespace-pre-wrap break-all text-[11px] leading-4" style={{ color: "#fef5e6" }}>
+            {Object.entries(voiceDebug)
+              .map(([k, v]) => `${k}: ${v}`)
+              .join("\n")}
+          </pre>
         </div>
       )}
 

@@ -119,6 +119,12 @@ type VoiceRoomContextValue = {
   listenOnly: boolean;
   /** 듣기 전용이 된 이유 — 배너 문구 분기용. */
   listenOnlyReason: ListenOnlyReason | null;
+  /** ⚠️ 임시 진단(2026-09-22) — AI Denoiser 실동작 확인용. 확인 후 삭제. */
+  voiceDebug: Record<string, string>;
+  /** ⚠️ 임시 진단 — 내 마이크 입력 레벨(0~1). */
+  inputLevel: number;
+  /** ⚠️ 임시 진단 — 최근 입력 레벨 최고치. */
+  inputLevelPeak: number;
   join: () => Promise<void>;
   leave: () => Promise<void>;
   toggleMute: () => Promise<void>;
@@ -143,6 +149,18 @@ export function VoiceRoomProvider({ children }: { children: React.ReactNode }) {
   const [remoteTrackEpoch, setRemoteTrackEpoch] = useState(0);
   const [listenOnly, setListenOnly] = useState(false);
   const [listenOnlyReason, setListenOnlyReason] = useState<ListenOnlyReason | null>(null);
+  // ⚠️ 임시 진단(2026-09-22) — 디노이저가 실제로 붙었는지 화면에서 확인.
+  const [voiceDebug, setVoiceDebugState] = useState<Record<string, string>>({});
+  const [inputLevel, setInputLevel] = useState(0);
+  const [inputLevelPeak, setInputLevelPeak] = useState(0);
+  const levelTickRef = useRef(0);
+  const overloadCountRef = useRef(0);
+
+  // 값이 같으면 state를 새로 만들지 않는다 — 100ms 폴링에서 호출되므로
+  // 그냥 setState하면 매 틱마다 리렌더가 난다.
+  const setDebug = useCallback((key: string, value: string) => {
+    setVoiceDebugState((prev) => (prev[key] === value ? prev : { ...prev, [key]: value }));
+  }, []);
   // 어느 단계에서 터졌는지 — catch 로그에만 쓴다(진단 라운드 잔존).
   const joinStageRef = useRef<string>("idle");
 
@@ -218,10 +236,20 @@ export function VoiceRoomProvider({ children }: { children: React.ReactNode }) {
       const localTrack = localTrackRef.current;
       const myUid = myUidRef.current;
       if (localTrack && myUid != null) {
-        if (localTrack.getVolumeLevel() > SPEAKING_LEVEL_THRESHOLD) {
+        const level = localTrack.getVolumeLevel();
+        if (level > SPEAKING_LEVEL_THRESHOLD) {
           lastLoudAtRef.current[myUid] = now;
         }
+        // ⚠️ 임시 진단 — 표시는 300ms(3틱)마다만 갱신한다(10Hz 리렌더 방지).
+        levelTickRef.current += 1;
+        setInputLevelPeak((prev) => (level > prev ? level : prev));
+        if (levelTickRef.current % 3 === 0) {
+          setInputLevel(level);
+        }
       }
+      // ⚠️ 임시 진단 — processor.enabled 는 enable() 이후에도 바뀔 수 있다.
+      const proc = denoiserProcessorRef.current;
+      setDebug("processor.enabled", proc ? String(proc.enabled) : "processor 없음");
       for (const [uid, track] of remoteTracksRef.current) {
         if (track.getVolumeLevel() > SPEAKING_LEVEL_THRESHOLD) {
           lastLoudAtRef.current[uid] = now;
@@ -234,7 +262,7 @@ export function VoiceRoomProvider({ children }: { children: React.ReactNode }) {
       setSpeakingUids(next);
     }, POLL_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [joined]);
+  }, [joined, setDebug]);
 
   const leave = useCallback(async () => {
     const client = clientRef.current;
@@ -272,6 +300,9 @@ export function VoiceRoomProvider({ children }: { children: React.ReactNode }) {
     setListenOnly(false);
     setListenOnlyReason(null);
     setSpeakingUids(new Set());
+    setInputLevel(0);
+    setInputLevelPeak(0);
+    overloadCountRef.current = 0;
   }, [me]);
 
   // Phase 2까지 있었던 "컴포넌트 unmount 시 best-effort leave" effect는
@@ -302,8 +333,25 @@ export function VoiceRoomProvider({ children }: { children: React.ReactNode }) {
         aiDenoiserExtension = new AIDenoiserExtension({
           assetsPath: "/agora-extension-ai-denoiser/external",
         });
+        // ⚠️ 임시 진단 — wasm 로드 실패는 이 콜백으로만 알 수 있다.
+        aiDenoiserExtension.onloaderror = () => {
+          setDebug("wasm", "❌ onloaderror 발생 (wasm 로드 실패)");
+        };
         AgoraRTC.registerExtensions([aiDenoiserExtension]);
+        setDebug("wasm", "onloaderror 없음(지금까지)");
       }
+      // ⚠️ 임시 진단 — 배포본에 wasm이 실제로 서빙되는지 직접 확인.
+      void fetch("/agora-extension-ai-denoiser/external/ai_denoiser_module.wasm", {
+        method: "HEAD",
+      })
+        .then((r) =>
+          setDebug(
+            "wasm HTTP",
+            `${r.status} ${r.headers.get("content-type") ?? "?"} ${r.headers.get("content-length") ?? "?"}B`,
+          ),
+        )
+        .catch((e) => setDebug("wasm HTTP", `fetch 실패: ${String(e)}`));
+      setDebug("assetsPath", "/agora-extension-ai-denoiser/external");
 
       joinStageRef.current = "ensure-uid";
       const uid = await ensureAgoraUid(me);
@@ -355,6 +403,8 @@ export function VoiceRoomProvider({ children }: { children: React.ReactNode }) {
           AGC: true,
           encoderConfig: "speech_standard",
         });
+        // ⚠️ 임시 진단
+        setDebug("mic 옵션", "AEC=true ANS=true AGC=true encoder=speech_standard");
       } catch (micError) {
         micFailureReason = classifyMicError(micError);
         console.error(
@@ -368,21 +418,39 @@ export function VoiceRoomProvider({ children }: { children: React.ReactNode }) {
       // 반환하므로 조용히 건너뛰고 원본(AEC/ANS/AGC 적용) 트랙으로 계속.
       // 듣기 전용이면 파이프에 걸 로컬 트랙 자체가 없으니 통째로 건너뛴다.
       try {
-        if (localTrack && aiDenoiserExtension.checkCompatibility()) {
+        // ⚠️ 임시 진단 — 인라인 호출이던 checkCompatibility를 변수로 빼서 값을 기록.
+        const compatible = aiDenoiserExtension.checkCompatibility();
+        setDebug("checkCompatibility", String(compatible));
+        setDebug("localTrack", localTrack ? "있음" : "없음(듣기 전용)");
+        if (localTrack && compatible) {
           const micTrack = localTrack;
           const processor = aiDenoiserExtension.createProcessor();
+          setDebug("createProcessor", "OK");
           processor.on("pipeerror", (err: Error) => {
             console.error("[VoiceRoomProvider] AI Denoiser pipe 실패, 원본 오디오로 폴백", err);
+            setDebug("pipeerror", `❌ ${err.message}`);
             processor.unpipe();
             micTrack.unpipe();
             micTrack.pipe(micTrack.processorDestination);
           });
+          // ⚠️ 임시 진단 — wasm이 실시간 처리를 못 따라가면 overload가 뜬다.
+          processor.on("overload", () => {
+            overloadCountRef.current += 1;
+            setDebug("overload", `${overloadCountRef.current}회`);
+          });
           micTrack.pipe(processor).pipe(micTrack.processorDestination);
+          setDebug("pipe 연결", "OK (mic → denoiser → destination)");
           await processor.enable();
+          setDebug("processor.enable()", "await 통과");
+          setDebug("processor.enabled", String(processor.enabled));
+          setDebug("mode/level", "setMode/setLevel 미호출 → SDK 기본값");
           denoiserProcessorRef.current = processor;
+        } else {
+          setDebug("pipe 연결", "건너뜀 (compat=false 또는 localTrack 없음)");
         }
       } catch (e) {
         console.error("[VoiceRoomProvider] AI Denoiser 초기화 실패, 원본 오디오로 진행", e);
+        setDebug("denoiser 예외", `❌ ${errorCodeOf(e)} ${String(e)}`);
       }
 
       joinStageRef.current = "publish";
@@ -423,7 +491,7 @@ export function VoiceRoomProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setJoining(false);
     }
-  }, [me, joining, joined]);
+  }, [me, joining, joined, setDebug]);
 
   const toggleMute = useCallback(async () => {
     const localTrack = localTrackRef.current;
@@ -456,6 +524,9 @@ export function VoiceRoomProvider({ children }: { children: React.ReactNode }) {
         setUserVolume,
         listenOnly,
         listenOnlyReason,
+        voiceDebug,
+        inputLevel,
+        inputLevelPeak,
         join,
         leave,
         toggleMute,
