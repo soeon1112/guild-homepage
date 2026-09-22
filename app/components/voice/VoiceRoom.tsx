@@ -41,6 +41,7 @@ export default function VoiceRoom() {
     muted,
     error,
     speakingUids,
+    errorDetail,
     outputVolume,
     setOutputVolume,
     userVolumes,
@@ -101,6 +102,22 @@ export default function VoiceRoom() {
         <p className="shrink-0 px-4 pt-2 text-center text-xs" style={{ color: "#ffb5a7" }}>
           {error}
         </p>
+      )}
+
+      {/* ⚠️ 임시 진단 박스 (2026-09-22) — 참가 실패 실제 원인 확인용.
+          원인 파악되면 이 블록 통째로 삭제할 것. */}
+      {errorDetail && (
+        <div
+          className="mx-4 mt-2 shrink-0 rounded-lg border p-2.5"
+          style={{ borderColor: "rgba(255, 181, 167, 0.5)", background: "rgba(11, 8, 33, 0.6)" }}
+        >
+          <p className="mb-1 text-[10px] font-semibold" style={{ color: "#ffb5a7" }}>
+            진단 정보 (임시)
+          </p>
+          <pre className="whitespace-pre-wrap break-all text-[11px] leading-4" style={{ color: "#fef5e6" }}>
+            {errorDetail}
+          </pre>
+        </div>
       )}
 
       {joined ? (

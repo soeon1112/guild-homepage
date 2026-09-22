@@ -47,6 +47,22 @@ import {
 // 전용(functions/src/api/agoraToken.ts, Secret Manager).
 const AGORA_APP_ID = "16f1acbc49064e1898b97831abf943a1";
 
+// ⚠️ 임시 진단 코드 (2026-09-22) — "음성방 참가에 실패했습니다"의 실제
+// 원인을 화면에서 직접 보기 위한 것. 원인 확인되면 errorDetail /
+// joinStageRef / describeJoinError 전부 삭제할 것.
+function describeJoinError(e: unknown): string {
+  if (e && typeof e === "object") {
+    const x = e as { name?: unknown; code?: unknown; message?: unknown; details?: unknown };
+    return [
+      `name=${String(x.name ?? "-")}`,
+      `code=${String(x.code ?? "-")}`,
+      `details=${(() => { try { return JSON.stringify(x.details); } catch { return "-"; } })()}`,
+      `message=${String(x.message ?? "-")}`,
+    ].join("\n");
+  }
+  return `raw=${String(e)}`;
+}
+
 // 발화 감지 — client.on("volume-indicator")는 쓰지 않는다(Phase 2-UX-fix
 // 진단: 고정 2초 간격이라 부정확). ILocalAudioTrack/IRemoteAudioTrack.
 // getVolumeLevel()(0~1, "0.6 이상이면 발화 중"이 Agora 공식 가이드)을
@@ -81,6 +97,8 @@ type VoiceRoomContextValue = {
   /** 닉네임 → 사람별 음량(%). 없는 닉네임은 기본 100%. */
   userVolumes: Record<string, number>;
   setUserVolume: (nickname: string, volume: number) => void;
+  /** ⚠️ 임시 진단(2026-09-22) — 원인 확인 후 삭제. */
+  errorDetail: string | null;
   join: () => Promise<void>;
   leave: () => Promise<void>;
   toggleMute: () => Promise<void>;
@@ -103,6 +121,9 @@ export function VoiceRoomProvider({ children }: { children: React.ReactNode }) {
   // 입장한 사람에게도 저장된 음량을 자동 적용하려면 "트랙 맵이 바뀌었다"는
   // 신호가 따로 필요해서 카운터를 하나 둔다(아래 적용 effect의 deps).
   const [remoteTrackEpoch, setRemoteTrackEpoch] = useState(0);
+  // ⚠️ 임시 진단(2026-09-22)
+  const [errorDetail, setErrorDetail] = useState<string | null>(null);
+  const joinStageRef = useRef<string>("idle");
 
   const clientRef = useRef<IAgoraRTCClient | null>(null);
   const localTrackRef = useRef<IMicrophoneAudioTrack | null>(null);
@@ -242,7 +263,9 @@ export function VoiceRoomProvider({ children }: { children: React.ReactNode }) {
   const join = useCallback(async () => {
     if (!me || joining || joined) return;
     setError(null);
+    setErrorDetail(null); // ⚠️ 임시 진단
     setJoining(true);
+    joinStageRef.current = "import-sdk"; // ⚠️ 임시 진단
     try {
       // 동적 import — 브라우저 전용 SDK 두 개를 실제로 참가하는 시점
       // (버튼 클릭, 항상 클라이언트)에만 불러온다. registerExtensions는
@@ -258,8 +281,11 @@ export function VoiceRoomProvider({ children }: { children: React.ReactNode }) {
         AgoraRTC.registerExtensions([aiDenoiserExtension]);
       }
 
+      joinStageRef.current = "ensure-uid"; // ⚠️ 임시 진단
       const uid = await ensureAgoraUid(me);
+      joinStageRef.current = `fetch-token(uid=${uid})`; // ⚠️ 임시 진단
       const { token } = await fetchAgoraToken(VOICE_CHANNEL_NAME, uid);
+      joinStageRef.current = `create-client(uid=${uid}, token=${token ? token.length + "자" : "없음"})`; // ⚠️ 임시 진단
 
       const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
 
@@ -284,7 +310,9 @@ export function VoiceRoomProvider({ children }: { children: React.ReactNode }) {
         setRemoteTrackEpoch((e) => e + 1);
       });
 
+      joinStageRef.current = "client.join"; // ⚠️ 임시 진단
       await client.join(AGORA_APP_ID, VOICE_CHANNEL_NAME, token, uid);
+      joinStageRef.current = "create-mic-track"; // ⚠️ 임시 진단
 
       // AEC(에코 제거)/ANS(노이즈 억제)/AGC(자동 게인) 명시 활성 +
       // speech_standard(32kHz/모노/24Kbps) 프리셋.
@@ -314,16 +342,21 @@ export function VoiceRoomProvider({ children }: { children: React.ReactNode }) {
         console.error("[VoiceRoomProvider] AI Denoiser 초기화 실패, 원본 오디오로 진행", e);
       }
 
+      joinStageRef.current = "publish"; // ⚠️ 임시 진단
       await client.publish([localTrack]);
+      joinStageRef.current = "firestore-join-doc"; // ⚠️ 임시 진단
 
       clientRef.current = client;
       localTrackRef.current = localTrack;
       myUidRef.current = uid;
 
       await joinVoiceRoomDoc(me, uid);
+      joinStageRef.current = "done"; // ⚠️ 임시 진단
       setJoined(true);
     } catch (e) {
       console.error("[VoiceRoomProvider] 참가 실패", e);
+      // ⚠️ 임시 진단 — 화면에서 바로 읽을 수 있게 원본 에러를 그대로 노출.
+      setErrorDetail(`stage=${joinStageRef.current}\n${describeJoinError(e)}`);
       setError(
         e instanceof Error && e.message.toLowerCase().includes("permission")
           ? "마이크 권한이 필요합니다. 브라우저 설정에서 마이크 접근을 허용해주세요."
@@ -369,6 +402,7 @@ export function VoiceRoomProvider({ children }: { children: React.ReactNode }) {
         setOutputVolume,
         userVolumes,
         setUserVolume,
+        errorDetail,
         join,
         leave,
         toggleMute,
