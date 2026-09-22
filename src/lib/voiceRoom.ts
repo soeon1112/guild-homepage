@@ -24,6 +24,13 @@ export type VoiceRoomParticipant = {
   joinedAt: Timestamp | null;
   muted: boolean;
   uid: number;
+  /**
+   * 듣기 전용 참가 여부. 마이크가 없거나 권한이 거부됐을 때만 true로
+   * 기록된다 — 평범한 참가자의 문서에는 이 필드 자체가 없다(기존 참가
+   * 경로의 write 페이로드를 한 바이트도 바꾸지 않기 위해 의도적으로
+   * optional). 읽는 쪽은 반드시 `=== true` 로 판정할 것.
+   */
+  listenOnly?: boolean;
 };
 
 export type VoiceRoomDoc = {
@@ -77,13 +84,17 @@ export function subscribeVoiceRoom(
 export async function joinVoiceRoomDoc(
   nickname: string,
   uid: number,
+  listenOnly = false,
 ): Promise<void> {
   const ref = roomRef();
   const snap = await getDoc(ref);
+  // listenOnly가 false면 필드를 아예 빼서 기존과 동일한 모양으로 쓴다 —
+  // 마이크 있는 사람의 참가 경로가 1바이트도 달라지지 않게 하기 위함.
   const participantEntry = {
     joinedAt: serverTimestamp(),
     muted: false,
     uid,
+    ...(listenOnly ? { listenOnly: true } : {}),
   };
 
   if (!snap.exists()) {

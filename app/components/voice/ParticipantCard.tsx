@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MicOff, Volume2, VolumeX } from "lucide-react";
+import { Headphones, MicOff, Volume2, VolumeX } from "lucide-react";
 import { VolumeSlider } from "@/app/components/voice/VolumeSlider";
 import { VOICE_VOLUME_DEFAULT, VOICE_VOLUME_MAX } from "@/src/lib/voiceVolume";
 
@@ -23,6 +23,8 @@ type ParticipantCardProps = {
   userVolume?: number;
   /** 없으면(참가 전 프리뷰 등) 음량 컨트롤 자체를 렌더하지 않는다. */
   onUserVolumeChange?: (volume: number) => void;
+  /** 마이크 없이 듣기 전용으로 참가 중인지 — 마이크 아이콘 대신 헤드셋. */
+  listenOnly?: boolean;
 };
 
 // 디코 사이드바 스타일 — 원형 프사(글로우 테두리) + 닉네임 + 마이크 상태
@@ -37,6 +39,7 @@ export function ParticipantCard({
   size = 40,
   userVolume,
   onUserVolumeChange,
+  listenOnly = false,
 }: ParticipantCardProps) {
   const glowActive = speaking && !muted;
   const ringWidth = Math.max(2, Math.round(size * 0.06));
@@ -102,7 +105,13 @@ export function ParticipantCard({
         {nickname}
         {isMe ? " (나)" : ""}
       </span>
-      {muted && <MicOff size={14} color="rgba(254, 245, 230, 0.55)" className="shrink-0" />}
+      {/* 듣기 전용이 음소거보다 우선 — 듣기 전용인 사람은 muted 필드가
+          false여도 애초에 말을 못 하므로 헤드셋 하나로 보여주는 게 정확하다. */}
+      {listenOnly ? (
+        <Headphones size={14} color="rgba(254, 245, 230, 0.55)" className="shrink-0" aria-label="듣기 전용" />
+      ) : (
+        muted && <MicOff size={14} color="rgba(254, 245, 230, 0.55)" className="shrink-0" />
+      )}
       {volumeControlEnabled && (
         <button
           type="button"

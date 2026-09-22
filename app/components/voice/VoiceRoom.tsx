@@ -6,7 +6,8 @@
 // Provider가 살아있는 한 통화가 끊기지 않는다. 이 파일은 useVoiceRoom()
 // 으로 상태/액션을 소비하기만 한다.
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Headphones } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/components/AuthProvider";
 import { useVoiceRoom } from "@/app/components/voice/VoiceRoomProvider";
@@ -14,6 +15,10 @@ import { ParticipantPanel, type ParticipantPanelItem } from "@/app/components/vo
 import { VoiceChatPanel } from "@/app/components/voice/VoiceChatPanel";
 import { MobileTabs } from "@/app/components/voice/MobileTabs";
 import { VoiceControls } from "@/app/components/voice/VoiceControls";
+import {
+  KakaoBrowserNotice,
+  useIsKakaoInAppBrowser,
+} from "@/app/components/voice/KakaoBrowserNotice";
 
 // BottomNav.tsx가 /voice에서 항상 숨김(early return)이라 그 높이를 클리어할
 // 필요가 없다 — 기기 하단 제스처 바/홈 인디케이터용 안전 여백만 남긴다.
@@ -30,6 +35,15 @@ const VOICE_ROOM_MAX_WIDTH = "max-w-2xl";
 // 있어서, 통화방 페이지 전체를 그보다 위 z로 올려 항상 이기게 한다.
 const VOICE_ROOM_Z_INDEX = "z-[110]";
 
+// 듣기 전용 안내 문구 — 배너와 (잠긴 마이크 버튼을 눌렀을 때의) 토스트가
+// 같은 문장을 쓴다.
+const LISTEN_ONLY_MESSAGE = {
+  permission: "마이크 권한이 없어 듣기 전용으로 참가했어요",
+  "no-device": "마이크를 찾을 수 없어 듣기 전용으로 참가했어요",
+} as const;
+
+const LISTEN_ONLY_TOAST_MS = 2600;
+
 export default function VoiceRoom() {
   const router = useRouter();
   const { nickname: me, ready } = useAuth();
@@ -41,7 +55,8 @@ export default function VoiceRoom() {
     muted,
     error,
     speakingUids,
-    errorDetail,
+    listenOnly,
+    listenOnlyReason,
     outputVolume,
     setOutputVolume,
     userVolumes,
@@ -51,6 +66,24 @@ export default function VoiceRoom() {
     toggleMute,
   } = useVoiceRoom();
   const [mobileTab, setMobileTab] = useState<"participants" | "chat">("participants");
+  // 카카오톡 인앱 브라우저 안내 — 참가 전 1회. [계속]을 누르면 닫힌다.
+  const isKakao = useIsKakaoInAppBrowser();
+  const [kakaoNoticeDismissed, setKakaoNoticeDismissed] = useState(false);
+  // 잠긴 마이크 버튼을 눌렀을 때 잠깐 뜨는 토스트.
+  const [listenOnlyToast, setListenOnlyToast] = useState(false);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flashListenOnlyNotice = useCallback(() => {
+    setListenOnlyToast(true);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setListenOnlyToast(false), LISTEN_ONLY_TOAST_MS);
+  }, []);
+
+  useEffect(() => () => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+  }, []);
+
+  const listenOnlyMessage = listenOnlyReason ? LISTEN_ONLY_MESSAGE[listenOnlyReason] : null;
 
   // 로그인 필수 라우트 가드 — app/dm/page.tsx verbatim 패턴. 전체
   // 공개(언쏘 A/B 해제, DM/길드원과 동일 패턴) — 로그인만 필요.
@@ -70,6 +103,8 @@ export default function VoiceRoom() {
     speaking: joined && speakingUids.has(p.uid),
     isMe: nickname === me,
     userVolume: userVolumes[nickname],
+    // 본인은 Provider의 실시간 상태가 Firestore보다 빠르다 — 남은 문서값.
+    listenOnly: nickname === me ? listenOnly : p.listenOnly === true,
   }));
 
   return (
@@ -104,19 +139,20 @@ export default function VoiceRoom() {
         </p>
       )}
 
-      {/* ⚠️ 임시 진단 박스 (2026-09-22) — 참가 실패 실제 원인 확인용.
-          원인 파악되면 이 블록 통째로 삭제할 것. */}
-      {errorDetail && (
+      {/* 듣기 전용 안내 — 마이크를 못 잡아 목소리 송출 없이 참가한 경우.
+          토스트(잠긴 마이크 버튼 탭)도 같은 문구를 재사용한다. */}
+      {joined && listenOnly && listenOnlyMessage && (
         <div
-          className="mx-4 mt-2 shrink-0 rounded-lg border p-2.5"
-          style={{ borderColor: "rgba(255, 181, 167, 0.5)", background: "rgba(11, 8, 33, 0.6)" }}
+          className="mx-4 mt-2 shrink-0 rounded-lg border px-3 py-2 transition-all duration-200"
+          style={{
+            borderColor: listenOnlyToast ? "rgba(255, 199, 133, 0.9)" : "rgba(255, 199, 133, 0.45)",
+            background: "rgba(11, 8, 33, 0.5)",
+          }}
         >
-          <p className="mb-1 text-[10px] font-semibold" style={{ color: "#ffb5a7" }}>
-            진단 정보 (임시)
+          <p className="flex items-center gap-1.5 text-[11px]" style={{ color: "#ffc785" }}>
+            <Headphones size={13} />
+            {listenOnlyMessage}
           </p>
-          <pre className="whitespace-pre-wrap break-all text-[11px] leading-4" style={{ color: "#fef5e6" }}>
-            {errorDetail}
-          </pre>
         </div>
       )}
 
@@ -149,6 +185,8 @@ export default function VoiceRoom() {
                   onLeave={leave}
                   outputVolume={outputVolume}
                   onOutputVolumeChange={setOutputVolume}
+                  listenOnly={listenOnly}
+                  onListenOnlyNotice={flashListenOnlyNotice}
                 />
               </div>
             </div>
@@ -166,6 +204,8 @@ export default function VoiceRoom() {
                 onLeave={leave}
                 outputVolume={outputVolume}
                 onOutputVolumeChange={setOutputVolume}
+                listenOnly={listenOnly}
+                onListenOnlyNotice={flashListenOnlyNotice}
               />
             </div>
           )}
@@ -178,6 +218,9 @@ export default function VoiceRoom() {
             <ParticipantPanel participants={participantItems} emptyLabel="아직 아무도 없습니다" />
           </div>
           <div className="shrink-0 px-4 pt-2" style={{ paddingBottom: SAFE_BOTTOM_PADDING }}>
+            {isKakao && !kakaoNoticeDismissed && (
+              <KakaoBrowserNotice onContinue={() => setKakaoNoticeDismissed(true)} />
+            )}
             <div className="flex flex-col items-center gap-2">
               <button
                 type="button"

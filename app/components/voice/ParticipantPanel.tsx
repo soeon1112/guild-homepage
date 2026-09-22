@@ -10,6 +10,8 @@ export type ParticipantPanelItem = {
   isMe?: boolean;
   /** 이 사람의 개별 음량(%). 참가 전 프리뷰에서는 넘기지 않는다. */
   userVolume?: number;
+  /** 마이크 없이 듣기 전용으로 참가 중인지. */
+  listenOnly?: boolean;
 };
 
 type ParticipantPanelProps = {
@@ -50,6 +52,7 @@ export function ParticipantPanel({ participants, emptyLabel, onUserVolumeChange 
               speaking={p.speaking}
               isMe={p.isMe}
               userVolume={p.userVolume}
+              listenOnly={p.listenOnly}
               onUserVolumeChange={
                 onUserVolumeChange ? (volume) => onUserVolumeChange(p.nickname, volume) : undefined
               }

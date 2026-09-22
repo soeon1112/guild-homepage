@@ -1,6 +1,6 @@
 "use client";
 
-import { Mic, MicOff, PhoneOff, Volume2, VolumeX } from "lucide-react";
+import { Headphones, Mic, MicOff, PhoneOff, Volume2, VolumeX } from "lucide-react";
 import { VolumeSlider } from "@/app/components/voice/VolumeSlider";
 import { VOICE_VOLUME_MAX } from "@/src/lib/voiceVolume";
 
@@ -11,6 +11,10 @@ type VoiceControlsProps = {
   /** 전체 출력 음량(%) — 모든 상대 목소리에 일괄 적용. */
   outputVolume: number;
   onOutputVolumeChange: (volume: number) => void;
+  /** 마이크 없이 듣기 전용으로 참가한 상태 — 마이크 버튼을 잠근다. */
+  listenOnly?: boolean;
+  /** 잠긴 마이크 버튼을 눌렀을 때 — 같은 안내를 다시 띄우는 용도. */
+  onListenOnlyNotice?: () => void;
 };
 
 // Topbar.tsx의 CreamIconButton 시각 톤(cream 테두리 + abyss 반투명 배경)을
@@ -24,6 +28,8 @@ export function VoiceControls({
   onLeave,
   outputVolume,
   onOutputVolumeChange,
+  listenOnly = false,
+  onListenOnlyNotice,
 }: VoiceControlsProps) {
   const outputMuted = outputVolume === 0;
   return (
@@ -51,20 +57,35 @@ export function VoiceControls({
       </div>
 
       <div className="flex items-start justify-center gap-8">
-      <button type="button" onClick={onToggleMute} aria-label={muted ? "음소거 해제" : "음소거"} className="group flex flex-col items-center gap-1.5">
+      {/* 듣기 전용이면 끌 마이크 자체가 없다 — 버튼을 없애는 대신 잠긴
+          모습으로 남겨두고(레이아웃 유지) 누르면 이유를 다시 알려준다. */}
+      <button
+        type="button"
+        onClick={listenOnly ? onListenOnlyNotice : onToggleMute}
+        aria-label={listenOnly ? "듣기 전용으로 참가 중" : muted ? "음소거 해제" : "음소거"}
+        aria-disabled={listenOnly}
+        className="group flex flex-col items-center gap-1.5"
+      >
         <span
           className="flex h-14 w-14 items-center justify-center rounded-full backdrop-blur-sm transition-all duration-200 group-active:scale-95"
           style={{
             color: "#fef5e6",
-            border: muted ? "1px solid rgba(254, 245, 230, 0.4)" : "1px solid rgba(254, 245, 230, 0.7)",
-            background: muted ? "rgba(220, 80, 80, 0.35)" : "rgba(11, 8, 33, 0.5)",
-            boxShadow: muted ? "0 0 10px rgba(220, 80, 80, 0.3)" : "0 0 8px rgba(254, 245, 230, 0.22)",
+            opacity: listenOnly ? 0.45 : 1,
+            border: muted || listenOnly
+              ? "1px solid rgba(254, 245, 230, 0.4)"
+              : "1px solid rgba(254, 245, 230, 0.7)",
+            background: listenOnly
+              ? "rgba(11, 8, 33, 0.5)"
+              : muted ? "rgba(220, 80, 80, 0.35)" : "rgba(11, 8, 33, 0.5)",
+            boxShadow: listenOnly
+              ? "none"
+              : muted ? "0 0 10px rgba(220, 80, 80, 0.3)" : "0 0 8px rgba(254, 245, 230, 0.22)",
           }}
         >
-          {muted ? <MicOff size={22} /> : <Mic size={22} />}
+          {listenOnly ? <Headphones size={22} /> : muted ? <MicOff size={22} /> : <Mic size={22} />}
         </span>
         <span className="font-serif text-[9px] tracking-wider" style={{ color: "rgba(254, 245, 230, 0.75)" }}>
-          {muted ? "음소거됨" : "음소거"}
+          {listenOnly ? "듣기 전용" : muted ? "음소거됨" : "음소거"}
         </span>
       </button>
 

@@ -47,20 +47,38 @@ import {
 // 전용(functions/src/api/agoraToken.ts, Secret Manager).
 const AGORA_APP_ID = "16f1acbc49064e1898b97831abf943a1";
 
-// ⚠️ 임시 진단 코드 (2026-09-22) — "음성방 참가에 실패했습니다"의 실제
-// 원인을 화면에서 직접 보기 위한 것. 원인 확인되면 errorDetail /
-// joinStageRef / describeJoinError 전부 삭제할 것.
-function describeJoinError(e: unknown): string {
+// 마이크를 못 잡았을 때 그게 "권한 거부"인지 "장치 없음/사용 불가"인지.
+// Agora Web SDK는 AgoraRTCError(.code)로 감싸서 던지기도 하고 브라우저
+// DOMException(.name)이 그대로 올라오기도 해서 둘 다 본다. 목록에 없는
+// 코드는 "장치 없음" 쪽으로 떨어뜨린다 — 마이크 생성이 어떤 이유로든
+// 실패했으면 참가 자체를 막지 않고 듣기 전용으로 보낸다는 게 이번
+// 라운드의 요구사항이다.
+const MIC_PERMISSION_CODES = new Set([
+  "PERMISSION_DENIED",
+  "NotAllowedError",
+  "SecurityError",
+]);
+
+export type ListenOnlyReason = "permission" | "no-device";
+
+function classifyMicError(e: unknown): ListenOnlyReason {
   if (e && typeof e === "object") {
-    const x = e as { name?: unknown; code?: unknown; message?: unknown; details?: unknown };
-    return [
-      `name=${String(x.name ?? "-")}`,
-      `code=${String(x.code ?? "-")}`,
-      `details=${(() => { try { return JSON.stringify(x.details); } catch { return "-"; } })()}`,
-      `message=${String(x.message ?? "-")}`,
-    ].join("\n");
+    const x = e as { name?: unknown; code?: unknown };
+    if (MIC_PERMISSION_CODES.has(String(x.code)) || MIC_PERMISSION_CODES.has(String(x.name))) {
+      return "permission";
+    }
   }
-  return `raw=${String(e)}`;
+  return "no-device";
+}
+
+// catch 로그용 — error.code를 그대로 남긴다(진단 라운드에서 얻은 교훈:
+// 원본 error를 통째로 넘기면 콘솔에서 [object Object]로 물리기 쉬움).
+function errorCodeOf(e: unknown): string {
+  if (e && typeof e === "object") {
+    const x = e as { name?: unknown; code?: unknown };
+    return String(x.code ?? x.name ?? "-");
+  }
+  return String(e);
 }
 
 // 발화 감지 — client.on("volume-indicator")는 쓰지 않는다(Phase 2-UX-fix
@@ -97,8 +115,10 @@ type VoiceRoomContextValue = {
   /** 닉네임 → 사람별 음량(%). 없는 닉네임은 기본 100%. */
   userVolumes: Record<string, number>;
   setUserVolume: (nickname: string, volume: number) => void;
-  /** ⚠️ 임시 진단(2026-09-22) — 원인 확인 후 삭제. */
-  errorDetail: string | null;
+  /** 마이크 없이 듣기 전용으로 참가한 상태인지. */
+  listenOnly: boolean;
+  /** 듣기 전용이 된 이유 — 배너 문구 분기용. */
+  listenOnlyReason: ListenOnlyReason | null;
   join: () => Promise<void>;
   leave: () => Promise<void>;
   toggleMute: () => Promise<void>;
@@ -121,8 +141,9 @@ export function VoiceRoomProvider({ children }: { children: React.ReactNode }) {
   // 입장한 사람에게도 저장된 음량을 자동 적용하려면 "트랙 맵이 바뀌었다"는
   // 신호가 따로 필요해서 카운터를 하나 둔다(아래 적용 effect의 deps).
   const [remoteTrackEpoch, setRemoteTrackEpoch] = useState(0);
-  // ⚠️ 임시 진단(2026-09-22)
-  const [errorDetail, setErrorDetail] = useState<string | null>(null);
+  const [listenOnly, setListenOnly] = useState(false);
+  const [listenOnlyReason, setListenOnlyReason] = useState<ListenOnlyReason | null>(null);
+  // 어느 단계에서 터졌는지 — catch 로그에만 쓴다(진단 라운드 잔존).
   const joinStageRef = useRef<string>("idle");
 
   const clientRef = useRef<IAgoraRTCClient | null>(null);
@@ -248,6 +269,8 @@ export function VoiceRoomProvider({ children }: { children: React.ReactNode }) {
     }
     setJoined(false);
     setMuted(false);
+    setListenOnly(false);
+    setListenOnlyReason(null);
     setSpeakingUids(new Set());
   }, [me]);
 
@@ -263,9 +286,10 @@ export function VoiceRoomProvider({ children }: { children: React.ReactNode }) {
   const join = useCallback(async () => {
     if (!me || joining || joined) return;
     setError(null);
-    setErrorDetail(null); // ⚠️ 임시 진단
+    setListenOnly(false);
+    setListenOnlyReason(null);
     setJoining(true);
-    joinStageRef.current = "import-sdk"; // ⚠️ 임시 진단
+    joinStageRef.current = "import-sdk";
     try {
       // 동적 import — 브라우저 전용 SDK 두 개를 실제로 참가하는 시점
       // (버튼 클릭, 항상 클라이언트)에만 불러온다. registerExtensions는
@@ -281,11 +305,11 @@ export function VoiceRoomProvider({ children }: { children: React.ReactNode }) {
         AgoraRTC.registerExtensions([aiDenoiserExtension]);
       }
 
-      joinStageRef.current = "ensure-uid"; // ⚠️ 임시 진단
+      joinStageRef.current = "ensure-uid";
       const uid = await ensureAgoraUid(me);
-      joinStageRef.current = `fetch-token(uid=${uid})`; // ⚠️ 임시 진단
+      joinStageRef.current = `fetch-token(uid=${uid})`;
       const { token } = await fetchAgoraToken(VOICE_CHANNEL_NAME, uid);
-      joinStageRef.current = `create-client(uid=${uid}, token=${token ? token.length + "자" : "없음"})`; // ⚠️ 임시 진단
+      joinStageRef.current = `create-client(uid=${uid}, token=${token ? token.length + "자" : "없음"})`;
 
       const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
 
@@ -310,31 +334,50 @@ export function VoiceRoomProvider({ children }: { children: React.ReactNode }) {
         setRemoteTrackEpoch((e) => e + 1);
       });
 
-      joinStageRef.current = "client.join"; // ⚠️ 임시 진단
+      joinStageRef.current = "client.join";
       await client.join(AGORA_APP_ID, VOICE_CHANNEL_NAME, token, uid);
-      joinStageRef.current = "create-mic-track"; // ⚠️ 임시 진단
+      joinStageRef.current = "create-mic-track";
 
-      // AEC(에코 제거)/ANS(노이즈 억제)/AGC(자동 게인) 명시 활성 +
-      // speech_standard(32kHz/모노/24Kbps) 프리셋.
-      const localTrack = await AgoraRTC.createMicrophoneAudioTrack({
-        AEC: true,
-        ANS: true,
-        AGC: true,
-        encoderConfig: "speech_standard",
-      });
+      // 마이크 생성 실패는 더 이상 참가를 막지 않는다 — 카카오톡 인앱
+      // 브라우저처럼 getUserMedia 자체가 없는 환경, 마이크가 안 꽂힌 PC,
+      // 권한 거부 전부 여기로 떨어지는데, 그 경우 localTrack을 null로 두고
+      // publish만 건너뛴 채 채널에는 그대로 남아 남의 목소리를 듣는다.
+      // ⚠️ 마이크가 정상인 사람의 경로는 이 try가 성공하므로 아래 코드가
+      //    전과 완전히 동일하게 흐른다(동작 변화 없음).
+      let localTrack: IMicrophoneAudioTrack | null = null;
+      let micFailureReason: ListenOnlyReason | null = null;
+      try {
+        // AEC(에코 제거)/ANS(노이즈 억제)/AGC(자동 게인) 명시 활성 +
+        // speech_standard(32kHz/모노/24Kbps) 프리셋.
+        localTrack = await AgoraRTC.createMicrophoneAudioTrack({
+          AEC: true,
+          ANS: true,
+          AGC: true,
+          encoderConfig: "speech_standard",
+        });
+      } catch (micError) {
+        micFailureReason = classifyMicError(micError);
+        console.error(
+          "[VoiceRoomProvider] 마이크 생성 실패 → 듣기 전용으로 참가",
+          { stage: joinStageRef.current, code: errorCodeOf(micError), reason: micFailureReason },
+          micError,
+        );
+      }
 
       // AI Denoiser — 브라우저 미지원이면 checkCompatibility()가 false를
       // 반환하므로 조용히 건너뛰고 원본(AEC/ANS/AGC 적용) 트랙으로 계속.
+      // 듣기 전용이면 파이프에 걸 로컬 트랙 자체가 없으니 통째로 건너뛴다.
       try {
-        if (aiDenoiserExtension.checkCompatibility()) {
+        if (localTrack && aiDenoiserExtension.checkCompatibility()) {
+          const micTrack = localTrack;
           const processor = aiDenoiserExtension.createProcessor();
           processor.on("pipeerror", (err: Error) => {
             console.error("[VoiceRoomProvider] AI Denoiser pipe 실패, 원본 오디오로 폴백", err);
             processor.unpipe();
-            localTrack.unpipe();
-            localTrack.pipe(localTrack.processorDestination);
+            micTrack.unpipe();
+            micTrack.pipe(micTrack.processorDestination);
           });
-          localTrack.pipe(processor).pipe(localTrack.processorDestination);
+          micTrack.pipe(processor).pipe(micTrack.processorDestination);
           await processor.enable();
           denoiserProcessorRef.current = processor;
         }
@@ -342,21 +385,29 @@ export function VoiceRoomProvider({ children }: { children: React.ReactNode }) {
         console.error("[VoiceRoomProvider] AI Denoiser 초기화 실패, 원본 오디오로 진행", e);
       }
 
-      joinStageRef.current = "publish"; // ⚠️ 임시 진단
-      await client.publish([localTrack]);
-      joinStageRef.current = "firestore-join-doc"; // ⚠️ 임시 진단
+      joinStageRef.current = "publish";
+      if (localTrack) {
+        await client.publish([localTrack]);
+      }
+      joinStageRef.current = "firestore-join-doc";
 
       clientRef.current = client;
       localTrackRef.current = localTrack;
       myUidRef.current = uid;
 
-      await joinVoiceRoomDoc(me, uid);
-      joinStageRef.current = "done"; // ⚠️ 임시 진단
+      await joinVoiceRoomDoc(me, uid, micFailureReason != null);
+      joinStageRef.current = "done";
+      if (micFailureReason != null) {
+        setListenOnly(true);
+        setListenOnlyReason(micFailureReason);
+      }
       setJoined(true);
     } catch (e) {
-      console.error("[VoiceRoomProvider] 참가 실패", e);
-      // ⚠️ 임시 진단 — 화면에서 바로 읽을 수 있게 원본 에러를 그대로 노출.
-      setErrorDetail(`stage=${joinStageRef.current}\n${describeJoinError(e)}`);
+      console.error(
+        "[VoiceRoomProvider] 참가 실패",
+        { stage: joinStageRef.current, code: errorCodeOf(e) },
+        e,
+      );
       setError(
         e instanceof Error && e.message.toLowerCase().includes("permission")
           ? "마이크 권한이 필요합니다. 브라우저 설정에서 마이크 접근을 허용해주세요."
@@ -376,6 +427,7 @@ export function VoiceRoomProvider({ children }: { children: React.ReactNode }) {
 
   const toggleMute = useCallback(async () => {
     const localTrack = localTrackRef.current;
+    // 듣기 전용이면 끌 마이크가 없다 — UI에서도 비활성이지만 방어적으로.
     if (!localTrack || !me) return;
     const next = !muted;
     await localTrack.setEnabled(!next);
@@ -402,7 +454,8 @@ export function VoiceRoomProvider({ children }: { children: React.ReactNode }) {
         setOutputVolume,
         userVolumes,
         setUserVolume,
-        errorDetail,
+        listenOnly,
+        listenOnlyReason,
         join,
         leave,
         toggleMute,
