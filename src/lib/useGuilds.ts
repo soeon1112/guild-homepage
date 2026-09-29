@@ -38,7 +38,6 @@ const DEFAULT_GUILD_ACCENT: GuildAccent = { hex: "#ffc785", rgb: "255, 199, 133"
 // 길드별 톤 매핑. 여기 없는 (일반) 길드는 DEFAULT_GUILD_ACCENT(sunset-gold) 사용.
 const GUILD_ACCENTS: Record<string, GuildAccent> = {
   end: { hex: "#4a7ba6", rgb: "74, 123, 166" }, // 청록 톤 (기존 색과 대비)
-  erin: { hex: "#4a9c72", rgb: "74, 156, 114" }, // 진녹 톤 (기존 3색과 대비)
   peace: { hex: "#b5527a", rgb: "181, 82, 122" }, // 자적/베리 톤 (기존 4색과 대비)
 };
 

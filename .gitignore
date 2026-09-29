@@ -51,3 +51,8 @@ next-env.d.ts
 
 # External v0.dev export (reference only, not part of this repo)
 /dawnlight2-v0/
+
+.vercel
+
+# Local backups (purge/cleanup snapshots — never pushed)
+backups/

@@ -192,7 +192,7 @@ export function MemberRow({
 // 스크롤 위치마다 달라서 대비가 들쭉날쭉했다(peace/erin은 배경에 따라
 // 거의 안 보임). 배경을 불투명으로 고정하고, 그 배경의 상대 휘도를 계산해
 // 밝은 accent(sunsetGold/mistLavender류)는 잉크 텍스트, 어두운 accent
-// (end/erin/peace류)는 조금 더 눌러서(×0.72) 크림 텍스트를 얹어 항상
+// (end/peace류)는 조금 더 눌러서(×0.72) 크림 텍스트를 얹어 항상
 // WCAG AA(4.5:1) 이상을 확보한다.
 function relativeLuminance(hex: string): number {
   const n = parseInt(hex.replace("#", ""), 16);
@@ -215,7 +215,7 @@ function badgeColors(accent: { hex: string; rgb: string }): {
     // 불투명 배경, 잉크 텍스트. 대비 ≈9:1.
     return { bg: accent.hex, text: INK };
   }
-  // 어두운/진한 accent(end/erin/peace) — 0.72배 더 눌러 크림 텍스트와
+  // 어두운/진한 accent(end/peace) — 0.72배 더 눌러 크림 텍스트와
   // 항상 6:1 이상 확보(원색 그대로면 4.5:1 근처라 배경에 따라 위험).
   const darker = accent.rgb
     .split(",")

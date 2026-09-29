@@ -17,7 +17,7 @@ export const SERVER_LABELS: Record<Server, string> = {
 
 export const GUILDS_BY_SERVER: Record<Server, string[]> = {
   duncan: ["아시겠어요"],
-  aira: ["END", "새벽빛", "에린의수호자들", "평화"],
+  aira: ["END", "새벽빛", "평화"],
 };
 
 export const ALL_GUILDS: string[] = [
@@ -29,6 +29,5 @@ export const GUILD_SERVER_MAP: Record<string, Server> = {
   아시겠어요: "duncan",
   END: "aira",
   새벽빛: "aira",
-  에린의수호자들: "aira",
   평화: "aira",
 };
