@@ -82,7 +82,7 @@ type Grower = {
 
 const HELL_INDEX: Record<string, number> = (() => {
   const map: Record<string, number> = { "매어 이하": 0 };
-  for (let i = 1; i <= 2; i++) map[`지옥${i}`] = i;
+  for (let i = 1; i <= 4; i++) map[`지옥${i}`] = i;
   return map;
 })();
 

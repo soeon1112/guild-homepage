@@ -72,6 +72,8 @@ const HELL_STAGES = [
   "매어 이하",
   "지옥1",
   "지옥2",
+  "지옥3",
+  "지옥4",
 ];
 
 const CHALLENGES: Challenge[] = ["있음", "다소 있음", "없음"];
