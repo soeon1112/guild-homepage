@@ -39,6 +39,7 @@ const DEFAULT_GUILD_ACCENT: GuildAccent = { hex: "#ffc785", rgb: "255, 199, 133"
 const GUILD_ACCENTS: Record<string, GuildAccent> = {
   end: { hex: "#4a7ba6", rgb: "74, 123, 166" }, // 청록 톤 (기존 색과 대비)
   peace: { hex: "#b5527a", rgb: "181, 82, 122" }, // 자적/베리 톤 (기존 4색과 대비)
+  modakbul: { hex: "#e07b39", rgb: "224, 123, 57" }, // 모닥불 주황 톤 (기존 색과 대비)
 };
 
 export function guildAccent(id: string, isUnion?: boolean): GuildAccent {
