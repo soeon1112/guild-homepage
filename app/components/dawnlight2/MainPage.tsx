@@ -3,7 +3,6 @@
 import { TodaysHorizon } from "./widgets/TodaysHorizon";
 import { WhispersFeed } from "./widgets/WhispersFeed";
 import { NoteToTheSky } from "./widgets/NoteToTheSky";
-import { PaperPlaneLetters } from "./widgets/PaperPlaneLetters";
 import { CabinLogs } from "./widgets/CabinLogs";
 
 // 하늘섬 (Dawnlight 2) main page. Widgets land here in sequence:
@@ -17,7 +16,6 @@ export function Dawnlight2MainPage() {
       <TodaysHorizon />
       <WhispersFeed />
       <NoteToTheSky />
-      <PaperPlaneLetters />
       {/* TodaysVoyager(오늘의 항해자) 제거 — 개인 공간 미운영(2026-09-15).
           컴포넌트 파일 자체는 dead code 로 유지, 마운트만 제거. */}
       <CabinLogs />
