@@ -96,7 +96,7 @@ const items: NavItem[] = [
   { id: "board", label: "게시판", icon: icons.board, href: "/board" },
 ];
 
-// forceVisible — DM 대화 화면/통화방의 "+" 슬라이드업 패널이 이 컴포넌트를
+// forceVisible — DM 대화 화면의 "+" 슬라이드업 패널이 이 컴포넌트를
 // 재mount할 때, 아래 얼리 리턴이 그 위치에서도 그대로 걸려 항상 null이 되는
 // 문제를 우회하기 위한 옵션. 기본값 false라 기존 호출부(레이아웃의 상시
 // 마운트)는 동작 변화 없음.
@@ -141,10 +141,6 @@ export function Dawnlight2BottomNav({
   // DM 대화 화면 자체의 "+" 슬라이드업(NewHomeChat과 동일 패턴)이 이
   // 얼리 리턴을 우회해 재mount할 때 쓴다.
   if (!forceVisible && pathname?.startsWith("/dm/")) return null;
-  // 통화방(/voice) — 전역 마운트(ChromeShell, forceVisible 없음)는 항상
-  // 숨김. DM과 동일하게 VoiceChatPanel 자신의 "+" 버튼이 forceVisible로
-  // 재mount할 때만(P7-B 슬라이드업 트릭) 예외적으로 렌더된다.
-  if (!forceVisible && pathname?.startsWith("/voice")) return null;
 
   const isActive = (item: NavItem) => {
     if (!pathname) return false;

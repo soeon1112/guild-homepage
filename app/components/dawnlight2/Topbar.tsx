@@ -6,7 +6,6 @@ import {
   LogOut,
   MessageCircle,
   Menu,
-  Mic,
   User,
   X,
 } from "lucide-react";
@@ -15,7 +14,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/app/components/AuthProvider";
 import { getActiveDmRoomId, useUnreadDMTotal } from "@/src/lib/useUnreadDMTotal";
-import { useVoiceParticipantCount } from "@/src/lib/useVoiceParticipantCount";
 import { emitChatScrollToLatest } from "@/src/lib/uiBus";
 import {
   AuthModal,
@@ -146,9 +144,6 @@ export function Dawnlight2Topbar() {
   // 대화 중인 방(/dm/{roomId})의 unread는 배지 합계에서 제외.
   const pathname = usePathname();
   const unreadDMTotal = useUnreadDMTotal(nickname, getActiveDmRoomId(pathname));
-  // 통화방 진입점 배지용 — 앱 Phase 5와 동일 패턴, 언쏘 A/B는 Phase 6에서
-  // (지금은 로그인한 모두에게 노출).
-  const voiceParticipantCount = useVoiceParticipantCount();
   const router = useRouter();
   const [hovered, setHovered] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -200,25 +195,6 @@ export function Dawnlight2Topbar() {
         </span>
       ),
       href: "/dm",
-    },
-    // 통화방 진입점 — 전체 공개(언쏘 A/B 해제, DM/길드원과 동일 패턴).
-    {
-      id: "voice",
-      label: "음성방",
-      icon: (
-        <span className="relative inline-flex">
-          <Mic className="h-3.5 w-3.5" />
-          {voiceParticipantCount > 0 && (
-            <span
-              className="absolute -right-1.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[9px] font-bold"
-              style={{ background: "#dc2626", color: "#fef5e6" }}
-            >
-              {voiceParticipantCount > 99 ? "99+" : voiceParticipantCount}
-            </span>
-          )}
-        </span>
-      ),
-      href: "/voice",
     },
     {
       id: "my",
